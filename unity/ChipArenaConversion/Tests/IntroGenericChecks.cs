@@ -23,15 +23,28 @@ internal static class IntroGenericChecks
         // (A review aid, not a check: with INTRO_GENERIC_VIEWS set to a folder, each intro's camera, anchors and set pieces every
         // 0.1 s are written there as JSON for an offline Blender preview of the framing; tools/intros/generic_preview.py.)
         var views=Environment.GetEnvironmentVariable("INTRO_GENERIC_VIEWS");if(!string.IsNullOrEmpty(views))foreach(var s in Make())Dump(s,views);
+        // (The intros' local motion bank, when this machine has it (docs/INTROS-V2.md 9d): Slipstream's run, take-off and slide play from
+        // its pack clips, as in the game; Slipstream is checked again without it, its keys alone, as CI and a build without it play it.)
+        bool bank=IntroPackChecks.LoadLocal(root,out _);
         // (Likewise INTRO_GENERIC_MODEL: the body as the model draws it, bound bone for bone on the measured skeleton every 1/30 s, in
-        // the source frame, for the stick-figure reviews of the walks, contacts and silhouettes: tools/intros/generic_sticks.py.)
-        var model=Environment.GetEnvironmentVariable("INTRO_GENERIC_MODEL");if(!string.IsNullOrEmpty(model))foreach(var s in Make())DumpModel(s,model);
+        // the source frame, for the stick-figure reviews of the walks, contacts and silhouettes: tools/intros/generic_sticks.py. With
+        // the bank, Slipstream's keys alone are written beside it as slipstream-keys-model.json.)
+        var model=Environment.GetEnvironmentVariable("INTRO_GENERIC_MODEL");
+        if(!string.IsNullOrEmpty(model))foreach(var s in Make())
+        {
+            DumpModel(s,model,"");
+            if(bank&&s is NativeIntroSlipstream){var local=NativeIntroPack.Local;NativeIntroPack.Local=null;try{DumpModel(s,model,"-keys");}finally{NativeIntroPack.Local=local;}}
+        }
         count=0;var names=new HashSet<string>();var ids=new HashSet<string>();var rig=ModelPoseChecks.Measured();
         foreach(var s in Make())
         {
             string n=s.Title;Check(names.Add(n)&&ids.Add(s.Style),n+" has its own name and id");
             Registry(s);Timeline(s,root);Determinism(s);Budgets(s);Reduced(s);Streaks(s);Closing(s);Feet(s,rig);
-            if(s is NativeIntroSlipstream ss)Tunnel(ss,rig);
+            if(s is NativeIntroSlipstream ss)
+            {
+                Tunnel(ss,rig);Roof(ss,rig);
+                if(bank){Clips(ss);var local=NativeIntroPack.Local;NativeIntroPack.Local=null;try{Feet(ss,rig);Tunnel(ss,rig);Roof(ss,rig);Budgets(ss);}finally{NativeIntroPack.Local=local;}}
+            }
         }
         Check(NativeIntroCatalog.Find(NativeIntroCatalog.DefaultId)?.Make() is NativeIntroCloudbreak,"the new default is Cloudbreak");
         Console.WriteLine("PASS generic intros ("+count+" checks)");
@@ -73,7 +86,7 @@ internal static class IntroGenericChecks
     /// <summary>The model's skeleton as drawn (Runtime VisualIntroPose binds a v2 intro's keyed pose bone for bone, its arms as keyed,
     /// the feet unplanted, on the rig's root), with the keyed anchors and the camera, every 1/30 s.</summary>
     private static readonly string[] ModelBones={"pelvis","spine_03","spine_05","neck_01","head","upperarm_l","lowerarm_l","hand_l","middle_01_l","upperarm_r","lowerarm_r","hand_r","middle_01_r","thigh_l","calf_l","foot_l","ball_l","thigh_r","calf_r","foot_r","ball_r"};
-    private static void DumpModel(NativeIntroGenericScript s,string folder)
+    private static void DumpModel(NativeIntroGenericScript s,string folder,string suffix)
     {
         string F(float x)=>x.ToString("0.####",System.Globalization.CultureInfo.InvariantCulture);string P(Vector3 v)=>"["+F(v.X)+","+F(v.Y)+","+F(v.Z)+"]";
         var rig=ModelPoseChecks.Measured();var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();var at=new int[ModelBones.Length];
@@ -84,14 +97,14 @@ internal static class IntroGenericChecks
         for(int i=0;i<=(int)(s.Length*30);i++)
         {
             float age=i/30f,t=s.Clock(age);s.Camera(age,out var v);s.Pose(t,pose,out var root,out var rot);pose.World();
-            float relax=Math.Clamp(s.ArmsRelax(t),0,1);NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax},false,false);
+            float relax=Math.Clamp(s.ArmsRelax(t),0,1);NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax,Exact=IntroPoseChecks.Packed(s,t,NativeIntroPack.Arms)},false,false);
             var head=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Head]));var chest=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Chest]));
             var pelvis=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Pelvis]));
             sb.Append(i>0?",":"").Append("{\"age\":"+F(age)+",\"t\":"+F(t)+",\"solid\":"+F(s.Solid(t,0))+",\"root\":"+P(root)+",\"eye\":"+P(v.Eye)+",\"look\":"+P(v.Look)+",\"fov\":"+F(v.Fov)+",\"headFwd\":"+P(head)+",\"chestFwd\":"+P(chest)+",\"pelvisFwd\":"+P(pelvis)+",\"model\":[");
             for(int b=0;b<at.Length;b++)sb.Append(b>0?",":"").Append(P(at[b]<0?Vector3.Zero:root+Vector3.Transform(st.Position[at[b]],rot)));
             sb.Append("],\"keyed\":[");for(int k=0;k<anchors.Length;k++)sb.Append(k>0?",":"").Append(P(s.KeyedAnchor(anchors[k],t)));sb.Append("]}");
         }
-        sb.Append("]}");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,s.Title.ToLowerInvariant()+"-model.json"),sb.ToString());
+        sb.Append("]}");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,s.Title.ToLowerInvariant()+suffix+"-model.json"),sb.ToString());
     }
 
     // ---- the feet on the model ----
@@ -110,7 +123,7 @@ internal static class IntroGenericChecks
         int frames=(int)(s.Length*30);var p=new Vector3[frames+1,names.Length];var t=new float[frames+1];
         for(int i=0;i<=frames;i++)
         {
-            t[i]=s.Clock(i/30f);s.Pose(t[i],pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=Math.Clamp(s.ArmsRelax(t[i]),0,1)},false,false);
+            t[i]=s.Clock(i/30f);s.Pose(t[i],pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=Math.Clamp(s.ArmsRelax(t[i]),0,1),Exact=IntroPoseChecks.Packed(s,t[i],NativeIntroPack.Arms)},false,false);
             for(int b=0;b<names.Length;b++)p[i,b]=root+Vector3.Transform(st.Position[at[b]],rot);
         }
         float worst=0,deepest=0;
@@ -142,7 +155,7 @@ internal static class IntroGenericChecks
         for(float age=0;age<=s.Length;age+=1/60f)
         {
             float t=s.Clock(age);if(t>=NativeIntroSlipstream.LeapAt)break;
-            s.Pose(t,pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp(),false,false);
+            s.Pose(t,pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Exact=IntroPoseChecks.Packed(s,t,NativeIntroPack.Arms)},false,false);
             var h=root+Vector3.Transform(st.Position[head],rot);
             if(h.X<NativeIntroSlipstream.MouthX)
             {
@@ -160,12 +173,64 @@ internal static class IntroGenericChecks
         Check(true,"Slipstream's helmet at least "+(least*100).ToString("0")+" cm under the tunnel's ceiling, the camera "+(eyeLeast*100).ToString("0")+" cm");
     }
 
+    /// <summary>
+    /// Slipstream's feet on the moving roof (the body is posed in the car's frame: NativeIntroGenericScript.Carried): every 1/60 s until
+    /// the leap, a foot down on the roof (its ball within 1.2 cm of where the feet stand on it, its ankle within 13 cm) stays put on the
+    /// roof (its ball under .45 m/s against the car, which runs at 14 m/s), and nothing of the legs goes 4 cm into the roof.
+    /// </summary>
+    private static void Roof(NativeIntroSlipstream s,NativeVisualRig.Rig rig)
+    {
+        string n=s.Title+(NativeIntroPack.Local==null?" (its keys alone)":" (the pack's clips)");var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();
+        string[] names={"ball_l","ball_r","foot_l","foot_r","calf_l","calf_r"};float[] under={0,0,.05f,.05f,.055f,.055f};var at=new int[names.Length];
+        for(int b=0;b<names.Length;b++)at[b]=Array.IndexOf(rig.Names,names[b]);
+        var p=new List<Vector3[]>();var times=new List<float>();
+        for(float age=0;;age+=1/60f)
+        {
+            float t=s.Clock(age);if(t>=NativeIntroSlipstream.LeapAt-.01f)break;
+            s.Pose(t,pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Exact=IntroPoseChecks.Packed(s,t,NativeIntroPack.Arms)},false,false);
+            // (in the car's frame: the car's travel since 0 taken off)
+            var car=new Vector3(NativeIntroSlipstream.CarX(t)-NativeIntroSlipstream.CarX(0),0,0);var f=new Vector3[names.Length];
+            for(int b=0;b<names.Length;b++)f[b]=root+Vector3.Transform(st.Position[at[b]],rot)-car;p.Add(f);times.Add(t);
+        }
+        // (where the feet stand on the roof: the lowest a ball comes while the pilot crouches, before it springs up)
+        float top=9;for(int i=0;i<p.Count&&times[i]<NativeIntroSlipstream.StandAt;i++)top=Math.Min(top,Math.Min(p[i][0].Y,p[i][1].Y));
+        Check(Math.Abs(top-NativeIntroSlipstream.RoofY)<.06f,n+": the feet stand on the roof ("+top.ToString("0.000")+" m, the roof "+NativeIntroSlipstream.RoofY+")");
+        float worst=0,deepest=0;int down=0;
+        for(int i=1;i+1<p.Count;i++)
+        {
+            for(int b=0;b<names.Length;b++){float d=top+under[b]-p[i][b].Y;deepest=Math.Max(deepest,d);Check(d<.04f,n+": the model's "+names[b]+" is "+(d*100).ToString("0")+" cm into the roof at "+times[i].ToString("0.00")+" s");}
+            for(int side=0;side<2;side++)
+            {
+                if(p[i][side].Y-top>.012f||p[i][2+side].Y-top>.13f)continue;down++;
+                var d=p[i+1][side]-p[i-1][side];d.Y=0;float dt=times[i+1]-times[i-1];float v=dt>1e-5f?d.Length()/dt:0;worst=Math.Max(worst,v);
+                Check(v<.45f,n+": the model's "+(side==0?"left":"right")+" foot slides on the roof at "+v.ToString("0.00")+" m/s at "+times[i].ToString("0.00")+" s");
+            }
+        }
+        Check(down>60,n+": its feet are down on the roof ("+down+" foot-frames)");
+        Check(true,n+"'s feet on the moving roof: at most "+worst.ToString("0.00")+" m/s against it, at most "+(deepest*100).ToString("0")+" cm into it");
+    }
+    /// <summary>Slipstream's timing is the local bank's clips' (with the bank): the sprint at Run m/s, a footfall every Pace s (the left
+    /// foot down at the clip's start, the right at Pace into it), the take-off's left foot down at its start and both up by .1 s, the
+    /// slide's right foot coming down at SlideDown.</summary>
+    private static void Clips(NativeIntroSlipstream s)
+    {
+        var bank=NativeIntroPack.Local;bool Has(string c,out NativeIntroPack.Clip clip){bool ok=bank.TryGet(c,out clip);Check(ok,"the local motion bank has Slipstream's "+c);return ok;}
+        const float frame=1/60f;
+        if(Has(NativeIntroSlipstream.Dash,out var dash))
+        {
+            Check(Math.Abs(dash.Speed-NativeIntroSlipstream.Run)<.02f*NativeIntroSlipstream.Run,"Slipstream's sprint runs at its clip's speed ("+dash.Speed.ToString("0.00")+" m/s, keyed "+NativeIntroSlipstream.Run+")");
+            Check(Math.Abs(dash.Length*.5f-NativeIntroSlipstream.Pace)<frame,"Slipstream's stride is its clip's ("+(dash.Length*.5f).ToString("0.000")+" s)");
+            Check(dash.OnFloor(.5f*frame,true,true)&&!dash.OnFloor(dash.Length-1.5f*frame,true,true),"the sprint clip's left foot comes down at its start");
+            Check(dash.OnFloor(NativeIntroSlipstream.Pace+.5f*frame,true,false)&&!dash.OnFloor(NativeIntroSlipstream.Pace-1.5f*frame,true,false),"the sprint clip's right foot comes down at Pace");
+        }
+        if(Has(NativeIntroSlipstream.TakeOff,out var off))Check(off.OnFloor(.5f*frame,false,true)&&!off.OnFloor(.1f,false,true)&&!off.OnFloor(.1f,false,false),"the take-off clip's left foot is down at its start and both are up at .1 s");
+        if(Has(NativeIntroSlipstream.SlideClip,out var slide))Check(slide.OnFloor(NativeIntroSlipstream.SlideDown+.5f*frame,false,false)&&!slide.OnFloor(NativeIntroSlipstream.SlideDown-1.5f*frame,false,false),"the slide clip's right foot comes down at SlideDown");
+    }
+
     // ---- the registry and the timeline ----
     private static void Registry(NativeIntroGenericScript s)
     {
         var e=NativeIntroCatalog.Find(s.Style);string n=s.Title;
-        // (intros batch 1, 2026-11-20: Slipstream stays unregistered until its Runner Action pack run lands; it registers again then)
-        if(e==null&&s is NativeIntroSlipstream){Check(true,n+" is held out of the registry until its pack run lands");return;}
         Check(e!=null,n+" is registered");
         Check(e.Name==n,n+"'s Locker name is its title ("+e.Name+")");
         Check(Math.Abs(e.Duration-s.Length)<1e-4f&&Math.Abs(e.NameAt-s.IntroNameAt)<1e-4f,n+": the registry's length and name beat are the script's");

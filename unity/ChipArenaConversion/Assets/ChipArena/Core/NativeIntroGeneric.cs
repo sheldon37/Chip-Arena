@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The five generic intros' set bank (Resources/ChipArenaIntroGeneric.bytes, local).</summary>
         public const string Bank="ChipArenaIntroGeneric";
-        protected NativeIntroGenericScript(string id,float total,float cardAt,float hit,int accent):base(id,total,cardAt,hit,accent){}
+        protected NativeIntroGenericScript(string id,float total,float cardAt,float hit,int accent):base(id,total,cardAt,hit,accent){framed=(t,r)=>(RootPath==null?r:RootPath(t,r))-Carried(t);}
         public override string SetBank=>Bank;
         /// <summary>The intro's name (the Locker card and the docs; the name card shows the pilot's).</summary>
         public abstract string Title{get;}
@@ -45,13 +45,41 @@ namespace ChipArena.UnityConversion
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {
             Feet(t,plan,pitch);Shift(t,plan);
+            // (A pack clip's legs are the clip's own (docs/INTROS-V2.md 9d): the kneel and the heel roll let go while they play. Feet on
+            // something moving (Carried) are posed in its frame: the root less its travel, the plan written in it.)
+            float own=Keys!=null&&Keys.Packs.Length>0?1-PackWeight(t,NativeIntroPack.Legs):1;var path=Carries?framed:RootPath;
             // (First the pose as keyed, for the hips; then the feet put where the model's land, from those hips.)
-            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,plan,HeroAt,RootPath,HingedLegs);
-            for(int side=0;side<2;side++){float w=Kneel(t,side==0);if(w>.001f){OnKnee(pose,root,rotation,plan,side==0,w);pitch[side]+=(KneelToe-pitch[side])*w;}}
+            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,plan,HeroAt,path,HingedLegs);
+            for(int side=0;side<2;side++){float w=Kneel(t,side==0)*own;if(w>.001f){OnKnee(pose,root,rotation,plan,side==0,w);pitch[side]+=(KneelToe-pitch[side])*w;}}
             OnModel(pose,root,rotation,plan,Ground(t)-NativeEntranceStage.FloorY);
-            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,plan,HeroAt,RootPath,HingedLegs);
-            Roll(pose,pitch);Arms(t,pose,root,rotation);
+            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,plan,HeroAt,path,HingedLegs);
+            if(own<1){pitch[0]*=own;pitch[1]*=own;}
+            Roll(pose,pitch);
+            for(int side=0;side<2;side++)
+            {
+                float w=Repin(t,side==0);if(w<=.001f)continue;int o=side*4;bool left=side==0;
+                // (its height too, whatever the pelvis's turn: the keyed ankle where the model's then lands on the floor; the model's legs
+                // are LegScale times the keyed ones from hips placed and turned their own way)
+                pose.World();var turn=pose.WorldRotation[CapturedRig.Pelvis];var model=ModelPelvis+(pose.WorldPosition[CapturedRig.Pelvis]-GamePelvis)*LegScale;
+                float mhip=root.Y+Vector3.Transform(model+Vector3.Transform(left?ModelHip:new Vector3(-ModelHip.X,ModelHip.Y,ModelHip.Z),turn),rotation).Y;
+                float khip=root.Y+Vector3.Transform(pose.WorldPosition[left?CapturedRig.LHip:CapturedRig.RHip],rotation).Y,floor=NativeEntranceStage.FloorY;
+                float lift=khip-(mhip-(floor+ModelAnkle))/LegScale-(floor+NativeEntrancePose.Ankle)+plan[o+3];
+                NativeEntrancePose.PlantFoot(pose,root,rotation,left,plan[o],plan[o+1],plan[o+2],w,lift,HingedLegs);
+            }
+            if(Carries)root+=Carried(t);Arms(t,pose,root,rotation);
         }
+        /// <summary>How far foot `left` is put back on its plan after a pack clip has played over the keys (0..1): a clip easing out mixes
+        /// its leg with the keyed one, which swings a foot both have planted on the same spot off it; pinned, it stays.</summary>
+        protected virtual float Repin(float t,bool left)=>0;
+        /// <summary>The model's ankle over the floor with the foot flat on it (the measured skeleton).</summary>
+        private const float ModelAnkle=.106f;
+        /// <summary>Whether the feet stand on something that moves (Carried): Slipstream's train.</summary>
+        protected virtual bool Carries=>false;
+        /// <summary>How far what the feet stand on has carried them at `t` since 0 (source frame): Slipstream's car until the leap. The body
+        /// is posed in that moving frame (the root less this; Start, Steps and Shift written in it), so the feet planted on the roof, and a
+        /// pack clip's feet held where they came down (NativeIntroPack), ride on with the car rather than stay behind in the world.</summary>
+        protected virtual Vector3 Carried(float t)=>Vector3.Zero;
+        private readonly Func<float,Vector3,Vector3> framed;
         /// <summary>How far leg `left` kneels at `t` (0..1; it must be planted then): its knee down on the floor under the hips, the shin
         /// along the floor behind, the toes tucked under (OnKnee), whatever the hips' height; blended with its plan by the weight.</summary>
         protected virtual float Kneel(float t,bool left)=>0;

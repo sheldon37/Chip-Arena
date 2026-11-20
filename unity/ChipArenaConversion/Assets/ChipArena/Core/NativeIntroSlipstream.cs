@@ -5,16 +5,32 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// "Slipstream" (docs/INTROS-GENERIC.md "Slipstream"). 7.4 s, the name at 5.6 s. Underground, at speed: the pilot rides crouched on the
-    /// roof of a maglev racing through a tunnel, its light strips streaking past. The train bursts into a station hall; the pilot rises,
-    /// sprints along the roof and leaps off for the platform, lands in a slide with sparks off its boots and a hand down, and stops on
+    /// roof of a maglev racing through a tunnel, its light strips streaking past. The train bursts into a station hall; the pilot springs
+    /// up, sprints along the roof and leaps off for the platform, lands in a slide with sparks off its boots and a hand down, and stops on
     /// the mark as the train howls away into the far tunnel, its tail lights fading. Camera: kinetic (low on the roof behind it, beside
     /// the train keeping pace, a whip to the platform for the leap in slow motion, low on the platform as it slides at the lens).
+    /// The sprint, the take-off and the slide are the owner's Runner Action pack's clips (owner 2026-11-20: "The run is very 'cartoon'
+    /// like, can we make this more realistic? Could use the running pack I have"), from the intros' local motion bank (NativeIntroPack;
+    /// docs/INTROS-V2.md 9d) over this intro's own keys, which play without the bank. The crouch, the leap's flight and the hero beats
+    /// stay keyed.
     /// </summary>
     public sealed class NativeIntroSlipstream:NativeIntroGenericScript
     {
         public const string Id=NativeIntroCatalog.Prefix+"slipstream";
         public const float Total=7.4f,CardAt=5.6f;
-        public const float BurstAt=1.66f,StandAt=1.55f,RunAt=1.78f,LeapAt=2.7f,LandAt=3.3f,StopAt=4.3f,GlanceAt=4.45f,ChimeAt=5.0f;
+        public const float BurstAt=1.66f,StandAt=1.55f,LeapAt=2.7f,LandAt=3.3f,StopAt=4.3f,GlanceAt=4.45f,ChimeAt=5.0f;
+        /// <summary>The pack clips (NativeIntroPack.Local): the sprint, the take-off and the slide.</summary>
+        public const string Dash="Mvm_Dash",TakeOff="Jmp_FrontAir_A_Start",SlideClip="Esc_Slide_All";
+        /// <summary>
+        /// The sprint along the roof, as the pack's Dash runs on the model: a footfall every Pace s at Run m/s (the clip's Speed: the root
+        /// travels along the roof at it for the drawn feet to hold), each foot down for Contact s. The pilot springs up from the crouch at
+        /// StandAt and is up to speed by the first footfall (the right foot, FirstStrike); three strides on, the left foot plants for the
+        /// take-off (Strike(3)), and it is off the roof at LeapAt.
+        /// </summary>
+        public const float Run=9.12f,Pace=.26667f,Contact=.07f,FirstStrike=LeapAt-.1f-3*Pace;
+        public static float Strike(int i)=>FirstStrike+i*Pace;
+        /// <summary>When, in the slide clip, its right foot comes down (on LandAt).</summary>
+        public const float SlideDown=.133f;
         public override string Title=>"Slipstream";
         // The set (Unity space, generic_slipstream.py): the track's centre line, the platform edge, the hall's ends; the roof the pilot
         // rides (its surface where the pilot runs, a little to the platform's side of the car's centre line).
@@ -35,20 +51,34 @@ namespace ChipArena.UnityConversion
             Tail=NativeEntranceFx.Hex(0xff2a3a),Teal=NativeEntranceFx.Hex(0x16b6c8),Flap=NativeEntranceFx.Hex(0xffd98a),Head=NativeEntranceFx.Hex(0xffffff);
         /// <summary>The middle car's centre (source x; the train runs toward +x): steady through the tunnel and the ride, pulling away after the leap.</summary>
         public static float CarX(float t){float s=t-LeapAt;return s<=0?-23.7f+V0*s:-23.7f+V0*s+.5f*Accel*s*s;}
-        /// <summary>Where the pilot is along the middle car's roof (m from its centre, + toward the front).</summary>
-        private static float Along(float t){float u=NativeEntranceMath.Clamp01((t-(RunAt-.05f))/(LeapAt-RunAt+.05f));return -3+8.28f*u*u*(2-u);}
+        /// <summary>Where the pilot is along the middle car's roof (m from its centre, + toward the front): crouched 3 m behind it until
+        /// StandAt, its speed easing up to Run by the first footfall, then at Run.</summary>
+        private static float Along(float t)
+        {
+            const float a=FirstStrike-StandAt;if(t<=StandAt)return -3;
+            if(t<FirstStrike){float u=(t-StandAt)/a;return -3+Run*a*(u*u*u-.5f*u*u*u*u);}
+            return -3+Run*a*.5f+Run*(t-FirstStrike);
+        }
         // The leap: off the roof at LeapAt, onto the platform at LandAt (a low vault: a little lift, then down hard).
         private static readonly Vector3 LeapFrom=new Vector3(CarX(LeapAt)+Along(LeapAt),RoofY+.88f,RideZ),LandOn=new Vector3(-8.5f,.88f,-.35f);
         private const float FlyUp=1.5f,FlyG=21;
-        /// <summary>The slide along the platform: from the landing to the mark, decelerating to a stop.</summary>
+        /// <summary>
+        /// The rise onto the mark: the slide stops with its left foot out in front LeftReach m ahead of the hips (the pack's slide clip at
+        /// the stop, on the model) right where the hero stance puts that foot (HeroLeft, the mark's), so it rises forward over that foot
+        /// onto the mark as the right steps up beside it (the keys' last steps; the pack's rise holds the feet where they are).
+        /// </summary>
+        public const float LeftReach=.68f;
+        public static readonly Vector3 HeroLeft=NativeEntranceMath.RotateY(new Vector3(.16f,0,.06f),Facing)+new Vector3(0,0,Mark);
+        private static readonly float StopYaw=Facing+.25f;
+        public static readonly Vector3 SlideTo=new Vector3(HeroLeft.X-(float)Math.Sin(StopYaw)*LeftReach,.88f,HeroLeft.Z-(float)Math.Cos(StopYaw)*LeftReach);
+        /// <summary>The slide along the platform: from the landing to where it stops short of the mark (SlideTo), decelerating.</summary>
         public static Vector3 Slide(float t)
         {
-            float d=StopAt-LandAt,s=NativeEntranceMath.Clamp01((t-LandAt)/d);float x=LandOn.X+(0-LandOn.X)*(1-(1-s)*(1-s));
-            return new Vector3(x,.88f,LandOn.Z+(0-LandOn.Z)*NativeEntranceMath.Smooth(s));
+            float d=StopAt-LandAt,s=NativeEntranceMath.Clamp01((t-LandAt)/d);float x=LandOn.X+(SlideTo.X-LandOn.X)*(1-(1-s)*(1-s));
+            return new Vector3(x,.88f,LandOn.Z+(SlideTo.Z-LandOn.Z)*NativeEntranceMath.Smooth(s));
         }
-        /// <summary>The sprint's i-th foot strike (0..5, the right first): every .155 s, the last (the left foot's take-off plant) just before the leap.</summary>
-        public static float Strike(int i)=>RunAt+.08f+i*Stride;
-        public const float Stride=.155f,Contact=.07f;
+        /// <summary>The rise (from the stop, over Rise s): from SlideTo forward over the left foot onto the mark.</summary>
+        public const float Rise=.35f;
         /// <summary>The root's path: riding the roof, flying, sliding (the keys hold the root after the stop).</summary>
         public static Vector3 Ride(float t)
         {
@@ -58,24 +88,31 @@ namespace ChipArena.UnityConversion
         }
         public NativeIntroSlipstream():base(Id,Total,CardAt,LeapAt,0x16d6ff)
         {
-            // (The model's feet. On the roof they are written in the car's frame at the start and ride with it (Shift), on its roof
-            // (Ground): a surfer's crouch, then the sprint, each foot landing a quarter of a metre ahead of the hips and off again .07 s
-            // later, the last (the left) the take-off. Through the slide Shift carries the right foot out in front and the left knee is
-            // down (Kneel); at the stop both are put where the slide left them, and they step onto the mark.)
+            // (The model's feet, in the frame the body is posed in (Carried): on the roof, the car's place at 0, on its roof (Ground): a
+            // surfer's crouch; the spring up off the left foot as the right swings through; the sprint, each foot landing a quarter of a
+            // metre ahead of the hips and off again Contact s later; the left planted for the take-off. On the platform (the world less
+            // Off): through the slide the right knee is down (Kneel) and Shift carries the left foot along out in front; at the stop both
+            // are put where the slide left them, and they step onto the mark.)
             float side=(float)(Math.PI/2),x0=CarX(0);
             Start=Stance(.17f,.3f,.15f,-.15f,-.32f,-.4f,side,x0-3,RideZ);
             var run=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            for(int i=0;i<6;i++)
+            for(int i=0;i<4;i++)
             {
-                bool l=i%2==1;float land=Strike(i),lift=i==0?StandAt+.07f:i==1?Strike(0)+.03f:Strike(i-2)+Contact;
+                bool l=i%2==1;float land=Strike(i),lift=i==0?StandAt+.04f:i==1?StandAt+.2f:Strike(i-2)+Contact;
                 run.Add(new NativeEntrancePose.Step(l,lift,land,x0+Along(land)+.25f,RideZ+(l?-.06f:.06f),side+(l?.08f:-.08f),.32f));
             }
-            // (off the take-off the right knee drives on up into the leap)
-            run.Add(new NativeEntrancePose.Step(false,Strike(4)+Contact,LeapAt+.06f,x0+Along(LeapAt)+.55f,RideZ+.06f,side-.08f,.5f));
-            float ys=Facing+.25f,sy=(float)Math.Sin(ys),cy=(float)Math.Cos(ys);
-            run.Add(new NativeEntrancePose.Step(false,StopAt-.002f,StopAt,sy*Reach(StopAt)-cy*.12f,cy*Reach(StopAt)+sy*.12f,ys-.2f,0));
-            run.Add(new NativeEntrancePose.Step(true,StopAt-.002f,StopAt,cy*.1f-sy*.3f,-sy*.1f-cy*.3f,ys,0));
-            run.Add(Step(true,StopAt+.12f,StopAt+.5f,.16f,.06f,.14f,.12f,Facing,0,Mark));run.Add(Step(false,StopAt+.36f,StopAt+.56f,-.15f,-.08f,-.36f,.04f,Facing,0,Mark));
+            // (off the take-off the right knee drives on up into the leap, and the left foot leaves the roof behind it)
+            run.Add(new NativeEntrancePose.Step(false,Strike(2)+Contact,LeapAt+.06f,x0+Along(LeapAt)+.55f,RideZ+.06f,side-.08f,.5f));
+            run.Add(new NativeEntrancePose.Step(true,LeapAt-.03f,LeapAt+.2f,x0+Along(LeapAt)+.2f,RideZ-.06f,side+.08f,.35f));
+            float ys=StopYaw,sy=(float)Math.Sin(ys),cy=(float)Math.Cos(ys);
+            // (at the stop the left foot is where the hero stance wants it (HeroLeft) and stays; the right, folded under by the hips, steps
+            // up beside it as the body rises)
+            run.Add(new NativeEntrancePose.Step(true,StopAt-.002f,StopAt,HeroLeft.X-Off,HeroLeft.Z,Facing+.14f,0));
+            // (the right: behind the hips on its knee as it stops; it comes off the knee and plants ahead of the hips under the rising body,
+            // where the pack's rise puts it down; then it steps up beside the left)
+            run.Add(new NativeEntrancePose.Step(false,StopAt-.002f,StopAt,SlideTo.X-sy*.35f-cy*.1f-Off,SlideTo.Z-cy*.35f+sy*.1f,ys,0));
+            run.Add(new NativeEntrancePose.Step(false,StopAt+.06f,StopAt+.17f,SlideTo.X+sy*.38f-cy*.12f-Off,SlideTo.Z+cy*.38f+sy*.12f,ys,.08f));
+            run.Add(Step(false,StopAt+.22f,StopAt+.5f,-.15f,-.08f,-.36f,.12f,Facing,-Off,Mark));
             Steps=run.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // Crouched low on the roof facing the way it runs, the left foot forward: leaning into the wind, the left hand low near the
@@ -84,49 +121,70 @@ namespace ChipArena.UnityConversion
             k.Key(.5f,stand).Root(0,.88f,0,side).Spin(0,.05f).Planted(1).Drop(Sink(-.37f)).J(B,.33f).J(Sp,.1f).J(Hd,-.28f,0,-.04f).J(LA,-.85f,0,.28f).J(LE,-.5f).J(RA,-.42f,0,-1.12f).J(RE,-.28f);
             k.Key(1f,stand).Root(0,.88f,0,side).Spin(0,-.04f).Planted(1).Drop(Sink(-.36f)).J(B,.32f).J(Sp,.1f).J(Hd,-.29f,0,.03f).J(LA,-.82f,0,.32f).J(LE,-.52f).J(RA,-.38f,0,-.92f).J(RE,-.32f);
             k.Key(StandAt-.2f,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.38f)).J(B,.34f).J(Sp,.1f).J(Hd,-.3f).J(LA,-.8f,0,.35f).J(LE,-.55f).J(RA,-.45f,0,-1.05f).J(RE,-.3f);
-            // Up, and away: a push off the back foot, leaning into it, the arms starting to drive.
-            k.Key(StandAt+.12f,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.16f)).J(B,.3f).J(Hd,-.15f).J(LA,-.6f,0,.12f).J(LE,-1.3f).J(RA,.5f,0,-.12f).J(RE,-1.2f);
-            // The sprint: leaning into it, two keys a step. At each strike the body is lowest, the hips turned with the leg landing, the
-            // shoulders countering, and the arms pumping hard (the arm opposite that leg driven forward and up, the elbow at a right
+            // Up, and away: springing off the front (left) foot as the right leg swings through, leaning into it, the arms starting to drive.
+            // (From here on the lean is the pelvis's, not the body's (B): under a pack clip the keyed body turn stays and would tilt the
+            // whole clip; the clip's legs take over the pelvis.)
+            k.Key(StandAt+.12f,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.16f)).J(P,.3f).J(Hd,-.15f).J(LA,-.6f,0,.12f).J(LE,-1.3f).J(RA,.5f,0,-.12f).J(RE,-1.2f);
+            // The sprint: leaning into it, two keys a stride. At each footfall the body is lowest, the hips turned with the leg landing,
+            // the shoulders countering, and the arms pumping hard (the arm opposite that leg driven forward and up, the elbow at a right
             // angle, the other thrown back); in the flight between the body rides up, the arms crossing. (s: +1 when the left lands.)
-            for(int i=0;i<6;i++)
+            for(int i=0;i<3;i++)
             {
-                float land=Strike(i),fly=land+Stride*.5f;float s=i%2==1?1:-1;
-                k.Key(land,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.11f)).J(B,.36f).J(Sp,.05f).J(P,0,-s*.16f,0).J(C,0,s*.22f,0).J(Hd,-.24f,-s*.08f,0)
+                float land=Strike(i),fly=land+Pace*.5f;float s=i%2==1?1:-1;
+                k.Key(land,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.11f)).J(P,.36f,-s*.16f,0).J(Sp,.05f).J(C,0,s*.22f,0).J(Hd,-.24f,-s*.08f,0)
                     .J(LA,s>0?.75f:-1.0f,0,.14f).J(LE,s>0?-1.25f:-1.6f).J(RA,s>0?-1.0f:.75f,0,-.14f).J(RE,s>0?-1.6f:-1.25f).PassKey();
-                if(i<5)k.Key(fly,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.03f)).J(B,.33f).J(Sp,.05f).J(Hd,-.22f)
+                k.Key(fly,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.03f)).J(P,.33f).J(Sp,.05f).J(Hd,-.22f)
                     .J(LA,-.12f,0,.14f).J(LE,-1.45f).J(RA,-.12f,0,-.14f).J(RE,-1.45f).PassKey();
             }
-            // The take-off: loaded low on the left foot, then thrown out over the platform, the right knee driving up, arms swung through.
-            k.Key(LeapAt-.03f,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.2f)).J(B,.42f).J(Sp,.08f).J(Hd,-.28f).J(LA,.7f,0,.2f).J(LE,-.5f).J(RA,.6f,0,-.2f).J(RE,-.5f).J(RL,-.9f,0,-.05f).J(RK,1.4f);
-            k.Key(LeapAt+.04f,stand).Root(0,.88f,0,side).Planted(0).Drop(Sink(-.04f)).J(B,.22f).J(Hd,-.16f).J(LA,-1.5f,0,.5f).J(LE,-.45f).J(RA,-1.2f,0,-.55f).J(RE,-.5f).J(RL,-1.35f,0,-.08f).J(RK,1.25f).J(LL,.45f,0,.06f).J(LK,.55f);
+            // The take-off: the left foot planted (the right arm driven forward), loaded low on it, then thrown out over the platform, the
+            // right knee driving up, arms swung through.
+            k.Key(Strike(3),stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.12f)).J(P,.38f,-.16f,0).J(Sp,.05f).J(C,0,.22f,0).J(Hd,-.24f,-.08f,0)
+                .J(LA,.75f,0,.14f).J(LE,-1.25f).J(RA,-1.0f,0,-.14f).J(RE,-1.6f).PassKey();
+            k.Key(LeapAt-.03f,stand).Root(0,.88f,0,side).Planted(1).Drop(Sink(-.2f)).J(P,.42f).J(Sp,.08f).J(Hd,-.28f).J(LA,.7f,0,.2f).J(LE,-.5f).J(RA,.6f,0,-.2f).J(RE,-.5f).J(RL,-.9f,0,-.05f).J(RK,1.4f);
+            k.Key(LeapAt+.04f,stand).Root(0,.88f,0,side).Planted(0).Drop(Sink(-.04f)).J(P,.22f).J(Hd,-.16f).J(LA,-1.5f,0,.5f).J(LE,-.45f).J(RA,-1.2f,0,-.55f).J(RE,-.5f).J(RL,-1.35f,0,-.08f).J(RK,1.25f).J(LL,.45f,0,.06f).J(LK,.55f);
             // Its top: a running leap split wide (the right leg reaching forward, the left trailing), the arms in opposition.
-            k.Key(LeapAt+.3f,stand).Root(0,.88f,0,side+.15f).Planted(0).Spin(-.1f,.08f).J(B,.14f).J(Hd,-.08f).J(RA,.45f,0,-.95f).J(RE,-.35f).J(LA,-1.45f,0,.45f).J(LE,-.35f).J(RL,-1.3f,0,-.1f).J(RK,.42f).J(LL,.5f,0,.08f).J(LK,1.0f).PassKey();
+            k.Key(LeapAt+.3f,stand).Root(0,.88f,0,side+.15f).Planted(0).Spin(-.1f,.08f).J(P,.14f).J(Hd,-.08f).J(RA,.45f,0,-.95f).J(RE,-.35f).J(LA,-1.45f,0,.45f).J(LE,-.35f).J(RL,-1.3f,0,-.1f).J(RK,.42f).J(LL,.5f,0,.08f).J(LK,1.0f).PassKey();
             // Coming down: the right foot reaching for the floor, the left knee tucking under for the slide, the left hand reaching back.
-            k.Key(LandAt-.06f,stand).Root(0,.88f,0,side+.2f).Planted(0).Spin(-.04f,.04f).Drop(Sink(-.25f)).J(B,.12f).J(Hd,-.12f).J(RA,-.6f,0,-.9f).J(RE,-.4f).J(LA,.5f,0,.5f).J(LE,-.25f).J(RL,-1.0f,0,-.1f).J(RK,.55f).J(LL,.3f,0,.1f).J(LK,1.6f).PassKey();
-            // The slide: down on the left knee, the right foot out in front, leaning back a little against it, the left hand dragging on
-            // the floor behind, the right arm out for balance, eyes on the lens; it turns to the lens as it slows.
-            k.Key(LandAt,stand).Root(0,.88f,0,side+.2f).Planted(1).Drop(Sink(-.56f)).J(B,.04f).J(Sp,-.02f,0,-.36f).J(C,-.04f,0,-.3f).J(Hd,-.1f,-.2f,.3f).J(LA,-.08f,.5f,.53f).J(LE,-.05f).J(RA,-.95f,0,-.7f).J(RE,-.55f).ImpactKey();
-            k.Key(LandAt+.5f,stand).Root(0,.88f,0,.9f).Planted(1).Drop(Sink(-.56f)).J(B,.04f).J(Sp,-.02f,0,-.36f).J(C,-.04f,0,-.3f).J(Hd,-.1f,-.18f,.3f).J(LA,-.08f,.5f,.53f).J(LE,-.05f).J(RA,-.9f,0,-.65f).J(RE,-.55f);
-            k.Key(StopAt-.25f,stand).Root(0,.88f,0,(.9f+ys)*.5f).Planted(1).Drop(Sink(-.55f)).J(B,.06f).J(Sp,-.02f,0,-.33f).J(C,-.04f,0,-.27f).J(Hd,-.08f,-.14f,.26f).J(LA,-.08f,.5f,.53f).J(LE,-.05f).J(RA,-.85f,0,-.6f).J(RE,-.6f);
-            k.Key(StopAt,stand).Root(0,.88f,0,ys).Planted(1).Drop(Sink(-.5f)).J(B,.14f).J(Sp,.04f).J(Hd,-.05f,-.1f,0).J(LA,.3f,0,.45f).J(LE,-.3f).J(RA,-.5f,0,-.45f).J(RE,-.7f).ImpactKey();
+            k.Key(LandAt-.06f,stand).Root(0,.88f,0,side+.2f).Planted(0).Spin(-.04f,.04f).Drop(Sink(-.25f)).J(P,.12f).J(Hd,-.12f).J(RA,-.6f,0,-.9f).J(RE,-.4f).J(LA,.5f,0,.5f).J(LE,-.25f).J(RL,-1.0f,0,-.1f).J(RK,.55f).J(LL,.3f,0,.1f).J(LK,1.6f).PassKey();
+            // The slide (as the pack's: the right foot down first, the leg folding under): down on the right knee, the left foot out in
+            // front, leaning back a little against it, the right hand dragging on the floor behind, the left arm out for balance, eyes on
+            // the lens; it turns to the lens as it slows.
+            k.Key(LandAt,stand).Root(0,.88f,0,side+.2f).Planted(1).Drop(Sink(-.56f)).J(P,.04f).J(Sp,-.02f,0,.36f).J(C,-.04f,0,.3f).J(Hd,-.1f,-.2f,-.3f).J(RA,-.08f,-.5f,-.53f).J(RE,-.05f).J(LA,-.95f,0,.7f).J(LE,-.55f).ImpactKey();
+            k.Key(LandAt+.5f,stand).Root(0,.88f,0,.9f).Planted(1).Drop(Sink(-.56f)).J(P,.04f).J(Sp,-.02f,0,.36f).J(C,-.04f,0,.3f).J(Hd,-.1f,-.18f,-.3f).J(RA,-.08f,-.5f,-.53f).J(RE,-.05f).J(LA,-.9f,0,.65f).J(LE,-.55f);
+            k.Key(StopAt-.25f,stand).Root(0,.88f,0,(.9f+ys)*.5f).Planted(1).Drop(Sink(-.55f)).J(P,.06f).J(Sp,-.02f,0,.33f).J(C,-.04f,0,.27f).J(Hd,-.08f,-.14f,-.26f).J(RA,-.08f,-.5f,-.53f).J(RE,-.05f).J(LA,-.85f,0,.6f).J(LE,-.6f);
+            k.Key(StopAt,stand).Root(0,.88f,0,ys).Planted(1).Drop(Sink(-.5f)).J(P,.14f).J(Sp,.04f).J(Hd,-.05f,-.1f,0).J(RA,.3f,0,-.45f).J(RE,-.3f).J(LA,-.5f,0,.45f).J(LE,-.7f).ImpactKey();
             // Up from the slide; a glance after the train; back to the lens.
-            k.Key(StopAt+.45f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.05f)).J(B,.04f).J(Hd,-.05f,-.15f,0).J(LA,-.15f,0,.12f).J(LE,-.35f).J(RA,-.15f,0,-.12f).J(RE,-.35f);
+            k.Key(StopAt+.3f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.05f)).J(P,.04f).J(Hd,-.05f,-.15f,0).J(LA,-.15f,0,.12f).J(LE,-.35f).J(RA,-.15f,0,-.12f).J(RE,-.35f);
             k.Key(GlanceAt+.35f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.04f)).J(C,0,.25f,0).J(Hd,-.05f,.75f,0).J(LA,-.12f,0,.1f).J(LE,-.35f).J(RA,-.12f,0,-.1f).J(RE,-.35f);
             // The hero: it turns back easy, brushes the slide's dust off its left shoulder with the right hand, and settles loose and
             // cocked, the weight on its left leg, the shoulders tilted, the head tilting to the lens on the name.
             k.Key(CardAt-.5f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.03f)).J(P,0,-.03f,-.03f).J(C,0,.1f,.03f).J(Hd,-.04f,.2f,0).J(RA,RBrushX,RBrushY,RBrushZ).J(RE,RBrushE).J(LA,-.1f,0,.06f).J(LE,-.38f).PassKey();
             k.Key(CardAt-.28f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.03f)).J(P,0,-.04f,-.04f).J(C,0,.06f,.04f).J(Hd,-.04f,.14f,.02f).J(RA,RBrushX+.25f,RBrushY,RBrushZ-.15f).J(RE,RBrushE+.45f).J(LA,-.1f,0,.06f).J(LE,-.38f).PassKey();
             k.Key(CardAt+.1f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.035f)).J(P,0,-.05f,-.06f).J(Sp,0,0,.03f).J(C,-.05f,-.08f,.06f).J(Hd,-.04f,.06f,.1f).J(RA,-.08f,0,-.05f).J(RE,-.36f).J(LA,-.12f,0,.04f).J(LE,-.42f);
-            k.Key(Total,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.035f)).J(P,0,-.05f,-.06f).J(Sp,0,0,.03f).J(C,-.06f,-.1f,.06f).J(Hd,-.05f,.08f,.11f).J(RA,-.08f,0,-.05f).J(RE,-.36f).J(LA,-.12f,0,.04f).J(LE,-.42f);Keys=k;
-            RootPath=(t,r)=>t<StopAt?Ride(t):new Vector3(0,r.Y,Mark*NativeEntranceMath.Smooth((t-StopAt)/.5f));
+            k.Key(Total,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.035f)).J(P,0,-.05f,-.06f).J(Sp,0,0,.03f).J(C,-.06f,-.1f,.06f).J(Hd,-.05f,.08f,.11f).J(RA,-.08f,0,-.05f).J(RE,-.36f).J(LA,-.12f,0,.04f).J(LE,-.42f);
+            // The owner's pack clips over these keys (without the bank the keys play): the sprint from the spring up to the take-off (its
+            // right foot down on the first footfall, the left on the take-off plant); the take-off itself, held on its last airborne frame
+            // as the keyed leap takes over; the slide from the right foot coming down on LandAt, its feet sliding with it (no hold) until
+            // it stops, then held as it rises, into the keyed stand on the mark.
+            k.FromPack(Dash,FirstStrike-.1f,Strike(3)+.03f,Pace-.1f,1,true,NativeIntroPack.RootMode.Path,NativeIntroPack.All,.1f,0);
+            k.FromPack(TakeOff,Strike(3),LeapAt,0,1,false,NativeIntroPack.RootMode.Path,NativeIntroPack.All,.03f,0);
+            k.FromPack(TakeOff,LeapAt,LeapAt+.1f,LeapAt-Strike(3),0,false,NativeIntroPack.RootMode.Path,NativeIntroPack.All,0,.1f);
+            // (the slide's right hand is the keys', in line with its forearm, its fingertips dragging: the clip's, bent back flat on the
+            // floor, draws further off its keyed turn than the binding allows a hand: IntroPoseChecks)
+            Pack(k,new NativeIntroPack.Segment(SlideClip,LandAt-.05f,StopAt,SlideDown-.05f,1,false,NativeIntroPack.RootMode.Path,SlideMask,.05f,0,hold:false));
+            // (the rise plays until the body is up over the left foot, then holds that frame as it eases into the keyed stand: the clip
+            // runs on into a stride, which mixed with the stand would jolt the body and the camera following it)
+            k.FromPack(SlideClip,StopAt,StopAt+.3f,SlideDown+StopAt-LandAt,1,false,NativeIntroPack.RootMode.Path,SlideMask,0,0);
+            k.FromPack(SlideClip,StopAt+.3f,StopAt+.45f,SlideDown+StopAt-LandAt+.3f,0,false,NativeIntroPack.RootMode.Path,SlideMask,0,.15f);
+            Keys=k;
+            RootPath=(t,r)=>(t<StopAt?Ride(t):Vector3.Lerp(new Vector3(SlideTo.X,r.Y,SlideTo.Z),new Vector3(0,r.Y,Mark),NativeEntranceMath.Smooth((t-StopAt)/Rise)))+new Vector3(0,SlideLift(t),0);
             // The camera: low on the roof behind it in the tunnel, beside the train keeping pace into the hall, a whip to the platform
             // for the leap (slowed), low on the platform as it slides in, the glance, the hero frame.
             Rig.Dolly(0,Ride(0)+new Vector3(-2.5f,.12f,.05f),Ride(.8f)+new Vector3(-2.3f,.14f,.05f),new Vector3(2.8f,-.2f,0),new Vector3(3.0f,-.25f,0),58,60).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.5f)
-               .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.6f,-.1f,0),new Vector3(1.2f,-.15f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
+               .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.3f,.05f,0),new Vector3(.9f,-.08f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
                .Dolly(LeapAt-.02f,new Vector3(-5.6f,1.35f,4.4f),new Vector3(-5.9f,1.25f,4.0f),new Vector3(-13,2.6f,-1.6f),new Vector3(-9.5f,1.6f,-.6f),50,46)
                .Dolly(LandAt-.03f,new Vector3(2.7f,.32f,1.0f),new Vector3(2.55f,.36f,.95f),new Vector3(-.2f,0,0),new Vector3(0,.15f,0),40,38).Follow(NativeEntranceAnchor.Chest,.06f)
-               .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.35f);
+               .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest).In(NativeIntroCut.Blend,.35f);
             Closing(CardAt-.5f,-1,5.2f,.5f,.78f,37,.5f);
             Rig.Bars(0,1).Bars(CardAt-.5f,.45f).Black(0,1).Black(.04f,0);
             // The leap hangs at its take-off and apex, then snaps back to speed for the landing.
@@ -136,45 +194,63 @@ namespace ChipArena.UnityConversion
         /// rising out of the tunnel into the hall.</summary>
         private static Vector3[] Beside(float from,float to)
         {
-            var p=new Vector3[7];
+            var p=new Vector3[9];
             for(int i=0;i<p.Length;i++)
             {
                 // (it swings out and up only once it is out of the tunnel's mouth: the pilot on the middle car leaves the tunnel well
-                // after the train's nose bursts into the hall)
-                float t=from+(to-from)*i/(p.Length-1f),out_=NativeEntranceMath.Ramp(Ride(t).X+1.7f,MouthX-1,MouthX+5);
-                p[i]=Ride(t)+new Vector3(1.7f+1.2f*out_,-.2f+1.1f*out_,EdgeZ+.1f-RideZ+1.4f*out_);
-                if(p[i].X<MouthX+.5f){p[i].Z=Math.Min(p[i].Z,-1.12f);p[i].Y=Math.Min(p[i].Y,4.4f);}
+                // after the train's nose bursts into the hall; until then it keeps low and in from the curved wall)
+                float t=from+(to-from)*i/(p.Length-1f),out_=NativeEntranceMath.Ramp(Ride(t).X+1.7f,MouthX+.5f,MouthX+6);
+                p[i]=Ride(t)+new Vector3(2.5f+.6f*out_,.05f+.85f*out_,EdgeZ+.1f-RideZ+1.4f*out_);
+                if(p[i].X<MouthX+1){p[i].Z=Math.Min(p[i].Z,-1.3f);p[i].Y=Math.Min(p[i].Y,4.2f);}
             }
             return p;
         }
-        /// <summary>The plan (the model's feet) on the moving roof while riding (written in the car's frame at the start, carried with
-        /// it), and through the slide the right foot carried along out in front (the left knee down: Kneel).</summary>
+        /// <summary>The feet ride the car until the leap: the body is posed in its frame (NativeIntroGenericScript.Carried), so the feet
+        /// planted on the roof, and the pack's held feet, stay on the moving roof. Start and Steps are written in that frame: on the roof,
+        /// the car's place at 0; on the platform, the world less the car's travel by the leap (Off).</summary>
+        protected override bool Carries=>true;
+        protected override Vector3 Carried(float t)=>new Vector3(CarX(Math.Min(t,LeapAt))-CarX(0),0,0);
+        private static readonly float Off=CarX(LeapAt)-CarX(0);
+        /// <summary>Through the slide the left foot carried along out in front (the right knee down: Kneel), in the frame (less Off).</summary>
         protected override void Shift(float t,float[] feet)
         {
-            if(t<LeapAt){float dx=CarX(t)-CarX(0);feet[0]+=dx;feet[4]+=dx;return;}
             if(t<LandAt-.06f||t>=StopAt)return;
             var r=Slide(Math.Max(t,LandAt));float yaw=Keys.At(NativeEntranceKeys.Yaw,t);float sy=(float)Math.Sin(yaw),cy=(float)Math.Cos(yaw);
-            float reach=Reach(t);feet[4]=r.X+sy*reach-cy*.12f;feet[5]=r.Z+cy*reach+sy*.12f;feet[6]=yaw-.2f;feet[7]=0;
+            float reach=Reach(t);feet[0]=r.X+sy*reach+cy*.12f-Off;feet[1]=r.Z+cy*reach-sy*.12f;feet[2]=yaw+.2f;feet[3]=0;
         }
         protected override float Ground(float t)=>t<LeapAt?RoofY:NativeEntranceStage.FloorY;
-        /// <summary>The dragging left hand's fingertips (on from the palm, away from the wrist) and how far they touch the floor (1 within
+        private const int SlideMask=NativeIntroPack.All&~(1<<CapturedRig.RHand);
+        /// <summary>A pack segment added as built (as NativeEntranceKeys.FromPack does, with its hold set: a slide's feet slide).</summary>
+        private static void Pack(NativeEntranceKeys k,NativeIntroPack.Segment s){Array.Resize(ref k.Packs,k.Packs.Length+1);k.Packs[k.Packs.Length-1]=s;}
+        /// <summary>The slide clip sits its legs up to 3 cm into the floor on the model (docs/INTROS-V2.md 9d; its loop, unused here, 6): the
+        /// root rides 2 cm higher while it plays (with the bank only: the keyed slide sits right), the boot out in front kept near the floor.</summary>
+        private float SlideLift(float t)
+        {
+            float w=0;foreach(var s in Keys.Packs)if(s.Clip==SlideClip&&s.Resolve()!=null)w=Math.Max(w,s.Weight(t));return .02f*w;
+        }
+        /// <summary>The dragging right hand's fingertips (on from the palm, away from the wrist) and how far they touch the floor (1 within
         /// 3 cm of it, none 15 cm up).</summary>
         private Vector3 Fingertips(float t,out float touch)
         {
-            var palm=Anchor(NativeEntranceAnchor.LeftHand,t);var d=palm-Anchor(NativeEntranceAnchor.LeftWrist,t);var tips=palm+d*1.6f;
+            var palm=Anchor(NativeEntranceAnchor.RightHand,t);var d=palm-Anchor(NativeEntranceAnchor.RightWrist,t);var tips=palm+d*1.6f;
             touch=1-NativeEntranceMath.Clamp01((tips.Y-NativeEntranceStage.FloorY-.03f)/.12f);return tips;
         }
+        /// <summary>How far a joint of the slide (the folded leg's knee, the boot out in front) is down on the floor: 1 within 12 cm of
+        /// it (its centre over the floor), none 24 cm up.</summary>
+        private static float Down(Vector3 p)=>1-NativeEntranceMath.Clamp01((p.Y-NativeEntranceStage.FloorY-.12f)/.12f);
         public override bool Sliding(float t)=>t>LandAt-.1f&&t<StopAt+.08f;
+        /// <summary>The feet on the keys' plan while the pack's rise eases into the keyed stand (the two legs mixed would swing a foot off
+        /// its spot or scuff it along the floor): the left planted where the hero stance wants it as the slide stops, the right stepping
+        /// up beside it (from when its step lifts it: the clip has it down on its heel until then).</summary>
+        protected override float Repin(float t,bool left)=>left?Swell(t,StopAt+Rise-.18f,.04f,.18f,.06f):Swell(t,StopAt+.22f,.04f,.14f,.06f);
         /// <summary>How far out in front the right foot slides (m): drawn in as the slide slows.</summary>
-        private static float Reach(float t)=>.5f-.2f*NativeEntranceMath.Smooth((t-(StopAt-.35f))/.35f);
-        /// <summary>The mark: the hips rise forward over the right foot from where the slide stops (the root's z).</summary>
+        private static float Reach(float t)=>LeftReach;
+        /// <summary>The mark: the hips rise forward over the left foot from where the slide stops (the root's z).</summary>
         public const float Mark=.38f;
         /// <summary>The right hand brushing the left shoulder (keyed so the model's hand lands there: solved on the measured skeleton).</summary>
         private const float RBrushX=-2.12f,RBrushY=.99f,RBrushZ=1.28f,RBrushE=-1.37f;
-        /// <summary>The left knee down through the slide.</summary>
-        protected override float Kneel(float t,bool left)=>left?NativeEntranceMath.Smooth((t-(LandAt-.05f))/.06f)*(1-NativeEntranceMath.Smooth((t-(StopAt+.06f))/.1f)):0;
-        // The sprint, the leap and the slide are all keyed on the intro rig (no motion-bank clip: the owner wants these intros' own
-        // animation, as the Top Dog's and the Bombadier's are).
+        /// <summary>The right knee down through the keyed slide (the pack's slide folds that leg under: the kneel lets go while it plays).</summary>
+        protected override float Kneel(float t,bool left)=>left?0:NativeEntranceMath.Smooth((t-(LandAt-.05f))/.06f)*(1-NativeEntranceMath.Smooth((t-(StopAt+.06f))/.1f));
         public override string AccentAt(float t)=>t<BurstAt?"#3fd8ff":t<LandAt?"#7ff0ff":"#16d6ff";
         protected override Vector3 Focus(float t,Vector3 chest)=>chest;
 
@@ -225,7 +301,7 @@ namespace ChipArena.UnityConversion
             l.Add(new Vector3(x-Car-9f,.8f,TrackZ),Tail*2.2f,5);
             // The slide's sparks lighting the pilot from below.
             float slide=NativeEntranceMath.Ramp(t,LandAt,LandAt+.05f)*(1-NativeEntranceMath.Ramp(t,StopAt-.25f,StopAt+.05f));
-            if(slide>.01f)l.Add(Anchor(NativeEntranceAnchor.LeftKnee,t)+new Vector3(0,.25f,0),Spark*(3.5f*slide),3.5f);
+            if(slide>.01f)l.Add(Anchor(NativeEntranceAnchor.RightKnee,t)+new Vector3(0,.25f,0),Spark*(3.5f*slide),3.5f);
             if(t>=CardAt-.3f){float c=NativeEntranceMath.Ramp(t,CardAt-.3f,CardAt+.2f);l.Add(chest+new Vector3(1.4f,.9f,1.8f),Teal*(1.4f*c),6);}
         }
         private static float Lerp(float a,float b,float t)=>a+(b-a)*t;
@@ -258,24 +334,28 @@ namespace ChipArena.UnityConversion
                 int n=low?4:9;
                 for(int i=1;i<=n;i++){float back=t-i*.03f;if(back<LeapAt-.05f)break;var p=Ride(back)+new Vector3(0,.25f,0);var p2=Ride(back-.03f)+new Vector3(0,.25f,0);fx.Streak(p,(p-p2)/.03f,Teal*(.9f*(1-i/(float)(n+1))),.05f,.05f,.03f,.5f,i/(float)n,23200+i);}
             }
-            // The slide: sparks spraying off the boots and the dragging hand, a hot glow at each contact, a scorch of light on the floor.
+            // The slide: sparks spraying off the folded leg's knee, the boot out in front and the dragging hand (each only while it is
+            // down on the floor), a hot glow at each contact, a scorch of light on the floor.
             float slide=NativeEntranceMath.Ramp(t,LandAt-.01f,LandAt+.03f)*(1-NativeEntranceMath.Ramp(t,StopAt-.3f,StopAt));
             if(t>=LandAt-.01f&&t<StopAt+.9f)
             {
-                var tips=Fingertips(t,out float touch);var knee=Anchor(NativeEntranceAnchor.LeftKnee,t);
+                var tips=Fingertips(t,out float touch);var knee=Anchor(NativeEntranceAnchor.RightKnee,t);var boot=Anchor(NativeEntranceAnchor.LeftFoot,t);
+                float kneeDown=Down(knee),bootDown=Down(boot);
                 if(slide*touch>.01f)fx.Glow(new Vector3(tips.X,floor+.03f,tips.Z),SparkHot*(2.2f*slide*touch),0,.2f,1,0,23300);
-                if(slide>.01f)fx.Glow(new Vector3(knee.X,floor+.03f,knee.Z),SparkHot*(1.8f*slide),0,.18f,1,0,23301);
+                if(slide*kneeDown>.01f)fx.Glow(new Vector3(knee.X,floor+.03f,knee.Z),SparkHot*(1.8f*slide*kneeDown),0,.18f,1,0,23301);
+                if(slide*bootDown>.01f)fx.Glow(new Vector3(boot.X,floor+.03f,boot.Z),SparkHot*(1.4f*slide*bootDown),0,.15f,1,0,23302);
                 int bursts=low?4:8;
                 for(int b=0;b<bursts;b++)
                 {
                     float born=LandAt+((float)Math.Floor((t-LandAt)/.06f)-b)*.06f;if(born<LandAt||born>StopAt-.2f)continue;
-                    float level=1-NativeEntranceMath.Ramp(born,StopAt-.6f,StopAt-.2f),then=1;var src=b%2==0?Fingertips(born,out then):Anchor(NativeEntranceAnchor.LeftKnee,born);if(then<.3f)continue;
+                    float level=1-NativeEntranceMath.Ramp(born,StopAt-.6f,StopAt-.2f),then=1;Vector3 src;
+                    if(b%3==0)src=Fingertips(born,out then);else{src=Anchor(b%3==1?NativeEntranceAnchor.RightKnee:NativeEntranceAnchor.LeftFoot,born);then=Down(src);}if(then<.3f)continue;
                     var back=Ride(born)-Ride(born+.02f);back=back.LengthSquared()>1e-6f?Vector3.Normalize(back):-Vector3.UnitX;
                     NativeEntranceFx.Sparks(fx,t,born,new Vector3(src.X,floor+.03f,src.Z),back*.8f+new Vector3(0,.45f,0),.7f,low?3:6,4.5f*level+1,.45f,9.8f,.6f,SparkHot*2.4f,Spark,.012f,23310+b*13,q,floor);
                 }
                 // The scorch: glowing streaks left on the floor along the slide, cooling.
                 int n=low?6:14;
-                for(int i=0;i<n;i++){float at=LandAt+i*(StopAt-LandAt-.15f)/n;if(at>t)break;float cool=1-NativeEntranceMath.Clamp01((t-at)/1.1f);if(cool<=0)continue;var p=Anchor(NativeEntranceAnchor.LeftKnee,at);var p2=Anchor(NativeEntranceAnchor.LeftKnee,at+.06f);p.Y=p2.Y=floor+.006f;Line(fx,p2,p2-p,Spark*(1.1f*cool*cool),.02f,.2f,1-cool,23400+i);}
+                for(int i=0;i<n;i++){float at=LandAt+i*(StopAt-LandAt-.15f)/n;if(at>t)break;float cool=1-NativeEntranceMath.Clamp01((t-at)/1.1f);if(cool<=0)continue;var p=Anchor(NativeEntranceAnchor.RightKnee,at);var p2=Anchor(NativeEntranceAnchor.RightKnee,at+.06f);p.Y=p2.Y=floor+.006f;Line(fx,p2,p2-p,Spark*(1.1f*cool*cool),.02f,.2f,1-cool,23400+i);}
             }
             // The train's wake on the platform: dust swirling along the edge as it pulls away; its tail lights shrinking into the tunnel.
             {
@@ -306,8 +386,8 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(0,"intro2.slipstream.rush","structure.rumble","dash",.6f),
             new NativeIntroCue(BurstAt-.08f,"intro2.slipstream.burst","structure.whoosh","dash",.7f),
             new NativeIntroCue(Strike(0),"intro2.slipstream.run","move.step.metal","metal",.45f),
-            new NativeIntroCue(Strike(2),"intro2.slipstream.run","move.step.metal","metal",.45f,1.05f),
-            new NativeIntroCue(Strike(4),"intro2.slipstream.run","move.step.metal","metal",.45f,.95f),
+            new NativeIntroCue(Strike(1),"intro2.slipstream.run","move.step.metal","metal",.45f,1.05f),
+            new NativeIntroCue(Strike(2),"intro2.slipstream.run","move.step.metal","metal",.45f,.95f),
             new NativeIntroCue(LeapAt,"intro2.slipstream.leap","move.jump","jump",.6f),
             new NativeIntroCue(LandAt,"intro2.slipstream.slide","hazard.saw","saw-cut",.65f),
             new NativeIntroCue(LandAt+.08f,"intro2.slipstream.pass","structure.whoosh","dash",.6f,.8f),
