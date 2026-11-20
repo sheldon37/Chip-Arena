@@ -35,9 +35,10 @@ namespace ChipArena.UnityConversion
         }
         private sealed class Props:INativeEntranceProps,INativeIntroSet
         {
-            public int Primitives,Pieces,Models;public double Hash;public bool Ready{get;set;}
+            public int Primitives,Pieces,Models,Batched;public double Hash;public bool Ready{get;set;}
             private void V(Vector3 v){Hash=Hash*1.0000001+v.X*.11+v.Y*.23+v.Z*.29;}
-            public void Reset(){Primitives=Pieces=Models=0;Hash=0;}
+            public void Reset(){Primitives=Pieces=Models=Batched=0;Hash=0;}
+            public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> rotation,float scale,Vector3 tint){int n=Math.Min(at.Length,rotation.Length);for(int i=0;i<n;i++)V(at[i]);Batched+=n;}
             public void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color){V(position);V(scale);V(color);Primitives++;}
             public bool Model(string id,Vector3 position,Quaternion rotation,float scale,Vector3 light){V(position);Models++;return false;}
             public bool Has(string prop)=>false;
@@ -137,7 +138,7 @@ namespace ChipArena.UnityConversion
         {
             string n=e.Id;var made=e.Make();Check(made!=null&&made.Style==e.Id&&made is INativeIntroV2,n+": its maker builds it (as itself, an INativeIntroV2)");
             var s=made;var v2=(INativeIntroV2)s;var again=e.Make();var v2b=(INativeIntroV2)again;
-            float max=e.Kind==NativeIntroKind.Dev?9.5f:9f;
+            float max=e.Kind==NativeIntroKind.Dev?NativeIntroSetLimits.DevLongest:NativeIntroSetLimits.Longest;bool devKind=e.Kind==NativeIntroKind.Dev;
             Check(e.Duration>=6-1e-4f&&e.Duration<=max+1e-4f,n+": 6 to "+max+" s ("+e.Duration+")");Check(e.NameAt>0&&e.NameAt<e.Duration-.8f,n+": the name beat lands with time to read it ("+e.NameAt+")");
             Check(Math.Abs(s.Length-e.Duration)<1e-4f&&(!(s is NativeIntroV2Script b)||Math.Abs(b.IntroNameAt-e.NameAt)<1e-4f),n+": the registry's Duration and NameAt are the script's");
             Check(Math.Abs(NativeIntroRules.Duration(n)-e.Duration)<1e-4&&Math.Abs(NativeIntroRules.NameAt(n)-e.NameAt)<1e-4,n+": the match reads them");
@@ -153,14 +154,15 @@ namespace ChipArena.UnityConversion
             long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<=samples;i++){Frame(s,v2,i/20f+.007f,pose,lights,props,fx,false,false);Frame(s,v2,i/20f+.011f,pose,lights,props,fx,true,true);}
             long used=GC.GetAllocatedBytesForCurrentThread()-before;Check(used<=512,n+": no per-frame allocation ("+used+" bytes over "+(2*samples+2)+" frames)");
             // Budgets at peak, the streak rule, finite values; on High and on Low.
-            int peakFx=0,peakLowFx=0,peakPrims=0,peakPieces=0,long_=0,off=0;float worst=0;
+            int peakFx=0,peakLowFx=0,peakPrims=0,peakPieces=0,peakLowPieces=0,peakBatch=0,long_=0,off=0;float worst=0;
             for(int i=0;i<=e.Duration*60;i++)
             {
                 float age=i/60f;Frame(s,v2,age,pose,lights,props,fx,false,false);peakFx=Math.Max(peakFx,fx.Calls);peakPrims=Math.Max(peakPrims,props.Primitives);peakPieces=Math.Max(peakPieces,props.Pieces);long_+=fx.LongStreaks;off+=fx.OffPlane;worst=Math.Max(worst,fx.WorstDeg);
                 Check(!fx.Broken&&lights.Points<=8,n+": finite effects and at most 8 lights at "+age);
-                Frame(s,v2,age,pose,lights,props,fx,false,true);peakLowFx=Math.Max(peakLowFx,fx.Calls);
+                peakBatch=Math.Max(peakBatch,props.Batched);Frame(s,v2,age,pose,lights,props,fx,false,true);peakLowFx=Math.Max(peakLowFx,fx.Calls);peakLowPieces=Math.Max(peakLowPieces,props.Pieces);peakBatch=Math.Max(peakBatch,props.Batched);
             }
-            Check(peakFx<=600&&peakLowFx<=600,n+": at most 600 effect calls a frame ("+peakFx+" High, "+peakLowFx+" Low)");Check(peakPrims<=120&&peakPieces<=80,n+": at most 120 primitives and 80 set pieces a frame ("+peakPrims+", "+peakPieces+")");
+            int fxHigh=devKind?NativeIntroSetLimits.DevFx:NativeIntroSetLimits.Fx,fxLow=devKind?NativeIntroSetLimits.DevFxLow:NativeIntroSetLimits.Fx,pcHigh=devKind?NativeIntroSetLimits.DevPieces:NativeIntroSetLimits.Pieces,pcLow=devKind?NativeIntroSetLimits.DevPiecesLow:NativeIntroSetLimits.Pieces;
+            Check(peakFx<=fxHigh&&peakLowFx<=fxLow,n+": at most "+fxHigh+"/"+fxLow+" effect calls a frame ("+peakFx+" High, "+peakLowFx+" Low)");Check(peakPrims<=120&&peakPieces<=pcHigh&&peakLowPieces<=pcLow&&peakBatch<=NativeIntroSetLimits.Batch,n+": at most 120 primitives, "+pcHigh+"/"+pcLow+" set pieces and "+NativeIntroSetLimits.Batch+" batched copies a frame ("+peakPrims+", "+peakPieces+"/"+peakLowPieces+", "+peakBatch+")");
             Check(off==0,n+": every streak over 1 m lies on its head's camera plane ("+off+" of "+long_+" off, worst "+worst.ToString("0.0")+" deg; NativeCacheOpenFx.OntoHeadPlane)");
             // Reduced effects: no shake (the eye's acceleration stays smooth outside cuts) and nothing flashing faster than 3 Hz.
             var eye=new Vector3[(int)(e.Duration*60)+3];var power=new double[eye.Length];var glow=new double[eye.Length];
