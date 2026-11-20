@@ -329,13 +329,17 @@ def build(T):
                     if n[0] * -sx < 0:
                         n = mul(n, -1)
                     canyon.face(tri, strata(yy), normal=n)
-    nb = 22 if fine else 7
+    # The far wall behind the gate, with a saddle worn down its middle (its top falls from 39 m to about 7 m within 6 m of the axis):
+    # the ring frames the dusk sky over the saddle, not a flat band of cliff, when it is dark.
+    nb = 30 if fine else 9
     P = []
-    for i in range(13 if fine else 4):
-        y = -1 + 40 * i / (12 if fine else 3)
+    rows_ = 12 if fine else 3
+    for i in range(rows_ + 1):
         row = []
         for j in range(nb + 1):
             x = -24 + 48 * j / nb
+            top = 39 - 32 * (1 - smoothstep(6, 14, abs(x))) + 1.2 * noise2(x, 0, .3, 121)
+            y = -1 + (top + 1) * i / rows_
             ledge = 1.6 * (math.floor((y + 3) / 3.2) % 2)
             row.append(V(x, y, -32 - .1 * y - 4 * noise2(x, y, .07, 120) - ledge))
         P.append(row)
