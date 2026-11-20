@@ -116,9 +116,9 @@ namespace ChipArena.UnityConversion
             new Kind("station.dropper",Mount.Overhead,V(-.15f,-.5f,-.6f),V(.15f,0,.6f)),
             new Kind("ironworks.hook",Mount.Overhead,V(-.6f,-2.2f,-.6f),V(.6f,0,.6f),true),
             // Level 0's office ceiling (2 m cells, from the underside up)
-            new Kind("level0.ceiling.tile",Mount.Overhead,V(-1,0,-1),V(1,1.8f,1),true),
-            new Kind("level0.ceiling.gap",Mount.Overhead,V(-1,0,-1),V(1,1.8f,1),true),
-            new Kind("level0.ceiling.light",Mount.Overhead,V(-1,0,-1),V(1,1.8f,1),true,Office,V(0,0,0)),
+            new Kind("level0.ceiling.tile",Mount.Overhead,V(-1,-.35f,-1),V(1,1.8f,1),true),
+            new Kind("level0.ceiling.gap",Mount.Overhead,V(-1,-.35f,-1),V(1,1.8f,1),true),
+            new Kind("level0.ceiling.light",Mount.Overhead,V(-1,-.35f,-1),V(1,1.8f,1),true,Office,V(0,0,0)),
         };
         private static readonly Dictionary<string,int> kindIndex=Index();
         private static Dictionary<string,int> Index(){var d=new Dictionary<string,int>(StringComparer.Ordinal);for(int i=0;i<Kinds.Length;i++)d.Add(Kinds[i].Key,i);return d;}

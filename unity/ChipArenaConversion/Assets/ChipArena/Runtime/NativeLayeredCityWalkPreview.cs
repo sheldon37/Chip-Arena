@@ -64,6 +64,7 @@ namespace ChipArena.UnityConversion
                     CloseCityWalk();
                     return true;
                 }
+                if (WalkDealKeys()) return true;
                 if (Time.unscaledTime >= walkMeasureAfter)
                 {
                     walkSampleTime += Time.unscaledDeltaTime;
@@ -95,7 +96,7 @@ namespace ChipArena.UnityConversion
             {
                 var plan = NativeCityLayout.Plans[index];
                 cityWalk = new NativeLayeredCityWalk(plan);
-                surveySlots = NativeCityLayout.DealHalls(seed, new[] { "Ward Zero", "Central Station", "City Ironworks" });
+                surveySlots = WalkDeal(seed);
                 walkOriginalContent = content;
                 walkFarClip = cameraView.farClipPlane;
                 content = content.WithGeneratedMap(cityWalk.Map);
@@ -120,6 +121,7 @@ namespace ChipArena.UnityConversion
                 lastSurveyLayout = index;
                 NativeLighting.Apply(cityWalk.Map, cameraView);
                 cameraView.farClipPlane = 800;
+                OpenCityBleed();
                 walkTriangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
                 walkMeasureAfter = Time.unscaledTime + 1;
                 walkPeakTriangles = 0;
@@ -136,6 +138,7 @@ namespace ChipArena.UnityConversion
 
         private void CloseCityWalk()
         {
+            CloseCityBleed();
             if (walkTriangles.Valid)
             {
                 Debug.Log($"Meridian walk {cityWalk?.Map.name}: peak rendered triangles {walkPeakTriangles}; last sampled frame mean {walkFrameMs:F2} ms");
@@ -177,6 +180,7 @@ namespace ChipArena.UnityConversion
                 GUILayout.Label(string.Format("East {0:0}   North {1:0}   Elevation {2:0.0} m", pos.x, pos.z, pos.y - NativeLocomotionRules.HalfHeight));
                 if (walkFrameMs > 0)
                     GUILayout.Label(walkFrameMs.ToString("F1") + " ms/frame" + (walkTriangles.Valid ? "   Peak triangles " + walkPeakTriangles.ToString("N0") : ""));
+                WalkDealLabel();
                 GUILayout.Label("Hold Tab   Street plan     Esc   Choose another layout");
                 GUILayout.EndArea();
                 if (walkPlan != null && Input.GetKey(KeyCode.Tab))
@@ -194,8 +198,9 @@ namespace ChipArena.UnityConversion
                 return true;
             }
             if (!walkPicker || !menu || arena != null || previewArena != null) return false;
-            GUILayout.BeginArea(new Rect(width / 2 - 200, height / 2 - 180, 400, 360), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(width / 2 - 200, height / 2 - 235, 400, 470), GUI.skin.box);
             GUILayout.Label("Meridian   /   600 × 480 m", heading);
+            WalkDealGui();
             for (int index = 0; index < NativeCityLayout.Plans.Count; index++)
                 if (GUILayout.Button(NativeCityLayout.Plans[index].Name, button))
                     OpenCityWalk(index, NextSurveySeed());
