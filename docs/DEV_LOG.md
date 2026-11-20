@@ -1,3 +1,67 @@
+## 2026-11-19 — Claude: the Meridian look integrated on `claude/meridian-bleed`: the street dress, the landmarks and the bleed together, A2's caches kept clear, night captures (integrator's go; presentation only)
+
+**Branch and status:** branch `claude/meridian-bleed`, with `claude/meridian-dress` (`616d1a83`, which carries D2's `claude/meridian-landmarks`) and then shared `c6fbf8e8` merged in. Pushed, not merged. Docs merges kept every entry; the only code conflicts were the walk's hook lines and `Program.cs`, kept both ways (the bleed opens before the street dress, which plans with its contracts).
+
+### The three contracts (`docs/MERIDIAN-BLEED.md`, "Themed module variants"), set only while the bleed draws
+- **Themes:** `NativeMeridianDress.ThemeAt` reads the bleed. The street dress's drawer reads the city bank with the bleed bank's `key@theme` modules added (`NativeMeridianDress.WithVariants`), and the plain key draws where a theme has none.
+- **Lamps:** the street dress leaves out a plain lamp where `ReplacesLamps` holds and one of the bleed's own lamps stands within 14 m, so no street goes dark.
+- **Facades:** the street dress leaves out a facade bay only when nine points across it all lie under the bleed's skins (`Covers`), never leaving a hole. The threshold's skins now reach the wall's top.
+- **Layers:** the bleed draws nine layers up, over every layer the street dress uses.
+- **Check:** `--bleed` checks the street dress planned this way. It takes about 8,600 themed modules, no bay is left wholly under a skin, and 38 lamps go to the bleed's own.
+- **Toggle:** B (bleed off and on) now re-opens the walk, so the street dress re-plans.
+
+### A2's caches
+`NativeCityBleedDress.CacheKeepOuts` gives each locker's footprint with 15 cm around it, 2 m in front of it, and the roof kerb.
+- The bleed places nothing in a keep-out.
+- The street dress (`Input.KeepOut`) paints nothing there and hangs no flush or wall lamp there.
+- No dress or landmark covers a cache block or the kerb. `--bleed` checks all of this on the five layouts (25 caches).
+- The lockers stay greybox boxes in the walk: the CD-647 locker is not stood on them here.
+
+### From the review
+The Poolrooms' whole pool cells come in four versions, each with its own caustic threads, and the planner also turns them at random. The visible grid of X marks is gone.
+
+### Checks
+- `--bleed`: pass. 11,077 pieces over the five layouts, 76 draws. On the whole look: about 8,600 themed modules, 8 bays given
+  to the bleed, 13 partly under its skins (kept), 38 street lamps given to the bleed's own, and all 25 caches clear.
+- `--meridian-dress` with `CHIPARENA_MERIDIAN_BANK`: pass (673,756 checks). `--landmark-reads`: pass. `--layered-walk`: pass.
+- Full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `2fdcd21c`: pass, 1078 groups, 0 failures, exit 0.
+- `tools/check_unity_compile.py` (6000.3.24f1): Input System, Player, Assembly-CSharp and Editor pass at `2fdcd21c`. `git diff --check`: clean.
+- zfight on the whole look (the street dress's combined chunks, the landmarks' pieces, the uncovered boxes and the bleed; layouts
+  0, 2 and 3; tiers 0 and 2; all faces, then floors only): no coplanar pair with the bleed. The bleed draws nine layers up.
+- The owner's Editor compiled the branch at `2fdcd21c` in the hold (Tundra success).
+- Not run: a Windows player build, multiplayer, and the live expedition (the looks are on the Developer walk only).
+
+### Captures (one Editor hold)
+One Editor hold of 660 s under the lock, with the usual helpers. The three city banks went into Resources for the AFTER and out
+again, the local capture block was removed, the Editor went back to `9319026b` (compiled), and the lock was given back.
+- **BEFORE:** shared `c6fbf8e8`'s greybox. **AFTER:** this branch at `2fdcd21c`, the night look, bleed on, High.
+- **Clips:** 20 clips, 9 s each, 2.4 MB at most, in `F:/Chip Arena Development/scratch/meridian-bleed/look2/clips/`. For each layout (`L0` Crown Hill to `L4` The Yards):
+  - `L<n>-gate1.mp4` and `L<n>-gate2.mp4`: out of the east and south gates, 60 m.
+  - `L<n>-door1.mp4` and `L<n>-door2.mp4`: a dolly to the east and south doors, 170 m to 14 m.
+- **Strips** in `F:/Chip Arena Development/scratch/meridian-bleed/look2/`:
+  - `strip-doors-before-after.jpg`: the doors, before and after, at High.
+  - `strip-low-before-after.jpg`: the same at Low.
+  - `strip-high-low.jpg`: High against Low.
+  - `strip-court-caches.jpg`: the final court with City Hall's tower (60 m and 25 m) and three caches.
+- **Stills:** in `look2/before` and `look2/after`.
+
+### Banks (never committed; for the Drive zip)
+- `F:/Chip Arena Development/scratch/meridian-dress/bank/ChipArenaLocal/Resources/ChipArenaCityMeridian.bytes`: 3,403,541 bytes (D1).
+- `F:/Chip Arena Development/scratch/meridian-landmarks/bank/ChipArenaLocal/Resources/ChipArenaCityLandmarks.bytes`: 9,120,962 bytes (D2).
+- `F:/Chip Arena Development/scratch/meridian-bleed/bank/ChipArenaLocal/Resources/ChipArenaCityBleed.bytes`: 1,891,139 bytes (D3).
+
+Each has its `.meta` beside it. Together they come to about 14.4 MB, inside the 40 MB city budget.
+
+### For Astra: carrying the three looks onto the live run
+Behind the loading card, open the bleed first (with its contracts set), then the street dress (with `KeepOut`), then the landmarks. The calls and the block ids each one reads are in `docs/MERIDIAN-BLEED.md`, "Moving onto the live run".
+
+### Risks
+- **Partly skinned bays:** 13 bays across the five layouts are partly under the bleed's skins and keep their own module. The skins draw over them, nine layers up.
+- **Ceiling:** Level 0's wall-to-wall ceiling stands only where facing walls hold it, which is The Arcades' south approach.
+- **Not tested:** a Windows player build and multiplayer were not run.
+
+**Next:** the integrator reviews the clips, sends them to the owner, merges with relgen5, and packs the three banks into the Drive zip.
+
 ## 2026-11-19 — Claude: Meridian's bleed near each instance door (owner request; presentation only)
 
 The owner, ready for the look: "I think were ready for your part of dressing the look now." The request this package answers: "streets are influenced by the instance that is generated (This should modify buildings, nearby enemies, etc.)". This is D3 of the three Meridian dressing agents: plan R3/R12 and W7 on `meridian-b-candidate-3`. See `docs/MERIDIAN-BLEED.md`.

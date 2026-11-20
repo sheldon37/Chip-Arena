@@ -82,11 +82,27 @@ The bank also carries each theme's drift skins for the street planner's modules,
 - **Hug rule:** the ground and upper bays hug their face (0.25 m in to 6 cm out).
 - **Covering the threshold:** `NativeCityBleedDress.Covers(plan, point, normal)` tells the planner where the bleed's own skins stand. The planner leaves its module out there, because the bleed substitutes; it does not add.
 
-**Wiring (once `claude/meridian-dress` is on shared):**
+**Wired (with `claude/meridian-dress` merged in).** The bleed opens first on the walk, then the street dress plans with its three
+contracts, set only while the bleed draws (so the bleed turned off, or a build without its bank, leaves the street dress whole):
 
-1. Set `NativeMeridianDress.ThemeAt = p => walkBleed?.ThemeAt(p)` when the walk opens, and null it when the walk closes.
-2. Have the planner's `has` and the drawer's module table also read `ChipArenaCityBleed`, so `key@theme` resolves.
-3. Have the planner skip its plain lamps where `ReplacesLamps` is true, and skip its facade modules where `Covers` is true.
+1. `NativeMeridianDress.ThemeAt = p => walkBleed.ThemeAt(p)`. The street dress's drawer reads the city bank with the bleed bank's
+   `module/<key>@<theme>` props added (`NativeMeridianDress.WithVariants`), so `key@theme` resolves, and the plain key draws where a
+   theme has none.
+2. `NativeMeridianDress.LampsReplaced = p => walkBleed.ReplacesLamps(p) && NativeCityBleedDress.NearLamp(plan, p, 14)`: the street
+   dress leaves out a plain lamp only where one of the bleed's own lamps stands within 14 m, so no street goes dark.
+3. `NativeMeridianDress.FacadeCovered = (p, n) => NativeCityBleedDress.Covers(plan, p, n)`: the street dress leaves out a facade bay
+   only when nine points across it all lie under the bleed's skins (never a hole). The threshold's skins reach the wall's top,
+   so a bay can be wholly under them.
+
+The bleed draws nine layers up (`NativeCityBleedDraw.Lift`), over every layer the street dress uses (its paint and stacks go up to
+8), so its paint and skins never fight the dress's surfaces.
+
+## A2's caches
+
+`NativeCityBleedDress.CacheKeepOuts(walk.Caches, walk.Map)` gives each locker's footprint with 15 cm about it and the 2 m in front of
+it (to the clear height), and the roof cache's kerb. The bleed places nothing in them; the street dress (its `Input.KeepOut`)
+paints nothing in them and hangs no low lamp there; neither dress nor landmark covers (hides) a cache block or the kerb. The
+lockers themselves stay the greybox's boxes in the walk (the CD-647 locker is not stood on them here).
 
 ## The Developer walk's door-deal picker
 
@@ -107,13 +123,24 @@ The Developer walk has no zombies, so the outfits by spawn (W7) are not wired. F
 
 ## Moving onto the live run (Astra)
 
-The bleed reads only door records. To carry it over, the live run needs:
+All three looks read only records every peer has; on the live run, open them in this order behind the loading card, and drop
+them on leaving:
 
-- **The bleed:** `new NativeCityBleed(doors)`, built from the run's route polylines (gate to door; the door is the last point) and the hall deal.
-- **The plan:** `NativeCityBleedDress.Build(map, bleed, streets, worldSeed)`, with each route leg's width and kind.
-- **The drawer:** `NativeCityBleedDraw.Open(bleed, plan, map, camera, low)` on the hub's open, and `Close()` on leaving.
+1. **The bleed:** `new NativeCityBleed(doors)` from the run's route polylines (gate to door; the door is the last point) and the
+   hall deal; `NativeCityBleedDress.Build(map, bleed, streets, worldSeed, NativeCityBleedDress.CacheKeepOuts(caches, map))` with
+   each route leg's width and kind; `NativeCityBleedDraw.Open(bleed, plan, map, camera, low)`. While it draws, set the street
+   dress's three contracts as the walk's `OpenCityBleed` does (and null them on leaving).
+2. **The street dress:** a `NativeMeridianDressDraw` component's `Prepare(new NativeMeridianDress.Input{Map, Layout, Run, Routes,
+   Hatches, Slots, KeepOut = NativeCityBleedDress.CacheKeepOuts(caches, map)}, camera)` (see `docs/expedition/MERIDIAN-DRESS.md`:
+   the block ids and roles it reads, the look table row for the live map).
+3. **The landmarks:** `NativeMeridianLandmarks.Place(planSeed, map, doors, slots, airlockOpen)`, then a `NativeMeridianLandmarksDraw`
+   component's `Build(layout, camera)` (D2's DEV_LOG entry: the block ids its table reads).
 
-Keep the routes' leg kinds (`flat`, `stair`, `ramp`) and widths, and the join circles at 8 m out from each door.
+The walk's own hooks (`OpenCityBleed`, `MeridianDressOpen`, `MeridianLandmarksOpen`) are Editor and development builds only; they
+are the reference for the order and the contracts, and the live run needs its own calls in the player build.
+
+Keep the routes' leg kinds (`flat`, `stair`, `ramp`) and widths, the join circles at 8 m out from each door, the cache anchors
+and their blocks' ids (`<anchor>-block`, `cache-roof-kerb`).
 
 ## Checks
 
@@ -127,4 +154,6 @@ Keep the routes' leg kinds (`flat`, `stair`, `ramp`) and widths, and the join ci
   - The skins' `Covers` answers.
   - Coverage, budgets and the lamp rule.
 - `--bleed-scene LAYOUT EAST,SOUTH,WEST SEED OUT` writes a walk's map and the pieces' places for `tools/stages/zfight.py` (the pieces as `rig/bleed/<key>`).
+- `--bleed-zfight LAYOUT EAST,SOUTH,WEST SEED OUT` (with `CHIPARENA_MERIDIAN_BANK` and `CHIPARENA_BLEED_BANK`) writes the whole look: the street dress planned with the bleed's contracts, combined in chunks as its drawer combines them, and the landmarks' pieces, for a zfight run over all three.
+- The whole look is also checked in `--bleed`: the street dress takes themes from the bleed, leaves no bay wholly under its skins, gives only lamps near the bleed's own, and every dress keeps clear of the caches.
 - `--bleed-probe LAYOUT ROUTE` and `--bleed-table` are diagnostics.
