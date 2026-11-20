@@ -1,3 +1,50 @@
+## 2026-11-20 — Claude: DEV · Architect of Reality, the owner's new dev intro, on their song "Obey" (I1 of the intros revamp; presentation only)
+
+Owner: "a new dev intro for myself. The dev intro id like to be even better, with name effects and everything. Essentially
+something 'bad-ass, godlike' really show the authority of the dev"; theme "Architect of reality"; then the music: "I like this one
+for dev intro; maybe start around 5-6 secs. It drops at about 18 seconds (allow the intro to be slightly longer if this is
+normally a constraint)".
+
+- **Branch:** `claude/intro-dev-architect` from shared `8d56f015`, the framework `claude/intro-framework` merged in (at
+  `5fd20700`). Pushed, not merged. Doc: `docs/INTRO-DEV-ARCHITECT.md`.
+- **What:** `dev-architect` ("DEV · Architect of Reality", the framework's Dev kind: live DEV access only), 15.7 s, the name at
+  12.63 s on the song's drop. The old arena (the entrance stage, modelled) is struck by a column of light and glitches with the
+  music, then comes apart into wireframe, code glyphs and light over a void; a presence of light; the body drafted in lines of
+  light and condensed from the core out; the architect hangs still while pens of light draw the new world's plan; the new world
+  is gathered in from the void as wireframes on the riser's five stutters; on the drop it snaps into place solid (a floating
+  obsidian platform, eight monoliths, a crown, far spires), light floods its seams, the architect lands and the live name is
+  written into the sky letter by letter in light (an original stroke font) while the card decodes and locks the same letters
+  (the `"architect"` card effect). Each beat sits on a transient measured in the song.
+- **Files:** Core `NativeIntroArchitect.cs` (the intro and `NativeArchitectFont`), Runtime `NativeIntroArchitectCard.cs`, one line
+  each in `NativeIntroCatalog` and `NativeIntroCardScreen`, 17 lines in `NativeIntroSoundKeys`, `Tests/IntroArchitectChecks.cs`
+  (+ one `Program.cs` line, `--intro-architect`), the set's Blender script `tools/stages/intro_dev_architect.py`, the sound rows
+  `docs/audio/intros/I1.json` and list `dev-architect.md`, the song `Resources/Audio/music/architect-obey.wav` (+ meta,
+  asset-lock receipt).
+- **The song:** the owner's track from 5.17 s to 20.92 s, faded 15.30-15.70, cover art stripped. A WAV, so the drop sits on its
+  sample (an MP3's encoder delay would land it 25-50 ms late). Imported compressed in memory and preloaded, at its own level. The
+  intro is drawn on its playback (the framework's bed clock).
+- **The set bank (never committed):** `ChipArenaIntroDev.bytes`, 4,833,747 bytes (sha256 `97bf6512...`), master and meta in
+  `F:/Chip Arena Development/scratch/intro-dev/bank/`; for the integrator to pack into the Drive zip. Without it the intro draws the
+  framework's void under the same effects.
+- **Checks:** `--intro-architect` 9,220 passed (the registry, the beats, the cues, every frame on High and Low with and without
+  the bank, the peaks: 460 effects and 129 set pieces on High, 205 and 80 on Low, 8 lights; the streak rule; determinism under a
+  scrub; no allocation per frame; Reduced effects; the body's build; the stroke font); `--intros-v2` passes (1,660); the Unity
+  compile passes; `git diff --check` clean; `package_source.py --check` passes; the full CoreTests the relgen5 way at
+  `797ebca0`, exit 0 (1,080 groups). Two Editor holds, a review pass and the final, with captures in
+  `F:/Chip Arena Development/scratch/intro-dev/cap/`.
+- **Not run:** a Windows player build; two clients (a guest's and a late joiner's view of the bed clock); the sound by ear (the
+  captures are silent; the review clip carries the song on the capture's clock).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The match reads the registry's
+  length (15.7 s) for this intro's turn, as for every intro.
+- **Voxel dependency:** none added. The architect is keyed on the entrance rig like every procedural entrance; the drawn model
+  follows it through the framework; the new files read no rig.
+- **Risks:** the game's loading wipe covers the first ~0.1 s, so the strike is seen just after the song's opening hit; the crown is
+  a ring-shaped piece of architecture overhead (kept dim so it does not read as a ring of light; one line removes it); the intro is
+  long for a match intro (vote-skip still works); its 17 sounds wait on a builder job (until then each cue plays an existing bank
+  sound or a built-in clip).
+- **Next:** the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-dev/clips/`), merges after the framework,
+  packs the bank, and compiles the intros' sound manifest (`tools/intros/compile_sound_requests.py`) for a builder run.
+
 ## 2026-11-20 — Claude: release 2 of the expedition overhaul: the caches on A2, the LEGENDARY beam, the Meridian look (integrator)
 Owner: "Release them" (the caches) and "Looks good" (the Meridian look at night). Shared `c181c819`, the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`, 376.6 MiB).
 - **Merged:** `claude/cache-openings` (`eba02d3a`: the presentation on Astra's A2, its adapter reading `tier`, the locker standing on A2's block with the block's box undrawn, the LEGENDARY beam laid on its head's camera plane), `claude/meridian-bleed` (`8befbda3`: D1, D2 and D3), `claude/cache-locker-column` (`c181c819`: the beacon's tube stands down where the steel locker stands, board 3).
