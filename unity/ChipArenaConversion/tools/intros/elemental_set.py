@@ -1,18 +1,20 @@
 """The elemental weapon intros' sets (docs/INTROS-ELEMENTAL.md): four modelled backdrops for Forgeborn (fire), Still Tide
 (water), Strike Point (lightning) and Black Sun (darkness), written into one local bank, ChipArenaIntroElemental (never
-committed; the intros draw the framework's dark lit void without it). Run inside Blender 5.x (bpy, numpy) with the stage kit:
+committed; without it the intros draw the framework's dark lit void). Run inside Blender 5.x (bpy, numpy) with the stage kit:
 
-  blender --background --factory-startup --python tools/intros/elemental_sets.py -- --out DIR
-      [--sets fire,water,lightning,darkness] [--tiers 0,1,2] [--no-ao] [--preview DIR] [--stats]
+  blender --background --factory-startup --python tools/intros/elemental_set.py -- --out DIR
+      [--sets fire,water,lightning,darkness] [--no-ao] [--preview DIR] [--stats]
 
-Everything is in the game's space (Unity: metres, +y up), the pilot's hero mark at the origin facing +z (the intros' cameras
-mostly stand on +z looking back at -z, so each set's best side is its -z side). The floor the pilot stands on is
-`FLOOR` (Core NativeEntranceStage.FloorY). Pieces that Core moves or lights over time are props of their own ('rig'): the lava
-rings, the frozen and liquid walls, the ice sheet's rings, the spires' seams, the monoliths' glyphs, the sun and the moon. Core
-`NativeElementalIntros` holds the same numbers (river paths, ring radii, spire and monolith places): change both together.
+Modelled in the intros' SOURCE frame (Core NativeIntroElemental: metres, +y up, +x the rig's left, the pilot's hero mark at the
+origin, ending facing Facing = -0.22 rad, its forward (sin F, 0, cos F)), so the numbers here are the Core scripts' own; the
+export mirrors x into the bank's Unity space (docs/INTROS-V2.md section 3: bank meshes are drawn as authored in Unity space and
+`Piece` mirrors its pose). The floor the pilot stands on is FLOOR (Core NativeEntranceStage.FloorY).
 
-Bank naming (one bank, four sets): `<set>/static/<chunk>/<tier>` for the scenery, `<set>/rig/<name>/<tier>` for the parts Core
-poses or lights. Finishes and the bank format are the stage kit's (tools/stages/stagekit.py, tools/pack_bank/bank.py).
+Props (docs/INTROS-V2.md: `<prop>` the Fine tier, `<prop>/low` the Low tier): each set's scenery in a few pieces drawn where they
+are, and the parts Core poses or lights on their own (the lava rings and rivers, the forge's seams and hearth, the water's surface,
+its liquid and frozen walls and the frost's rings, the spires' seams and the crater, the monoliths' glyphs, the moon). The Core
+scripts keep the same numbers (the vent, the rings, the rivers, the hall, the spires, the monoliths): Tests/IntroElementalChecks.cs
+reads them from this file. Finishes and the bank format are the stage kit's (tools/stages/stagekit.py, tools/pack_bank/bank.py).
 """
 import argparse
 import math
@@ -483,50 +485,652 @@ def fire_set(T):
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
+# The hero facing (Core NativeProceduralEntrance.Facing): its forward and its left, and a yaw about +y in the source frame
+# ---------------------------------------------------------------------------------------------------------------------------
+FACING = -.22
+FWD = (math.sin(FACING), 0.0, math.cos(FACING))
+LEFT = (math.cos(FACING), 0.0, -math.sin(FACING))
+
+
+def yawed(g, a, t=(0.0, 0.0, 0.0)):
+    """`g` turned by `a` about +y (Core NativeEntranceMath.RotateY / Yaw: +z toward +x) and moved by t."""
+    return g.transformed(sk.affine(sk.quat_axis(0, 1, 0, a), t))
+
+
+def on_line(z, y=0.0):
+    return (FWD[0] * z, y, FWD[2] * z)
+
+
+def mirrored(g):
+    """`g` with x negated (a reflection: each face's corners reversed so it still faces out): source frame <-> Unity space."""
+    out = Geo()
+    P, N, S, F = g.arrays()
+    P = P.copy()
+    N = N.copy()
+    P[:, 0] *= -1
+    N[:, 0] *= -1
+    pos = 0
+    for k, f in zip(S, F):
+        idx = list(range(pos + k - 1, pos - 1, -1))
+        out.p.extend(P[idx].ravel().tolist())
+        out.n.extend(N[idx].ravel().tolist())
+        out.size.append(int(k))
+        out.fin.append(int(f))
+        pos += k
+    return out
+
+
+def grid(g, P, f, flat=False, facing=None, inside=None, wrap_j=False, pick=None):
+    surf(g, P, f, facing=facing, inside=inside, wrap_j=wrap_j, flat=flat, pick=pick)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# WATER: the drowned hall (built in the hall's frame: x across toward the pilot's left, z along its forward; then turned by
+# Facing). Core NativeIntroStillTide keeps these.
+# ---------------------------------------------------------------------------------------------------------------------------
+WATER_SKYLIGHTS = (-14.0, -6.0, 2.0)          # the broken vault's bays (hall z)
+WATER_ICE_RINGS = (1.6, 3.2, 5.5, 8.5, 14.0)  # the frost's rings round the mark (rig water/ice/k)
+WATER_LEVEL = (.14, .22)                      # the water over the floor before and after the tide
+WATER_HALF = 5.0                              # a wave half's length along its +z
+HALL_X, HALL_Z0, HALL_Z1, NAVE_X = 9.2, -24.0, 16.0, 5.2
+VAULT_SPRING, VAULT_TOP, ARCADE_TOP, ROSE_Z, ROSE_Y = 12.0, 14.2, 10.6, -23.6, 10.8
+
+
+def water_finishes():
+    F = {}
+    F['stone'] = sk.fin('water-stone', 0x4a5458, sk.DETAIL_ASHLAR, smooth=.3, dirt=1.0, moss=.6, wear=.3)
+    F['stone-dark'] = sk.fin('water-stone-dark', 0x2c3538, sk.DETAIL_ASHLAR, smooth=.35, dirt=1.0, moss=.8)
+    F['marble'] = sk.fin('water-marble', 0x7f8a8c, sk.DETAIL_MARBLE, smooth=.55, dirt=.8, moss=.4, wear=.4)
+    F['tile'] = sk.fin('water-tile', 0x3c4a4c, sk.DETAIL_TILE, smooth=.6, dirt=.9, moss=.5, param=.6)
+    F['vault'] = sk.fin('water-vault', 0x353d40, sk.DETAIL_ASHLAR, smooth=.2, dirt=1.0, moss=.3)
+    F['rib'] = sk.fin('water-rib', 0x59625f, sk.DETAIL_CARVED, smooth=.3, dirt=1.0, wear=.4)
+    F['water'] = sk.fin('water-surface', 0x0b2a33, sk.DETAIL_NONE, smooth=.97, dirt=0.0)
+    F['wave'] = sk.fin('water-wave', 0x16627e, sk.DETAIL_NONE, smooth=.95, dirt=0.0)
+    F['wave-deep'] = sk.fin('water-wave-deep', 0x0c3a52, sk.DETAIL_NONE, smooth=.95, dirt=0.0)
+    F['foam'] = sk.fin('water-foam', 0xdff6ff, sk.DETAIL_NONE, smooth=.4, dirt=0.0)
+    F['ice'] = sk.fin('water-ice', 0x9fd8ec, sk.DETAIL_NONE, smooth=.92, dirt=0.0)
+    F['ice-deep'] = sk.fin('water-ice-deep', 0x5aa9cc, sk.DETAIL_NONE, smooth=.9, dirt=0.0)
+    F['ice-glow'] = sk.fin('water-ice-glow', 0x7fe6ff, sk.DETAIL_GLOW, glow=1.6)
+    F['frost'] = sk.fin('water-frost', 0xd8f2fa, sk.DETAIL_PLASTER, smooth=.5, dirt=0.0)
+    F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
+    F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
+    F['lead'] = sk.fin('water-lead', 0x1c2224, sk.DETAIL_IRON, smooth=.4, metal=.6, dirt=.6)
+    return F
+
+
+def pointed(L, H, n):
+    """A pointed (or segmental) arch's half-profile from its springer to its apex (stage kit pointed_arch)."""
+    return sk.pointed_arch(L, H, n)
+
+
+def water_hall(T):
+    """The hall's statics in the hall frame: (hall, vault, far)."""
+    F = water_finishes()
+    hall, vault, far = Geo(), Geo(), Geo()
+    side_n = (14, 8, 6)[T.i]
+    arc = (10, 6, 3)[T.i]
+    # the floor: tiles under the water, a little uneven
+    sk.grid_face(hall, (-HALL_X, FLOOR, HALL_Z1), (2 * HALL_X, 0, 0), (0, 0, HALL_Z0 - HALL_Z1), 1, 1, F['tile'], (0, 1, 0), (3.0, 6.0, 12.0)[T.i])
+    # the colonnades: columns on plinths, a capital and an abacus each
+    zs = [z for z in range(-22, 15, 4)]
+    for side in (-1, 1):
+        for z in zs:
+            x = side * NAVE_X
+            sk.box(hall, x - .62, x + .62, FLOOR - .1, FLOOR + .42, z - .62, z + .62, F['marble'], T, bevel=.04)
+            sk.lathe(hall, [(.56, FLOOR + .42), (.56, FLOOR + .52), (.5, FLOOR + .62), (.44, FLOOR + .7), (.42, FLOOR + 1.2), (.4, FLOOR + 6.6), (.42, FLOOR + 6.8),
+                            (.5, FLOOR + 7.0), (.62, FLOOR + 7.35), (.66, FLOOR + 7.5)], (x, 0, z), F['marble'], side_n, cap1=True)
+            sk.box(hall, x - .72, x + .72, FLOOR + 7.5, FLOOR + 7.8, z - .72, z + .72, F['stone'], T, bevel=.03)
+    spring = FLOOR + 7.8
+    # the arcades: pointed arches between the columns, their spandrels up to the arcade's top, the clerestory over them
+    for side in (-1, 1):
+        x = side * NAVE_X
+        for i in range(len(zs) - 1):
+            z0, z1 = zs[i] + .7, zs[i + 1] - .7
+            L = (z1 - z0) / 2
+            half = pointed(L, 2.2, arc)
+            curve = [(z0 + d, spring + h) for d, h in half] + [(z1 - d, spring + h) for d, h in reversed(half[:-1])]
+            for xo, nx in ((x - side * .35, -side), (x + side * .35, side)):
+                for k in range(len(curve) - 1):
+                    (za, ya), (zb, yb) = curve[k], curve[k + 1]
+                    hall.face([(xo, ya, za), (xo, yb, zb), (xo, ARCADE_TOP, zb), (xo, ARCADE_TOP, za)], F['stone'], normal=(nx, 0, 0))
+            for k in range(len(curve) - 1):
+                (za, ya), (zb, yb) = curve[k], curve[k + 1]
+                hall.face([(x - .35, ya, za), (x + .35, ya, za), (x + .35, yb, zb), (x - .35, yb, zb)], F['stone'], normal=(0, -1, 0))
+            # the clerestory over the bay, a lancet of moonlight in it
+            for xo, nx in ((x - side * .3, -side), (x + side * .3, side)):
+                hall.face([(xo, ARCADE_TOP, zs[i]), (xo, ARCADE_TOP, zs[i + 1]), (xo, VAULT_SPRING, zs[i + 1]), (xo, VAULT_SPRING, zs[i])], F['stone-dark'], normal=(nx, 0, 0))
+            zc = (zs[i] + zs[i + 1]) / 2
+            hall.face([(x - side * .31, ARCADE_TOP + .2, zc - .45), (x - side * .31, ARCADE_TOP + .2, zc + .45), (x - side * .31, VAULT_SPRING - .25, zc + .45), (x - side * .31, VAULT_SPRING - .1, zc), (x - side * .31, VAULT_SPRING - .25, zc - .45)],
+                      F['window'], normal=(-side, 0, 0))
+        # over the columns the wall runs on without a gap
+        for z in zs:
+            for xo, nx in ((x - side * .35, -side), (x + side * .35, side)):
+                hall.face([(xo, spring, z - .72), (xo, spring, z + .72), (xo, ARCADE_TOP, z + .72), (xo, ARCADE_TOP, z - .72)], F['stone'], normal=(nx, 0, 0))
+        # the aisle: its outer wall with lancets, a lean-to roof
+        xo = side * HALL_X
+        for i in range(len(zs) - 1):
+            zc = (zs[i] + zs[i + 1]) / 2
+            hall.face([(xo, FLOOR, zs[i]), (xo, FLOOR, zs[i + 1]), (xo, 9.0, zs[i + 1]), (xo, 9.0, zs[i])], F['stone-dark'], normal=(-side, 0, 0))
+            hall.face([(xo - side * .02, 2.4, zc - .6), (xo - side * .02, 2.4, zc + .6), (xo - side * .02, 6.6, zc + .6), (xo - side * .02, 7.3, zc), (xo - side * .02, 6.6, zc - .6)], F['window'], normal=(-side, 0, 0))
+        hall.face([(xo, 9.0, HALL_Z0), (xo, 9.0, HALL_Z1), (x, ARCADE_TOP - .4, HALL_Z1), (x, ARCADE_TOP - .4, HALL_Z0)], F['vault'], normal=(-side * .3, -1, 0))
+    # the vault: a segmental barrel over the nave, a rib on every column line, broken open over three bays
+    prof = [(-NAVE_X + d, VAULT_SPRING + h) for d, h in sk.pointed_arch(NAVE_X, VAULT_TOP - VAULT_SPRING, (12, 8, 5)[T.i])]
+    prof = prof + [(-x, y) for x, y in reversed(prof[:-1])]
+    zstep = (2.0, 4.0, 8.0)[T.i]
+    zz = [HALL_Z0 + i * zstep for i in range(int((HALL_Z1 - HALL_Z0) / zstep) + 1)]
+    for i in range(len(zz) - 1):
+        za, zb = zz[i], zz[i + 1]
+        zc = (za + zb) / 2
+        for k in range(len(prof) - 1):
+            (xa, ya), (xb, yb) = prof[k], prof[k + 1]
+            xm = (xa + xb) / 2
+            if any(abs(zc - s) < 1.6 for s in WATER_SKYLIGHTS) and abs(xm) < 1.6 + .6 * H(int(zc), k):
+                continue
+            nrm = (-xm, -(VAULT_TOP + 4 - (ya + yb) / 2), 0)
+            vault.face([(xa, ya, za), (xb, yb, za), (xb, yb, zb), (xa, ya, zb)], F['vault'], normal=nrm)
+    for z in zs:
+        path = [(x, y - .05, z) for x, y in prof]
+        sk.sweep(vault, sk.rect_section(.32, .3, .06 if T.bevel else 0), path, F['rib'], smooth_u=False)
+    # the far wall with its rose window (glass and lead tracery) over a great door, the near wall
+    rose_n = (32, 20, 12)[T.i]
+    for xo0, xo1 in ((-HALL_X, -3.4), (3.4, HALL_X)):
+        far.face([(xo0, FLOOR, HALL_Z0), (xo1, FLOOR, HALL_Z0), (xo1, VAULT_TOP + 1, HALL_Z0), (xo0, VAULT_TOP + 1, HALL_Z0)], F['stone-dark'], normal=(0, 0, 1))
+    far.face([(-3.4, FLOOR + 5.4, HALL_Z0), (3.4, FLOOR + 5.4, HALL_Z0), (3.4, ROSE_Y - 3.3, HALL_Z0), (-3.4, ROSE_Y - 3.3, HALL_Z0)], F['stone-dark'], normal=(0, 0, 1))
+    far.face([(-3.4, ROSE_Y + 3.3, HALL_Z0), (3.4, ROSE_Y + 3.3, HALL_Z0), (3.4, VAULT_TOP + 1, HALL_Z0), (-3.4, VAULT_TOP + 1, HALL_Z0)], F['stone-dark'], normal=(0, 0, 1))
+    # the rose: an annulus of wall round the glass, the glass, the lead: spokes and a ring of tracery
+    for k in range(rose_n):
+        a0, a1 = 2 * math.pi * k / rose_n, 2 * math.pi * (k + 1) / rose_n
+        c0, s0, c1, s1 = math.cos(a0), math.sin(a0), math.cos(a1), math.sin(a1)
+        sq = lambda c, s: (max(-1, min(1, c * 1.42)) * 3.4, max(-1, min(1, s * 1.42)) * 3.3)
+        q0, q1 = sq(c0, s0), sq(c1, s1)
+        far.face([(c0 * 3.0, ROSE_Y + s0 * 3.0, HALL_Z0), (q0[0], ROSE_Y + q0[1], HALL_Z0), (q1[0], ROSE_Y + q1[1], HALL_Z0), (c1 * 3.0, ROSE_Y + s1 * 3.0, HALL_Z0)], F['stone-dark'], normal=(0, 0, 1))
+        far.face([(0, ROSE_Y, ROSE_Z - .4), (c0 * 3.0, ROSE_Y + s0 * 3.0, ROSE_Z - .4), (c1 * 3.0, ROSE_Y + s1 * 3.0, ROSE_Z - .4)], F['window'], normal=(0, 0, 1))
+    spokes = (12, 8, 6)[T.i]
+    for k in range(spokes):
+        a = 2 * math.pi * k / spokes
+        p0 = (math.cos(a) * .5, ROSE_Y + math.sin(a) * .5, ROSE_Z - .3)
+        p1 = (math.cos(a) * 3.0, ROSE_Y + math.sin(a) * 3.0, ROSE_Z - .3)
+        sk.cylinder(far, p0, p1, .07, F['lead'], 5)
+    sk.lathe(far, [(.5, -.1), (.62, 0), (.5, .1)], (0, ROSE_Y, ROSE_Z - .3), F['lead'], 14, axis=(0, 0, 1))
+    sk.lathe(far, [(1.7, -.08), (1.82, 0), (1.7, .08)], (0, ROSE_Y, ROSE_Z - .3), F['lead'], rose_n, axis=(0, 0, 1))
+    # the great door below: a dark arched recess
+    door = [(-2.2 + 4.4 * i / arc, FLOOR + 3.6 + 1.8 * math.sin(math.pi * i / arc)) for i in range(arc + 1)]
+    far.face([(-2.2, FLOOR, HALL_Z0 - 1.2)] + [(x, y, HALL_Z0 - 1.2) for x, y in door] + [(2.2, FLOOR, HALL_Z0 - 1.2)], F['stone-dark'], normal=(0, 0, 1))
+    for x0, x1 in ((-3.4, -2.2), (2.2, 3.4)):
+        far.face([(x0, FLOOR, HALL_Z0), (x1, FLOOR, HALL_Z0), (x1, FLOOR + 5.4, HALL_Z0), (x0, FLOOR + 5.4, HALL_Z0)], F['stone-dark'], normal=(0, 0, 1))
+    for k in range(len(door) - 1):
+        (xa, ya), (xb, yb) = door[k], door[k + 1]
+        far.face([(xa, ya, HALL_Z0), (xb, yb, HALL_Z0), (xb, FLOOR + 5.4, HALL_Z0), (xa, FLOOR + 5.4, HALL_Z0)], F['stone-dark'], normal=(0, 0, 1))
+    far.face([(-HALL_X, FLOOR, HALL_Z1), (-HALL_X, 14.0, HALL_Z1), (HALL_X, 14.0, HALL_Z1), (HALL_X, FLOOR, HALL_Z1)], F['stone-dark'], normal=(0, 0, -1))
+    # the fallen: a column's drums, a capital, rubble under the broken bays
+    for i, (x, z, a, L) in enumerate(((-2.6, -8.5, .6, 1.4), (3.4, -12.0, -.3, 1.1), (-3.6, 4.5, 1.2, .9))):
+        t = Geo()
+        sk.lathe(t, [(.4, -L / 2), (.4, L / 2)], (0, 0, 0), F['marble'], side_n, cap0=True, cap1=True)
+        q = qmul(sk.quat_axis(0, 1, 0, a), sk.quat_axis(1, 0, 0, math.pi / 2))
+        hall.extend(t.transformed(sk.affine(q, (x, FLOOR + .3, z))))
+    for s in WATER_SKYLIGHTS:
+        for k in range((7, 4, 2)[T.i]):
+            r = .2 + .35 * H(int(s), k, 3)
+            rock(hall, (S(int(s), k, 1) * 1.6, FLOOR + r * .3, s + S(int(s), k, 2) * 1.4), r, F['stone'], T, 900 + int(s) * 7 + k, squash=.6)
+    return hall, vault, far
+
+
+def wave_env(u):
+    """A half's height along its length (0 at both ends, full over most of it)."""
+    return max(0.0, math.sin(math.pi * min(1.0, max(0.0, u * 1.06 - .03)))) ** .45
+
+
+def water_half(T, frozen):
+    """A wave half in its own frame: the wall along +z (0 .. WATER_HALF), its back on -x, its curl toward +x (the right half;
+    the left is its mirror). Liquid: smooth water with a foam crest; frozen: faceted ice, icicles off the lip, a lit vein."""
+    F = water_finishes()
+    g = Geo()
+    prof = [(-.95, -.4), (-.85, .6), (-.68, 1.8), (-.48, 3.0), (-.22, 4.05), (.12, 4.62), (.55, 4.8), (.98, 4.66), (1.32, 4.3), (1.46, 3.82), (1.36, 3.34),
+            (1.08, 3.12), (.76, 3.24), (.5, 2.9), (.38, 2.2), (.42, 1.3), (.6, .5), (.82, -.4)]
+    nz = (22, 12, 7)[T.i]
+    P = np.zeros((nz + 1, len(prof), 3))
+    for i in range(nz + 1):
+        u = i / nz
+        z = WATER_HALF * u
+        sy = wave_env(u)
+        sx = .75 + .25 * sy
+        for j, (x, y) in enumerate(prof):
+            wob = .06 * math.sin(u * 7 + j * .9) * (y / 4.8) if not frozen else .05 * S(i, j, 7) * (y / 4.8)
+            P[i, j] = (x * sx + wob, y * sy + (.0 if y > 0 else 0), z)
+    if frozen:
+        pick = lambda nn, cc: F['frost'] if cc[1] > 4.2 else (F['ice'] if nn[0] < .2 else F['ice-deep'])
+        grid(g, P, F['ice'], flat=True, inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
+        # icicles off the lip, a vein of light inside the curl
+        for i in range(1, nz):
+            if H(i, 3) < (.35 if T.i == 0 else .6):
+                continue
+            u = i / nz
+            sy = wave_env(u)
+            base = (1.3 * (.75 + .25 * sy), 3.25 * sy, WATER_HALF * u)
+            L = (.25 + .45 * H(i, 4)) * sy
+            if L > .08:
+                cone = Geo()
+                sk.lathe(cone, [(.07, 0), (0, -L)], base, F['ice'], 5)
+                g.extend(cone)
+        vein = Geo()
+        for i in range(nz):
+            u0, u1 = i / nz, (i + 1) / nz
+            a = [(1.18 * (.75 + .25 * wave_env(u)), 3.55 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
+            b = [(.62 * (.75 + .25 * wave_env(u)), 2.7 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
+            vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(1, -.6, 0))
+        g.extend(vein)
+    else:
+        pick = lambda nn, cc: F['foam'] if cc[1] > 4.35 else (F['wave'] if nn[0] > -.3 else F['wave-deep'])
+        grid(g, P, F['wave'], inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
+    return g
+
+
+def water_set(T):
+    F = water_finishes()
+    hall, vault, far = water_hall(T)
+    props = {'water/hall': yawed(hall, FACING), 'water/vault': yawed(vault, FACING), 'water/far': yawed(far, FACING)}
+    # the water's face: a sheet over the hall's floor (Core lifts it to the tide's level)
+    surface = Geo()
+    sk.grid_face(surface, (-HALL_X + .05, 0, HALL_Z1 - .05), (2 * HALL_X - .1, 0, 0), (0, 0, HALL_Z0 - HALL_Z1 + .1), 1, 1, F['water'], (0, 1, 0), (2.0, 5.0, 10.0)[T.i])
+    props['water/surface'] = yawed(surface, FACING)
+    # the frost's rings round the mark, in the mark's frame (Core turns them with the facing)
+    r0 = 0.0
+    sides = (48, 28, 16)[T.i]
+    for k, r in enumerate(WATER_ICE_RINGS):
+        g = Geo()
+        for i in range(sides):
+            a0, a1 = 2 * math.pi * i / sides, 2 * math.pi * (i + 1) / sides
+            f = F['frost'] if H(k, i, 1) > .3 else F['ice']
+            pts = [(math.cos(a0) * r, 0, math.sin(a0) * r), (math.cos(a1) * r, 0, math.sin(a1) * r)]
+            pts += [(math.cos(a1) * r0, 0, math.sin(a1) * r0), (math.cos(a0) * r0, 0, math.sin(a0) * r0)] if r0 > 0 else [(0, 0, 0)]
+            g.face(pts, f, normal=(0, 1, 0))
+            # a lit crack across some cells
+            if T.i == 0 and H(k, i, 2) > .7:
+                am = (a0 + a1) / 2
+                ra, rb = r0 + (r - r0) * .2, r0 + (r - r0) * .85
+                w = .015
+                d = (math.cos(am), math.sin(am))
+                n = (-d[1], d[0])
+                g.face([(d[0] * ra + n[0] * w, .004, d[1] * ra + n[1] * w), (d[0] * rb + n[0] * w, .004, d[1] * rb + n[1] * w),
+                        (d[0] * rb - n[0] * w, .004, d[1] * rb - n[1] * w), (d[0] * ra - n[0] * w, .004, d[1] * ra - n[1] * w)], F['frost-glow'], normal=(0, 1, 0))
+        props['water/ice/%d' % k] = g
+        r0 = r
+    right = water_half(T, False)
+    props['water/wave/R'] = right
+    props['water/wave/L'] = mirrored(right)
+    right_ice = water_half(T, True)
+    props['water/frozen/R'] = right_ice
+    props['water/frozen/L'] = mirrored(right_ice)
+    return props
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# LIGHTNING: the storm summit. Core NativeIntroStrikePoint keeps these.
+# ---------------------------------------------------------------------------------------------------------------------------
+SPIRE_BEARINGS = (30.0, 90.0, 150.0, -30.0, -90.0, -150.0)  # degrees from the hero facing, + toward the pilot's left
+SPIRE_RING, SPIRE_TIP = 7.6, 6.2
+
+
+def spire_at(i, y=0.0):
+    a = FACING + math.radians(SPIRE_BEARINGS[i])
+    return (math.sin(a) * SPIRE_RING, y, math.cos(a) * SPIRE_RING)
+
+
+def storm_finishes():
+    F = {}
+    F['slate'] = sk.fin('storm-slate', 0x3a4048, sk.DETAIL_FLAG, smooth=.35, dirt=.8, moss=.2, wear=.35)
+    F['slate-top'] = sk.fin('storm-slate-top', 0x4a515a, sk.DETAIL_FLAG, smooth=.55, dirt=.6, wear=.2)
+    F['rock'] = sk.fin('storm-rock', 0x2c3138, sk.DETAIL_CARVED, smooth=.2, dirt=1.0, moss=.3)
+    F['obelisk'] = sk.fin('storm-obelisk', 0x2e3036, sk.DETAIL_CARVED, smooth=.3, dirt=.8, wear=.5)
+    F['copper'] = sk.fin('storm-copper', 0x4f8a78, sk.DETAIL_BRASS, smooth=.5, metal=.7, dirt=.6, wear=.6)
+    F['iron'] = sk.fin('storm-iron', 0x2a2c30, sk.DETAIL_IRON, smooth=.55, metal=.85, dirt=.5, wear=.4)
+    F['glass'] = sk.fin('storm-fulgurite', 0x18221f, sk.DETAIL_NONE, smooth=.92, dirt=.2)
+    F['scorch'] = sk.fin('storm-scorch', 0x1a1b1f, sk.DETAIL_FLAG, smooth=.3, dirt=.8)
+    F['cloud'] = sk.fin('storm-cloud', 0x5a6478, sk.DETAIL_NONE, smooth=0.0, dirt=0.0)
+    F['peak'] = sk.fin('storm-peak', 0x3a4250, sk.DETAIL_CARVED, smooth=.1, dirt=.6)
+    F['snow'] = sk.fin('storm-snow', 0x8c97a8, sk.DETAIL_PLASTER, smooth=.3, dirt=.2)
+    F['seam'] = sk.fin('storm-seam', 0xc8aaff, sk.DETAIL_GLOW, glow=2.0)
+    F['molten'] = sk.fin('storm-molten', 0xe0d0ff, sk.DETAIL_GLOW, glow=2.4)
+    return F
+
+
+def lightning_set(T):
+    F = storm_finishes()
+    plateau, spires, far = Geo(), Geo(), Geo()
+    crater = Geo()
+    # the plateau: fractured slate slabs, stacked in places; the crater's ring left open
+    for i, ((cx, cz), poly) in enumerate(hex_cells(15.0, (1.15, 1.15, 1.15)[T.i], 41, jitter=.4)):
+        r = math.hypot(cx, cz)
+        if r < 2.1 or r > 14.6:
+            continue
+        p = shrink(poly, .025 + .02 * H(i, 2))
+        lift = .05 * S(i, 3) + (.1 if H(i, 4) > .88 else 0) - .02 * max(0.0, r - 10)
+        tilt = (S(i, 5) * .05, S(i, 6) * .05)
+        prism(plateau, p, -.6, FLOOR + lift, F['slate'], F['slate-top'] if H(i, 7) > .2 else F['scorch'], tilt, chamfer=.025 if (T.bevel and r < 8) else 0)
+        if H(i, 8) > .9 and r > 4:
+            prism(plateau, shrink(p, .3), FLOOR + lift, FLOOR + lift + .12, F['slate'], F['slate-top'], (S(i, 9) * .08, S(i, 10) * .08), chamfer=.02 if T.bevel else 0)
+    # the edge: a cliff of broken rock falling away into the cloud sea
+    m = (96, 48, 24)[T.i]
+    rows = [(14.4, FLOOR - .05), (15.4, -.6), (16.5, -2.6), (17.4, -6.0), (18.6, -10.5), (20.5, -16.0)]
+    P = np.zeros((m, len(rows), 3))
+    for i in range(m):
+        a = 2 * math.pi * i / m
+        for j, (r, y) in enumerate(rows):
+            jag = (1.4 * n1(math.cos(a) * 6, y * .3, math.sin(a) * 6, .9, 31 + j, 2) + .5 * S(i, j, 33)) * (j > 0)
+            P[i, j] = (math.cos(a) * (r + jag), y + (.0 if j == 0 else .6 * S(i, j, 34)), math.sin(a) * (r + jag))
+    surf(plateau, P, F['rock'], wrap_i=True, inside=(0, 10, 0), flat=True)
+    # the crater: a shallow bowl of shattered slabs and fulgurite glass, molten seams in it (rig lightning/crater)
+    n = (14, 9, 6)[T.i]
+    for i in range(n):
+        a0, a1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+        for r0, r1, y0, y1 in ((.0, .9, FLOOR - .16, FLOOR - .1), (.9, 2.1, FLOOR - .1, FLOOR + .02)):
+            pts = [(math.cos(a0) * r1, y1, math.sin(a0) * r1), (math.cos(a1) * r1, y1, math.sin(a1) * r1)]
+            pts += [(math.cos(a1) * r0, y0, math.sin(a1) * r0), (math.cos(a0) * r0, y0, math.sin(a0) * r0)] if r0 > 0 else [(0, y0, 0)]
+            crater.face(pts, F['glass'], normal=(0, 1, 0))
+        # shards heaved up round the rim, splayed outward
+        if H(i, 51) > .25:
+            am = (a0 + a1) / 2 + S(i, 52) * .1
+            d = (math.cos(am), math.sin(am))
+            b = (d[0] * 1.9, FLOOR - .05, d[1] * 1.9)
+            tip = (d[0] * (2.3 + .3 * H(i, 53)), FLOOR + .25 + .35 * H(i, 54), d[1] * (2.3 + .3 * H(i, 53)))
+            slab = Geo()
+            w = .25 + .2 * H(i, 55)
+            n_ = (-d[1], d[0])
+            q0 = (b[0] + n_[0] * w, b[1], b[2] + n_[1] * w)
+            q1 = (b[0] - n_[0] * w, b[1], b[2] - n_[1] * w)
+            slab.face([q0, q1, tip], F['slate'], normal=(d[0], .4, d[1]))
+            slab.face([q1, q0, (b[0] - d[0] * .3, b[1], b[2] - d[1] * .3), ], F['scorch'], normal=(-d[0], .6, -d[1]))
+            slab.face([q0, tip, (b[0] - d[0] * .3, b[1], b[2] - d[1] * .3)], F['slate'], normal=(n_[0], .3, n_[1]))
+            slab.face([q1, (b[0] - d[0] * .3, b[1], b[2] - d[1] * .3), tip], F['slate'], normal=(-n_[0], .3, -n_[1]))
+            plateau.extend(slab)
+        # a molten seam out from the centre
+        am = (a0 + a1) / 2
+        d = (math.cos(am), math.sin(am))
+        nn = (-d[1], d[0])
+        for r0, r1 in ((.15, .85), (.9, 1.6 + .4 * H(i, 56))):
+            yy = FLOOR - .095 if r0 < .5 else FLOOR - .03
+            w = .025
+            crater.face([(d[0] * r0 + nn[0] * w, yy + .005, d[1] * r0 + nn[1] * w), (d[0] * r1 + nn[0] * w, yy + .005, d[1] * r1 + nn[1] * w),
+                         (d[0] * r1 - nn[0] * w, yy + .005, d[1] * r1 - nn[1] * w), (d[0] * r0 - nn[0] * w, yy + .005, d[1] * r0 - nn[1] * w)], F['molten'], normal=(0, 1, 0))
+    # the spires: tapered obelisks on stepped bases, copper bands, a coil, an iron spike; their seams lit on their own
+    seams = [Geo() for _ in SPIRE_BEARINGS]
+    for i in range(len(SPIRE_BEARINGS)):
+        base = spire_at(i)
+        a = math.atan2(base[0], base[2])
+        s = Geo()
+        sk.box(s, -.95, .95, -.3, .25, -.95, .95, F['slate'], T, bevel=.05)
+        sk.box(s, -.7, .7, .25, .55, -.7, .7, F['obelisk'], T, bevel=.04)
+        body = [(.45, .55), (.42, 1.2), (.38, 2.6), (.33, 4.0), (.28, 5.3)]
+        prof = [(r * math.sqrt(2), y) for r, y in body]
+        sk.lathe(s, prof, (0, 0, 0), F['obelisk'], 4, smooth=False, phase=math.pi / 4)
+        for y in (1.2, 2.6, 4.0):
+            r = .42 - (y - 1.2) * .03
+            sk.lathe(s, [(r * math.sqrt(2) + .04, y - .09), (r * math.sqrt(2) + .06, y), (r * math.sqrt(2) + .04, y + .09)], (0, 0, 0), F['copper'], 4, smooth=False, phase=math.pi / 4)
+        sk.lathe(s, [(.36, 5.3), (.26, 5.45), (.12, 5.55), (.06, 5.6)], (0, 0, 0), F['iron'], (8, 6, 4)[T.i])
+        sk.cylinder(s, (0, 5.5, 0), (0, SPIRE_TIP, 0), .045, F['iron'], 6, r1=.008)
+        if T.i < 2:
+            helix = [(math.cos(k * .5) * (.42 - .0055 * k), 3.0 + k * .045, math.sin(k * .5) * (.42 - .0055 * k)) for k in range(46)]
+            sk.tube(s, helix, .022, F['copper'], 5)
+        for f in range(4):
+            fa = f * math.pi / 2
+            dx, dz = math.sin(fa), math.cos(fa)
+            w = .03
+            pts = []
+            for y0, y1 in ((.7, 1.1), (1.3, 2.5), (2.7, 3.9)):
+                r0 = (.44 - (y0 - .55) * .033) + .012
+                r1 = (.44 - (y1 - .55) * .033) + .012
+                seams[i].face([(dx * r0 - dz * w, y0, dz * r0 + dx * w), (dx * r0 + dz * w, y0, dz * r0 - dx * w), (dx * r1 + dz * w, y1, dz * r1 - dx * w), (dx * r1 - dz * w, y1, dz * r1 + dx * w)],
+                              F['seam'], normal=(dx, 0, dz))
+        spires.extend(yawed(s, a, base))
+        seams[i] = yawed(seams[i], a, base)
+    # broken standing stones between the spires
+    for i in range(6):
+        a = FACING + math.radians(SPIRE_BEARINGS[i] + 30 + 8 * S(i, 61))
+        r = 10.5 + 1.5 * H(i, 62)
+        st = Geo()
+        h = .8 + 1.4 * H(i, 63)
+        prism(st, ccw([(-.35, -.18), (.35, -.18), (.32, .2), (-.3, .2)]), -.3, h, F['obelisk'], F['slate-top'], (S(i, 64) * .25, S(i, 65) * .1), chamfer=.03 if T.bevel else 0)
+        plateau.extend(yawed(st, a + .3 * S(i, 66), (math.sin(a) * r, 0, math.cos(a) * r)))
+    # the far: peaks through the cloud sea, the cloud sea's rolling top
+    for i in range((12, 8, 6)[T.i]):
+        a = 2 * math.pi * (i + .5 * H(i, 70)) / 12
+        r = 70 + 70 * H(i, 71)
+        h = 18 + 30 * H(i, 72)
+        base = (math.sin(a) * r, -14, math.cos(a) * r)
+        # a jagged massif: a faceted cone pushed about by noise, its summit off-centre, a lower spur beside it
+        for spur in range(2 if T.i < 2 else 1):
+            pk = Geo()
+            rr = (14 + 12 * H(i, 73)) * (1 if spur == 0 else .55)
+            hh = h * (1 if spur == 0 else .6)
+            sides_k, rings_k = (9, 7, 6)[T.i], (5, 4, 3)[T.i]
+            top = (S(i, 78 + spur) * rr * .25, hh, S(i, 79 + spur) * rr * .25)
+            Pk = np.zeros((rings_k + 1, sides_k, 3))
+            for a_i in range(rings_k + 1):
+                u = a_i / rings_k
+                for b_i in range(sides_k):
+                    ang = 2 * math.pi * b_i / sides_k
+                    rad = rr * (1 - u) ** 1.25 * (.7 + .55 * H(i, spur, a_i * 17 + b_i))
+                    Pk[a_i, b_i] = (top[0] * u + math.cos(ang) * rad, hh * u + (1.6 * S(i, a_i, b_i + 40) if 0 < a_i < rings_k else 0), top[2] * u + math.sin(ang) * rad)
+            surf(pk, Pk, F['peak'], wrap_j=True, inside=(top[0], hh * .3, top[2]), flat=True, pick=lambda nn, cc, hh=hh: F['snow'] if cc[1] > hh * .62 and nn[1] > .35 else F['peak'])
+            off = (0, 0, 0) if spur == 0 else (rr * 1.3 * (1 if H(i, 81) > .5 else -1), 0, rr * .4)
+            far.extend(pk.transformed(sk.affine((0, 0, 0, 1), (base[0] + off[0], base[1], base[2] + off[2]))))
+    nr, na = (14, 8, 6)[T.i], (64, 32, 20)[T.i]
+    P = np.zeros((nr, na, 3))
+    for i in range(nr):
+        r = 19 + (190 - 19) * (i / (nr - 1)) ** 1.6
+        for j in range(na):
+            a = 2 * math.pi * j / na
+            y = -13.0 + 2.2 * n1(math.cos(a) * r * .05, 0, math.sin(a) * r * .05, .7, 81, 3) + .8 * S(i, j, 82)
+            P[i, j] = (math.cos(a) * r, y, math.sin(a) * r)
+    surf(far, P, F['cloud'], wrap_j=True, facing=(0, 1, 0))
+    props = {'lightning/plateau': plateau, 'lightning/spires': spires, 'lightning/far': far, 'lightning/crater': crater}
+    for i, g in enumerate(seams):
+        props['lightning/seams/%d' % i] = g
+    return props
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# DARKNESS: the eclipse plain. Core NativeIntroBlackSun keeps these.
+# ---------------------------------------------------------------------------------------------------------------------------
+DARK_MONOLITHS = (55.0, 95.0, 135.0, -55.0, -95.0, -135.0)  # degrees from the hero facing
+DARK_RING, DARK_GATE_Z, DARK_MOON_R = 11.5, -14.0, 5.4
+
+
+def dark_finishes():
+    F = {}
+    F['obsidian'] = sk.fin('dark-obsidian', 0x0e0c14, sk.DETAIL_NONE, smooth=.92, dirt=.15, wear=.5)
+    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x1c1828, sk.DETAIL_NONE, smooth=.8, dirt=.3)
+    F['ash'] = sk.fin('dark-ash', 0x5d5866, sk.DETAIL_PLASTER, smooth=.05, dirt=.4)
+    F['ash-dark'] = sk.fin('dark-ash-dark', 0x3a3642, sk.DETAIL_PLASTER, smooth=.05, dirt=.5)
+    F['basalt'] = sk.fin('dark-basalt', 0x1f1c26, sk.DETAIL_CARVED, smooth=.35, dirt=.7, wear=.55)
+    F['gate'] = sk.fin('dark-gate', 0x2a2632, sk.DETAIL_ASHLAR, smooth=.3, dirt=.8, wear=.6)
+    F['mesa'] = sk.fin('dark-mesa', 0x2c2834, sk.DETAIL_CARVED, smooth=.05, dirt=.5)
+    F['glyph'] = sk.fin('dark-glyph', 0xb07aff, sk.DETAIL_GLOW, glow=1.8)
+    F['crack'] = sk.fin('dark-crack', 0x7a3cd8, sk.DETAIL_GLOW, glow=.8)
+    F['moon'] = sk.fin('dark-moon', 0x020104, sk.DETAIL_NONE, smooth=0.0, dirt=0.0)
+    return F
+
+
+def monolith_at(i, y=0.0):
+    a = FACING + math.radians(DARK_MONOLITHS[i])
+    return (math.sin(a) * DARK_RING, y, math.cos(a) * DARK_RING)
+
+
+def darkness_set(T):
+    F = dark_finishes()
+    plain, stones, far = Geo(), Geo(), Geo()
+    # the obsidian: plates of black glass, a dim violet in the cracks
+    for i, ((cx, cz), poly) in enumerate(hex_cells(21.0, (1.7, 1.7, 1.7)[T.i], 61, jitter=.42)):
+        r = math.hypot(cx, cz)
+        if r > 20.5:
+            continue
+        p = shrink(poly, .02 + .015 * H(i, 2))
+        prism(plain, p, -.25, FLOOR + .008 * S(i, 3), F['obsidian-edge'], F['obsidian'], (S(i, 4) * .006, S(i, 5) * .006), chamfer=.02 if (T.bevel and r < 9) else 0)
+    sides = (48, 28, 16)[T.i]
+    ring_band(plain, -.12, 0, 20.8, F['crack'], sides)
+    # the ash beyond: low dunes rising to the horizon
+    nr, na = (10, 6, 5)[T.i], (64, 32, 20)[T.i]
+    P = np.zeros((nr, na, 3))
+    for i in range(nr):
+        r = 19.5 + (150 - 19.5) * (i / (nr - 1)) ** 1.5
+        for j in range(na):
+            a = 2 * math.pi * j / na
+            y = FLOOR - .2 + (i > 0) * (1.2 * (1 + n1(math.cos(a) * r * .06, 0, math.sin(a) * r * .06, .8, 91, 3) * 2) * min(1, (r - 19.5) / 25) + .02 * r)
+            P[i, j] = (math.cos(a) * r, y, math.sin(a) * r)
+    surf(plain, P, F['ash'], wrap_j=True, facing=(0, 1, 0), pick=lambda nn, cc: F['ash'] if nn[1] > .9 else F['ash-dark'])
+    # the monoliths: leaning slabs on stepped bases, a broken top, glyphs down their inner faces (rig darkness/glyphs/k)
+    glyphs = []
+    for i in range(len(DARK_MONOLITHS)):
+        at = monolith_at(i)
+        a = math.atan2(at[0], at[2]) + math.pi  # its inner face toward the centre: local +z
+        h = 6.2 + 2.2 * H(i, 11)
+        m = Geo()
+        sk.box(m, -1.3, 1.3, -.3, .2, -.8, .8, F['basalt'], T, bevel=.05)
+        sk.box(m, -1.0, 1.0, .2, .5, -.6, .6, F['basalt'], T, bevel=.04)
+        outline = ccw([(-.7, -.3), (.7, -.3), (.7, .3), (-.7, .3)])
+        prism(m, outline, .5, h, F['basalt'], F['basalt'], (S(i, 12) * .35, 0), chamfer=.04 if T.bevel else 0)
+        g = Geo()
+        rows = (9, 6, 4)[T.i]
+        zf = .306
+
+        def stroke(x0, y0, x1, y1, w=.022):
+            dx, dy = x1 - x0, y1 - y0
+            l = math.hypot(dx, dy) or 1.0
+            nx, ny = -dy / l * w, dx / l * w
+            g.face([(x0 + nx, y0 + ny, zf), (x1 + nx, y1 + ny, zf), (x1 - nx, y1 - ny, zf), (x0 - nx, y0 - ny, zf)], F['glyph'], normal=(0, 0, 1))
+        # a single column of runes down the inner face: a stave and its ticks, cut into the stone
+        for k in range(rows):
+            y0 = 1.3 + k * (h - 2.2) / rows
+            hh = (h - 2.2) / rows * .7
+            stroke(0, y0, 0, y0 + hh)
+            for c in range(1 + int(H(i, k, 1) * 2.4)):
+                ty = y0 + hh * (.15 + .7 * H(i, k, c + 2))
+                side = 1 if H(i, k, c + 5) > .5 else -1
+                up = .08 + .1 * H(i, k, c + 7)
+                stroke(0, ty, side * (.16 + .08 * H(i, k, c + 9)), ty + up * (1 if H(i, k, c + 11) > .4 else -1))
+        lean = qmul(sk.quat_axis(0, 1, 0, a), sk.quat_axis(1, 0, 0, -.06 - .05 * H(i, 13)))
+        stones.extend(m.transformed(sk.affine(lean, at)))
+        glyphs.append(g.transformed(sk.affine(lean, at)))
+    # the gate behind the mark, framing the sun: two pillars, a broken lintel
+    ga = math.atan2(FWD[0], FWD[2])
+    gate = Geo()
+    for side in (-1, 1):
+        x0 = side * 3.3
+        y = -.3
+        for c in range(6):
+            hgt = 1.6 + .25 * H(side + 9, c, 1)
+            w = .85 - .03 * c
+            sk.box(gate, x0 - w, x0 + w, y, y + hgt - .02, -.75, .75, F['gate'], T, bevel=.05)
+            y += hgt
+        sk.box(gate, x0 - 1.1, x0 + 1.1, -.3, .4, -1.0, 1.0, F['basalt'], T, bevel=.05)
+        if side == -1:
+            top = y
+    sk.box(gate, -4.3, .6, top, top + 1.2, -.8, .8, F['gate'], T, bevel=.08)
+    chunk = Geo()
+    sk.box(chunk, -1.2, 1.2, -.5, .5, -.7, .7, F['gate'], T, bevel=.08)
+    gate.extend(chunk.transformed(sk.affine(qmul(sk.quat_axis(0, 1, 0, .4), sk.quat_axis(0, 0, 1, .5)), (1.6, .45, 1.2))))
+    stones.extend(yawed(gate, ga, on_line(DARK_GATE_Z)))
+    # obsidian shards jutting from the ground among the monoliths
+    for i in range((16, 9, 5)[T.i]):
+        a = 2 * math.pi * H(i, 21)
+        r = 7 + 9 * H(i, 22)
+        b = (math.sin(a) * r, -.1, math.cos(a) * r)
+        if abs(math.atan2(b[0], b[2]) - FACING) < .35:
+            continue
+        tip = (b[0] + S(i, 23) * .5, .6 + 1.6 * H(i, 24), b[2] + S(i, 25) * .5)
+        sh = Geo()
+        sk.lathe(sh, [(.22 + .15 * H(i, 26), 0), (0, 1)], (0, 0, 0), F['obsidian'], 5, smooth=False)
+        L = math.dist(b, tip)
+        d = tuple((tip[k] - b[k]) / L for k in range(3))
+        ax = sk._norm(sk._cross((0, 1, 0), d))
+        ang = math.acos(max(-1, min(1, d[1])))
+        q = sk.quat_axis(*ax, ang) if ang > 1e-4 else (0, 0, 0, 1)
+        stones.extend(sh.transformed(sk.affine(q, b, (1, L, 1))))
+    # the far mesas
+    for i in range((10, 7, 5)[T.i]):
+        a = 2 * math.pi * (i + .6 * H(i, 31)) / 10
+        r = 95 + 70 * H(i, 32)
+        base = (math.sin(a) * r, -1, math.cos(a) * r)
+        w = 14 + 16 * H(i, 33)
+        hgt = 9 + 14 * H(i, 34)
+        me = Geo()
+        k = 8
+        ring0 = [(math.cos(2 * math.pi * j / k) * w * (.8 + .35 * H(i, j, 35)), 0, math.sin(2 * math.pi * j / k) * w * .55 * (.8 + .35 * H(i, j, 36))) for j in range(k)]
+        ring1 = [(x * .82, hgt, z * .82) for x, y, z in ring0]
+        for j in range(k):
+            j1 = (j + 1) % k
+            me.face([ring0[j], ring0[j1], ring1[j1], ring1[j]], F['mesa'], normal=(ring0[j][0] + ring0[j1][0], 1, ring0[j][2] + ring0[j1][2]))
+        me.face(ring1[::-1], F['mesa'], normal=(0, 1, 0))
+        far.extend(yawed(me, a, base))
+    # the moon: a black disc facing +z (Core turns it to face the lens and slides it over the sun)
+    moon = Geo()
+    n = (48, 32, 20)[T.i]
+    moon.face([(math.cos(2 * math.pi * k / n) * DARK_MOON_R, math.sin(2 * math.pi * k / n) * DARK_MOON_R, 0) for k in range(n)], F['moon'], normal=(0, 0, 1))
+    props = {'darkness/plain': plain, 'darkness/stones': stones, 'darkness/far': far, 'darkness/moon': moon}
+    for i, g in enumerate(glyphs):
+        props['darkness/glyphs/%d' % i] = g
+    return props
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
 # Bank writing and previews
 # ---------------------------------------------------------------------------------------------------------------------------
-BUILDERS = {'fire': fire_set}
+def fire_props(T):
+    statics, rigs = fire_set(T)
+    out = {'fire/' + k: g for k, g in statics.items()}
+    out.update({'fire/' + k: g for k, g in rigs.items()})
+    return out
+
+
+BUILDERS = {'fire': fire_props, 'water': water_set, 'lightning': lightning_set, 'darkness': darkness_set}
+TIERS = ((0, ''), (2, '/low'))   # docs/INTROS-V2.md: "<prop>" the Fine tier, "<prop>/low" the Low tier
 
 
 def bake(geos, ao, floors):
-    """Bake (colours, channels) per Geo; AO over the set's whole scene when `ao`."""
+    """Bake (colours, channels) per Geo; AO over the set's whole scene when `ao` (the moving parts each by itself)."""
     keys = [k for k, g in geos.items() if g.faces]
-    aos = sk.bake_ao([geos[k] for k in keys], distance=1.4, samples=20) if ao else [None] * len(keys)
-    return {k: sk.Bake(geos[k], a, floors=floors, seed=hash(k) & 1023) for k, a in zip(keys, aos)}
+    statics = [k for k in keys if k.count('/') == 1]
+    aos = dict(zip(statics, sk.bake_ao([geos[k] for k in statics], distance=1.4, samples=16))) if ao and statics else {}
+    return {k: sk.Bake(geos[k], aos.get(k), floors=floors, seed=sum(map(ord, k)) & 1023) for k in keys}
 
 
-def build(sets, tiers, ao, preview_dir=None, out=None, stats=False):
+def build(sets, ao, preview_dir=None, out=None, stats=False):
     bank = sk.StageBank()
     bank.far_layers = False
     t0 = time.time()
+    total = 0
     for name in sets:
-        for ti in tiers:
+        for ti, suffix in TIERS:
             T = sk.Tier(ti)
-            statics, rigs = BUILDERS[name](T)
-            geos = {('static', k): g for k, g in statics.items()}
-            geos.update({('rig', k): g for k, g in rigs.items()})
+            props = BUILDERS[name](T)
             floors = (FLOOR, FIRE_FLOOR_Y) if name == 'fire' else (FLOOR,)
+            # source frame -> the bank's Unity space
+            geos = {k: mirrored(g) for k, g in props.items()}
             bakes = bake(geos, ao, floors)
-            for (group, k), bk in bakes.items():
-                om = sk.to_mesh('%s/%s/%s/%s' % (name, group, k, T.name), geos[(group, k)], bk)
-                bank.add('%s/%s/%s/%s' % (name, group, k, T.name), group, om)
-                if stats and om is not None:
-                    print('  %-34s %7d vertices %7d triangles' % (om.name, len(om.positions), sum(len(x) for x in om.submeshes) // 3))
-            if preview_dir and ti == tiers[0]:
-                views = PREVIEWS.get(name, [])
-                sk.preview([(geos[k], bakes[k]) for k in bakes], views, os.path.join(preview_dir, name), size=(960, 540))
+            for k, bk in bakes.items():
+                om = sk.to_mesh(k + suffix, geos[k], bk)
+                group = 'static' if k.count('/') == 1 else 'rig'
+                bank.add(k + suffix, group, om)
+                if om is not None:
+                    total += len(om.positions)
+                    if stats:
+                        print('  %-30s %7d vertices %7d triangles' % (om.name, len(om.positions), sum(len(x) for x in om.submeshes) // 3))
+            if preview_dir and ti == 0:
+                views = [(v, (-e[0], e[1], e[2]), (-l[0], l[1], l[2]), f) for v, e, l, f in PREVIEWS.get(name, [])]
+                placed = [k for k in bakes if not any(k.startswith(x) for x in ('water/wave', 'water/frozen', 'water/ice', 'water/surface', 'darkness/moon'))]
+                sk.preview([(geos[k], bakes[k]) for k in placed], views, os.path.join(preview_dir, name), size=(960, 540))
             print('%s %s: %.1f s' % (name, T.name, time.time() - t0))
+    print('vertices in all', total)
     path = None
     if out:
         path = write(bank, out)
-    if stats or not out:
-        for (group, tier), (n, tris, verts) in sorted(bank.stats.items()):
-            print('%-7s %-5s %4d props %8d triangles %8d vertices' % (group, tier, n, tris, verts))
+    for (group, tier), (n, tris, verts) in sorted(bank.stats.items()):
+        print('%-7s %-5s %4d props %8d triangles %8d vertices' % (group, tier, n, tris, verts))
     return path
 
 
 def write(bank, out):
-    """The bank, straight into `out` (a folder; not the project's Assets: it is never committed)."""
+    """The bank, straight into `out` (a folder; never the project's Assets: it is never committed)."""
     bank.layer()
     os.makedirs(out, exist_ok=True)
     path = os.path.join(out, BANK + '.bytes')
@@ -537,9 +1141,12 @@ def write(bank, out):
     return path
 
 
+# preview views in the source frame: (name, eye, target, fov)
 PREVIEWS = {
-    'fire': [('hero', (1.2, 1.1, 4.2), (0, 1.2, -2), 40), ('wide', (6, 4.5, 14), (0, 2, -6), 55), ('low', (0.4, .3, 2.5), (0, 3.5, -8), 50),
-             ('back', (-3, 2.5, -6), (0, 1, 6), 55), ('top', (0, 40, 1), (0, 0, 0), 60)],
+    'fire': [('hero', (-.8, 1.1, 4.4), (0, 1.2, -2), 40), ('wide', (-4, 4.5, 14), (0, 2, -6), 55), ('low', (.4, .3, 2.5), (0, 3.5, -8), 50), ('top', (0, 40, 1), (0, 0, 0), 60)],
+    'water': [('hero', (-1.0, 1.0, 4.6), (0, 1.3, 0), 34), ('wide', (-1.8, 1.8, 7.5), (0, 3, -10), 56), ('up', (-.5, .4, 3.0), (0, 6, -6), 70), ('back', (0, 2, -18), (0, 3, 6), 60)],
+    'lightning': [('hero', (-1.2, 1.0, 3.6), (0, 1.2, 0), 40), ('wide', (-4.5, 1.2, 8), (0, 2.6, 0), 58), ('top', (0, 18, 6), (0, 0, 0), 44), ('low', (-3, .3, 3.5), (0, 3, -6), 60)],
+    'darkness': [('hero', (-.5, .9, 4.8), (0, 1.3, 0), 32), ('gate', (-2.7, 1.6, 12.2), (5, 4.5, -20), 46), ('low', (-1.1, .3, 5.0), (3, 4.6, -10), 50), ('wide', (8, 6, 18), (0, 1, -4), 60)],
 }
 
 
@@ -548,14 +1155,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out')
     ap.add_argument('--sets', default=','.join(SETS))
-    ap.add_argument('--tiers', default='0,1,2')
     ap.add_argument('--no-ao', action='store_true')
     ap.add_argument('--preview')
     ap.add_argument('--stats', action='store_true')
     a = ap.parse_args(argv)
-    sets = [s for s in a.sets.split(',') if s]
-    tiers = [int(t) for t in a.tiers.split(',')]
-    build(sets, tiers, not a.no_ao, a.preview, a.out, a.stats)
+    build([s for s in a.sets.split(',') if s], not a.no_ao, a.preview, a.out, a.stats)
 
 
 if __name__ == '__main__':
