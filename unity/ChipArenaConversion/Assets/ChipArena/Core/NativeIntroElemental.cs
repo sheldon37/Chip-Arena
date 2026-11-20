@@ -73,7 +73,8 @@ namespace ChipArena.UnityConversion
             if(axis.LengthSquared()>NativeCacheOpenFx.ExactStreak*NativeCacheOpenFx.ExactStreak)
             {
                 var f=v.Look-v.Eye;float l=f.Length();
-                if(l>1e-5f){f/=l;float ax=axis.X,ay=axis.Y,az=axis.Z;if(NativeCacheOpenFx.OntoHeadPlane(v.Eye.X,v.Eye.Y,v.Eye.Z,f.X,f.Y,f.Z,.2f,head.X,head.Y,head.Z,ref ax,ref ay,ref az,ref tp))axis=new Vector3(ax,ay,az);}
+                // (a long one whose head is behind the lens is not drawn: it could not be laid on its plane, and it is not seen)
+                if(l>1e-5f){f/=l;float ax=axis.X,ay=axis.Y,az=axis.Z;if(!NativeCacheOpenFx.OntoHeadPlane(v.Eye.X,v.Eye.Y,v.Eye.Z,f.X,f.Y,f.Z,.2f,head.X,head.Y,head.Z,ref ax,ref ay,ref az,ref tp))return;axis=new Vector3(ax,ay,az);}
             }
             if(axis.LengthSquared()<1e-10f)return;fx.Streak(head,axis,color,width,.01f,1,tp,u,seed);
         }
@@ -184,11 +185,11 @@ namespace ChipArena.UnityConversion
                .Dolly(EruptAt-.05f,L(3.0f,.3f,4.3f),L(2.7f,.32f,3.9f),OnLine(-1.3f,2.4f),OnLine(-1.3f,4.6f),52,48)
                .Crane(EruptAt+.6f,L(1.8f,.5f,2.3f),L(1.5f,.5f,1.8f),6.2f,OnLine(-1.3f,1.0f),OnLine(-1.3f,7.6f),42,46).Ease(NativeIntroEase.InOut)
                .Dolly(WalkFrom,L(.15f,1.25f,4.6f),L(.1f,1.3f,3.25f),new Vector3(0,.08f,0),new Vector3(0,.12f,0),34,31).Follow(NativeEntranceAnchor.Chest,.05f).Handheld(.4f)
-               .Orbit(CrownAt-.15f,Vector3.Zero,30,72,3.0f,2.6f,.45f,.62f,new Vector3(0,1.95f,0),new Vector3(0,2.15f,0),40,42).In(NativeIntroCut.Blend,.3f)
+               .Orbit(CrownAt-.15f,Vector3.Zero,30,72,3.0f,2.6f,.45f,.62f,new Vector3(0,1.95f,0),new Vector3(0,2.15f,0),40,42)
                .Dolly(SlamAt-.08f,L(-3.6f,.45f,5.0f),L(-3.3f,.5f,4.5f),L(0,.7f,-.3f),L(0,.75f,-.2f),48,46)
                .Hero(CardAt-.2f,1,1.2f,3.3f,31).In(NativeIntroCut.Blend,.45f)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
-            Ramps.Ramp(EruptAt,.3f,.32f,.9f).Ramp(SlamAt,.45f,.14f,.3f);
+            Ramps.Ramp(EruptAt,.3f,.32f,.9f);
         }
         /// <summary>Hidden in the fire until the column takes it, then built in from the feet up as it forms.</summary>
         public override float Solid(float t,int bone)
@@ -409,7 +410,7 @@ namespace ChipArena.UnityConversion
                .Dolly(RearAt-.3f,L(.65f,.32f,1.9f),L(.5f,.3f,1.6f),m+L(0,2.4f,-2.4f),m+L(0,4.0f,-3.2f),54,58)
                .Dolly(SweepAt-.05f,L(0,.55f,3.6f),L(0,.6f,3.2f),m+new Vector3(0,1.5f,0),m+new Vector3(0,1.45f,0),58,54)
                .Orbit(FreezeAt-.07f,m,-65,65,3.3f,3.0f,.6f,1.4f,new Vector3(0,1.3f,0),new Vector3(0,1.1f,0),44,40).Ease(NativeIntroEase.Linear)
-               .Dolly(WalkFrom-.05f,L(.15f,1.35f,1.4f),L(.2f,1.3f,3.6f),new Vector3(0,.1f,0),new Vector3(0,.12f,0),38,34).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.35f)
+               .Dolly(WalkFrom-.05f,L(.15f,1.35f,1.4f),L(.2f,1.3f,3.6f),new Vector3(0,.1f,0),new Vector3(0,.12f,0),38,34).Follow(NativeEntranceAnchor.Chest,.05f)
                .Dolly(CardAt-.25f,L(0,.95f,4.9f),L(0,1.0f,4.4f),L(0,1.25f,0),L(0,1.28f,0),32,30).In(NativeIntroCut.Blend,.5f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
             Ramps.Ramp(SweepAt,.5f,.16f,.32f).Ramp(FreezeAt,.22f,.5f,.95f);
@@ -574,12 +575,12 @@ namespace ChipArena.UnityConversion
             // the smash to the strike; a fast orbit; rising with it; wide with the spires firing; the hero frame.
             Rig.Dolly(0,L(4.6f,.42f,7.2f),L(4.1f,.46f,6.5f),L(0,1.8f,0),L(0,3.4f,-1.6f),52,54)
                .Hold(ChargeFrom,L(0,.55f,.9f),L(0,18f,-5f),72).Roll(0,24).Ease(NativeIntroEase.Linear)
-               .Dolly(GatherAt,L(.4f,19f,6.5f),L(.3f,15f,5f),new Vector3(0,0,0),new Vector3(0,.5f,0),40,44).In(NativeIntroCut.Whip,.14f)
+               .Dolly(GatherAt,L(.4f,19f,6.5f),L(.3f,15f,5f),new Vector3(0,0,0),new Vector3(0,.5f,0),40,44)
                .Dolly(StrikeAt,L(3.2f,.25f,3.8f),L(3.0f,.3f,3.5f),L(0,1.0f,0),L(0,.8f,0),62,56)
-               .Orbit(StrikeAt+.3f,Vector3.Zero,40,-140,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44).In(NativeIntroCut.Whip,.12f)
+               .Orbit(StrikeAt+.3f,Vector3.Zero,40,-140,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
                .Crane(RiseFrom,L(1.1f,.55f,2.3f),L(.95f,.55f,2.05f),.9f,new Vector3(0,-.1f,0),Vector3.Zero,38,36).Follow(NativeEntranceAnchor.Head,.04f)
                .Dolly(CallAt-.05f,L(-5.6f,1.2f,8.2f),L(-5.0f,1.4f,7.4f),L(0,3.2f,0),L(0,2.3f,0),58,54)
-               .Hero(CardAt-.55f,-1,1.15f,3.1f,30).In(NativeIntroCut.Blend,.4f)
+               .Hero(CardAt-.55f,-1,1.15f,3.1f,30)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
             Ramps.Ramp(StrikeAt,.22f,.38f,.9f);
         }
