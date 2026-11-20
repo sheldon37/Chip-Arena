@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             Anchors(root);
             IntroCardChecks.Run();
             int intros=0;foreach(var e in NativeIntroCatalog.Entries){Intro(e);Faithful(e);intros++;}
-            IntroPoseChecks.Run(false,false);IntroAnchorChecks.Run(root);
+            IntroPoseChecks.Run(false,false);IntroAnchorChecks.Run(root);IntroPackChecks.Run(root);
             Console.WriteLine("PASS intros v2: "+count+" checks (the archive and its fallback, the registry, the rig and the ramps, the void, the wiring, the model-aware anchors, the weapon sockets, the intro's own light; "+intros+" registered intro"+(intros==1?"":"s")+": entry, determinism, allocation, budgets, Reduced effects, streaks, cues, the keyed pose drawn faithfully on the model (worst head, chest or pelvis facing "+worstFacing.ToString("0.00")+" deg"+worstFacingAt+"))");
         }
 
