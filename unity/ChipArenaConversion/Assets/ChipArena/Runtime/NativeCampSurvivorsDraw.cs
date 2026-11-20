@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
         {
             camp.Skinned.Clear();CampSkinnedCount=0;
             var bank=CampMotion();var eye=WorldEye;
-            if(bank==null||eye==null||!VisualBodiesOn||visualBodyPrefab==null){CampSurvivorsHide();return;}
+            if(bank==null||eye==null||!ModelBody((string)null)||visualBodyPrefab==null){CampSurvivorsHide();return;}
             // the posts shown and where they are; a rescue joining (U) or the cheer key (Y) brings the civilians' cheer
             campShown.Clear();foreach(var (p,at,yaw) in NativeCamp.PreviewPosts(rescued))campShown.Add((p,new Vector3(at.x,at.y,at.z),yaw));
             if(campRescued>=0&&rescued>campRescued)campCheerAt=now;campRescued=rescued;
