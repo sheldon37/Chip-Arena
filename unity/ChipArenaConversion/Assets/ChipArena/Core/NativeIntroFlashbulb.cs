@@ -119,10 +119,13 @@ namespace ChipArena.UnityConversion
             set.Piece("flashbulb/neon",Vector3.Zero,Still,1,White,White*(.15f+2.4f*neon));
             set.Piece("flashbulb/posters",Vector3.Zero,Still,1,White,White*(.3f+1.3f*NativeEntranceMath.Ramp(t,.1f,.4f)));
             float open=NativeEntranceMath.Ramp(t,DoorsAt,DoorsAt+.3f);
-            set.Piece("flashbulb/glass",Vector3.Zero,Still,1,White,Warm*(.5f+1.9f*open));
+            // The lit glass: its own warm colour times a warm glow, which High's bloom and tone map wash to a warm white; Low draws without
+            // them, where the same product clips to flat yellow (the first Low captures), so there the glass's own colour carries it.
+            var lit=Context.Low?White*.45f:Warm;
+            set.Piece("flashbulb/glass",Vector3.Zero,Still,1,White,lit*(.5f+1.9f*open));
             float d=Doors(t);
-            set.Piece("flashbulb/leaf",U(-1.0f,0,FrontZ+.08f),UYaw(-d),1,White,Warm*(.5f+1.2f*open));
-            set.Piece("flashbulb/leaf",U(1.0f,0,FrontZ+.08f),UYaw((float)Math.PI+d),1,White,Warm*(.5f+1.2f*open));
+            set.Piece("flashbulb/leaf",U(-1.0f,0,FrontZ+.08f),UYaw(-d),1,White,lit*(.5f+1.2f*open));
+            set.Piece("flashbulb/leaf",U(1.0f,0,FrontZ+.08f),UYaw((float)Math.PI+d),1,White,lit*(.5f+1.2f*open));
             set.Piece("flashbulb/globes",Vector3.Zero,Still,1,White,Warm*2.2f);
             return true;
         }
