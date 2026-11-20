@@ -176,6 +176,8 @@ namespace ChipArena.UnityConversion
                     var holder=entranceGhostHolders[i]??=captured.Create(transform,-900-i);holder.Root.transform.SetPositionAndRotation(rootM.GetColumn(3),rootM.rotation);
                     // (Its hands onto the ghost's weapon frames, so the model's own weapon sits in them: VisualLiveGhostWeapon.)
                     asModel=VisualLiveGhostDraw(2L<<40|(uint)i,holder,introActor,entranceGhostPose,Vector3.zero,"NativeEntranceGhost",tint,g.Opacity,new Vector4(scan.r,scan.g,0,0),entranceGhostActor);
+                    // (Intros v2: the ghost's hair as the live body wears it, hidden under the helmet: IntroV2GhostHair.)
+                    if(asModel&&script is INativeIntroV2)IntroV2GhostHair(2L<<40|(uint)i);
                 }
                 if(!asModel)sourceModels.Queue(model,rootM,entranceGhostBone,null,0,null,tint,scan,g.Opacity);
                 if(weaponGhost!=null&&!isHolo)

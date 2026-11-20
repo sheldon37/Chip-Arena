@@ -142,6 +142,14 @@ namespace ChipArena.UnityConversion
             }
             if(mask!=0)script.SetDrawn(t,introDrawn,mask);
         }
+        /// <summary>A v2 intro's entrance ghost (an afterimage, Whiteout's frost coat) wears its hair as the live body does: hidden under the
+        /// robot's helmet, pressed under a hat (VisualHatHair). Its body is made bare of that (VisualLiveGhostDraw), so the hair stood out
+        /// through the helmet as a see-through spiky crown (Whiteout's close-up, 2026-11-20).</summary>
+        private void IntroV2GhostHair(long key)
+        {
+            if(!visualLiveGhosts.TryGetValue(key,out var g)||g.Body?.Root==null||introModel==null||introModelFrame!=Time.frameCount||!visualBodies.TryGetValue(introModel,out var live)||live.Root==null)return;
+            g.Body.Helm=live.Helm;VisualHatHair(g.Body,entranceGhostActor?.Hat);
+        }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet
         {
