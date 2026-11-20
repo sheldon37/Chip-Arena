@@ -965,7 +965,10 @@ namespace ChipArena.UnityConversion
             var right=Vector3.Normalize(Vector3.Cross(f,Up));var up=Vector3.Normalize(Vector3.Cross(right,f));float k=nameScale,letterH=NativeArchitectFont.Height*k;
             var origin=NameCentre-right*(nameWidth*k*.5f)-up*(letterH*.5f);
             // ---- the code glyphs flying up out of the floor's seams to each letter's strokes, the letter lit as they arrive ----
-            int per=thin<1?3:8;
+            // (the name's draw calls kept inside the dev budgets whatever its letters: a long name of heavy letters sheds the outer
+            // layers, then the flying glyphs and the rays, never its strokes)
+            int segs=nameSegs.Count/6;int budget=thin<1?190:440;int layers=segs*3<=budget?3:segs*2<=budget?2:1;if(thin<1&&layers==3)layers=2;
+            int per=segs>budget?1:thin<1?3:8;
             for(int i=0;i<nameLetters;i++)
             {
                 float arrive=LetterAt(i);if(t>arrive+LetterTime||t<arrive-GlyphFlight)continue;
@@ -981,7 +984,6 @@ namespace ChipArena.UnityConversion
             // ---- the forged strokes: an ember glow, a gold body and a white-gold molten core, each letter white-hot as it closes,
             // pulsing as the whole name completes and settling to a slow molten shimmer ----
             float done=LetterAt(nameLetters-1)+LetterTime;float pulse=1.1f*Flash(t,done,.03f,.55f);
-            int segs=nameSegs.Count/6;int layers=thin<1?(segs>70?1:2):(segs>120?2:3);
             float core=letterH*.075f,mid=letterH*.16f,outer=letterH*.34f;
             float sweep=NativeEntranceMath.Clamp01((t-13.9f)/1.0f);float sweepX=-.15f+1.3f*sweep;
             for(int s=0;s<nameSegs.Count;s+=6)
@@ -999,7 +1001,7 @@ namespace ChipArena.UnityConversion
             }
             // ---- light rays from behind the name: a slow sunburst fanned above and beside it (rays, never a ring), flaring as it is
             // forged and settling ----
-            int rays=(int)(22*thin);var behind=NameCentre+f*.7f;float rl=level*(.2f+.9f*pulse+.5f*Flash(t,NameStart+.15f,.05f,.9f));
+            int rays=segs>budget?0:(int)(22*thin);var behind=NameCentre+f*.7f;float rl=level*(.2f+.9f*pulse+.5f*Flash(t,NameStart+.15f,.05f,.9f));
             for(int i=0;i<rays;i++)
             {
                 float ang=(-.35f+3.84f*(i+.5f*R(13100,i))/rays)+.02f*(t-NameStart);var d=right*(float)Math.Cos(ang)+up*(float)Math.Sin(ang);

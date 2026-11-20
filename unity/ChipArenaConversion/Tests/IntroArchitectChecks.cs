@@ -190,6 +190,13 @@ namespace ChipArena.UnityConversion
                     segs.Clear();float ink=NativeArchitectFont.Strokes(c,0,segs);Check(ink>0&&segs.Count>0&&segs.Count%6==0,"strokes for "+c);
                     for(int i=0;i<segs.Count;i+=6)Check(segs[i]>=-.5f&&segs[i]<=4.5f&&segs[i+2]>=-.5f&&segs[i+2]<=4.5f&&segs[i+1]>=-1&&segs[i+1]<=7&&segs[i+3]>=-1&&segs[i+3]<=7,"the strokes of "+c+" inside the cell");
                 }
+                // the heaviest 20-letter name (every letter the most strokes the font has) stays inside the dev budgets on High and Low
+                foreach(bool low in new[]{false,true})
+                {
+                    var hv=Make(false,low,"88888888888888888888");var hs=new Sink{CheckPlane=false};int peak=0;
+                    for(int f=(int)(NativeIntroArchitect.Drop*60);f<=(int)(NativeIntroArchitect.Total*60);f++){Frame(hv,f/60f,hs,pose,lights);peak=Math.Max(peak,hs.Fx);}
+                    Check(peak<=(low?FxLow:FxHigh),"the heaviest name inside the effects budget"+(low?" (Low)":" (High)")+" ("+peak+")");
+                }
                 // a name the font can't write is left to the card; a 20-letter name fits the sky
                 var s=Make(false,false,"雪雪雪雪");var sink=new Sink();Frame(s,13.5f,sink,pose,lights);int cjk=sink.Fx;s.Context=new NativeIntroContext{Name="WWWWWWWWWWWWWWWWWWWW",Quality=1};Frame(s,15f,sink,pose,lights);Check(sink.Fx>cjk,"a long name is written");
             }
