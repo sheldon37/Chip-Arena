@@ -125,6 +125,7 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--intro-elemental")IntroElementalChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--intro-elemental")return 0;
             if(args.Length>=1&&args[0]=="--intro-elemental-probe"){IntroElementalChecks.Probe(args);return 0;}
+            if(args.Length>=1&&args[0]=="--intro-elemental-pose"){IntroElementalChecks.Pose(args);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--intro-performance")IntroPerformanceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--intro-performance")return 0;
             if(args.Length==1&&args[0]=="--deploy-performance"){DeployPerformanceChecks.Run(ProjectRoot());return 0;}

@@ -627,6 +627,7 @@ def water_finishes():
     F['ice-deep'] = sk.fin('water-ice-deep', 0x5cc6e6, sk.DETAIL_NONE, smooth=.18, dirt=0.0)
     F['ice-glow'] = sk.fin('water-ice-glow', 0x8ff4ff, sk.DETAIL_GLOW, glow=1.7)
     F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=1.4)
+    F['ice-glass'] = sk.fin('water-ice-glass', 0x9fecff, sk.DETAIL_GLOW, glow=.5)  # light through the ice (ice_colours facets it)
     F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.12, dirt=0.0)
     F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
     F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
@@ -805,12 +806,12 @@ def wave_colours(bk, g):
     bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
     bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.62 * 255))
     if glow.any():
-        teal, cyan, white = np.array(sk.srgb(0x0a4e6c)), np.array(sk.srgb(0x6ee6ff)), np.array(sk.srgb(0xdffcff))
-        u = np.clip((y - 2.55) / 1.75, 0, 1)
+        teal, cyan, white = np.array(sk.srgb(0x063a52)), np.array(sk.srgb(0x5edfff)), np.array(sk.srgb(0xdffcff))
+        u = np.clip((y - 2.55) / 1.75, 0, 1) ** 1.3
         c = teal + (cyan - teal) * u[:, None]
         c = c + (white - c) * np.clip((y - 4.3) / .3, 0, 1)[:, None]
         bk.colour[glow, :3] = np.round(np.clip(c[glow], 0, 1) * 255).astype(np.uint8)
-        bk.uv1[glow, 1] = (.45 + 1.35 * u[glow] ** 1.4).astype(np.float32)
+        bk.uv1[glow, 1] = (.15 + 1.45 * u[glow] ** 1.6).astype(np.float32)
 
 
 def ice_colours(bk, g):
@@ -828,6 +829,15 @@ def ice_colours(bk, g):
     c = c + (white - c) * (np.clip(rnd2 - .78, 0, 1) * 1.4)[:, None]
     bk.colour[lit, :3] = np.round(np.clip(c[lit], 0, 1) * 255).astype(np.uint8)
     bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.3 * 255))
+    # the faces toward the barrel glow: each facet its own cyan to near white, a little brighter or dimmer (light through the ice)
+    fc = np.repeat(F_, S_)
+    glass = np.array([sk.FINS[i].name == 'water-ice-glass' for i in fc], dtype=bool)
+    if glass.any():
+        deep, pale = np.array(sk.srgb(0x2fb8e6)), np.array(sk.srgb(0xd6fbff))
+        u = np.clip(rnd * .8 + np.clip((P[:, 1].astype(np.float64) - 1.0) / 3.4, 0, 1) * .35, 0, 1)
+        col = deep + (pale - deep) * u[:, None]
+        bk.colour[glass, :3] = np.round(np.clip(col[glass], 0, 1) * 255).astype(np.uint8)
+        bk.uv1[glass, 1] = (.3 + .42 * rnd2[glass]).astype(np.float32)
 
 
 def hearth_colours(bk, g):
@@ -888,7 +898,7 @@ def water_half(T, frozen):
     for tri in ear_clip([(q[0], q[1]) for q in end]):
         g.face([end[k] for k in tri], F['ice-deep'] if frozen else F['wave-deep'], normal=(0, 0, -1))
     if frozen:
-        pick = lambda nn, cc: F['frost'] if (cc[1] > 4.2 or cc[1] < .45) else (F['ice'] if nn[0] < .2 else F['ice-deep'])
+        pick = lambda nn, cc: F['frost'] if (cc[1] > 4.2 or cc[1] < .45) else (F['ice'] if nn[0] < .2 else F['ice-glass'])
         grid(g, P, F['ice'], flat=True, inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
         # a bright rim along the crest and down the curl's edge, proud of the ice
         rim = Geo()

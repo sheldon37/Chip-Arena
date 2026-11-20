@@ -49,9 +49,13 @@ namespace ChipArena.UnityConversion
                 Check(entry==null||Math.Abs(entry.Duration-s.IntroTotal)<1e-4f&&Math.Abs(entry.NameAt-s.IntroNameAt)<1e-4f,s.Style+" registry length and name beat");
                 Check(s.IntroTotal>=6&&s.IntroTotal<=8.5f,s.Style+" 6-8.5 s");
                 Check(s.SetBank=="ChipArenaIntroElemental",s.Style+" bank");
-                // the model's clips: from the first window to the end, in order, each a staff clip the motion bank has (mirrored: the staff hand)
-                {string first=null;float lastEnd=-1;for(float t=0;t<=s.IntroTotal;t+=.02f){if(s.Clip(t,out var clip,out float time)){first??=clip;Check(Known(clip),s.Style+" clip "+clip);Check(time>=-1e-4f,s.Style+" clip time");lastEnd=t;}else Check(first==null,s.Style+" never leaves its clips for the keys (a pop) at "+t);}
-                 Check(first!=null&&lastEnd>=s.IntroTotal-.03f,s.Style+" plays the model's clips to the end");}
+                // bespoke keyed animation only (owner 2026-11-20: "we dont need the matches own annimation system"): no motion-bank clip
+                // at any time; the keyed pose is finite, its feet on the floor, its head within a third of a turn of its chest
+                for(float t=0;t<=s.IntroTotal;t+=.02f)Check(!s.Clip(t,out _,out _),s.Style+" plays no match clip at "+t);
+                {var kp=new CapturedRig.Pose();for(float t=0;t<=s.IntroTotal;t+=.05f){s.Pose(t,kp,out var kroot,out var krot);kp.World();
+                    for(int j=0;j<22;j++){var p=kp.WorldPosition[j];Check(float.IsFinite(p.X)&&float.IsFinite(p.Y)&&float.IsFinite(p.Z),s.Style+" joint "+j+" finite at "+t);}
+                    var hd=Vector3.Transform(Vector3.UnitZ,kp.WorldRotation[CapturedRig.Head]);var ch=Vector3.Transform(Vector3.UnitZ,kp.WorldRotation[CapturedRig.Chest]);hd.Y=0;ch.Y=0;
+                    if(hd.LengthSquared()>.04f&&ch.LengthSquared()>.04f){float turn=(float)Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(hd),Vector3.Normalize(ch)),-1,1));Check(turn<.62f,s.Style+" head within a third of a turn of its chest at "+t+" ("+turn.ToString("0.00",CultureInfo.InvariantCulture)+" rad)");}}}
                 // the set: every piece through the bank, the void without it
                 var set=new Set{Bank=true};
                 for(float t=0;t<=s.IntroTotal;t+=.25f){set.Pieces=0;s.Set(t,set);Check(set.Pieces>=4&&set.Pieces<=80,s.Style+" set pieces "+set.Pieces+" at "+t);Check(set.Primitives==0,s.Style+" no primitives over the bank");}
@@ -130,6 +134,24 @@ namespace ChipArena.UnityConversion
                     var feet=(s.Anchor(NativeEntranceAnchor.LeftFoot,t)+s.Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;feet.Y=NativeEntranceStage.FloorY;
                     Console.WriteLine($"  t {t:0.00} root {F(root)} head {F(s.Anchor(NativeEntranceAnchor.Head,t))} lhand {F(lh)} tip {F(tip)} axis {F(d)} rhand {F(s.Anchor(NativeEntranceAnchor.RightHand,t))} feet {F(s.Anchor(NativeEntranceAnchor.LeftFoot,t))}{F(s.Anchor(NativeEntranceAnchor.RightFoot,t))} eye {F(v.Eye)} look {F(v.Look)} fov {v.Fov:0}"
                         +$" screen feet {Screen(feet)} chest {Screen(s.Anchor(NativeEntranceAnchor.Chest,t))} top {Screen(s.Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.24f,0))}");
+                }
+            }
+        }
+        /// <summary>`--intro-elemental-pose id t...`: the keyed pose's joints (world, source frame) and the staff, one line a joint, for
+        /// stick-figure sheets (the keyed animation checked without the Editor).</summary>
+        public static void Pose(string[] args)
+        {
+            var pose=new CapturedRig.Pose();string F(float v)=>v.ToString("0.000",CultureInfo.InvariantCulture);
+            foreach(var s in Scripts())
+            {
+                if(args.Length>1&&!s.Style.Contains(args[1]))continue;
+                for(int i=2;i<args.Length;i++)
+                {
+                    if(!float.TryParse(args[i],NumberStyles.Float,CultureInfo.InvariantCulture,out float t))continue;
+                    s.Pose(t,pose,out var root,out var rot);pose.World();
+                    for(int j=0;j<22;j++){var p=root+Vector3.Transform(pose.WorldPosition[j],rot);Console.WriteLine($"P {s.Style} {F(t)} {j} {F(p.X)} {F(p.Y)} {F(p.Z)}");}
+                    var hand=s.Anchor(NativeEntranceAnchor.LeftHand,t);var tip=s.Anchor(NativeEntranceAnchor.LeftTip,t);var ax=Vector3.Normalize(tip-hand);var heel=tip-ax*(NativeIntroElementalScript.StaffHead-NativeIntroElementalScript.StaffHeel);
+                    Console.WriteLine($"S {s.Style} {F(t)} {F(heel.X)} {F(heel.Y)} {F(heel.Z)} {F(tip.X)} {F(tip.Y)} {F(tip.Z)}");
                 }
             }
         }
