@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
         // ---- the light: the moon behind, the clearing's blue dark, the gathering arrowhead, the bloom, the lanterns ----
         public override void Lights(float t,NativeEntranceLights l)
         {
-            l.Clear();var far=NativeEntranceFx.Hex(0x0c1424);l.Background=far;l.Fog=far;l.FogNear=10;l.FogFar=150;l.DriveProbe=true;
+            l.Clear();var far=NativeEntranceFx.Hex(0x0c1424);l.Background=far;l.Fog=far;l.FogNear=10;l.FogFar=420;l.DriveProbe=true;
             float bloom=Flash(t,Bloom,.03f,.6f);
             l.Sky=NativeEntranceFx.Hex(0x3a4a7a,.32f+.6f*bloom);l.Ground=NativeEntranceFx.Hex(0x1a2418,.22f);
             l.Directional(Moon,Moonlight*(.85f));l.Directional(SDir(.3f,.6f,1),NativeEntranceFx.Hex(0x4a6aa0,.14f));

@@ -242,7 +242,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(1.6f,"intro2.onebreath.drone","turret.servo","electric-hook",.35f),
             new NativeIntroCue(GlintAt,"intro2.onebreath.glint","ui.install.catch","ui",.4f,1.4f),
             new NativeIntroCue(GlintAt+.25f,"intro2.onebreath.lock","turret.lock","ui",.5f),
-            new NativeIntroCue(BreathFrom+.02f,"intro2.onebreath.inhale",null,null,.6f),
+            new NativeIntroCue(BreathFrom+.02f,"intro2.onebreath.inhale","pve.ironworks.stoker.breath",null,.5f),
             new NativeIntroCue(BreathFrom+.4f,"intro2.onebreath.heart","structure.thud","hit",.5f,.6f),
             new NativeIntroCue(BreathFrom+.62f,"intro2.onebreath.heart","structure.thud","hit",.45f,.6f),
             new NativeIntroCue(ShotAt,"intro2.onebreath.shot","gun.rifle.shot","rifle",1.0f),
@@ -250,7 +250,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(HitAt,"intro2.onebreath.hit","impact.glass","explosion",.8f),
             new NativeIntroCue(HitAt+.05f,"intro2.onebreath.fall","turret.break","explosion",.6f),
             new NativeIntroCue(CaseLands,"intro2.onebreath.case","gun.reload.end","reload-end",.45f,1.5f),
-            new NativeIntroCue(CaseLands+.1f,"intro2.onebreath.hiss",null,null,.35f),
+            new NativeIntroCue(CaseLands+.1f,"intro2.onebreath.hiss","chip.bomb.fuse-hiss",null,.3f),
             new NativeIntroCue(FallTo,"intro2.onebreath.crash","blast.debris","explosion",.45f,.7f),
             new NativeIntroCue(RiseFrom+.2f,"intro2.onebreath.rise","gun.reload.start","reload-start",.35f,.8f),
         };

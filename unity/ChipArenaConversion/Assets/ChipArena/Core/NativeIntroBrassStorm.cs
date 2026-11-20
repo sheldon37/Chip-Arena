@@ -265,7 +265,7 @@ namespace ChipArena.UnityConversion
                 new NativeIntroCue(Flood1,"intro2.brass.flood","ui.install.lock","metal",.6f,.7f),
                 new NativeIntroCue(Flood2,"intro2.brass.flood","ui.install.lock","metal",.6f,.68f),
                 new NativeIntroCue(Flood3,"intro2.brass.flood","ui.install.lock","metal",.6f,.72f),
-                new NativeIntroCue(Flood1+.05f,"intro2.brass.hum",null,null,.35f),
+                new NativeIntroCue(Flood1+.05f,"intro2.brass.hum","boss.hum.row.buzz",null,.35f),
                 new NativeIntroCue(StepUp+.28f,"intro2.brass.boot","move.land","jump",.4f),
                 new NativeIntroCue(Rack,"intro2.brass.rack","gun.reload.start","reload-start",.8f),
             };

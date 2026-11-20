@@ -115,8 +115,10 @@ drawn by the runtime from the intro's view (`INativeIntroBow`).
 
 Each intro is cues only (no bed). Every cue names a generated key (`intro2.<intro>.<cue>`), an existing bank key (`alt`) and a
 built-in clip, so it plays synced before generation. Cues sit on the presentation clock, so the slowed beats (each machine-gun
-round, the bullet's strike) slow with the picture. A few cues are generated-key only (the smoke blow, the breath, the grove, the
-lamp hum, the rain hiss): silent until generated. The requests (55 keys, 110 takes, about 200 s) are batched by the framework's
+round, the bullet's strike) slow with the picture. Until the batch is generated the existing sounds carry every cue; the quiet
+ones use the nearest fits (the smoke blow `structure.whoosh`, the held breath `pve.ironworks.stoker.breath`, the case's steam
+`chip.bomb.fuse-hiss`, the floods' warm-up `boss.hum.row.buzz`). Only the grove's night air is generated-key only (nothing existing
+fits a quiet forest): silent until generated. The requests (55 keys, 110 takes, about 200 s) are batched by the framework's
 `tools/intros/compile_sound_requests.py`.
 
 ## Rules kept

@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
                .Dolly(1.08f,L(-1.18f,1.56f,.28f),L(-1.06f,1.57f,.36f),L(0,1.56f,.25f),L(0,1.58f,.25f),24,22).Focus(0,0,.55f)
                .Dolly(1.62f,L(-.78f,1.74f,-2.25f),L(-.7f,1.72f,-1.95f),bellLook,bellLook+new Vector3(0,.05f,0),16,14).Focus(0,0,.3f)
                .Dolly(2.24f,L(-1.25f,1.02f,1.45f),L(-1.05f,1.0f,1.25f),L(-.25f,.98f,.05f),L(-.22f,1.0f,.08f),26,24).Focus(0,0,.6f)
-               .Dolly(2.78f,L(-7.3f,1.4f,3.0f),L(-6.95f,1.46f,3.3f),L(.5f,1.9f,3.9f),L(.5f,1.75f,4.1f),44,42).Focus(0,0,.2f)
+               .Dolly(2.78f,L(-5.6f,1.55f,-3.2f),L(-5.3f,1.62f,-2.75f),L(1.3f,2.6f,4.0f),L(1.4f,2.45f,4.1f),45,43).Focus(0,0,.2f)
                // the bullet: riding beside it from the muzzle to the bell, through the falling boards
                .Dolly(ShotAt-.02f,muzzle-dir*.55f+side*.32f+new Vector3(0,.16f,0),hit-dir*1.1f+side*.42f+new Vector3(0,.22f,0),muzzle+dir*3,hit+dir*.4f,52,46).Ease(NativeIntroEase.Linear)
                .Dolly(HitAt+.02f,L(4.8f,.62f,6.1f),L(4.5f,.7f,6.35f),L(2.3f,1.4f,10.2f),L(1.6f,.7f,8.4f),42,40).Focus(0,0,.2f)
@@ -297,7 +297,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(HitAt+.01f,"intro2.sundown.bell","impact.metal","metal",1.0f,.5f),
             new NativeIntroCue(Ground,"intro2.sundown.thud","impact.ground","stone",.9f,.8f),
             new NativeIntroCue(Ground+.08f,"intro2.sundown.roll","structure.gravel","wood",.55f),
-            new NativeIntroCue(BlowAt,"intro2.sundown.blow",null,null,.5f),
+            new NativeIntroCue(BlowAt,"intro2.sundown.blow","structure.whoosh",null,.35f,1.1f),
             new NativeIntroCue(LastRing,"intro2.sundown.ting","impact.metal","metal",.4f,1.3f),
         };
         public override NativeIntroCue[] Cues=>cues;
