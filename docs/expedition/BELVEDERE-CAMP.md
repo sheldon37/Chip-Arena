@@ -20,7 +20,8 @@ Until Astra's A1 builds the hub blocks, nothing stands on the plaza floor that a
 - No survivor is drawn in a live run until A1's structures exist.
 
 `CampChecks` holds every piece's envelope and base to these rules. With `CHIPARENA_CAMP_BANK` set, it also holds every vertex of the
-bank's meshes to them. `camp_bank.py` runs the same check when it builds the bank.
+bank's meshes to them, and checks that no face lies flat on a surface the hub already draws (the floor and the dress's asphalt
+at y 0, the fence's inner face, its top), which would z-fight. `camp_bank.py` runs the envelope check when it builds the bank.
 
 ## Part 1: the live camp
 

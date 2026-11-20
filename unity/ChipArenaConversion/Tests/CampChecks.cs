@@ -22,7 +22,7 @@ using ChipArena.UnityConversion;
 //  - the runtime: the hook lines, the preview only in Editor and development builds and only in the Developer walk, no collider,
 //    physics or wire in the camp's files;
 //  - with CHIPARENA_CAMP_BANK (the bank built by tools/stages/camp_bank.py): every key there, every mesh inside its envelope (the art
-//    rules on the real triangles), and the triangle budget.
+//    rules on the real triangles), no face flat on the floor, the fence's inner face or its top (z-fighting), and the triangle budget.
 internal static class CampChecks
 {
     private static int checks;
@@ -305,6 +305,47 @@ internal static class CampChecks
                 }
             }
         }
+        // no face lies flat on a surface the hub already draws, facing the same way (the floor and the dress's asphalt at y 0, the
+        // fence's inner face where the fence stands, its top): that would z-fight (H1, 2026-11-20)
+        V3 W(System.Numerics.Vector3 p, NativePackBank.Part part, float[] place)
+        {
+            var q = part.Place; float x = p.X * q.M11 + p.Y * q.M21 + p.Z * q.M31 + q.M41, y = p.X * q.M12 + p.Y * q.M22 + p.Z * q.M32 + q.M42, z = p.X * q.M13 + p.Y * q.M23 + p.Z * q.M33 + q.M43;
+            return new V3(place[0] * x + place[1] * y + place[2] * z + place[3], place[4] * x + place[5] * y + place[6] * z + place[7], place[8] * x + place[9] * y + place[10] * z + place[11]);
+        }
+        int flat = 0;
+        void Flat(string key, float[] place)
+        {
+            var prop = bank.Find(key + "/0"); if (prop == null) return;
+            foreach (var part in prop.Parts)
+            {
+                var m = bank.Meshes[part.Mesh];
+                foreach (var sm in m.Submeshes)
+                for (int t = 0; t + 2 < sm.Indices.Length; t += 3)
+                {
+                    V3 a = W(m.Positions[sm.Indices[t]], part, place), b = W(m.Positions[sm.Indices[t + 1]], part, place), c = W(m.Positions[sm.Indices[t + 2]], part, place);
+                    V3 u = new V3(b.x - a.x, b.y - a.y, b.z - a.z), v = new V3(c.x - a.x, c.y - a.y, c.z - a.z);
+                    var nx = u.y * v.z - u.z * v.y; var ny = u.z * v.x - u.x * v.z; var nz = u.x * v.y - u.y * v.x; var len = (float)Math.Sqrt(nx * nx + ny * ny + nz * nz);
+                    if (len < 1e-9f) continue; nx /= len; ny /= len; nz /= len;
+                    bool On(float k0, float k1, float k2, float at) => Math.Abs(k0 - at) < .003f && Math.Abs(k1 - at) < .003f && Math.Abs(k2 - at) < .003f;
+                    string why = null;
+                    if (ny > .9f && On(a.y, b.y, c.y, 0)) why = "on the floor";
+                    else if (ny > .9f && On(a.y, b.y, c.y, NativeCamp.FenceTop) && Math.Max(Math.Abs(a.x), Math.Abs(a.z)) >= NativeCamp.Inner - .003f) why = "on the fence top";
+                    else
+                        for (int side = 0; side < 4 && why == null; side++)
+                        {
+                            // side 0 north (+z), 1 east (+x), 2 south (-z), 3 west (-x); the inner face looks back into the camp
+                            float Nrm(V3 p) => side == 0 ? p.z : side == 1 ? p.x : side == 2 ? -p.z : -p.x;
+                            float Along(V3 p) => side == 0 || side == 2 ? p.x : p.z;
+                            float inward = side == 0 ? -nz : side == 1 ? -nx : side == 2 ? nz : nx;
+                            if (inward > .9f && On(Nrm(a), Nrm(b), Nrm(c), NativeCamp.Inner) && Math.Abs(Along(a)) >= NativeCamp.GateHalf && a.y <= NativeCamp.FenceTop) why = "on the fence's inner face";
+                        }
+                    if (why != null) { flat++; Check(false, key + " lays a face " + why + " at " + Fmt(a) + " (z-fighting)"); }
+                }
+            }
+        }
+        foreach (var p in l.Pieces) foreach (var key in p.Kind == NativeCamp.Kind.WarBoard ? Enumerable.Range(0, 5).Select(i => "camp/board/war-" + i).ToArray() : new[] { p.Key }) Flat(key, p.Place);
+        foreach (var key in new[] { "camp/static/strands", "camp/static/sails", "camp/static/cables" }) Flat(key, new float[] { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 });
+        Check(flat == 0, "no camp face lies on the floor, the fence's inner face or its top (" + flat + ")");
         long fineTris = 0;
         foreach (var p in l.Pieces)
         {
