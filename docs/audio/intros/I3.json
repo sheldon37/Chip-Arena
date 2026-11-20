@@ -1,0 +1,530 @@
+{
+  "author": "I3",
+  "sounds": [
+    {
+      "key": "intro2.stillrain.rain",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 4,
+      "targetSeconds": {
+        "min": 3.3,
+        "max": 3.45
+      },
+      "levelDb": -12,
+      "fadeOutMs": 30,
+      "prompt": "Steady night rain falling on wet stone paving and shallow pools in a small courtyard, a soft even hiss with close drips, cutting off at once at the end, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.thunder",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 3,
+      "targetSeconds": {
+        "min": 2.2,
+        "max": 2.8
+      },
+      "levelDb": -10,
+      "fadeOutMs": 400,
+      "prompt": "Distant rolling thunder far away, a deep low rumble that swells and fades, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.stance",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.8
+      },
+      "levelDb": -18,
+      "fadeOutMs": 120,
+      "prompt": "Cloth rustling and a soft shift of weight on wet stone, a quiet sliding footstep, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.koiguchi",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.5,
+      "targetSeconds": {
+        "min": 0.15,
+        "max": 0.4
+      },
+      "levelDb": -12,
+      "fadeOutMs": 40,
+      "prompt": "A tiny crisp click of a katana guard pushed out of its lacquered scabbard by a thumb, metal on wood, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.cut",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.35,
+        "max": 0.7
+      },
+      "levelDb": -6,
+      "fadeOutMs": 60,
+      "prompt": "A single razor-sharp katana slice through the air, an extremely fast clean whoosh with a bright ringing metal edge, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.still",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.4
+      },
+      "levelDb": -12,
+      "fadeOutMs": 300,
+      "prompt": "A high pure glassy tone hanging in silence, like a crystal glass struck once, time standing still, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.resume",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 4,
+      "targetSeconds": {
+        "min": 3.6,
+        "max": 3.9
+      },
+      "levelDb": -12,
+      "fadeOutMs": 200,
+      "prompt": "Night rain rushing back from silence into a steady downpour on stone and water within half a second, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.bamboo",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 0.9
+      },
+      "levelDb": -8,
+      "fadeOutMs": 120,
+      "prompt": "Thick green bamboo stalks cut through and sliding apart, a sharp woody crack and a hollow creak, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.slide",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.1
+      },
+      "levelDb": -14,
+      "fadeOutMs": 120,
+      "prompt": "A katana blade sliding slowly back into a lacquered wooden scabbard, a long smooth metallic hiss, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.fall",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.0
+      },
+      "levelDb": -12,
+      "fadeOutMs": 200,
+      "prompt": "Tall bamboo stalks falling onto a tiled wall top, hollow wooden knocks and rustling leaves, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.click",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.5
+      },
+      "levelDb": -8,
+      "fadeOutMs": 60,
+      "prompt": "The final click of a katana seating fully home in its scabbard, a crisp decisive snap, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.3,
+        "max": 1.8
+      },
+      "levelDb": -14,
+      "fadeOutMs": 500,
+      "prompt": "A soft deep temple bell tone with a long shimmering tail, calm and still, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.night",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 8,
+      "targetSeconds": {
+        "min": 7.0,
+        "max": 7.4
+      },
+      "levelDb": -16,
+      "fadeOutMs": 400,
+      "prompt": "A jungle at night, insects chirping softly, a few frogs, a slow breeze through big leaves and distant drips, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.hiss",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.1
+      },
+      "levelDb": -10,
+      "fadeOutMs": 200,
+      "prompt": "A low predatory hiss and a throaty growl from a large wild cat, close and menacing, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.coil",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.7
+      },
+      "levelDb": -14,
+      "fadeOutMs": 100,
+      "prompt": "Two curved daggers scraping softly on stone as a predator crouches, a light metallic scrape, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.leap",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.8
+      },
+      "levelDb": -8,
+      "fadeOutMs": 100,
+      "prompt": "A powerful leap, a fast heavy whoosh of a body and cloth through the air with leaves rustling, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.strike",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.7
+      },
+      "levelDb": -6,
+      "fadeOutMs": 100,
+      "prompt": "Two blades plunging hard into soft earth, a heavy wet thud with crunching gravel, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.venom",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.0
+      },
+      "levelDb": -12,
+      "fadeOutMs": 200,
+      "prompt": "A wet acidic splash and a sizzling hiss of venom spattering on leaves, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.rise",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.7
+      },
+      "levelDb": -14,
+      "fadeOutMs": 100,
+      "prompt": "Two daggers pulled up out of the earth with a gritty metallic scrape, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.apex.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 300,
+      "prompt": "A low eerie swelling whoosh that ends in a soft hiss, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.bed",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 8,
+      "targetSeconds": {
+        "min": 7.6,
+        "max": 8.0
+      },
+      "levelDb": -16,
+      "fadeOutMs": 400,
+      "prompt": "A deep stone quarry at night, a low wind moaning over rock, faint crackling embers and distant shifting gravel, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.leap",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.8
+      },
+      "levelDb": -8,
+      "fadeOutMs": 100,
+      "prompt": "A heavy warrior leaping with a huge two-handed sword, a deep whoosh of a massive blade through the air, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.slam",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.4,
+        "max": 1.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 400,
+      "prompt": "A colossal greatsword slamming down into stone ground, a massive deep impact boom with cracking rock, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.crack",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.7
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "Bedrock splitting apart in a spreading fracture, sharp cracking and grinding stone slabs heaving up, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.rumble",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.2
+      },
+      "levelDb": -10,
+      "fadeOutMs": 400,
+      "prompt": "A deep earth rumble with rocks and gravel settling after a huge impact, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.hiss",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 300,
+      "prompt": "Molten rock welling up through fresh cracks, a bubbling sizzling hiss, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.lift",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.8
+      },
+      "levelDb": -12,
+      "fadeOutMs": 150,
+      "prompt": "A heavy greatsword pulled up out of broken stone, a low metallic scrape and falling grit, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.7
+      },
+      "levelDb": -10,
+      "fadeOutMs": 500,
+      "prompt": "A deep resonant anvil strike with a long low ringing tail, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.hall",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 8,
+      "targetSeconds": {
+        "min": 7.0,
+        "max": 7.4
+      },
+      "levelDb": -18,
+      "fadeOutMs": 400,
+      "prompt": "A vast empty stone hall at dawn, a soft high wind through a broken roof, faint settling dust, airy and still, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.grip",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -16,
+      "fadeOutMs": 100,
+      "prompt": "A leather-wrapped sword grip tightening in a gloved hand, a soft creak, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.cut",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 60,
+      "prompt": "An impossibly fast sword slash, a razor whoosh with a bright crystalline edge, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.sever",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.4
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "Light itself shattering like a pane of crystal, a bright glassy split and a shimmering cascade, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.flakes",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.2,
+      "targetSeconds": {
+        "min": 1.5,
+        "max": 2.0
+      },
+      "levelDb": -16,
+      "fadeOutMs": 400,
+      "prompt": "Tiny glittering shards drifting down slowly, a soft sparkling shimmer like small chimes in the wind, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.ribbon",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 0.9
+      },
+      "levelDb": -10,
+      "fadeOutMs": 150,
+      "prompt": "A slow sweeping sword stroke with a warm humming shimmer trailing behind it, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.severeddawn.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.3,
+        "max": 1.7
+      },
+      "levelDb": -14,
+      "fadeOutMs": 500,
+      "prompt": "A clear bright bell-like chime swelling with warmth, isolated, no reverb, no music, no background noise"
+    }
+  ]
+}

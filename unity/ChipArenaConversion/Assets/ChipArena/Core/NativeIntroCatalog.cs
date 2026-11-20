@@ -69,9 +69,9 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Weapon("sword",NativeIntroSeveredDawn.Title,NativeIntroSeveredDawn.Total,NativeIntroSeveredDawn.CardAt,()=>new NativeIntroSeveredDawn(),"I3","A cut so fast it severs the dawn's light."),
             //
-            // daggers
+            NativeIntroEntry.Weapon("daggers",NativeIntroAfterimage.Title,NativeIntroAfterimage.Total,NativeIntroAfterimage.CardAt,()=>new NativeIntroAfterimage(),"I3","Faster than its own image: two echoes cut a beat behind."),
             //
-            // shield
+            NativeIntroEntry.Weapon("shield",NativeIntroHoldTheLine.Title,NativeIntroHoldTheLine.Total,NativeIntroHoldTheLine.CardAt,()=>new NativeIntroHoldTheLine(),"I3","An immovable wall in the breach: a barrage breaks on the shield."),
             //
             NativeIntroEntry.Weapon("greatsword",NativeIntroFaultline.Title,NativeIntroFaultline.Total,NativeIntroFaultline.CardAt,()=>new NativeIntroFaultline(),"I3","The weight that cracks the ground: a plunging slam breaks the quarry floor."),
             //
