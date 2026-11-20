@@ -1,3 +1,83 @@
+## 2026-11-19 — Claude: Meridian's bleed near each instance door (owner request; presentation only)
+
+The owner, ready for the look: "I think were ready for your part of dressing the look now." The request this package answers: "streets are influenced by the instance that is generated (This should modify buildings, nearby enemies, etc.)". This is D3 of the three Meridian dressing agents: plan R3/R12 and W7 on `meridian-b-candidate-3`. See `docs/MERIDIAN-BLEED.md`.
+
+**Branch and status:** branch `claude/meridian-bleed` from shared `8790610c`. Pushed, not merged.
+
+### What changed
+- **The bands (`Core/NativeCityBleed.cs`):** each door's share at a place, measured along that door's route.
+  - The first 10 m off the route cost their own metres; each metre beyond costs 2.
+  - The minimum has a closed form, so the field is exact and continuous: at most 0.005 per 25 cm, against the plan's 0.08.
+  - The plan's band distances: threshold to 30 m, warp to 60, drift to 110, rumour to 160.
+  - `At`, `Band`, `Theme`, `ThemeAt` (for D1's planner) and `ReplacesLamps`.
+  - Kept small for Astra to own from A5a.
+- **The approach dressing:**
+  - `Core/NativeCityBleedDress.cs`, the plan: from the band's outer edge (165 m) to D2's door-front line (12 m). Floor paint, wall pieces, spans, Level 0's ceiling, lamps, rumour signs. Each instance's own materials at warp and threshold.
+  - `Runtime/NativeCityBleedDraw.cs`, the drawer: instanced StageLit two layers up, Low tier by distance or the low graphics tier, lamp glow (dead, flicker, turning) with floor pools, a sky glow over each door, and the fog and ambient drifting with the camera's share.
+- **The bank (`tools/stages/meridian_bleed.py`):**
+  - 61 scripted set pieces at LOD0 and LOD1.
+  - Each instance's drift skins for D1's planner: 4 shapes per theme, aliased to 73 of D1's module keys as `module/<key>@<theme>`.
+  - Every piece is checked against the Core envelope it is placed by.
+- **The walk:**
+  - `Runtime/NativeCityBleedWalk.cs`: the hooks and the door-deal picker. A row per door on the layout menu; N deals the next of five deals that put every instance behind every door; B turns the bleed off and on.
+  - `NativeLayeredCityWalkPreview.cs` gets one call line in each of OpenCityWalk, CloseCityWalk, the keys and the in-walk GUI, plus the menu's picker row. Its DealHalls literal becomes `WalkDeal(seed)`, which still calls DealHalls unchanged, and its menu box is 110 px taller.
+
+### Systems touched
+The Developer walk only (presentation). No collider, nav, horde graph, block, ramp, route, bake tool, rule or wire field.
+
+### Checks
+- `CoreTests --bleed` (BleedChecks): PASS. Five layouts with five deals each (every instance behind every door):
+  - 10,917 pieces, all inside the placement rules (0.25 m, 3.1 m, 3.3 m join keep-out, door fronts, paint 6 cm, paint never on paint);
+  - deterministic per seed and deal;
+  - worst seam 0.005 per 25 cm;
+  - lamps 20% dead and 11% flickering;
+  - at most 599 pieces a walk, 257 within 60 m of an eye, 46 draws.
+- `zfight.py` on three scenes (Crown Hill, The Arcades, The Yards), at tier 0, tier 2, `--floors` and `--with-tier 2`: no pair involves a bleed piece. The pairs reported are the greybox's own coplanar box faces (dress|dress), which are unchanged.
+- `tools/check_unity_compile.py`: PASS (all four assemblies). `git diff --check`: clean.
+- **Full CoreTests, run as relgen5 runs it:**
+  - On `e77d8349` the suite stopped at MapStyleChecks, with 714 groups passed (the bleed's groups among them). That pin is broken on shared itself: Astra's `a15e1183` rewrote the line it pins in `NativeArenaDressing.cs`.
+  - With that pin relaxed locally in the throwaway worktree only, on `f05f26ae`: exit 0, 1,072 groups.
+  - The final commit changes only the bleed's own floor choices since then. `--bleed` and `--layered-walk` pass on it.
+- **Captures:** in the Editor, through a local BoZo capture block (never committed). Two holds: about 6 min, then about 4 min after the review's look fixes.
+  - **What was captured:**
+    - BEFORE: shared `8790610c`'s greybox. AFTER: this branch `5f5a72ff` with its bank.
+    - The walk in at 25 m steps from 175 m to 25 m for Level 0, Ward Zero, City Ironworks and the Poolrooms.
+    - All five thresholds.
+    - 240-frame dollies from 170 m to 14 m for three of them.
+    - High against Low.
+    - The bleed turned off on the branch, which renders shared's greybox: 0.79-0.86 M triangles, against shared's 0.80-0.86 M.
+  - **Rendered triangles a view (Editor):** High up to 0.97 M dressed, against shared's 0.94 M at the same spot; the bleed adds up to about 0.11 M. Low 0.18-0.22 M. Both are well inside the owner's 2,177,224 and 821,492.
+  - **The first hold's mistake:** its capture block named a walk type that the Editor's resting commit (`9319026b`) does not have. The local tool failed to compile on the move back, at about 19:39. Claude took the lock again, removed the block and saw the tool compile (19:40). The block is now reflection-only and is removed before every move back.
+  - **Files:** clips and strips in `F:/Chip Arena Development/scratch/meridian-bleed/look/` (`clips/`, `strip-*.jpg`).
+
+### Animation impact
+None on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+### Voxel dependency
+None.
+
+### Bank
+`F:/Chip Arena Development/scratch/meridian-bleed/bank/ChipArenaLocal/Resources/ChipArenaCityBleed.bytes`: 1,528,962 bytes, with its .meta. Never committed. The integrator packs it into the Drive zip. A build without it draws today's greybox.
+
+### For D1 and the integrator, once `claude/meridian-dress` is on shared
+1. Assign `NativeMeridianDress.ThemeAt = p => walkBleed?.ThemeAt(p)` in OpenCityBleed, and null it in CloseCityBleed. This is D3's to do after merging shared in.
+2. D1's `has` and module table also read `ChipArenaCityBleed`, so `key@theme` resolves.
+3. D1 skips its plain lamps where `ReplacesLamps(p)` is true, and its facade modules where `NativeCityBleedDress.Covers(plan, point, normal)` is true. The bleed substitutes; it does not add.
+4. Refresh `VARIANT_KEYS` in `meridian_bleed.py` if D1's module families have changed.
+
+### For Astra
+- **Zombie outfits by spawn (W7):** the walk has no zombies, so this is not wired. For the live run, `ZombieModelOf` should take `NativeCityBleedDress.OutfitOf(NativeCityBleed.Theme(instance))` for the dominant door at the minion's spawn entry, at drift share or more. Cache it per id.
+- **Moving onto the live run:** build `new NativeCityBleed(doors)` from the run's route polylines and hall deal, and `NativeCityBleedDress.Build(map, bleed, streets, worldSeed)` with each leg's width and kind. Call `NativeCityBleedDraw.Open/Close` on the hub's open and leave. Keep the join circles 8 m out from each door.
+- **Determinism:** `NativeCityBleed` is float math. If spawns ever read it, Astra may want a fixed-point version.
+- **The MapStyleChecks pin above.**
+
+### Risks
+- Open approaches carry few pieces, because pieces need walls or floors to hang on. Crown Hill's east plateau and The Yards' west cutting are examples. Their bleed reads through the floor paint, the sky glow, the atmosphere and (after D1's merge) the module skins.
+- The atmosphere writes RenderSettings each frame while the walk is open. It hands back to any look that writes after it, and restores on close.
+- Not seen with D1's night look or D2's door fronts yet.
+
+**Next:** the integrator reviews the clips; D3 wires ThemeAt after D1 merges; Astra takes the contracts above.
+
 ## 2026-11-19 — Astra: Meridian’s five approved street plans
 
 Task branch `codex/meridian-approved-streets` from shared `e0473dca`. Candidate 3 bakes the five JSON plans into the Developer walk. The 190 exit pairs pass at 2 m stations. The independent 2 m Hulk-radius surface graph reaches the north court and all three doors in every city. The shipped survey traces follow clear lines around posts and grade junctions. See `docs/MERIDIAN-B-WALK.md` for measured counts. The Windows acceptance path profiles changed geometry, and the Developer walk records rendered frame time and triangles. The art freeze awaits real per-tier view measurements and the owner walk.
