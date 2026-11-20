@@ -8,6 +8,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-architect"){IntroArchitectChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--instance-cache-routes")InstanceCacheRouteChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--instance-cache-routes")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--cache-startup")LandingFieldChecks.WorldSweep(ProjectRoot(),1817385654u,1971730609u);
@@ -38,6 +39,7 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--weapon-flourish")WeaponFlourishChecks.Run(ProjectRoot());
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-generic"){IntroGenericChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==1&&args[0]=="--weapon-flourish")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--blind-choices")BlindChoiceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--blind-choices")return 0;
@@ -314,6 +316,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expeditions-menu"){ExpeditionsMenuChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--bombadier"){BombadierChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--top-dog"){TopDogChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--intros-v2"){IntroV2Checks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--intro-limits"){IntroPoseChecks.Run(true,true);return 0;}
             if(args.Length==1&&args[0]=="--glaive"){GlaiveChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive-chips"){GlaiveChipChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--blades"){BladeChecks.Run(ProjectRoot());return 0;}
@@ -388,6 +392,7 @@ internal static class Program
             HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);IronworksPropChecks.Run(root);StationEnemyChecks.Run(root);FallenBossChecks.Run(root);BossChipChecks.Run(root);BossGuideChecks.Run(root);BossPicksChecks.Run(root);TelegraphChecks.Run(root);FallenIntroMocapChecks.Run(root);StationBossModelChecks.Run(root);HumBossChecks.Run(root);DeepEndBossChecks.Run(root);BackroomsBossSoundChecks.Run(root);BackroomsBossSafeSpotChecks.Run(root);StationBossPresentationChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);ZombieTwitchChecks.Run(root);ZombieLocoChecks.Run(root);ZombieGoreChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
+            IntroV2Checks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);DebrisChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);

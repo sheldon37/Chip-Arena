@@ -61,6 +61,7 @@ namespace ChipArena.UnityConversion
 
         public void EntranceFoley(float drawnAge)
         {
+            if(IntroV2Foley(drawnAge))return;// Intros v2: the registered intro's own cue timeline (NativeIntroAudio.cs)
             var beats=NativeEntranceAudio.Timeline(foleyStyle);
             if(foleyInstance==null||beats.Length==0&&foleyStyle!=NativeTopDog.Entrance)return;
             entranceCues.Step(foleyInstance,foleyStyle,NativeEntranceDirector.Script(foleyStyle).Clock(drawnAge));
