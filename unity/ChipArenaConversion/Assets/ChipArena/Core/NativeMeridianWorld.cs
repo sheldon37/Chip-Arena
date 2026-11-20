@@ -123,8 +123,10 @@ namespace ChipArena.UnityConversion
             }
             foreach (var roof in walk.RoofHatches.Where(p=>!NearCache(p)))
             {
-                var landing=NearestExit(roof);
                 var zone = zones.OrderBy(z => (new V3(z.Volume.x,z.Volume.y,z.Volume.z)-roof).Length).First();
+                // Drop into the nearest encounter's street apron. A flat terrace beside a
+                // hatch can be isolated once Unity tests the Hulk capsule across its stairs.
+                var landing=spawnRows[zone.Spawns[0]].entry.@exit.Position();
                 int id = spawnRows.Count;
                 zone.Spawns = zone.Spawns.Concat(new[] { id }).ToArray();
                 var point = new PvePoint { x=landing.x, y=landing.y, z=landing.z };

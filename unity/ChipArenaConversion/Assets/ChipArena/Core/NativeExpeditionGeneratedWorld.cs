@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
     }
     public static partial class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-blockout-4";
+        public const string Version="deployment-world-blockout-5";
         public const string MapId="expedition-generated-city";
         internal static V3 CacheForward(float yaw)
         {

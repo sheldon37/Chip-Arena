@@ -160,6 +160,13 @@ namespace ChipArena.UnityConversion
                     foreach(var point in door.returns.Concat(new[]{door.approach}))Check(ExpeditionLayoutChecks.Supported(world.Map,point.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight),"independent entrance collision probe");
                     for(int i=0;i<8;i++){double angle=i*Math.PI/4;Check(ExpeditionLayoutChecks.Supported(world.Map,new V3(door.join.x+3*(float)Math.Cos(angle),door.join.y,door.join.z+3*(float)Math.Sin(angle)),.45f,1.8f),"join circle collision probe");}
                 }
+                foreach(var zone in world.Hub.Zones)
+                {
+                    var street=world.Area.spawns[zone.Spawns[0]].entry;
+                    Check(zone.Spawns.Skip(1).All(i=>world.Area.spawns[i].entry.kind=="drop"&&
+                        (world.Area.spawns[i].entry.@exit.Position()-street.@exit.Position()).Length<.001f),
+                        "roof drops land on their encounter's certified street apron");
+                }
                 var caches=world.Area.anchors.Where(a=>a.kind=="chest").ToArray();
                 Check(caches.Length==5,"five Meridian caches");
                 foreach(var cache in caches)
