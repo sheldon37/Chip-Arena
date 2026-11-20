@@ -1,3 +1,45 @@
+## 2026-11-20 — Claude (I5): elemental intros, bespoke keyed animation (owner), the framework's drawn anchors and own light — PARTIAL, paused for batch 2 (presentation only)
+Owner: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these".
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged; **partial**. Code `905db5c9`, with I0 merged up to `d0138423` (which includes `17380adb`). Bank v8. Paused by the owner's batching: the elemental intros are batch 2, after the framework's pose tools (every-bone mapping, joint limits, staff and two-hand grip IK, a pose-craft guide). Status note: `intro-elemental-status.md` in the notes folder. Design notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **No match clips:** the four intros play no motion-bank clip (`Clip` never true). Every beat is keyed (`NativeEntranceKeys`), as the Top Dog's and the Bombadier's are:
+  - Forgeborn: rises out of the fire, walks out heavily, goes up on its toes for the crown, takes the staff high in both hands and drives it down.
+  - Still Tide: looks back, braces with the staff level overhead, sweeps it across into a lunge, taps the water.
+  - Strike Point: lands kneeling with a hand on the stone; rises, dips and thrusts the staff up for the call, is rocked back by the bolt, plants the staff.
+  - Black Sun: a low walk out of the void, a hunch, the wings thrown open, the snap.
+  - The right hand rides the staff for the two-handed moves.
+  - Every hold grips the staff out at the side. Hold 5 showed a staff held close in front standing across the face, because the model copies the keyed joints' turns.
+- **On the framework's model-aware anchors** (`INTROS-V2` 2a): the crown sits on `Anchor(Head)`, the eye on `Anchor(Visor)`, the breath under `Anchor(Eyes)`, the staff's head on `Anchor(LeftMuzzle)`. `HeadShift`, `ModelHeadLift`, the drawn-wrist shift and the clip machinery are gone; only the eye close-up keeps a keyed framing (`CameraEyeLift`).
+- **Its own light** (`INTROS-V2` 3a): each set is lit by its own directional and ambient and mirrors its own sky (warm fire key; moon through the rose window; flashing cloud light; a violet horizon on the obsidian). With the arena's probe gone, the occlusion caps that hid it are lifted (bank v8).
+- **Still Tide** (bank v7):
+  - The ice's faces toward the barrel glow a faceted cyan to white, so it reads as ice in any arena.
+  - The liquid barrel is darker at its foot, its lip bright, and whitewater churns along the lip.
+- **Checks:** `--intro-elemental` fails on any match clip, a non-finite joint or a head turned more than .62 rad from its chest. `--intro-elemental-pose` dumps the keyed joints for stick-figure sheets, so the animation was checked before the Editor.
+
+**Checks:**
+- `--intros-v2`: PASS (3703, with the framework's model-aware anchor, socket, own-light and keyed-pose-on-model checks).
+- `--intro-elemental`: PASS (20438).
+- Full CoreTests the relgen5 way: PASS at `905db5c9` (1081 groups, exit 0).
+- `check_unity_compile.py`: PASS at `905db5c9`. After the `d0138423` merge, `--intros-v2` (3704), `--intro-elemental` and `--voxel` were re-run: PASS.
+- `git diff --check`: clean.
+- **Hold 5** (09:08-09:25): all four at High, plus Still Tide and Forgeborn at Low, on `e431f8d7` with bank v7, before the framework's drawn anchors and own light. It showed the keyed animation on the model, and the staff held close in front standing across the face (fixed in `905db5c9`, not captured).
+- **Not captured yet:** the drawn anchors, the own light, the side-held staff and bank v8. A hold queued for them was stopped at the integrator's word before it took the lock.
+- Clips: `F:/Chip Arena Development/scratch/intro-elemental/clips/` holds `*-v1` (the first pass) and `*-v2` (the polish pass). Hold 5's frames are in `cap/*-high5`; no new clips were made from them.
+
+**Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
+
+**Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's Classic pose), as the Top Dog and Bombadier intros do. No new voxel reads.
+
+**Risks:**
+- The re-light for the intro's own light was set blind (directionals, ambient and reflections, with the occlusion caps lifted). Nothing has been seen in the Editor since the framework change.
+- **Still Tide:**
+  - The wave reads as a glowing slab with a lip more than a breaking wave.
+  - The ice is unproven under the intro's own light: its faces toward the barrel glow cyan (bank v7/v8), and its lit outer faces read purple under the arena's light in hold 5.
+
+**Next:** batch 2: re-pose with the framework's pose tools, then capture all four at High, with Still Tide on Cyber City and Polar.
+
 ## 2026-11-20 — Claude (I5): elemental intros polish pass (the integrator's review; presentation only)
 The integrator's review: the concepts are strong, but several elements read as placeholders under the owner's bar (Top Dog and Bombardier are the floor).
 
