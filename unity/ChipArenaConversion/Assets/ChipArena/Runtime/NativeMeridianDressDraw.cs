@@ -66,13 +66,13 @@ namespace ChipArena.UnityConversion
                 glow=new Material(shader){name="Meridian dress glow",enableInstancing=true};glow.SetFloat("_Glow",1);block=new MaterialPropertyBlock();
                 var pool=Resources.Load<Shader>("NativeFieldGlow");if(pool!=null){poolMat=new Material(pool){name="Meridian lamp pools",renderQueue=2990};poolMat.SetFloat("_Radial",1.6f);poolMat.SetFloat("_Offset",-2);poolMat.SetFloat("_Cull",0);}
                 root=new GameObject("Meridian dress "+input.Map.id);mapId=input.Map.id;eye=camera;
-                var data=new NativeMeridianMesh();
-                for(int c=0;c<units.Count;c++)
+                // every chunk's LOD1, combined a batch in parallel at a time and uploaded here in order
+                NativeMeridianDress.CombineUnits(plan,units,2,bank,modules,(c,data)=>
                 {
-                    var u=units[c];NativeMeridianDress.Combine(plan,u.Cell,2,bank,modules,u.Placements,u.Quads,data);if(data.Vertices==0)continue;
+                    if(data.Vertices==0)return;
                     var cd=new ChunkDraw{Index=c,FarMesh=Upload(data,"Meridian chunk "+c+" far"),FarTris=data.Triangles};cd.Box=cd.FarMesh.bounds;
                     cd.Far=Renderer(cd.FarMesh,"chunk "+c+" far");chunks.Add(cd);
-                }
+                });
                 CombineMs=(float)watch.Elapsed.TotalMilliseconds;
                 int cells=plan.Nx*plan.Nz;cellBox=new Bounds[cells];cellDist=new float[cells];cellWant=new int[cells];cellShown=new int[cells];cellReady=new bool[cells];var boxed=new bool[cells];
                 foreach(var cd in chunks){int cell=units[cd.Index].Cell;if(boxed[cell])cellBox[cell].Encapsulate(cd.Box);else{cellBox[cell]=cd.Box;boxed[cell]=true;}}

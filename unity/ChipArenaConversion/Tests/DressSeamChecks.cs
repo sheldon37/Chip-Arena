@@ -155,10 +155,37 @@ namespace ChipArena.UnityConversion
                 int gaps=FenceGaps(map,plan,out int samples);
                 int t0=Enumerable.Range(0,plan.Quads.Count).Sum(q=>NativeMeridianDress.QuadTriangles(plan,q,0)),t2=Enumerable.Range(0,plan.Quads.Count).Sum(q=>NativeMeridianDress.QuadTriangles(plan,q,2));
                 int o0=plan.Quads.Sum(q=>NativeMeridianDress.QuadTriangles(q,0)),o2=plan.Quads.Sum(q=>NativeMeridianDress.QuadTriangles(q,2));
-                Console.WriteLine(name+": "+plan.Quads.Count+" surfaces, "+(seams?.Lines.Count??0)+" seam lines; T-junctions with seams: floors "+with.Floor+", walls "+with.Wall+" (near "+with.Near+"); each on its own grid: floors "+without.Floor+", walls "+without.Wall+" ("+without.Same+" at one tier, "+without.Mixed+" across tiers); fence footprint bare "+gaps+"/"+samples+
+                Console.WriteLine(name+": "+plan.Quads.Count+" surfaces, "+(seams?.Lines.Length??0)+" seam lines; T-junctions with seams: floors "+with.Floor+", walls "+with.Wall+" (near "+with.Near+"); each on its own grid: floors "+without.Floor+", walls "+without.Wall+" ("+without.Same+" at one tier, "+without.Mixed+" across tiers); fence footprint bare "+gaps+"/"+samples+
                     "; surface triangles LOD0 "+o0+" -> "+t0+", LOD1 "+o2+" -> "+t2+" ("+watch.ElapsedMilliseconds+" ms)");
                 foreach(var w in with.Worst)Console.WriteLine("  with: "+w);
                 foreach(var w in without.Worst)Console.WriteLine("  own grid: "+w);
+            }
+        }
+
+        /// <summary>`--dress-seams-load` (CHIPARENA_MERIDIAN_BANK set; CHIPARENA_BLEED_BANK adds the themed variants): the drawer's load on
+        /// each live deal as Prepare runs it, the median of three: the plan (and its seam table), the chunks, and every chunk's LOD1
+        /// combined one after another (shared's drawer) or a batch in parallel (this drawer), with the seams and without.</summary>
+        public static void Load(string root)
+        {
+            var path=Environment.GetEnvironmentVariable("CHIPARENA_MERIDIAN_BANK");if(string.IsNullOrEmpty(path)||!File.Exists(path)){Console.WriteLine("needs CHIPARENA_MERIDIAN_BANK");return;}
+            var bank=NativePackBank.Read(File.ReadAllBytes(path));var bleed=Environment.GetEnvironmentVariable("CHIPARENA_BLEED_BANK");
+            if(!string.IsNullOrEmpty(bleed)&&File.Exists(bleed))bank=NativeMeridianDress.WithVariants(bank,NativePackBank.Read(File.ReadAllBytes(bleed)));
+            var modules=NativeMeridianDress.Modules(bank);var inv=System.Globalization.CultureInfo.InvariantCulture;
+            double Median(Func<double> run){var v=new[]{run(),run(),run()};Array.Sort(v);return v[1];}
+            double Time(Action a){var w=System.Diagnostics.Stopwatch.StartNew();a();return w.Elapsed.TotalMilliseconds;}
+            foreach(var live in HubZFightChecks.Worlds(root))
+            {
+                var name=NativeCityLayout.Plans[live.Plan].Name;NativeMeridianDress.Plan plan=null;
+                double build=Median(()=>Time(()=>plan=HubZFightChecks.Dress(live,modules.ContainsKey,false)));
+                double seams=Median(()=>Time(()=>NativeMeridianDress.BuildSeams(plan)));
+                List<NativeMeridianDress.DrawChunk> units=null;double chunks=Median(()=>Time(()=>units=NativeMeridianDress.DrawChunks(plan,bank,modules)));
+                var data=new NativeMeridianMesh();
+                double sequential=Median(()=>Time(()=>{foreach(var u in units)NativeMeridianDress.Combine(plan,u.Cell,2,bank,modules,u.Placements,u.Quads,data);}));
+                double parallel=Median(()=>Time(()=>NativeMeridianDress.CombineUnits(plan,units,2,bank,modules,(c,m)=>{})));
+                var kept=plan.Seams;plan.Seams=null;List<NativeMeridianDress.DrawChunk> plain=null;double plainChunks=Median(()=>Time(()=>plain=NativeMeridianDress.DrawChunks(plan,bank,modules)));
+                double before=Median(()=>Time(()=>{foreach(var u in plain)NativeMeridianDress.Combine(plan,u.Cell,2,bank,modules,u.Placements,u.Quads,data);}));plan.Seams=kept;
+                Console.WriteLine(string.Format(inv,"{0}: plan {1:F0} ms, of which the seams {2:F0}; chunks {3:F0} ({4:F0} without); LOD1 combine one by one {5:F0} ms with the seams, {6:F0} without; in parallel batches {7:F0} with the seams. Before (shared): {8:F0} ms; now: {9:F0} ms (+{10:F0})",
+                    name,build,seams,chunks,plainChunks,sequential,before,parallel,build-seams+plainChunks+before,build+chunks+parallel,build+chunks+parallel-(build-seams+plainChunks+before)));
             }
         }
     }
