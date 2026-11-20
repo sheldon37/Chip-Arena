@@ -199,9 +199,10 @@ namespace ChipArena.UnityConversion
                .Dolly(Body,V(.92f,.44f,2.85f),V(.76f,.5f,2.45f),V(0,PresenceY+.16f,0),V(0,PresenceY+.12f,0),46,43).Handheld(.25f)
                .Crane(Still,V(11.0f,4.2f,17.0f),V(9.6f,4.4f,14.6f),1.4f,V(0,2.3f,0),V(0,2.9f,0),42,38).Ease(NativeIntroEase.InOut)
                .Dolly(Gather,V(2.7f,.42f,5.1f),V(1.85f,.5f,3.45f),V(0,3.3f,-1.1f),V(0,2.8f,-.5f),52,44).Ease(NativeIntroEase.In)
-               // the inhale: low and frontal on the visor as it kindles (the eye held on the head's ground point), the hands coming down
-               // into the frame on the dips; outside the arms, so nothing passes through the lens
-               .Dolly(Inhale,f*1.42f+V(-.06f,1.64f,0),f*1.2f+V(-.05f,1.7f,0),f*VisorFront+V(0,EyeUp+.02f,0),f*VisorFront+V(0,EyeUp+.03f,0),28,25).Follow(NativeEntranceAnchor.Head,0,1).Ease(NativeIntroEase.Out)
+               // the inhale: frontal on the visor as it kindles, the lens a little under its line (lower and the view climbs up into the
+               // helmet's open bottom, hold 1), the eye held on the head's ground point; the hands coming down into the frame on the dips;
+               // outside the arms, so nothing passes through the lens
+               .Dolly(Inhale,f*1.42f+V(-.06f,1.97f,0),f*1.2f+V(-.05f,2.0f,0),f*VisorFront+V(0,EyeUp+.02f,0),f*VisorFront+V(0,EyeUp+.03f,0),28,25).Follow(NativeEntranceAnchor.Head,0,1).Ease(NativeIntroEase.Out)
                // THE DROP: the hero frame from just over the floor, looking up: a slow push and orbit to the front, the architect hovering
                // between two monoliths, the sky's name above, the crown's spires leaning in at the top of the frame
                .Spline(Drop,new[]{V(1.35f,.36f,5.2f),V(.45f,.33f,4.5f),HeroEye},V(.1f,2.25f,-1.2f),V(.05f,1.95f,-1f),56,50).Ease(NativeIntroEase.Out)

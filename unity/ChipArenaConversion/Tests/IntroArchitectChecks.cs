@@ -159,7 +159,9 @@ namespace ChipArena.UnityConversion
                 for(float t=NativeIntroArchitect.Inhale+.02f;t<NativeIntroArchitect.Drop;t+=.05f)
                 {
                     s.Camera(t,out var v);var visor=s.VisorAt(t);s.HeadFrame(t,out _,out var hf);var toEye=v.Eye-visor;
-                    Check(Vector3.Dot(Vector3.Normalize(toEye),hf)>.6f&&toEye.Length()>.9f&&v.Eye.Y<visor.Y,"the close-up is low and frontal on the visor at "+t.ToString("0.00"));
+                    // (a little under the visor's line, never far under it: from well below, the view climbs into the helmet's open bottom)
+                    float under=(visor.Y-v.Eye.Y)/toEye.Length();
+                    Check(Vector3.Dot(Vector3.Normalize(toEye),hf)>.6f&&toEye.Length()>.9f&&under>0&&under<.2f,"the close-up is frontal on the visor, a little under its line, at "+t.ToString("0.00"));
                     foreach(var part in new[]{NativeEntranceAnchor.Head,NativeEntranceAnchor.Chest,NativeEntranceAnchor.LeftHand,NativeEntranceAnchor.RightHand,NativeEntranceAnchor.LeftElbow,NativeEntranceAnchor.RightElbow,NativeEntranceAnchor.LeftShoulder,NativeEntranceAnchor.RightShoulder})
                         Check(Vector3.Distance(v.Eye,s.Anchor(part,t))>.55f,"the close-up's lens clear of the "+part+" at "+t.ToString("0.00"));
                 }
