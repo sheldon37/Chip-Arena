@@ -28,11 +28,12 @@ namespace ChipArena.UnityConversion
         /// key draws where the bank has no such variant.</summary>
         public static Func<V3,string> ThemeAt;
         public static readonly string[] Themes={"level0","poolrooms","wardzero","station","ironworks","final"};
-        /// <summary>The presentation look table (plan W1, R4): a map id (or an id prefix ending in '-') and the look it draws in,
-        /// read by NativeLighting.Look before the map's own look. Its one row: the Developer walk's five Meridian layouts draw in
-        /// `expedition-night` (MapLooks.json, written by docs/arenas/scripts/expedition_city.py --maplooks) while the city bank is
-        /// present (the night needs its lamps; without the bank the greybox keeps the town's dusk). The live expedition's generated
-        /// map keeps its look until Astra moves the run onto candidate-3 (then `expedition-generated-city` joins the table).</summary>
+        /// <summary>The presentation look table (plan W1, R4): a map id (or an id prefix ending in '-') and the look it draws in.
+        /// Its one row: the Developer walk's five Meridian layouts draw in `expedition-night` (MapLooks.json, written by
+        /// docs/arenas/scripts/expedition_city.py --maplooks) while the city bank is present (the night needs its lamps; without the
+        /// bank the greybox keeps the town's dusk). The walk's hook (Runtime NativeMeridianDressWalk) applies it when the dress is
+        /// made. The live expedition's generated map keeps its look until the run moves onto candidate-3 (then its id joins the
+        /// table, read where its map is lit: W1's NativeLighting.Look).</summary>
         public static readonly (string map,string look)[] LookTable={("expedition-city-walk-","expedition-night")};
         /// <summary>The table's look for a map id (null: none), given whether the city bank is present (asked only on a match).</summary>
         public static string LookOf(string mapId,Func<bool> bank)

@@ -253,8 +253,7 @@ namespace ChipArena.UnityConversion
             Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeWardZeroField.cs")).Contains("UnityEngine"),"NativeWardZeroField is engine-free Core");
             // The Expedition's Ward instance: the lighting takes a map's own look field first (the instance carries "quarantine", so
             // the same MapLooks entry), and the Ward presentation, field bake included, runs on the drawn arena's own map.
-            // (re-pinned on purpose, plan W1: the presentation's look table, map id to look, is read first; the map's own look after it)
-            Check(lit.Contains("public static MapLook Look(ContentMap map)=>NativeExpeditionCityLights.ForMap((NativeMeridianDress.LookOf(map.id,meridianBank) is string table?NativeMapLooks.ByLook(LookSet(),table):null)??(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??")&&p.Contains("var map=arena.Map;if(!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return;")&&p.Contains("if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);"),"the Expedition's Ward instance takes the quarantine look and bakes its own map's field");
+            Check(lit.Contains("public static MapLook Look(ContentMap map)=>NativeExpeditionCityLights.ForMap((string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??")&&p.Contains("var map=arena.Map;if(!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return;")&&p.Contains("if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);"),"the Expedition's Ward instance takes the quarantine look and bakes its own map's field");
         }
     }
 }

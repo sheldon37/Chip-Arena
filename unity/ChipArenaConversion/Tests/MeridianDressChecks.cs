@@ -81,6 +81,8 @@ internal static class MeridianDressChecks
         Check(looks.Contains("{\"id\":\"expedition-night\",\"look\":\"expedition-night\"")&&looks.Contains("\"key\":{\"color\":10335464,\"intensity\":0.32,\"elevation\":38,\"bearing\":340"),"MapLooks.json carries the night (moon 0x9DB4E8 x 0.32 at 38 degrees, bearing 340)");
         Check(File.ReadAllText(Path.Combine(root,"..","..","docs","arenas","scripts","expedition_city.py")).Contains("def night_look():"),"the night is written by its generator");
         // ---- the runtime's hooks (source): one call each in the walk, the greybox's hide, Ward Zero and the Ironworks untouched ----
+        var hook=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeMeridianDressWalk.cs"));
+        Check(hook.Contains("var night=NativeMeridianDress.LookOf(walk.Map.id,null);")&&hook.Contains("walk.Map.look=night;NativeLighting.Apply(walk.Map,cameraView);")&&hook.IndexOf("return;}",StringComparison.Ordinal)<hook.IndexOf("walk.Map.look=night",StringComparison.Ordinal),"the walk draws in the night only once its dress (and its lamps) is made");
         var walkSrc=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeLayeredCityWalkPreview.cs"));
         Check(walkSrc.Contains("MeridianDressOpen(cityWalk, plan.Seed, seed);")&&walkSrc.Contains("MeridianDressClose();"),"one call line each in OpenCityWalk and CloseCityWalk");
         var dressing=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeArenaDressing.cs"));
