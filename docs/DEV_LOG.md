@@ -1,3 +1,106 @@
+## 2026-11-20 — Claude: Meridian's dress has no see-through seams: conforming seams at any LOD mix, and the floor under the camp fence (integrator's follow-up to the hub's z-fighting; presentation only)
+
+**Branch and status:** `claude/dress-seams` from `claude/hub-zfight` (`f279813f`), with shared `5d54766c` (the hub-zfight
+release) merged in (`eb55cf0f`). The work is `0e9cf6d1` (the seams and the fence floor) and `8533676c` (the load's speed-up);
+this entry follows them. Pushed, not merged.
+
+### Why
+Once the greybox stopped drawing under the street dress on the live map (`claude/hub-zfight`), two kinds of small see-through
+marks showed on the live floor, which the toon outline drew as dark 5 px crosses. The greybox had hidden them until then.
+- **Pinholes at T-junctions.** Each generated surface was cut on its own grid of cells. Where two met, one's vertices lay
+  part-way along the other's edge, and the rasterizer left pinholes there. Counted on the meshes as drawn: 25,000-43,000 on
+  floors and 46,000-74,000 on walls per plan (10-15% of them where LOD0 meets LOD1). This was already true on the approved walk.
+- **A dotted line along the camp fence's foot.** The floor stopped at the fence. The greybox draws the fence with chamfered
+  edges, so its foot's groove showed the void under the floor. The walk draws the fence as a plain survey box, so this was
+  live-only.
+
+### What changed
+- **Seams (`Core/NativeMeridianChunks.cs`, `NativeMeridianDress.SeamTable`).** Every surface edge on an axis-aligned line now
+  takes the vertices its neighbours put within it:
+  - on a stretch covered only by surfaces of one 32 m cell, their cuts at the tier it draws;
+  - on a stretch where two cells' surfaces meet, both tiers' cuts of all of them, so the seam holds at any mix of LOD0 and LOD1.
+  - A cell whose side gains vertices is fanned: from a corner whose sides gain none, else from its centre.
+  - Corners snap to one canonical coordinate per axis, so a vertex two surfaces share is bitwise the same on both sides.
+  - `DrawChunks` cuts the chunks by the counts with the fans.
+- **The load (`8533676c`).** The seam table sweeps each line that two or more surface edges share once, for both tiers, the
+  lines in parallel, and keeps each edge's result; the surfaces' triangle counts follow, in parallel. The drawer combines the
+  chunks' LOD1 a batch in parallel (as many as the cores) and uploads each on the main thread in order
+  (`NativeMeridianDress.CombineUnits`). The first pass searched the line once per edge and tier, and combined one chunk at a time.
+- **The drawer (`Runtime/NativeMeridianDressDraw.cs`).** A 32 m cell's chunks switch between LOD0 and LOD1 together, on the
+  cell's bounds, and LOD0 shows only once all of them have it. Before, a heavy cell's sub-chunks could draw at two tiers.
+- **The floor under the camp fence (`Core/NativeMeridianDressPlan.cs`).** A floor cell under a `camp-*` block now counts as
+  exposed, so the asphalt runs on under the fence at the camp floor's height. `Solids.Inside` can ignore blocks.
+- **The hub check (`Tests/HubZFightChecks.cs`)** measures the dress's surfaces as the drawer combines them. Raw rectangles
+  showed a 16 µm float sliver where two computations of one grid line met; the seams snap that line to one value.
+- Colliders, blocks, rules, navigation and generation are untouched.
+
+### The check
+`Tests/DressSeamChecks.cs` (`--dress-seams`, in the full suite) runs on the five plans, on the walk and on a live deal. Every
+surface is combined as the drawer combines it, at LOD0 and LOD1. It checks:
+- no vertex of one surface lies inside another's boundary edge on an axis-aligned line (at one tier within a cell, at any pair
+  across cells): 0 on all ten;
+- every camp fence slab's footprint is floored (1,944 sample points each);
+- the triangle counts the chunks are cut by are the meshes' own;
+- the drawer's per-cell switch, pinned.
+
+`--dress-seams-probe` prints the counts with the seams and on each surface's own grid. `--dress-seams-load` (with
+`CHIPARENA_MERIDIAN_BANK`) times the load as shared's drawer ran it and as this one does.
+
+### Cost
+- **The dress's worst views** (with the bank, `--meridian-dress`): Crown Hill High 342,899 → 371,689 and Low 145,420 → 161,838;
+  The Navigation 426,721 → 467,614 and 145,295 → 157,358; The Arcades 488,210 → 508,799 and 188,692 → 208,494; The Stride
+  401,873 → 435,726 and 179,094 → 192,629; The Yards 213,383 → 240,698 and 94,531 → 104,181.
+  - That is 4-13% more, all under the 0.9 M / 0.33 M budgets and the bible's 0.24 M Low share.
+  - Draws are up to 316 against 900.
+- **The load, offline** (.NET 8 Release, `--dress-seams-load`, the median of three; the plan, the chunks and the LOD1 combine,
+  shared → now): Crown Hill 110 → 123 ms, The Navigation 168 → 189, The Arcades 244 → 270, The Stride 221 → 235, The Yards
+  112 → 123 (+10 to +26). The seam table is 21-48 ms of it; the LOD1 combine in parallel takes 8-18 ms, against 15-40 ms one
+  by one. A second run while the Editor captured on the same PC: +12 to +111 ms (the parallel parts get fewer cores). The first
+  pass (`0e9cf6d1`) had added 0.2-0.6 s here.
+- **The load in the Editor** (Mono, the drawer's own log line, `plan` + `LOD1 combine`): the first pass (`0e9cf6d1`) added
+  0.8 s on Crown Hill (372 + 118 ms → 947 + 347) and 1.2 s on The Arcades (682 + 229 → 1,524 + 580). This head's measure
+  follows in a short hold (the integrator's go).
+
+### Checks
+- `--dress-seams`: pass (7,119 checks over 343,490 surfaces), with and without `CHIPARENA_MERIDIAN_BANK`. `--dress-seams-probe`:
+  0 T-junctions and 0 near-misses on all ten plans; on each surface's own grid (shared's), 25,000-43,000 on floors and
+  46,000-74,000 on walls per plan.
+- `--hub-zfight`: pass (29 checks), with and without the bank.
+- `--meridian-dress`: pass (418,335 checks; 697,953 with the bank, the budgets among them).
+- `--layered-walk` (190 exit pairs), `--bleed` and `--landmark-reads` (55 placements): pass.
+- Full CoreTests the relgen5 way (a throwaway LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at
+  `eb55cf0f`: 1,082 PASS lines, no FAIL, no exception, "35 managed-core checks passed", exit 0.
+- `tools/check_unity_compile.py` (6000.3.24f1, my own output folder) at `eb55cf0f`: Input System, Player, Assembly-CSharp and
+  Editor pass. `git diff --check`: clean against shared.
+- Not run: a Windows player build; multiplayer (a guest plans the same dress from the shared deal); Balanced and Low in the
+  Editor.
+
+### Captures
+One Editor hold of about 10 min (14:17:42 to 14:27:33) on `0e9cf6d1`, on the deals and eyes of the hub-zfight hold, whose AFTER
+(`4fd9dff4`) is the BEFORE here; frames on C:. The city, stage and motion banks were verified unchanged; the BoZo tool's local
+`xseed=N` option was put back from its backup; the Editor went back to `9319026b` (compiled) and the lock was given back.
+- **Sheets:** `F:/Chip Arena Development/scratch/hub-zfight/look/seams-sheet-crown-before-after.jpg` and
+  `seams-sheet-arcades-before-after.jpg` (every view), `seams-crops-crown-before-after.jpg` and
+  `seams-crops-arcades-before-after.jpg` (the floor up close).
+- **Clips** in `F:/Chip Arena Development/scratch/hub-zfight/look/clips/`: `seams-crown-high-orbit.mp4`,
+  `seams-arcades-high-orbit.mp4`, `seams-crown-hub-graze.mp4`.
+- **What they show:** the floor's dark crosses and the dotted line along the camp fence's foot are gone at every eye.
+
+### Notes
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Voxel dependency:** none.
+- **For Astra:** nothing in your files.
+- **For C1 (`claude/camp`):** the dress's asphalt now lies under the fence slabs' footprints, at the camp floor's height
+  (y 0, facing up). Camp ground art at the fence's foot should sit on it with a lift or a StageLit layer.
+- **Risks:**
+  - A modelled module meeting a generated surface (a facade's foot, a kerb) is not made conforming; only the generated surfaces
+    are.
+  - Sloped edges (a ramp's sides) are left as they were.
+  - Each heavy cell's chunks now wait for each other's LOD0 before switching, so near a cell's edge LOD0 can arrive a few
+    frames later.
+  - The seam table and the LOD1 combine run on the thread pool; a PC with few cores gains less of the speed-up.
+- **Next:** the integrator reviews and merges.
+
 ## 2026-11-20 — Claude: the live Meridian hub's z-fighting: the greybox gives way to the street dress on the live map, as on the walk (owner report; presentation only)
 
 The owner: "There is immense z-fighting on the hub in the new expedition map."
