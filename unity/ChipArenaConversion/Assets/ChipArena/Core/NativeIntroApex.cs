@@ -120,6 +120,13 @@ namespace ChipArena.UnityConversion
                 p+=new Vector3((float)Math.Sin(t*.37f+i*1.3f)*.35f,(float)Math.Sin(t*.51f+i*2.1f)*.18f,(float)Math.Cos(t*.29f+i*.7f)*.35f);
                 float glow=.5f+.5f*(float)Math.Sin(t*(1.1f+.6f*NativeEntranceMath.Rand(34007,i))+i*2.3f);fx.Glow(p,Firefly*(.55f*glow*glow),0,.035f,0,0,34010+i);
             }
+            // Leaves spinning down out of the canopy.
+            for(int i=0,n=low?5:12;i<n;i++)
+            {
+                float per=5.5f+2*NativeEntranceMath.Rand(34151,i),u=((t/per)+NativeEntranceMath.Rand(34153,i))%1f,y=7.5f-7.6f*u;if(y<floor+.02f)continue;
+                var p=new Vector3(NativeEntranceMath.Signed(34155,i)*5+.4f*(float)Math.Sin(t*1.7f+i),y,-5+9*NativeEntranceMath.Rand(34157,i)+.3f*(float)Math.Cos(t*1.3f+i*2));
+                var d=new Vector3((float)Math.Cos(t*3.1f+i),.35f*(float)Math.Sin(t*2.3f+i),(float)Math.Sin(t*3.1f+i))*.05f;fx.Streak(p+d,d*2,Leaf*.9f,.035f,.05f,1,.1f,0,34160+i);
+            }
             // Mist low over the floor, drifting.
             for(int i=0,n=low?5:10;i<n;i++)
             {

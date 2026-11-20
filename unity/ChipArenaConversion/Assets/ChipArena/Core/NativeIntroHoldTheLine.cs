@@ -141,6 +141,12 @@ namespace ChipArena.UnityConversion
                 float blow=NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-BashAt-.25f)/.8f));p+=new Vector3(0,.3f*blow,2.6f*blow*(1-Math.Abs(p.X)/8));
                 fx.Smoke(p,Smoke,.22f*thick,1.6f+.8f*NativeEntranceMath.Rand(39205,i),.5f,39210+i,floor);
             }
+            // Ash drifting down through the dusk light.
+            for(int i=0,n=low?8:20;i<n;i++)
+            {
+                float per=4+2*NativeEntranceMath.Rand(39351,i),u=((t/per)+NativeEntranceMath.Rand(39353,i))%1f;var p=new Vector3(NativeEntranceMath.Signed(39355,i)*5+.5f*(float)Math.Sin(t*.9f+i),4.5f-4.4f*u,-1.5f+6*NativeEntranceMath.Rand(39357,i));
+                fx.Glow(p,new Vector3(.32f,.29f,.27f)*.35f,.6f,.025f,0,u,39360+i);
+            }
             // Embers off the braziers.
             NativeEntranceFx.Embers(fx,t,-4,Total,U(1.75f,1.1f,-2.05f),.25f,low?3:6,.8f,1.6f,Fire*2,.02f,39300,q,.3f);NativeEntranceFx.Embers(fx,t,-4,Total,U(-1.8f,1.1f,-2.0f),.25f,low?3:6,.8f,1.6f,Fire*2,.02f,39320,q,.3f);
             // The launch: lights climbing off the far ridge.
