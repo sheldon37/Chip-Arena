@@ -168,24 +168,14 @@ namespace ChipArena.UnityConversion
             if(handsModel&&Math.Abs(handsAt-t)<1e-4f){var p=left?drawnLeft:drawnRight;if((p-keyed).LengthSquared()<.81f)return p;}
             return keyed;
         }
-        // ---- the keyed head's frame (its up and forward axes), sampled with the anchors at 120 Hz: where the visor is ----
-        private Vector3[] headAxes;private readonly CapturedRig.Pose axisPose=new CapturedRig.Pose();
-        protected override void Plan()
-        {
-            int n=(int)(Length*AnchorRate)+2;var a=new Vector3[n*2];
-            for(int i=0;i<n;i++)
-            {
-                float t=i/(float)AnchorRate;Pose(t,axisPose,out _,out var rot);axisPose.World();var q=NativeEntrancePose.WorldRotation(axisPose,rot,CapturedRig.Head);
-                a[i*2]=Vector3.Transform(Vector3.UnitY,q);a[i*2+1]=Vector3.Transform(Vector3.UnitZ,q);
-            }
-            headAxes=a;
-        }
-        /// <summary>The head's own up and forward at `t` (the keyed rig's; the drawn model follows its turns).</summary>
+        // ---- the head's frame, from the anchors (no rig pose of its own: the voxel ratchet): its up the neck's line from between
+        // the shoulders to the head anchor (it tilts with the chest and the head), its forward the body's facing square to that ----
+        /// <summary>The head's up and forward at `t`.</summary>
         public void HeadFrame(float t,out Vector3 up,out Vector3 forward)
         {
-            if(headAxes==null)Prepare();
-            int n=headAxes.Length/2;float x=Math.Max(0,Math.Min(n-1.001f,t*AnchorRate));int i=(int)x;float f=x-i;
-            up=Vector3.Normalize(Vector3.Lerp(headAxes[i*2],headAxes[i*2+2],f));forward=Vector3.Normalize(Vector3.Lerp(headAxes[i*2+1],headAxes[i*2+3],f));
+            var neck=Anchor(NativeEntranceAnchor.Head,t)-(Anchor(NativeEntranceAnchor.LeftShoulder,t)+Anchor(NativeEntranceAnchor.RightShoulder,t))*.5f;
+            up=neck.LengthSquared()>1e-6f?Vector3.Normalize(neck):Up;
+            var f=Anchor(NativeEntranceAnchor.Forward,t);f-=up*Vector3.Dot(f,up);forward=f.LengthSquared()>1e-6f?Vector3.Normalize(f):Vector3.UnitZ;
         }
         /// <summary>The visor's face at `t`: EyeUp along the head's up from the head anchor (the skull-base pivot), VisorFront ahead.</summary>
         public Vector3 VisorAt(float t){HeadFrame(t,out var up,out var fwd);return Anchor(NativeEntranceAnchor.Head,t)+up*EyeUp+fwd*VisorFront;}

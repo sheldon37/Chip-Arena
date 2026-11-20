@@ -34,32 +34,39 @@ The beats below are the song's transients as measured from the file (5 ms envelo
 | 1.97 | the drop-out | It lets go | The arena comes apart from the centre out: every plate, wedge, pylon and tower lifts and turns; its stone falls in on itself to its wireframe of light; the wire breaks into code glyphs that rise and fade to light. Beneath: the void and its grid. | A crane up and back over the whole unmaking. |
 | 2.97 | a soft hit | A tear | A rift of light runs across the world. | (the crane) |
 | 3.505 | the sub returns | The presence | Before any body: a point of light, chest-high over the centre, its flare and halo; glyphs pour into it on spirals; the old world's shards orbit it. 3.74 and 3.90 pulse it. | Orbiting the light. |
-| 5.035 | the sub cuts | The draft | The body is traced in lines of light along its bones, pens running out from the chest; its outline shimmers. | Close on the forming figure. |
-| 6.38–6.66 | the sub ramps to a hit | The body | It condenses from the core out (chest, then limbs, hands and feet last), light pouring into every part; at 6.66 the visor ignites and a shell of light throws the shards back. It floats, head bowed. | Low, looking up at it. |
+| 5.035 | the sub cuts | The draft | A body of light: the model's own silhouette in cyan, its edges bright and a soft glow inside it (an entrance ghost at no lag, no scanlines); pens of light trace its edges (each limb's two silhouette edges as the lens sees them) out from the chest; a scan sweeps up it and back down; the core of light in its chest swells. | The whole figure, a slow push. |
+| 6.38–6.66 | the sub ramps to a hit | The body | It fills solid from the core out (chest, then limbs, hands and feet last), light pouring into every part; at 6.66 a white flash in the chest throws rays of light out all round and the shards back, and the visor ignites. It floats, head bowed, rim lit cyan and ice from behind, the visor glowing, an aura round it (glyph-light circling, a soft glow behind, motes rising). | Low, the figure rising over the lens. |
 | 8.03 | the sub cuts: the long riser | Stillness | It hangs perfectly still while pens of light draw the new world's plan in the void: the floor's seams from the centre out, eight monoliths' edges up out of the dark, their capstones, the axis to where the crown will hang. Time stops for the glyphs: they hang where they are. The arms open, slowly. | Far out: a tiny figure in the void. |
 | 10.50–11.69 | the riser, its five stutters | The gathering | The arms rise and the new world comes in from the void as wireframes, light streaming behind: the floor up out of the abyss, the monoliths in from the horizon, the crown down out of the sky, a step nearer on each stutter. | Low, looking up, pushing in. |
-| 11.82 | the pre-hit | The inhale | Everything holds just short of its place; the light draws in. | The visor, close. |
-| 12.27, 12.50 | the dips | The hands close | The world trembles; the hands close and draw in. | (the close-up) |
-| 12.62 | **the drop** | **The world obeys** | Everything snaps into place at once, solid: a floating platform of obsidian, eight monoliths with gold capstones, the crown 13 m up, far spires rising. Light floods out along every seam and climbs the monoliths. The architect lands on the dais. | The hero frame, low and wide. |
-| 12.67–13.6 | the drop's sustain | The name | The live name is written into the sky above and behind, in light, a letter at a time, each traced by its own pen, flashing as it closes, its colour split and a slice of it slipping, both settling; on the card the same letters decode and lock. | A slow push and boom down. |
-| 13.9–15.3 | | Authority | A light sweeps the name; the crown turns; gold embers rise from the seams. | Settling to still: the architect centred between two monoliths, the sky's name 2 m above the head, the card in a clean band of the dais below the feet. |
+| 11.82 | the pre-hit | The inhale | Everything holds just short of its place; the light draws in; the gaze comes level and the visor, drawn dim, kindles. | Low and frontal on the visor, close, outside the raised arms. |
+| 12.27, 12.50 | the dips | The hands close | The world trembles; the hands close and come down beside the helmet, into the frame; the visor brightens on each. | (the close-up) |
+| 12.62 | **the drop** | **The world obeys** | Everything snaps into place at once, solid: a floating platform of black glass (sixteen wedges round a sixteen-sided dais, its seams lit cyan at the dais to gold at the rim), eight monoliths with gold capstones, the crown's eight gold spires leaning in overhead, far spires rising. Light floods out along every seam, erupts up every monolith and on into the sky as beams, runs up the spires; the sky wells up deep blue; dust shakes off the world; sparks. The hands fling open into a V and the architect sinks to hover over the dais (it never lands), the visor white. | The hero frame from just over the floor, looking up: a slow push and orbit to the front. |
+| 12.72–13.3 | the drop's sustain | The name | The live name is forged in the sky above the architect: for each letter code glyphs fly up out of the floor's seams to its strokes and its pen writes it white-hot (an ember glow, a gold body, a white-gold core, all bold); as the name completes it pulses and settles to a slow molten shimmer, light rays fanned behind it. The card is its small caption ("THE ARCHITECT" over the live name), its letters decoding with the sky's pens. | (the push) |
+| 13.0–15.3 | | Authority | The arms lower from the V out through the sides, light pouring from the hands into the dais and running out along the seams; the visor blazing white-gold; gold embers rise from the seams; at 14.0 the command: the right palm out over the world, rising to the chest's height and settling there, the head bowed to look down the lens. A light sweeps the name; the crown turns. | Settling to still: the architect hovering half the frame tall between the two monoliths behind it, the sky's name above, the card low in the black glass under its feet. |
 | 15.30–15.70 | the fade | | The song fades; the picture goes to black with it. | |
 
-## The set (`ChipArenaIntroDev.bytes`, 5.0 MB; never committed)
+## The set (`ChipArenaIntroDev.bytes`, 4.8 MB; never committed)
 Every piece is modelled in its own frame by `tools/stages/intro_dev_architect.py` (the stage kit's geometry, finishes, baked
 occlusion and colour) and placed, flown, dissolved and built by Core (its layout numbers are the script's). Fine as `<prop>`,
 Low as `<prop>/low`; every solid that dissolves or is built has a `<prop>.wire` twin (its edges as glowing bars).
 - The old arena: `old-plate` (4 m), `old-dais-wedge`, `old-pylon`, `old-skyline-0..3` (six towers each).
-- The architect's: `dais` (a sixteen-rayed sigil, a keel hanging into the void), `tile-1..3` (8, 12 and 16 round it to
-  7.4 m, a seam of light between each), `mono-plinth` and `mono-obelisk` (eight, 9.3 m out, 12 m tall, gold capstones, veins
-  and columns of code), `crown-arc` (eight, an 11.5 m ring 13.2 m up), `spire-a..c` (far), `shard-a..d`, `grid` (the void's,
-  to 80 m).
+- The architect's (no ring shapes anywhere, owner): `dais` (sixteen-sided, its corners on the floor's seams, a gold star and
+  sixteen rays of light that the seams continue: one sunburst; a keel hanging into the void), `slab-00/01/10/11` (the floor:
+  sixteen wedges to 7.4 m, each cut once across at an apothem alternating 3.5 / 4.6 m round the floor so no seam runs round it;
+  each slab lights its left seam, graded cyan at the dais to gold at the rim), `mono-plinth` and `mono-obelisk` (eight, 9.3 m
+  out, 12 m tall, gold capstones, veins and columns of code), `crown-spire` (eight gold blades rooted 10.2 m out and 14 m up
+  over the monoliths, leaning in toward a point 23 m over the dais: rays, not a ring), `spire-a..c` (far), `shard-a..d`,
+  `grid` (the void's, to 80 m).
+- The black glass: obsidian near-black and smooth, its baked occlusion pressed to 6% (`OCCLUDED`). The stage shader occludes the
+  probe's reflection by it but not the lights' highlights, so wherever the match is staged the arena's reflection probe cannot
+  wash the floor grey (the first version read as pale stone on Brickfall); its gloss is the intro's own lights.
 Build: `blender -b --factory-startup --python-exit-code 1 --python tools/stages/intro_dev_architect.py -- --out <dir> --bank <file>`.
 Without the bank the intro draws the dark lit void (`NativeIntroVoid`) under the same effects: never the old blocks.
 
 ## Budgets (the framework's dev limits) and Reduced effects
-Peak effects calls 460 High (at the presence) and 205 Low; set pieces 129 High (round the drop: the new world solid and its
-wires fading) and 80 Low (Low keeps wires on the obelisks only); 8 lights. Reduced effects: no camera shake (the handheld is
+Peak effects calls 550 High and 213 Low (at 13.4 s: the name forged, the floor's flood and pulses, the beams, the embers);
+set pieces 121 High (round the drop: the new world solid and its wires fading) and 76 Low (Low keeps wires on the obelisks
+only); 8 lights. The name's layers thin with its length (three on High, two on Low; fewer for very long names). Reduced effects: no camera shake (the handheld is
 dropped), every flash widened and dimmed (`Flash`), the tremble slow and small, the card's letters fade in without cycling.
 
 ## Checks
@@ -67,5 +74,14 @@ dropped), every flash widened and dimmed (`Flash`), the tremble slow and small, 
 the drop), the song in the build, the beats in order, a cue on every beat and stutter (each with a key, an existing sound and a
 clip), every frame finite on High and Low with and without the bank, the peaks, every streak over 1 m on its head's camera
 plane, determinism under a scrub, no allocation per frame, Reduced effects (the same camera twice; no light or glow flash
-faster than 3 Hz), the body's build, and the stroke font (every letter, digit and mark inside its cell; accents fold; other
-scripts are left to the card; a 20-letter name fits).
+faster than 3 Hz), the body's build, the hover from the drop to the end, the head's frame and the visor (up the head's axis
+from the skull-base anchor, in front), the inhale's close-up (low and frontal on the visor, the lens clear of the head, chest,
+shoulders, elbows and hands), the hero frame (low and looking up, the architect between .36 and .62 of the frame tall, the
+sky's name above the head and in frame), the card as a small caption, no ring-shaped prop in the set, and the stroke font
+(every letter, digit and mark inside its cell; accents fold; other scripts are left to the card; a 20-letter name fits).
+
+## The model and the keyed rig (measured on the first version's frames)
+The architect is keyed on the rig and the drawn model follows it, but the model is taller and places its own arms. On the
+hero frames the keyed head anchor sits on the model's skull base (the visor is .2 m up the head's axis: `EyeUp`, `VisorFront`),
+the shoulders, pelvis, knees and feet sit on the model's, the keyed chest anchor sits at the model's waist (+.2 m is its
+chest), and the model's hands are its own: the hands' light uses the drawn wrists the runtime hands in (`INativeIntroHands`).
