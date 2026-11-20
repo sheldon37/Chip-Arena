@@ -45,6 +45,19 @@ change. Without the city bank the walk draws its greybox exactly as before.
   stands over its top), the upper storeys 1, the cornices 2 and on x-facing faces 3 (two meeting in a re-entrant corner), a
   fill's tiles 0 and 1 in turn, what hangs on a wall 4; paint keeps its own 3. A cornice is left out where a block stands
   against the face at the roof line (a landing, a neighbour's roof).
+- A flight's sides end on its line, never on its treads' flat tops (2026-11-20, the owner: "a lot of unnatural staircasing";
+  `Core/NativeMeridianDressStairs.cs`). Every flight is a MapRamp: a pilot stands on a closed wedge from its bottom up to the slope
+  (Runtime `NativeCyberCityExitCollision`), and its treads are boxes from that bottom up to each step. Drawn tread by tread, a
+  sloped street's retaining edge and coping stepped every 3-4 m, a stair's cheek every tread, and a fire escape stood as solid
+  stepped wedges in its host's brick, hanging from each landing. Now each tread side is cut on the flight's line (a sloped
+  street's surface; a stair's nosings, which its treads already reach): its body (brick, stone, or a fire escape's grille) runs
+  up to a 0.3 m band (a coping or the iron stringer) whose top is the line, as trapezoids (`Quad.Taper`). A wall beside a sloped
+  street is drawn down under the street (its treads no longer hide it: they stopped it at their tops and left notches open over
+  the setts).
+- A fire escape is iron and honest: its wedge is solid, so it is caged, not drawn open. Under the stringer, flat bars 0.3 m apart
+  (`BarStep`; no pilot passes the 0.26 m gap, the eye does), one pattern down the whole run, with a foot rail; a grating under the
+  flight; the stair's own sloped soffit behind them; the floor runs on under the cage. The bars stand out of the seam table
+  (`Quad.Free`: a bar meets no surface edge to edge). Open flights need thin colliders: the notes' `meridian-staircasing-astra.md`.
 
 ## The roles
 
@@ -52,8 +65,9 @@ change. Without the city bank the walk draws its greybox exactly as before.
 | --- | --- |
 | `lot` (the sheet's lots) | Facades bay by bay (2.5 m, stretched to the face) and storey by storey (4 m ground, 3 m upper) by style: rows and villas (doors and parlour windows, sashes, oriels), shops and the market (their own trades' goods, shutters), tenements (barred flats, the lit entry and stair column, polychrome bays), warehouses and sheds (loading doors, iron windows), civic (rusticated arches). Blind faces get blind windows and a ghost sign. Partly hidden storeys get plain wall. A cornice under every roof line that hangs over a street; flat tar roofs with a coping and their hatches; pavements and kerbs (flat paint) along every street frontage. |
 | `terrace-*` | Asphalt tops; engineering-brick retaining walls with a stone coping |
-| Stair treads, fire escapes | Granite treads and risers on the built treads; iron grating on the fire escapes' treads, risers and landings. The solid steps' sides draw in the host lot's wall finish under a 0.3 m black iron stringer (the solid wall read as a black slab in iron) |
-| Sloped streets (MapRamp `ramp`) | A setts surface on the wedge the pilots walk; the treads' sides as the stepped retaining edge |
+| Stairs (MapRamp `stair`) | Granite treads and risers on the built treads; the sides a stone cheek under a 0.3 m sloped coping along the nosings, never stepped (the flights, below) |
+| Fire escapes | Iron: grating treads, risers and landings; a 0.3 m black stringer along the nosings; under it the flight's wedge, solid to a pilot, caged by flat bars 0.3 m apart, a grating under it and the stair's own soffit behind them; the floor runs on under the cage (the flights, below) |
+| Sloped streets (MapRamp `ramp`) | A setts surface on the wedge the pilots walk; the sides a straight engineering-brick retaining wall under a sloped stone coping whose top is the street's edge; the walls beside it run down under the street (the flights, below) |
 | Bridges, skybridges, the causeway | Plank or setts decks, green iron or stone girders and soffits; parapets as iron panels or a stone balustrade filling their boxes; street rails as iron railings |
 | Arcade roofs, lids | Lead tops, dark glazing from below (the Galleria, the arcades), soffits |
 | Arcade posts | The market's cast-iron columns |
@@ -93,6 +107,9 @@ change. Without the city bank the walk draws its greybox exactly as before.
   100 per layout), `shelter-`, `barrier-` and `clock-` blocks for the free-standing furniture, rail blocks on the fire escapes'
   open sides and the stairs' drops, parapet blocks on walkable roofs, and ramp wedges under the lots marked `pitched` (today
   every lot is a flat box, so every roof is drawn flat and honest).
+- Fire escapes as thin flights (`meridian-staircasing-astra.md`): each flight's pilot collider a sloped slab about 0.35 m deep
+  under its slope instead of a wedge down to a flat bottom, its treads steps on it, and rails on the open sides. Pilots then pass
+  under the flights at the street, and the dress can draw them open; until then each wedge is caged.
 
 ## Checks
 
@@ -102,6 +119,23 @@ the drawer combines it at LOD0 and LOD1: no vertex of one surface lies inside an
 chunks are cut by are the meshes' own, and the drawer switches a cell's chunks together. `--dress-seams-probe` prints the counts
 with the seams and with each surface on its own grid (shared's: 25,000-43,000 T-junctions on floors per plan), and the seam
 table's time; `--dress-seams-load` (with `CHIPARENA_MERIDIAN_BANK`) times the load as shared's drawer ran it and as this one does.
+
+`MeridianStairsChecks` (`--meridian-stairs`, in the full suite): every street plan's live deal dressed as the live run dresses
+it, and on each of its flights: no side's corner over the flight's line; every point just under the line where a side is seen
+drawn; every wall beside a sloped street drawn just over the street; a fire escape's treads only iron, nothing solid on them taller
+than the stringer, every seen point of its wedge under the stringer within half a step of a bar, and the floor under its cage;
+every trapezoid planar and wound as its face; nothing of a flight in one plane with another surface turned the same way on one
+layer (a band at a first tread dipped into the terrace face it continues). It fails on the dress before 2026-11-20 (the stepped
+sides, the brick wedges, the bare floors). `--meridian-stairs-probe` counts the flights and what hangs on them;
+`--meridian-stairs-zfight PLAN` lists coplanar pairs touching a flight; `--meridian-stairs-export PLAN X Z RADIUS OUT.ply [roles]`
+writes the live deal's dress for a Blender check render (with `roles`, a colour per role).
+
+The flights' cost (2026-11-20, with the bank; shared → `claude/meridian-stairs`): worst views High / Low, Crown Hill 371,689 →
+377,544 / 161,838 → 165,726; The Navigation 467,614 → 440,293 / 157,358 → 176,724; The Arcades 508,799 → 514,794 / 208,494 → 230,415;
+The Stride 435,726 → 457,794 / 192,629 → 197,294; The Yards 240,698 → 222,355 / 104,181 → 122,180; draws up to 324 (High) and 194
+(Low); surfaces 1.6-1.8 times (the bars). The Editor's load (`plan` + `LOD1 combine`): The Navigation 668 + 102 → 686 + 153 ms, Crown
+Hill 424 + 131 → 423 + 166 ms. Captured views (one hold, xseeds 1013904226 and 2027808452): the sanctuary looking north-east, the
+sloped streets from top and bottom, fire escapes near and far, the stone stairs.
 
 `HubZFightChecks` (`--hub-zfight`, in the full suite): each street plan's live deal built as the station builds it, the dress
 planned as the live run plans it, and everything drawn in the hub (64 m square at the camp) gathered: the greybox boxes the arena

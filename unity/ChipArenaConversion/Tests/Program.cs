@@ -70,6 +70,12 @@ internal static class Program
             if(args.Length==1&&args[0]=="--dress-seams-load"){DressSeamChecks.Load(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dress-seams-probe"){DressSeamChecks.Probe(ProjectRoot());return 0;}
             if((args.Length==3||args.Length==4)&&args[0]=="--meridian-zfight"){MeridianDressChecks.ZFightExport(int.Parse(args[1]),args[2],args.Length==4&&args[3]=="parts");return 0;}
+            // Meridian's flights (owner 2026-11-20, "a lot of unnatural staircasing"): no stepped side, walls down to the sloped streets, iron caged fire escapes.
+            if(args.Length==0||args.Length==1&&args[0]=="--meridian-stairs")MeridianStairsChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--meridian-stairs")return 0;
+            if(args.Length==2&&args[0]=="--meridian-stairs-zfight"){MeridianStairsChecks.ZFight(ProjectRoot(),int.Parse(args[1]));return 0;}
+            if(args.Length==1&&args[0]=="--meridian-stairs-probe"){MeridianStairsChecks.Probe(ProjectRoot());return 0;}
+            if((args.Length==6||args.Length==7)&&args[0]=="--meridian-stairs-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianStairsChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv),args[5],args.Length==7&&args[6]=="roles");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
             // The bleed near each Meridian door (docs/MERIDIAN-BLEED.md): the bands, the approach dressing's plan and its rules.
