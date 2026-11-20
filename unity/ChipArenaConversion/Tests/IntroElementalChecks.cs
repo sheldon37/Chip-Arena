@@ -24,6 +24,7 @@ namespace ChipArena.UnityConversion
             public bool Ready=>Bank;public bool Has(string prop){Asked.Add(prop);return Bank;}
             public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){Pieces++;Drawn.Add(prop);if(!float.IsFinite(glow.X)||glow.X<0)throw new Exception("glow "+prop);}
             public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){Primitives++;if(shape==WeaponShape.Ring)throw new Exception("a ring primitive");}
+            public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> rotation,float scale,Vector3 tint){Pieces++;Drawn.Add(prop);}
         }
         private sealed class Fx:INativeEntranceFx
         {
@@ -48,6 +49,9 @@ namespace ChipArena.UnityConversion
                 Check(entry==null||Math.Abs(entry.Duration-s.IntroTotal)<1e-4f&&Math.Abs(entry.NameAt-s.IntroNameAt)<1e-4f,s.Style+" registry length and name beat");
                 Check(s.IntroTotal>=6&&s.IntroTotal<=8.5f,s.Style+" 6-8.5 s");
                 Check(s.SetBank=="ChipArenaIntroElemental",s.Style+" bank");
+                // the model's clips: from the first window to the end, in order, each a staff clip the motion bank has (mirrored: the staff hand)
+                {string first=null;float lastEnd=-1;for(float t=0;t<=s.IntroTotal;t+=.02f){if(s.Clip(t,out var clip,out float time)){first??=clip;Check(Known(clip),s.Style+" clip "+clip);Check(time>=-1e-4f,s.Style+" clip time");lastEnd=t;}else Check(first==null,s.Style+" never leaves its clips for the keys (a pop) at "+t);}
+                 Check(first!=null&&lastEnd>=s.IntroTotal-.03f,s.Style+" plays the model's clips to the end");}
                 // the set: every piece through the bank, the void without it
                 var set=new Set{Bank=true};
                 for(float t=0;t<=s.IntroTotal;t+=.25f){set.Pieces=0;s.Set(t,set);Check(set.Pieces>=4&&set.Pieces<=80,s.Style+" set pieces "+set.Pieces+" at "+t);Check(set.Primitives==0,s.Style+" no primitives over the bank");}
@@ -74,6 +78,9 @@ namespace ChipArena.UnityConversion
             }
             Console.WriteLine("PASS elemental intros ("+count+" checks)");
         }
+        /// <summary>The motion bank's staff clips these intros use (Resources/ChipArenaVisualMotion.bytes, 2026-11-20).</summary>
+        private static readonly HashSet<string> Bank=new HashSet<string>{"2Hand-Staff-Idle~mirror","2Hand-Staff-Cast-L-Buff1_start~mirror","2Hand-Staff-Cast-L-Buff1_end~mirror","2Hand-Staff-Cast-L-Buff2_start~mirror","2Hand-Staff-Cast-L-Buff2_end~mirror","2Hand-Staff-Cast-L-AOE1_start~mirror","2Hand-Staff-Cast-L-AOE1_end~mirror","2Hand-Staff-Cast-L-AOE2_start~mirror","2Hand-Staff-Cast-L-AOE2_end~mirror","2Hand-Staff-Cast-L-Summon1_start~mirror","2Hand-Staff-Cast-L-Summon1_end~mirror","2Hand-Staff-Cast-L-Summon2_start~mirror","2Hand-Staff-Cast-L-Summon2_end~mirror","2Hand-Staff-Cast-Attack1_start~mirror","2Hand-Staff-Cast-Attack1_end~mirror"};
+        private static bool Known(string clip)=>clip!=null&&Bank.Contains(clip);
         private static bool Finite(Vector3 v)=>float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z);
         /// <summary>The set script's numbers are the Core scripts'.</summary>
         private static void SetScript(string root)

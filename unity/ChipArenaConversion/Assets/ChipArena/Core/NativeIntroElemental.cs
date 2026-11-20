@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     /// start), long streaks laid on their head's camera plane, the set's pieces by name (no strings built per frame).
     /// Presentation only: pure functions of the intro's presentation clock, allocation-free per frame.
     /// </summary>
-    public abstract class NativeIntroElementalScript:NativeIntroV2Script
+    public abstract class NativeIntroElementalScript:NativeIntroV2Script,INativeIntroHands
     {
         public const string Bank="ChipArenaIntroElemental";
         /// <summary>The staff: its grip at the wrist, its heel and its head along the hand's +z (Core NativeWeaponModels.Magic).</summary>
@@ -61,7 +61,28 @@ namespace ChipArena.UnityConversion
         {
             head=Anchor(NativeEntranceAnchor.LeftTip,t);var hand=Anchor(NativeEntranceAnchor.LeftHand,t);var d=head-hand;float l=d.Length();
             var axis=l>1e-4f?d/l:Vector3.UnitY;heel=head-axis*(StaffHead-StaffHeel);
+            // As drawn this frame: the rig's staff carried to where the model's wrist is (the model plays its own clips).
+            if(drawnModel&&Math.Abs(drawnAt-t)<1e-4f){var shift=drawnLeft-hand;if(shift.LengthSquared()<1){head+=shift;heel+=shift;}}
         }
+
+        // ---- the model's own motion: motion-bank clips over windows of the presentation clock (INativeIntroBody) ----
+        /// <summary>One window: the model plays `Name` from clip time From to To across [Start, End) (a loop wraps).</summary>
+        protected struct ClipWindow{public float Start,End,From,To,Fade;public string Name;}
+        /// <summary>The windows in time order: before the first the model follows the keyed rig, from it to the end it plays clips (a
+        /// clip is never left for the keys, which would pop).</summary>
+        protected ClipWindow[] Clips=Array.Empty<ClipWindow>();
+        protected static ClipWindow W(float start,float end,string name,float from,float to,float fade=.16f)=>new ClipWindow{Start=start,End=end,Name=name,From=from,To=to,Fade=fade};
+        protected const string Idle="2Hand-Staff-Idle~mirror";
+        public override bool Clip(float t,out string clip,out float time)
+        {
+            clip=null;time=0;var c=Clips;if(c.Length==0||t<c[0].Start)return false;
+            int k=0;for(int i=1;i<c.Length;i++)if(c[i].Start<=t)k=i;var w=c[k];
+            float u=NativeEntranceMath.Clamp01((t-w.Start)/Math.Max(1e-3f,w.End-w.Start));clip=w.Name;time=w.From+(w.To-w.From)*u;return true;
+        }
+        public override float Fade(float t){var c=Clips;if(c.Length==0)return .12f;int k=0;for(int i=1;i<c.Length;i++)if(c[i].Start<=t)k=i;return c[k].Fade;}
+        // ---- the hands as drawn (INativeIntroHands): this frame's left wrist, for the staff's effects ----
+        private Vector3 drawnLeft;private float drawnAt=-100;private bool drawnModel;
+        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){drawnLeft=left.At;drawnModel=left.Model;drawnAt=t;}
 
         // ---- effects helpers ----
         /// <summary>The camera at presentation time `t` (what the long streaks are laid against).</summary>
@@ -190,6 +211,8 @@ namespace ChipArena.UnityConversion
                .Hero(CardAt-.2f,1,1.2f,3.3f,31).In(NativeIntroCut.Blend,.45f)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
             Ramps.Ramp(EruptAt,.3f,.32f,.9f);
+            // The model's own casts once it is out of the fire: the staff raised for the crown, the cast down, the staff idle.
+            Clips=new[]{W(CrownAt-.13f,CrownSet-.03f,"2Hand-Staff-Cast-L-Buff1_start~mirror",0,.67f,.25f),W(CrownSet-.03f,SlamAt,"2Hand-Staff-Cast-L-AOE1_start~mirror",0,.47f),W(SlamAt,SlamAt+.35f,"2Hand-Staff-Cast-L-AOE1_end~mirror",0,.27f),W(SlamAt+.35f,Total,Idle,0,Total-SlamAt-.35f,.25f)};
         }
         /// <summary>Hidden in the fire until the column takes it, then built in from the feet up as it forms.</summary>
         public override float Solid(float t,int bone)
@@ -358,9 +381,9 @@ namespace ChipArena.UnityConversion
     {
         public const string Id=NativeIntroCatalog.WeaponPrefix+"water";public const string Name="Still Tide";
         public const float Total=8.2f,CardAt=6.4f;
-        public const float RiseFrom=1.3f,RearFrom=1.75f,RearAt=2.4f,SweepAt=2.95f,Parted=3.55f,FreezeAt=3.75f,WalkFrom=4.85f;
-        /// <summary>Where the pilot stands until it walks out (on the forward line, 1.2 m behind the hero mark).</summary>
-        public static readonly Vector3 Mark=OnLine(-1.2f);
+        public const float RiseFrom=1.3f,RearFrom=1.75f,RearAt=2.4f,SweepAt=2.95f,Parted=3.55f,FreezeAt=3.75f,HoldFrom=4.85f;
+        /// <summary>Where the pilot stands throughout: the hero mark (the walls freeze on either side of it).</summary>
+        public static readonly Vector3 Mark=OnLine(0);
         /// <summary>The water over the floor (m) before and after the tide (tools/intros/elemental_set.py WATER_*).</summary>
         public const float Shallow=.14f,Tide=.22f;
         /// <summary>The halves: their length, how far out to each side they end, how far behind the mark they rear and end.</summary>
@@ -377,8 +400,7 @@ namespace ChipArena.UnityConversion
         {
             var m=Mark;var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f,Facing,m.X,m.Z);
-            Steps=new[]{Step(true,WalkFrom+.05f,WalkFrom+.5f,.16f,-.55f,.1f,.07f),Step(false,WalkFrom+.5f,WalkFrom+.95f,-.18f,-.1f,-.42f,.07f),Step(true,WalkFrom+.95f,WalkFrom+1.3f,.16f,.07f,.1f,.05f)};
-            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(-1.2f);
+            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(0);
             k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.05f).J(C,.06f).J(Hd,.4f).J(RA,-.08f,0,-.14f).J(RE,-.3f);
             k.Key(RiseFrom-.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.05f).J(C,.06f).J(Hd,.36f).J(RA,-.08f,0,-.14f).J(RE,-.3f);
             // It hears the sea come in: chin up, a look up and back over its shoulder at the wave.
@@ -391,29 +413,30 @@ namespace ChipArena.UnityConversion
             // The tap: knees giving a little, the head down to the water.
             k.Key(FreezeAt-.12f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.06f).J(C,0,-.1f,0).J(Hd,.1f).J(RA,-.3f,0,-.4f).J(RE,-.6f);
             k.Key(FreezeAt,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,.06f).J(C,.04f).J(Hd,.22f).J(RA,-.25f,0,-.35f).J(RE,-.6f).ImpactKey();
-            k.Key(WalkFrom-.2f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(Hd,-.05f).J(RA,-.1f,0,-.18f).J(RE,-.35f);
-            var w1=R(-.85f);var w2=R(-.38f);var w3=R(0);
-            k.Key(WalkFrom+.3f,stand).Root(w1.X,w1.Y,w1.Z,Facing).Drop(-.03f).J(C,0,.04f,0).J(Hd,-.04f).J(RA,.18f,0,-.14f).J(RE,-.38f).PassKey();
-            k.Key(WalkFrom+.72f,stand).Root(w2.X,w2.Y,w2.Z,Facing).Drop(-.02f).J(C,0,-.04f,0).J(Hd,-.05f).J(RA,-.25f,0,-.14f).J(RE,-.42f).PassKey();
+            k.Key(HoldFrom-.2f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(Hd,-.05f).J(RA,-.1f,0,-.18f).J(RE,-.35f);
             var hero=NativeEntranceKeys.With(NativeEntranceKeys.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,0,-.06f,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.06f,.05f,0);});
-            k.Key(WalkFrom+1.25f,hero).Root(w3.X,w3.Y,w3.Z,Facing);
-            k.Key(Total,hero).Root(w3.X,w3.Y,w3.Z,Facing);Keys=k;
+            k.Key(CardAt-.3f,hero).Root(r0.X,r0.Y,r0.Z,Facing);
+            k.Key(Total,hero).Root(r0.X,r0.Y,r0.Z,Facing);Keys=k;
             int s=0;
             StaffKey(s++,0,.27f,.1f,.16f,.06f,1,.1f);StaffKey(s++,RearFrom,.27f,.12f,.18f,.06f,1,.1f);
             StaffKey(s++,RearAt+.15f,.3f,.62f,.12f,.25f,1,-.15f);StaffKey(s++,SweepAt-.08f,.38f,.48f,.1f,.85f,.45f,-.25f);
             StaffKey(s++,SweepAt+.3f,-.12f,.36f,.42f,-.85f,.3f,.35f);StaffKey(s++,FreezeAt-.12f,.16f,.12f,.4f,.05f,1,.05f);
-            StaffKey(s++,FreezeAt,.16f,-.12f,.4f,.04f,1,.05f);StaffKey(s++,WalkFrom-.2f,.27f,.1f,.18f,.06f,1,.1f);StaffKey(s++,Total,.27f,.1f,.17f,.06f,1,.1f);
+            StaffKey(s++,FreezeAt,.16f,-.12f,.4f,.04f,1,.05f);StaffKey(s++,HoldFrom-.2f,.27f,.1f,.18f,.06f,1,.1f);StaffKey(s++,Total,.27f,.1f,.17f,.06f,1,.1f);
             // The camera: a glide over the water to the figure; up as the tide comes; low under the rearing wave; front and low as
             // it parts; an orbit through the frozen moment; ahead of it walking out; the centred hero frame between the walls.
             Rig.Dolly(0,L(.5f,.36f,9.6f),L(.3f,.4f,4.8f),m+new Vector3(0,1.0f,0),m+new Vector3(0,1.15f,0),38,34).Ease(NativeIntroEase.Out).Focus(0,0,.4f)
                .Dolly(RiseFrom,L(2.6f,1.7f,7.0f),L(2.2f,1.9f,6.2f),m+L(0,1.6f,-1.5f),m+L(0,2.6f,-2.8f),44,47).In(NativeIntroCut.Blend,.5f)
                .Dolly(RearAt-.3f,L(.65f,.32f,1.9f),L(.5f,.3f,1.6f),m+L(0,2.4f,-2.4f),m+L(0,4.0f,-3.2f),54,58)
                .Dolly(SweepAt-.05f,L(0,.55f,3.6f),L(0,.6f,3.2f),m+new Vector3(0,1.5f,0),m+new Vector3(0,1.45f,0),58,54)
-               .Orbit(FreezeAt-.07f,m,-65,65,3.3f,3.0f,.6f,1.4f,new Vector3(0,1.3f,0),new Vector3(0,1.1f,0),44,40).Ease(NativeIntroEase.Linear)
-               .Dolly(WalkFrom-.05f,L(.15f,1.35f,1.4f),L(.2f,1.3f,3.6f),new Vector3(0,.1f,0),new Vector3(0,.12f,0),38,34).Follow(NativeEntranceAnchor.Chest,.05f)
+               .Orbit(FreezeAt-.07f,m,-38,38,3.4f,3.2f,.6f,1.4f,new Vector3(0,1.3f,0),new Vector3(0,1.1f,0),44,40).Ease(NativeIntroEase.Linear)
+               .Dolly(HoldFrom-.05f,L(.12f,1.3f,1.6f),L(.15f,1.25f,3.7f),L(0,1.4f,0),L(0,1.22f,0),40,35)
                .Dolly(CardAt-.25f,L(0,.95f,4.9f),L(0,1.0f,4.4f),L(0,1.25f,0),L(0,1.28f,0),32,30).In(NativeIntroCut.Blend,.5f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
             Ramps.Ramp(SweepAt,.5f,.16f,.32f).Ramp(FreezeAt,.22f,.5f,.95f);
+            // The model's own casts: the staff idle, raised against the wave, swept, a tap, the idle again.
+            Clips=new[]{W(0,RearAt-.2f,Idle,0,RearAt-.2f),W(RearAt-.2f,RearAt+.35f,"2Hand-Staff-Cast-L-Buff2_start~mirror",0,.47f),W(RearAt+.35f,SweepAt,"2Hand-Staff-Cast-L-Buff2_end~mirror",0,.2f),
+                W(SweepAt,SweepAt+.35f,"2Hand-Staff-Cast-L-AOE2_start~mirror",0,.53f),W(SweepAt+.35f,Parted,"2Hand-Staff-Cast-L-AOE2_end~mirror",0,.27f),
+                W(Parted,FreezeAt,"2Hand-Staff-Cast-Attack1_start~mirror",0,.27f),W(FreezeAt,FreezeAt+.4f,"2Hand-Staff-Cast-Attack1_end~mirror",0,.23f),W(FreezeAt+.4f,Total,Idle,0,Total-FreezeAt-.4f,.3f)};
         }
         /// <summary>The water's top at `t` (world y).</summary>
         public static float Level(float t)=>NativeEntranceStage.FloorY+Shallow+(Tide-Shallow)*NativeEntranceMath.Ramp(t,RiseFrom,RearAt);
@@ -470,7 +493,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(RearFrom,"intro2.water.rear","magic.tidal-wave","water",.75f),
             new NativeIntroCue(SweepAt,"intro2.water.part","boss.deepend.wave","water",.85f),
             new NativeIntroCue(FreezeAt,"intro2.water.freeze","blast.frost","shield",.85f),
-            new NativeIntroCue(WalkFrom+.5f,"intro2.water.step","impact.water","water",.3f),
+            new NativeIntroCue(HoldFrom+.1f,"intro2.water.settle","impact.glass","shield",.3f),
             new NativeIntroCue(CardAt,"intro2.water.name","boss.noctiel.ripple","install",.5f),
         };
         public override NativeIntroCue[] Cues=>cues;
@@ -517,8 +540,8 @@ namespace ChipArena.UnityConversion
                 for(int i=0,n=N(12,q);i<n;i++){float u=((t-FreezeAt)*.18f+i/(float)n)%1;var p=Mark+new Vector3(NativeEntranceMath.Signed(9700,i)*3.5f,level+.15f+.2f*u,NativeEntranceMath.Signed(9701,i)*3.5f);fx.Smoke(p,Ice*.8f,.22f*(float)Math.Sin(Math.PI*u)*NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.5f),1.1f+.8f*u,u,9700+i,floor);}
                 Staff(FreezeAt,out var heel,out _);NativeEntranceFx.Sparks(fx,t,FreezeAt,new Vector3(heel.X,level+.02f,heel.Z),new Vector3(0,1,0),1.2f,Context.Low?14:30,3.5f,.6f,6,.8f,Ice*2.4f,Cyan,.012f,9750,q,floor);
             }
-            // Walking out: ice flaking where each foot lands; the breath frosting at the hero hold.
-            if(t>=WalkFrom)for(int k=0;k<3;k++){float land=WalkFrom+.5f+.45f*k;if(k==2)land=WalkFrom+1.3f;var foot=Anchor(k%2==0?NativeEntranceAnchor.LeftFoot:NativeEntranceAnchor.RightFoot,land);NativeEntranceFx.Sparks(fx,t,land,new Vector3(foot.X,level+.01f,foot.Z),new Vector3(0,1,0),1.4f,Context.Low?5:10,1.6f,.45f,6,.8f,Ice*1.6f,Cyan,.008f,9800+k*20,q,floor);}
+            // The ice settling: a shiver of frost off each wall's crest; the breath frosting at the hero hold.
+            for(int h=0;h<2;h++)NativeEntranceFx.Sparks(fx,t,HoldFrom+.1f+.25f*h,Crest(h==0,t,.5f,4.4f,1.0f),new Vector3(0,-1,0),1.2f,Context.Low?6:12,1.2f,.9f,5,.8f,Ice*1.4f,Cyan,.008f,9800+h*20,q,floor);
             if(t>=CardAt-.4f){var head=Anchor(NativeEntranceAnchor.Head,t);for(int i=0;i<3;i++){float u=((t-CardAt)*.42f+i/3f)%1;if(u<0)u+=1;fx.Smoke(head+Fwd*(.15f+.35f*u)+new Vector3(0,-.04f+.08f*u,0),Ice,.18f*(1-u),.08f+.2f*u,u,9850+i,floor);}}
         }
     }
@@ -583,6 +606,8 @@ namespace ChipArena.UnityConversion
                .Hero(CardAt-.55f,-1,1.15f,3.1f,30)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
             Ramps.Ramp(StrikeAt,.22f,.38f,.9f);
+            // The model's own staff from the rise: up into the idle, the summon, the idle.
+            Clips=new[]{W(RiseFrom,CallAt-.05f,Idle,0,CallAt-.05f-RiseFrom,.4f),W(CallAt-.05f,CallStrike+.05f,"2Hand-Staff-Cast-L-Summon1_start~mirror",0,.53f),W(CallStrike+.05f,SpireFire+.27f,"2Hand-Staff-Cast-L-Summon1_end~mirror",0,.47f),W(SpireFire+.27f,Total,Idle,.55f,.55f+Total-SpireFire-.27f,.25f)};
         }
         public override float Solid(float t,int bone)=>t<StrikeAt?0:1;
         /// <summary>The strike's white-hot copy over the body, cooling.</summary>
@@ -757,6 +782,8 @@ namespace ChipArena.UnityConversion
                .Dolly(CardAt-.3f,L(0,.85f,4.9f),L(0,.9f,4.5f),L(0,1.32f,0),L(0,1.36f,0),32,30).In(NativeIntroCut.Blend,.5f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
             Ramps.Ramp(TotalityAt,.4f,.26f,.5f);
+            // The model's own staff once out of the void: the summon (the wings), the strike (the snap), the idle.
+            Clips=new[]{W(WingsAt-.05f,WingsAt+.07f,"2Hand-Staff-Cast-L-Summon2_start~mirror",0,.13f,.25f),W(WingsAt+.07f,SnapAt-.1f,"2Hand-Staff-Cast-L-Summon2_end~mirror",0,.73f),W(SnapAt-.1f,SnapAt+.05f,"2Hand-Staff-Cast-Attack1_start~mirror",.05f,.27f),W(SnapAt+.05f,SnapAt+.3f,"2Hand-Staff-Cast-Attack1_end~mirror",0,.23f),W(SnapAt+.3f,Total,Idle,0,Total-SnapAt-.3f,.25f)};
         }
         /// <summary>The eclipse's progress (0 the sun clear .. 1 totality).</summary>
         public static float Eclipse(float t)=>NativeEntranceMath.Smoother((t-EclipseFrom)/(TotalityAt-EclipseFrom));
