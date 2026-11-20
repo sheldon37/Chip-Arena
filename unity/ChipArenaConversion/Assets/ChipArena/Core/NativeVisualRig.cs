@@ -326,7 +326,10 @@ namespace ChipArena.UnityConversion
         // shaft, the bow's string at the nock), in the left wrist's frame, whatever the hands' distance; 0 (the match): none.
         // SupportPole: where the supporting elbow points (the chest's frame: +x its left, +y up, +z ahead), steering the support arm's elbow
         // to that side of its reach (the keyed arm's own side otherwise, which a nearly straight keyed arm leaves to chance); zero: none.
-        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench, Unshoulder, RightSupport; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold, RightSupportHold; public HandShape LeftShape, RightShape; public Vector3 SupportPole; }
+        // Exact: 0..1, the arms drawn exactly as their keyed turns place them (intros v2's pack clips, Core NativeIntroPack: arms that are
+        // already the model's, not a voxel body's): the inside-the-shoulders correction (Inside) let go, and at 1 the fists not cleared off
+        // the body (Clear); 0 (the match): as before.
+        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench, Unshoulder, RightSupport, Exact; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold, RightSupportHold; public HandShape LeftShape, RightShape; public Vector3 SupportPole; }
         // A hand shape: each finger's curl as a share of its Closed curl (Thumb .. Pinky), the thumb base's turn toward the index
         // (Across, rad, on its first joint about Rig.ThumbAcross) and how much of it the hand takes (Weight 0..1 over the grip's curl).
         public struct HandShape
@@ -441,7 +444,7 @@ namespace ChipArena.UnityConversion
             if(s.Stand>0||s.Raise!=0) Rise(s,pose,plantFeet);
             s.LeftFootWeight=s.RightFootWeight=s.SupportWeight=0; s.LeftArmReach=s.LeftLegReach=s.RightLegReach=s.ShoulderTurn=s.GiveWay=0;
             s.ElbowSwing[0]=s.ElbowSwing[1]=0;
-            s.LeftInside=Inside(s,pose,true); s.RightInside=Inside(s,pose,false);
+            s.LeftInside=Inside(s,pose,true,grasp.Exact); s.RightInside=Inside(s,pose,false,grasp.Exact);
             Positions(s,pose);
             s.LeftRelax=s.RightRelax=0;
             if(grasp.Relax>0||grasp.Still>0)
@@ -453,7 +456,8 @@ namespace ChipArena.UnityConversion
                 s.RightRelax=Relax(s,pose,false,rightHeld?grasp.Right.Braced?0:still:relax,rightHeld,still);
                 Positions(s,pose);
             }
-            s.LeftClear=Clear(s,pose,true,grasp.Left,default); s.RightClear=Clear(s,pose,false,grasp.Right,support>0?grasp.SupportHold:default);
+            // (Exact arms are the model's own, a pack clip's hand on its thigh included: not moved off the body)
+            if(grasp.Exact<.999f) { s.LeftClear=Clear(s,pose,true,grasp.Left,default); s.RightClear=Clear(s,pose,false,grasp.Right,support>0?grasp.SupportHold:default); } else s.LeftClear=s.RightClear=0;
             if(plantFeet)
             {
                 s.LeftFootWeight=Foot(s,pose,true); s.RightFootWeight=Foot(s,pose,false);
@@ -1056,7 +1060,7 @@ namespace ChipArena.UnityConversion
             float tent=CapturedClip.Clamp(Math.Min(gameRise,2*GameHeadRise-gameRise),0,GameHeadRise);
             return tent*Math.Max(0,1-r.HeadRise/GameHeadRise)*(r.ArmUpper+r.ArmLower)/GameArm;
         }
-        private static float Inside(State s,CapturedRig.Pose pose,bool left)
+        private static float Inside(State s,CapturedRig.Pose pose,bool left,float exact=0)
         {
             var r=s.Rig;
             int ga=left?CapturedRig.LArm:CapturedRig.RArm,ge=ga+1,gh=ga+2;
@@ -1067,7 +1071,7 @@ namespace ChipArena.UnityConversion
             float gameShoulder=Vector3.Dot(pose.WorldPosition[ga]-gameMiddle,side),shoulder=Vector3.Dot(s.Position[va]-middle,side);
             float gameHand=Vector3.Dot(pose.WorldPosition[gh]-gameMiddle,side),hand=Vector3.Dot(s.Position[vh]-middle,side);
             if(gameShoulder<.05f) return 0;
-            float w=CapturedClip.Ease((gameShoulder-gameHand)/InsideBand);
+            float w=CapturedClip.Ease((gameShoulder-gameHand)/InsideBand)*(1-CapturedClip.Clamp(exact,0,1));
             if(w<=0) return 0;
             Vector3 copied=s.Position[vh]-s.Position[va];
             Vector3 up=Vector3.Transform(CapturedRig.Y,pose.WorldRotation[CapturedRig.Chest]);
