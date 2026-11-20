@@ -9,7 +9,8 @@ origin) is on the plaza, the pilot facing +z; the gate stands behind it on its d
   waygate/channels  the outer ring's glyph channels (glow; world frame)
   waygate/inlay     the plaza inlay's glow channel round the hero mark (glow; world frame)
   waygate/obglow    the obelisks' glyph bands (glow; world frame)
-  waygate/membrane  the gate's disc of light, radius 1 at the origin facing +z (Core scales it, spins it)
+  waygate/membrane  the gate's vortex of light: a funnel of radius 1 facing +z, its eye .3 behind the origin, three spiral arms in
+                    its colour (Core scales it, spins it)
   waygate/sky       the dusk sky dome (glow)
 """
 import math
@@ -207,15 +208,31 @@ def build(T):
     lens.face((V(-.13, -.19, 0), V(.13, -.19, 0), V(.13, .19, 0), V(-.13, .19, 0)), F['lens'], normal=(0, 0, 1))
     if fine:
         lens.face((V(-.07, .19, 0), V(.07, .19, 0), V(0, .28, 0)), F['lens'], normal=(0, 0, 1))
+    # The gate's light: a vortex, a funnel recessed behind the ring's plane (its eye .3 deep at radius 1) in rings and spokes, coloured
+    # with three spiral arms, so the spin the Core script gives it reads as a whirl and the funnel shifts as the camera moves.
     mem = Geo()
-    disc(mem, V(0, 0, 0), 1.0, F['membrane'], 48 if fine else 16, normal=(0, 0, 1))
-    if fine:
-        disc(mem, V(0, 0, 0), .55, F['membrane'], 32, normal=(0, 0, 1))
+    nr, nt = (10, 48) if fine else (4, 16)
+    WG_FUNNEL = .3
+
+    def mpt(r, t):
+        return V(r * math.cos(t), r * math.sin(t), -WG_FUNNEL * (1 - r) ** 1.6)
+    eye = mpt(0.0, 0.0)
+    for i in range(nr):
+        r0, r1 = (i / nr) ** 1.3, ((i + 1) / nr) ** 1.3
+        for j in range(nt):
+            t0, t1 = TAU * j / nt, TAU * (j + 1) / nt
+            if i == 0:
+                mem.face((eye, mpt(r1, t0), mpt(r1, t1)), F['membrane'], normal=(0, 0, 1))
+            else:
+                mem.face((mpt(r0, t0), mpt(r1, t0), mpt(r1, t1), mpt(r0, t1)), F['membrane'], normal=(0, 0, 1))
     mem.extend(flipped(mem))
 
     def membrane_fn(P):
         r = np.clip(np.hypot(P[:, 0], P[:, 1]), 0, 1)
-        return mix_hex(0xf4fbff, 0x5f7dff, r ** .7) * (1 - .55 * r ** 3)[:, None]
+        t = np.arctan2(P[:, 1], P[:, 0])
+        arms = .5 + .5 * np.sin(3 * t + 7.5 * r ** .8)          # three arms winding outward
+        base = mix_hex(0xf4fbff, 0x5f7dff, r ** .7) * (1 - .55 * r ** 3)[:, None]
+        return base * (.62 + .38 * arms * np.clip(r * 3, 0, 1))[:, None]
     # ---- columns: broken, fluted, in two rows; a fallen drum ----
     def column(x, z, h, k, capital=False):
         cg = Geo()

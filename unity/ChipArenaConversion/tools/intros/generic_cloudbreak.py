@@ -6,7 +6,8 @@ centre is the hero mark (the origin), a flat side of the octagon facing +z (the 
   cloudbreak/beacon     the mast's red beacon lens (glow; world frame)
   cloudbreak/sock       one windsock, its mouth at the pivot (the pole top, CB_SOCK_TOP), streaming along +z
   cloudbreak/peaks      the far peaks (world frame)        cloudbreak/clouds   the cloud sea and far cumulus (world frame)
-  cloudbreak/sky        the dawn sky dome (glow)           cloudbreak/sun      the sun's disc, facing +z, radius 8 (glow)
+  cloudbreak/sky        the dawn sky dome (glow)
+  cloudbreak/sun        the sun's face, facing +z, radius 7.2: rings white-hot at the core, gold at the limb (glow)
 """
 import math
 
@@ -275,7 +276,20 @@ def build(T):
     sky = Geo()
     dome(sky, 172, F['sky'], 12 if fine else 6, 36 if fine else 16, -16, 90)
     sun = Geo()
-    disc(sun, V(0, 0, 0), 7.2, F['sun'], 24 if fine else 12, normal=(0, 0, 1))
+    # The sun's face in rings, so its colour can fall from a white-hot core to a gold limb (limb darkening: it reads as a burning
+    # body, not a paper disc); the Core script's halo glow softens its edge against the sky.
+    rings = (0.0, .3, .55, .74, .87, .95, 1.0) if fine else (0.0, .55, .87, 1.0)
+    nseg = 40 if fine else 16
+    disc(sun, V(0, 0, 0), 7.2 * rings[1], F['sun'], nseg, normal=(0, 0, 1))
+    for r0, r1 in zip(rings[1:], rings[2:]):
+        disc(sun, V(0, 0, 0), 7.2 * r1, F['sun'], nseg, normal=(0, 0, 1), r_in=7.2 * r0)
+
+    def sunfn(P):
+        import numpy as np
+        r = np.clip(np.hypot(P[:, 0], P[:, 1]) / 7.2, 0, 1)
+        core = mix_hex(0xfffbf0, 0xffe2a8, np.clip(r / .6, 0, 1))
+        limb = mix_hex(0xffe2a8, 0xffa44e, np.clip((r - .6) / .4, 0, 1) ** 1.4)
+        return np.where((r < .6)[:, None], core, limb)
     skyfn = sky_fn(0x3d6db3, 0xf3b78e, CB_SUN_DIR, 0xffcf96, .75, below=0xd4c4cc)
 
     def cloudfn(P):
@@ -298,7 +312,7 @@ def build(T):
         Piece('cloudbreak/peaks', peaks, False, (-50.0,)),
         Piece('cloudbreak/clouds', clouds, False, (-50.0,), recolour=({F['cloud']}, cloudfn)),
         Piece('cloudbreak/sky', sky, False, (-500.0,), recolour=({F['sky']}, skyfn)),
-        Piece('cloudbreak/sun', sun, False, (-500.0,), preview=[M(sun_at, yaw=sun_yaw)]),
+        Piece('cloudbreak/sun', sun, False, (-500.0,), recolour=({F['sun']}, sunfn), preview=[M(sun_at, yaw=sun_yaw)]),
     ]
 
 
