@@ -53,9 +53,13 @@ namespace ChipArena.UnityConversion
             Console.WriteLine("PASS 2,000 deterministic landing fields, eight seats each");
         }
 
-        public static void WorldSweep(string root)
+        public static void WorldSweep(string root,params uint[] seeds)
         {
-            Fields();
+            if(seeds.Length==0)
+            {
+                Fields();
+                seeds=Enumerable.Range(0,Seeds).Select(i=>unchecked((uint)i*2654435761u)).ToArray();
+            }
             string Read(string name)=>File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",name));
             string mapsJson=Read("UnityMaps.json"),layoutJson=Read("ExpeditionLayout.json");
             var maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,new JsonSerializerOptions{IncludeFields=true});
@@ -64,9 +68,8 @@ namespace ChipArena.UnityConversion
             layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
             int completed=0;
             var clock=System.Diagnostics.Stopwatch.StartNew();
-            Parallel.For(0,Seeds,new ParallelOptions{MaxDegreeOfParallelism=Math.Min(6,Environment.ProcessorCount)},i=>
+            Parallel.ForEach(seeds,new ParallelOptions{MaxDegreeOfParallelism=Math.Min(6,Environment.ProcessorCount)},seed=>
             {
-                uint seed=unchecked((uint)i*2654435761u);
                 try
                 {
                     var room=new ExpeditionDeploymentRoom("landing-sweep","pilot",seed,"black-siren",layout,content);
@@ -93,8 +96,21 @@ namespace ChipArena.UnityConversion
                         }
                         return false;
                     }
-                    bool Reach(string id,V3 from,V3 to,float r,float h)=>Attached(from,r,h)&&Attached(to,r,h);
-                    NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{areas=new[]{world.Area}},new ConversionContent{maps=new[]{map}},null,Supported,Reach);
+                    var caches=world.Area.anchors.Where(a=>a.kind=="chest").ToArray();
+                    var approaches=caches.Select(a=>NativeExpeditionGeneratedWorld.CacheApproach(a).Position).ToHashSet();
+                    var routed=new HashSet<V3>();
+                    bool Reach(string id,V3 from,V3 to,float r,float h)
+                    {
+                        if(r==NativeHordeKinds.HulkRadius&&h==NativeHordeKinds.HulkHeight&&approaches.Contains(to))
+                            routed.Add(to);
+                        return Attached(from,r,h)&&Attached(to,r,h);
+                    }
+                    Check(caches.Length==4,seed,"four grid caches");
+                    foreach(var cache in caches)
+                        Check(!Supported(map.id,new V3(cache.x,cache.y,cache.z),.45f,1.8f),seed,"solid locker obstructs its centre");
+                    NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{revision=NativeExpeditionGeneratedWorld.Version,areas=new[]{world.Area}},
+                        new ConversionContent{maps=new[]{map}},null,Supported,Reach);
+                    Check(routed.SetEquals(approaches),seed,"Hulk route checked for each cache approach");
                     var expected=NativeExpeditionHubPlan.LandingField(world.Blueprint.worldSeed);
                     for(int j=0;j<8;j++)
                     {
@@ -107,9 +123,9 @@ namespace ChipArena.UnityConversion
                 }
                 catch(Exception e){throw new Exception("World sweep run seed "+seed,e);}
                 int done=System.Threading.Interlocked.Increment(ref completed);
-                if(done==1||done%100==0)Console.WriteLine("Generated world sweep "+done+"/"+Seeds+" at "+clock.Elapsed);
+                if(done==1||done%100==0)Console.WriteLine("Generated world sweep "+done+"/"+seeds.Length+" at "+clock.Elapsed);
             });
-            Console.WriteLine("PASS 2,000 generated maps through Validate and ValidateGeometry, Hulk nav and unchanged PvP spawn rows");
+            Console.WriteLine("PASS "+seeds.Length+" generated maps through Validate and ValidateGeometry, Hulk nav and unchanged PvP spawn rows");
         }
     }
 }

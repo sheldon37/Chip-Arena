@@ -1,3 +1,9 @@
+## 2026-11-19 — Astra: generated Expedition cache startup regression
+
+From shared `821d75c4` on `codex/cache-startup-fix`. Reproduced both reported seeds with the generated map's collision and navigation probes. The 0.45 m player capsule failed at (110, 0, -10) and (110, 0, 20.5), inside the lockers. ValidateGeometry now checks placed caches at their standing approach and checks their interaction point separately. Seeded interior holograms also use the approach because their anchors can back onto a wall. Legacy free-standing cache anchors keep their player clearance test. Collision, layout generation, economy and wire format are unchanged.
+
+The default CoreTests suite now runs both incident seeds. `--cache-startup` runs them directly and `--landing-world-sweep` exercises the larger set. The regression checks occupied locker centres and Hulk routes to the approaches. Re-test the Windows Editor launch before publishing M3.
+
 ## 2026-11-19 — Astra: A2 Civil Defence cache rules
 
 Task branch `codex/a2-civil-defence` from shared `8790610c`, staged for the A1/A2 M3 release. Four seeded grid bays, two candidates per authored interior cache in exp-layout-8, and five seeded Meridian bays per candidate-3 plan including a walkable roof. The Navigation has a quay-level roof over the towpath. Restock advances the host economy stream and leaves all anchors in place. Tier and price survive save/handoff. An unopened purchase retains its weight row. Boss Epic+ now includes mythic.
