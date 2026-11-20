@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         // The set (Unity space, ranged_sundown.py).
         private static readonly Vector3 BelfryU=new Vector3(-2.4f,0,10.8f);private const float HangY=6.32f,BellH=1.1f,PlinthY=.9f;
         /// <summary>The bell's hang point and where it comes to rest (source frame).</summary>
-        public static readonly Vector3 Hang=S(BelfryU.X,HangY,BelfryU.Z),RestAt=L(.55f,.0f,1.55f);
+        public static readonly Vector3 Hang=S(BelfryU.X,HangY,BelfryU.Z),RestAt=L(1.15f,.0f,.95f);
         private static readonly Vector3 Sun=Vector3.Normalize(SDir(0,.05f,1)),Gold=NativeEntranceFx.Hex(0xffc070),Ember=NativeEntranceFx.Hex(0xff8a3c),Dust=NativeEntranceFx.Hex(0xb08a62),Rose=NativeEntranceFx.Hex(0xff6a88);
         private static readonly Vector3 WindmillHub=S(-18.5f,9.2f+.28f,22.0f+.42f),Saloon=S(-(10f-.14f)+.04f,.42f,-7.1f+.56f);
         private const int Shingles=26,Planks=8,Splinters=18;
@@ -71,18 +71,27 @@ namespace ChipArena.UnityConversion
                .Dolly(1.08f,L(-1.18f,1.56f,.28f),L(-1.06f,1.57f,.36f),L(0,1.56f,.25f),L(0,1.58f,.25f),24,22).Focus(0,0,.55f)
                .Dolly(1.62f,L(-.78f,1.74f,-2.25f),L(-.7f,1.72f,-1.95f),bellLook,bellLook+new Vector3(0,.05f,0),16,14).Focus(0,0,.3f)
                .Dolly(2.24f,L(-1.25f,1.02f,1.45f),L(-1.05f,1.0f,1.25f),L(-.25f,.98f,.05f),L(-.22f,1.0f,.08f),26,24).Focus(0,0,.6f)
-               .Dolly(2.78f,L(-7.6f,1.35f,3.4f),L(-7.25f,1.42f,3.75f),L(.9f,2.6f,7.2f),L(.9f,2.0f,7.4f),33,30).Focus(0,0,.25f)
+               .Dolly(2.78f,L(-7.3f,1.4f,3.0f),L(-6.95f,1.46f,3.3f),L(.5f,1.9f,3.9f),L(.5f,1.75f,4.1f),44,42).Focus(0,0,.2f)
                // the bullet: riding beside it from the muzzle to the bell, through the falling boards
                .Dolly(ShotAt-.02f,muzzle-dir*.55f+side*.32f+new Vector3(0,.16f,0),hit-dir*1.1f+side*.42f+new Vector3(0,.22f,0),muzzle+dir*3,hit+dir*.4f,52,46).Ease(NativeIntroEase.Linear)
                .Dolly(HitAt+.02f,L(4.8f,.62f,6.1f),L(4.5f,.7f,6.35f),L(2.3f,1.4f,10.2f),L(1.6f,.7f,8.4f),42,40).Focus(0,0,.2f)
                .Dolly(Ground-.04f,L(1.35f,.3f,3.2f),L(1.25f,.32f,2.9f),L(1.8f,.45f,7.4f),L(.4f,.7f,.6f),38,36).Focus(0,0,.35f)
                .Dolly(BlowFrom,L(.82f,1.62f,1.65f),L(.7f,1.64f,1.48f),L(.02f,1.6f,0),L(.02f,1.62f,.02f),30,28).Focus(0,0,.6f)
-               .Dolly(Rest-.25f,L(1.75f,.62f,3.95f),L(1.35f,.66f,3.4f),L(0,1.0f,0),L(0,1.06f,0),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
+               .Dolly(Rest-.25f,L(-1.5f,.7f,3.45f),L(-1.18f,.72f,3.0f),L(.15f,1.0f,0),L(.15f,1.06f,0),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(.06f,0);
             // Slow motion through the shot and the strike; repaid while the bell rolls.
             Ramps.Ramp(3.48f,.28f,.85f,1.25f);
         }
         // ---- the model's clips (the keyed rig drives the rest: the stillness, the blow, the hero) ----
+        /// <summary>The blow: the gun hand brought up by the mouth, the barrel raised, then down again (the keyed rig drives the model here).</summary>
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
+        {
+            float w=NativeEntranceMath.Ramp(t,BlowFrom,BlowFrom+.3f)*(1-NativeEntranceMath.Ramp(t,BlowTo,Rest));if(w<=.001f)return;
+            var fwd=Vector3.Transform(Vector3.UnitZ,rotation);var left=Vector3.Cross(Vector3.UnitY,fwd);pose.World();
+            var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);
+            var at=head+fwd*.2f-left*.1f-new Vector3(0,.12f,0);var barrel=Vector3.Normalize(Vector3.UnitY*1.2f+fwd*.25f+left*.35f);
+            NativeEntrancePose.Reach(pose,root,rotation,false,at,Look(barrel,-fwd),w);
+        }
         public override bool Clip(float t,out string clip,out float time)
         {
             clip=null;time=0;
@@ -244,7 +253,7 @@ namespace ChipArena.UnityConversion
                 var m0=Wrist(ShotAt)+Vector3.Normalize(BellAt(HitAt)-Wrist(ShotAt))*.26f;var target=BellAt(HitAt)+SDir(0,-.45f,-.3f);var d=target-m0;float len=d.Length();var dir=d/len;
                 float u=NativeEntranceMath.Clamp01((t-ShotAt)/(HitAt-ShotAt));var head=m0+d*u;
                 fx.Glow(head,NativeEntranceFx.Hex(0xfff2c8,3.2f),0,.05f,1,0,7420);fx.Glow(head,Gold*1.4f,0,.16f,0,0,7421);
-                Line(fx,eye,fwd,head,head-dir*Math.Min(1.6f,len*u),NativeEntranceFx.Hex(0xffe0a0,2.2f),.012f,.95f,0,7422);
+                Line(fx,eye,fwd,head,head-dir*Math.Min(2.4f,len*u),NativeEntranceFx.Hex(0xffe0a0,3.0f),.026f,.9f,0,7422);fx.Glow(head,NativeEntranceFx.Hex(0xffd890,2.2f),0,.3f,0,0,7423);
                 // the air it parts: a faint shimmer trail of tiny motes lingering behind
                 int n=q<.5f?6:14;for(int i=0;i<n;i++){float v=(i+.5f)/n*u;var p=m0+d*v;float age=t-(ShotAt+(HitAt-ShotAt)*v);fx.Glow(p,Gold*(.3f*(float)Math.Exp(-age*6)),0,.03f+.05f*age,0,0,7430+i);}
             }

@@ -57,16 +57,16 @@ namespace ChipArena.UnityConversion
             // ---- the camera ----
             var scope=AimWrist+AimDir*ScopeAt+Up*.07f;var muzzle=AimWrist+AimDir*MuzzleAt;
             var flyFrom=muzzle+AimDir*.6f+Right*.5f+Up*.22f;var flyTo=Drone-AimDir*4.5f+Right*1.4f+Up*.6f;
-            Rig.Spline(0,new[]{L(-3.6f,8.2f,-9.4f),L(-2.7f,5.2f,-6.2f),L(-1.5f,2.3f,-3.1f)},L(0,1.0f,8),L(0,1.4f,30),46,40).Ease(NativeIntroEase.InOut).Focus(0,0,.25f)
+            Rig.Spline(0,new[]{L(-3.6f,8.2f,-9.4f),L(-2.7f,5.2f,-6.2f),L(-1.5f,2.3f,-3.1f)},L(0,.9f,3),L(0,1.25f,9),46,40).Ease(NativeIntroEase.InOut).Focus(0,0,.25f)
                .Dolly(LensAt,scope+Right*.34f+AimDir*.42f+Up*.05f,scope+Right*.3f+AimDir*.36f+Up*.05f,scope,scope,20,18).Focus(0,0,.8f)
                .Dolly(2.0f,Drone-AimDir*3.5f+Right*1.2f+Up*.3f,Drone-AimDir*3.6f+Right*1.1f+Up*.3f,scope,scope+new Vector3(0,.04f,0),3.6f,3.0f).Focus(0,0,.15f)
-               .Dolly(BreathFrom,L(-1.02f,1.16f,.33f),L(-.94f,1.15f,.42f),L(-.12f,1.14f,.3f),L(-.1f,1.15f,.34f),26,23).Focus(0,0,.6f)
+               .Dolly(BreathFrom,L(-1.5f,1.2f,.18f),L(-1.36f,1.19f,.3f),L(-.08f,1.1f,.48f),L(-.06f,1.11f,.5f),30,27).Focus(0,0,.6f)
                .Dolly(ShotAt-.03f,muzzle+Right*1.25f+AimDir*1.4f+Up*.25f,muzzle+Right*1.2f+AimDir*1.32f+Up*.28f,muzzle-AimDir*.4f,muzzle-AimDir*.35f,40,38)
                .Dolly(ShotAt+.06f,flyFrom,flyTo,flyFrom+AimDir*6,Drone,48,30).Ease(NativeIntroEase.Linear)
                .Dolly(HitAt+.02f,L(-.95f,1.78f,-1.65f),L(-.9f,1.76f,-1.55f),Drone,Drone-new Vector3(0,9,0),7,9.5f).Focus(0,0,.1f)
                .Dolly(CaseLands-.32f,L(.5f,1.16f,1.95f),L(.45f,1.14f,1.85f),L(-.2f,1.05f,1.32f),L(-.22f,1.05f,1.3f),30,28).Focus(0,0,.75f)
                .Dolly(RiseFrom,L(-2.25f,.72f,.85f),L(-2.05f,.82f,1.0f),L(0,1.0f,.1f),L(0,1.32f,.1f),36,34).Focus(0,0,.4f)
-               .Dolly(RiseTo-.1f,L(1.35f,.86f,3.55f),L(1.05f,.92f,3.05f),L(0,1.24f,0),L(0,1.3f,0),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
+               .Dolly(RiseTo-.1f,L(1.4f,1.32f,3.6f),L(1.08f,1.34f,3.1f),L(0,1.22f,0),L(0,1.27f,0),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(.08f,0);
             // The breath held: the shot and the round's flight slowed; repaid while the drone falls.
             Ramps.Ramp(3.22f,.3f,1.15f,1.3f);
@@ -75,18 +75,22 @@ namespace ChipArena.UnityConversion
         /// fore-end over the coping. Released into the low carry as the pilot rises.</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            float w=1-NativeEntranceMath.Ramp(t,RiseFrom,RiseFrom+.45f);if(w<=.001f)return;
-            float kick=NativeEntranceMath.Pulse(t,ShotAt,.015f,.12f);var dir=Vector3.Normalize(AimDir+Up*(.06f*kick));
-            var grip=AimWrist-AimDir*(.05f*kick)+Up*(.012f*kick);var q=Look(dir,Up);
-            NativeEntrancePose.Reach(pose,root,rotation,false,grip,q,w);
-            NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*.5f-Up*.035f,q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),w);
+            float rise=NativeEntranceMath.Ramp(t,RiseFrom,RiseFrom+.55f);
+            float kick=NativeEntranceMath.Pulse(t,ShotAt,.015f,.12f);var aim=Vector3.Normalize(AimDir+Up*(.06f*kick));
+            var carry=Vector3.Normalize(Facing0*.62f+new Vector3(0,-.78f,0));var dir=Vector3.Normalize(Vector3.Lerp(aim,carry,rise));
+            var up=Vector3.Normalize(Vector3.UnitY-dir*dir.Y);
+            var grip=Vector3.Lerp(AimWrist-AimDir*(.05f*kick)+Up*(.012f*kick),CarryGrip,rise);var q=Look(dir,up);
+            NativeEntrancePose.Reach(pose,root,rotation,false,grip,q,1);
+            NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*.38f-up*.035f,q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),1);
         }
+        /// <summary>The low carry's right wrist (standing, the rifle across the body, muzzle down and forward).</summary>
+        private static readonly Vector3 CarryGrip=L(-.16f,.98f,.26f);
         /// <summary>The rifle's line at `t`: the drawn right wrist (or the keyed aim) and the bore.</summary>
         private void Rifle(float t,out Vector3 wrist,out Vector3 dir)
         {
             // the drawn rifle when the runtime hands it in (its muzzle back along its bore to where the keyed wrist would be), else the keyed aim
             if(Drawn(t,out var m,out var b)){dir=b;wrist=m-b*MuzzleAt;return;}
-            wrist=Wrist(t);dir=AimDir;if(t>RiseFrom+.2f){dir=Vector3.Normalize(Facing0+new Vector3(0,-.75f,0));}
+            wrist=Wrist(t);dir=AimDir;if(t>RiseFrom+.2f){dir=Vector3.Normalize(Facing0*.62f+new Vector3(0,-.78f,0));}
         }
         private static readonly Vector3 Facing0=Local(0,0,1);
 
@@ -191,7 +195,7 @@ namespace ChipArena.UnityConversion
             // the scope's lens: the eye's red in the glass, rain beading on it (close shot), and the glint seen from afar
             float lens=NativeEntranceMath.Bump(t,LensAt-.05f,2.0f);
             if(lens>.01f){fx.Glow(scope+bore*.12f,Red*(1.1f*lens),0,.025f,1,0,8600);for(int i=0;i<(q<.5f?3:6);i++){var p=scope+bore*.125f+Right*(NativeEntranceMath.Signed(8610,i)*.018f)+Up*(NativeEntranceMath.Signed(8611,i)*.018f-.02f*((t*.6f+i*.3f)%1f));fx.Glow(p,Ice*(.6f*lens),0,.006f,0,0,8610+i);}}
-            float glint=Flash(t,GlintAt,.03f,.28f);if(glint>.02f)Star(fx,eye,fwd,scope+bore*.13f,NativeEntranceFx.Hex(0xe8f6ff,3.4f*glint),(t>2.0f&&t<BreathFrom?2.2f:.25f)*glint+.05f,.6f,8650);
+            float glint=Flash(t,GlintAt,.03f,.28f);if(glint>.02f)Star(fx,eye,fwd,scope+bore*.13f,NativeEntranceFx.Hex(0xe8f6ff,3.4f*glint),(t>2.0f&&t<BreathFrom?.75f:.25f)*glint+.05f,.6f,8650);
             // the breath: a faint plume as the hold breaks (after the shot)
             {var head=Anchor(NativeEntranceAnchor.Head,t);float b=NativeEntranceMath.Bump(t,ShotAt+.25f,ShotAt+1.1f);if(b>.02f)for(int i=0;i<3;i++){float u=(t*.8f+i/3f)%1f;fx.Smoke(head+bore*(.12f+.2f*u)+new Vector3(0,-.04f+.06f*u,0),new Vector3(.75f,.8f,.88f),.12f*b*(1-u),.06f+.12f*u,u,8700+i,floor);}}
             // the shot: the flash, the brake's side jets, the round and its vapour line across the avenue, the casing's steam

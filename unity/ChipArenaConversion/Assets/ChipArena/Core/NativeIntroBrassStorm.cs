@@ -20,7 +20,9 @@ namespace ChipArena.UnityConversion
         public const float Total=7.8f,CardAt=6.0f;
         public const float Flood1=.45f,Flood2=.8f,Flood3=1.15f,StepUp=1.45f,Rack=1.72f,FireFrom=1.95f,FireTo=4.35f,Dry=4.38f,Lower=5.1f,LastCase=5.5f;
         public const int Rounds=38;
-        private const float Rate=(FireTo-FireFrom)/Rounds,TracerSpeed=110,ShutterZ=12;
+        private const float Rate=(FireTo-FireFrom)/Rounds,TracerSpeed=110,ShutterZ=12,CaseScale=1.5f;
+        /// <summary>The work light inside the warehouse (source frame): each hole's ray runs out from it.</summary>
+        private static readonly Vector3 Lamp=L(.3f,1.25f,ShutterZ+8);
         private static readonly Vector3 Sodium=NativeEntranceFx.Hex(0xffa040),Hot=NativeEntranceFx.Hex(0xffd890),Brass=NativeEntranceFx.Hex(0xffc76a),Smoke=new Vector3(.32f,.3f,.29f),Work=NativeEntranceFx.Hex(0xffe8c8);
         // the floods (Unity x, y, z, yaw; ranged_brass.py FLOODS) and the drums and crates
         private static readonly float[] Floods={-8.6f,7.6f,2.6f,-.55f, 8.8f,7.6f,4.2f,.6f, 0,7.0f,11.5f,(float)Math.PI};
@@ -50,8 +52,8 @@ namespace ChipArena.UnityConversion
             Rig.Spline(0,new[]{L(-9.6f,6.6f,-4.6f),L(-8.2f,4.8f,-4.0f),L(-6.8f,3.4f,-3.2f)},L(0,1.3f,6.5f),L(0,1.2f,5),50,46).Ease(NativeIntroEase.InOut).Focus(0,0,.2f)
                .Dolly(StepUp-.03f,L(1.32f,.36f,2.65f),L(1.06f,.4f,2.3f),L(0,1.24f,0),L(0,1.3f,0),38,35).Focus(0,0,.45f)
                .Dolly(FireFrom-.02f,L(-.76f,1.56f,-1.46f),L(-.68f,1.5f,-1.3f),L(.6f,2.0f,12),L(-.6f,2.1f,12),42,40).Handheld(.9f).Focus(0,0,.15f)
-               .Dolly(2.5f,L(-1.58f,1.16f,.75f),L(-1.46f,1.1f,.12f),L(-.3f,1.05f,.45f),L(-.32f,.88f,.2f),34,32).Focus(0,0,.55f)
-               .Dolly(2.92f,L(-.92f,.12f,.58f),L(-.86f,.14f,.46f),L(-.16f,.95f,.15f),L(-.15f,1.0f,.12f),62,60).Focus(0,0,.4f)
+               .Dolly(2.5f,L(-2.3f,1.32f,1.05f),L(-2.1f,1.24f,.4f),L(-.25f,1.22f,.5f),L(-.3f,1.08f,.3f),36,34).Focus(0,0,.55f)
+               .Dolly(2.92f,L(-2.25f,.1f,.95f),L(-2.1f,.12f,.78f),L(-.5f,.62f,.3f),L(-.5f,.66f,.28f),52,50).Focus(0,0,.4f)
                .Dolly(3.45f,L(7.6f,2.4f,3.0f),L(7.3f,2.5f,3.4f),L(0,1.4f,4.5f),L(-.2f,1.35f,4.2f),56,54).Handheld(.6f).Focus(0,0,.15f)
                .Dolly(Dry+.04f,L(.25f,1.32f,9.7f),L(.45f,1.26f,4.5f),L(0,1.25f,0),L(0,1.22f,0),40,36).Ease(NativeIntroEase.Out).Focus(0,0,.35f)
                .Dolly(Lower+.25f,L(1.58f,.62f,3.28f),L(1.26f,.66f,2.86f),L(0,1.08f,0),L(0,1.13f,0),35,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
@@ -92,14 +94,13 @@ namespace ChipArena.UnityConversion
             NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*(.46f-.3f*rack)-up*.04f+Vector3.Normalize(Vector3.Cross(up,dir))*(.02f*rack),q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),1);
         }
         private Vector3 MuzzleAt(float t)=>Drawn(t,out var m,out _)?m:Wrist(t)+Bore(t)*.78f;
-        private static Vector3 Port(Vector3 wrist,Vector3 bore)=>wrist+bore*.12f+Vector3.Normalize(Vector3.Cross(bore,Vector3.UnitY))*-.06f+new Vector3(0,.04f,0);
 
         // ---- the brass: each round's case kicked out to the right, falling round the boots ----
         private static bool Case(int i,float t,out Vector3 p,out Quaternion q)
         {
             float born=Fired(i)+.02f,a=t-born;p=default;q=Quaternion.Identity;if(a<0)return false;
-            var bore=Vector3.Normalize(Strike(i)-Grip);var right=-Vector3.Normalize(Vector3.Cross(bore,Vector3.UnitY));var port=Grip+bore*.12f+right*.06f+new Vector3(0,.04f,0);
-            var v=right*(1.5f+.6f*NativeEntranceMath.Rand(5200,i))+new Vector3(0,1.1f+.8f*NativeEntranceMath.Rand(5201,i),0)-bore*.3f;
+            var bore=Vector3.Normalize(Strike(i)-Grip);var right=Vector3.Normalize(Vector3.Cross(bore,Vector3.UnitY));var port=Grip+bore*.12f+right*.06f+new Vector3(0,.04f,0);
+            var v=right*(.9f+.45f*NativeEntranceMath.Rand(5200,i))+new Vector3(0,1.0f+.7f*NativeEntranceMath.Rand(5201,i),0)-bore*.25f;
             float land=(v.Y+(float)Math.Sqrt(v.Y*v.Y+2*9.8f*(port.Y-Floor)))/9.8f;
             if(a<land){p=Ballistic(port,v,a);q=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(NativeEntranceMath.Signed(5202,i),1,.3f)),a*(25+15*NativeEntranceMath.Rand(5203,i)));return true;}
             // a bounce and a skitter, then lying still
@@ -133,7 +134,7 @@ namespace ChipArena.UnityConversion
             // the cases in flight and lying (instanced) and the burst crate's boards
             int n=0;for(int i=0;i<Rounds&&n<at.Length;i++){if(Case(i,t,out var p,out var q)){at[n]=p;turn[n]=q;n++;}}
             if(t>LastCase-.6f&&n<at.Length){LastCaseAt(t,out var p,out var q);at[n]=p;turn[n]=q;n++;}
-            if(n>0)set.Batch("brass/casing",new ReadOnlySpan<Vector3>(at,0,n),new ReadOnlySpan<Quaternion>(turn,0,n),1,Vector3.One);
+            if(n>0)set.Batch("brass/casing",new ReadOnlySpan<Vector3>(at,0,n),new ReadOnlySpan<Quaternion>(turn,0,n),CaseScale,Vector3.One);
             if(t>=BurstAt)
             {
                 n=0;var c=S(Crates[Burst*4],.5f,Crates[Burst*4+1]);float a=t-BurstAt;
@@ -224,8 +225,9 @@ namespace ChipArena.UnityConversion
                 var p=L(NativeEntranceMath.Signed(6600,i)*4.5f,.4f+1.8f*NativeEntranceMath.Rand(6601,i),1.2f+9.5f*NativeEntranceMath.Rand(6602,i))+new Vector3((float)Math.Sin(t*.3f+i)*.4f,t*.05f,(float)Math.Cos(t*.27f+i)*.4f);
                 fx.Smoke(p,Smoke,.28f*smoke*(.6f+.4f*NativeEntranceMath.Rand(6603,i)),1.4f+1.2f*NativeEntranceMath.Rand(6604,i),.5f,6600+i,floor);
             }
-            // the light through the holes: a point of white on the steel at each, and its ray out into the smoke toward the camera's side
-            int holes=0,rays=q<.5f?20:44;
+            // the light through the holes: a point of white on the steel at each, and its ray running out from the work light through it
+            // into the smoke (drawn from its far end when the hole is behind the camera, so it streams past); the haze stays for the name
+            int holes=0,rays=q<.5f?20:44;float haze=NativeEntranceMath.Ramp(t,FireFrom+.4f,FireTo)*(1-.3f*NativeEntranceMath.Ramp(t,Dry+.3f,Total));
             for(int i=0;i<Rounds;i++)
             {
                 if(Math.Abs(i-17)<=1||Math.Abs(i-26)<=1)continue;float hitAt=Fired(i)+Vector3.Distance(Grip,Strike(i))/TracerSpeed;if(t<hitAt)continue;
@@ -233,7 +235,15 @@ namespace ChipArena.UnityConversion
                 {
                     var h=Strike(i)+(s==0?Vector3.Zero:SDir(NativeEntranceMath.Signed(6700,i)*.22f,NativeEntranceMath.Signed(6701,i)*.18f,0));float glow=NativeEntranceMath.Ramp(t,hitAt,hitAt+.25f);
                     fx.Glow(h,Work*(1.8f*glow),0,.035f,1,0,6800+i*2+s);
-                    if(holes<rays){float ray=glow*smoke*(.55f+.45f*NativeEntranceMath.Rand(6702,i*2+s));if(ray>.02f){var to=h+Vector3.Normalize(eye-h+L(NativeEntranceMath.Signed(6703,i)*1.5f,-.5f,0))*(5.5f+3*NativeEntranceMath.Rand(6704,i));Line(fx,eye,fwd,h,to,Work*(.16f*ray),.05f+.05f*NativeEntranceMath.Rand(6705,i),.35f,0,6900+i*2+s);}}
+                    if(holes<rays)
+                    {
+                        int r=i*2+s;float ray=glow*haze*(.55f+.45f*NativeEntranceMath.Rand(6702,r));
+                        if(ray>.02f)
+                        {
+                            var far=h+Vector3.Normalize(h-Lamp)*(8+4*NativeEntranceMath.Rand(6704,r));var c=Work*(.26f*ray);float w=.07f+.08f*NativeEntranceMath.Rand(6705,r);
+                            if(Vector3.Dot(h-eye,fwd)>.4f)Line(fx,eye,fwd,h,far,c,w,.8f,0,6900+r);else Line(fx,eye,fwd,far,h,c,w,0,0,6900+r);
+                        }
+                    }
                     holes++;
                 }
             }
