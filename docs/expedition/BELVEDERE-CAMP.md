@@ -36,7 +36,7 @@ plans. The run's world seed varies only the dead bulbs, the fires' phases and th
 | Gate masts: on the fence top at each opening's edges, a flood down the lane at 4.5 m, the strings' eyes | 8; the north gate's east mast carries the camp PA |
 | Bulb strings: N-S and E-W spans along ±5.35 m (the "#" round the future mess ring), fence runs from each corner mast to its gate masts, a string across each gate | 16 strings, about 420 bulbs, one in about fourteen dead |
 | Shade sails across each corner, from the corner mast (6.4 m) to its two sail masts (4.6 m) | 4, in the survivors' tarp colours |
-| Half-drum fires against the inner face (0.245 m deep), coals, logs, their soot | 8, two near each corner |
+| Half-drum fires against the inner face (0.245 m deep), coals and logs | 8, two near each corner |
 | The war board, flat on the north fence at x 15.4-19.0 | The run's plan painted on plywood: streets, routes in chalk, red pins and yarn from the camp; TILESET: CITY; the three dealt instances' posters, crossed in red as the view clears them; the desk lamp |
 | The MISSING board, flat on the north fence at x -16.5 to -13.0 | 24 flyers |
 | Gate signs hung from each gate's string (4.0-4.62 m) | CITY HALL / BELVEDERE CAMP over the north gate; EAST, SOUTH, WEST GATE |

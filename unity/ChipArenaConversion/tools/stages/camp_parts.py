@@ -108,7 +108,7 @@ def gate_mast(T, pa=False):
 
 def fire_drum(T):
     """A half drum against the inner face (cut lengthwise, 0.46 m across, 0.245 m deep with its standoff): rusted, charred at the
-    top, punched air holes glowing low, a grate, logs and a bed of coals; its soot climbing the fence above it."""
+    top, punched air holes glowing low, a grate, logs and a bed of coals."""
     f = F()
     g = Geo()
     r, h, z0 = .23, .74, -.015
@@ -150,11 +150,8 @@ def fire_drum(T):
         for (a, b) in (((-.12, .62, -.06), (.06, .98, -.16)), ((.13, .62, -.08), (-.02, .95, -.18)), ((0, .64, -.2), (.03, .9, -.04))):
             rod(g, a, b, .032, f['log'], 6)
             sk.lathe(g, [(.031, 0.0), (.0, .0)], b, glow(ck.EMBER, 2.2), 6, axis=sk._norm(sk._sub(b, a)), cap0=False)
-    # the soot on the fence above it (flat, 8 mm off the face)
-    outer = [(-.26, .76), (.26, .76), (.36, 1.15), (.3, 1.55), (.14, 1.82), (-.1, 1.8), (-.3, 1.5), (-.37, 1.12)]
-    inner = [(-.17, .76), (.17, .76), (.22, 1.05), (.16, 1.32), (.02, 1.45), (-.13, 1.34), (-.21, 1.06)]
-    g.face([(x, y, -.008) for (x, y) in outer][::-1], sk.fin('camp-soot-wash', 0x4A4440, sk.DETAIL_NONE, smooth=.1, dirt=0), normal=(0, 0, -1))
-    g.face([(x, y, -.011) for (x, y) in inner][::-1], sk.fin('camp-soot-core', 0x2E2A26, sk.DETAIL_NONE, smooth=.1, dirt=0), normal=(0, 0, -1))
+    # no soot painted on the fence: a dark patch at head height behind the flame read as a hooded figure standing at the fire
+    # (the 2026-11-20 capture); the smoke and the fire's light do that work
     return g
 
 
