@@ -77,6 +77,19 @@ namespace ChipArena.UnityConversion
                     // The live graph floods camp-connected surfaces. Check independently that each gameplay point attaches.
                     var world=NativeExpeditionGeneratedWorld.Build(room);
                     var map=world.Map;
+                    var cabin=NativeCradleCard.CityNightMap(world,200,152);
+                    int CabinPixel(V3 p)
+                    {
+                        int x=(int)Math.Round((p.x-map.bounds.minX)/(map.bounds.maxX-map.bounds.minX)*199);
+                        int y=(int)Math.Round((map.bounds.maxZ-p.z)/(map.bounds.maxZ-map.bounds.minZ)*151);
+                        return cabin[y*200+x]&0xffffff;
+                    }
+                    foreach(var door in world.Area.anchors.Where(a=>a.kind=="door"))
+                    {
+                        var district=world.Blueprint.districts.Single(d=>d.instance==door.building);
+                        Check(CabinPixel(new V3(door.x,door.y,door.z))==NativeDeployPresentation.DestinationOf(district.instance,district.theme).Color,seed,"cabin entrance "+door.building);
+                    }
+                    Check(CabinPixel(map.nav.nodes[map.nav.nodes.Length/2].pos)!=0x091323,seed,"cabin street");
                     bool Supported(string id,V3 p,float r,float h)=>ExpeditionLayoutChecks.Supported(map,p,r,h);
                     var nodes=map.nav.nodes.ToLookup(n=>((int)n.pos.x,(int)n.pos.z));
                     bool Attached(V3 p,float r,float h)
