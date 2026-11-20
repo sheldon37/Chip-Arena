@@ -984,13 +984,14 @@ def sandbag(T):
 # NativeCampSurvivors.Hold turns and moves it into the fist. The headset's origin is the middle of the skull (y up, z the face).
 # ---------------------------------------------------------------------------------------------------------------------------
 def prop_mug(T):
-    """An enamel camp mug, held by its handle: the handle round the grip, the mug's axis along the grip (z), its body beside it (+x)."""
+    """An enamel camp mug, held round its body: its axis along the grip (z, its rim up the thumb's side, its foot at -.045), the fist
+    closing on it, its handle out to the side (+x)."""
     f = F()
     g = Geo()
     sides = 12 if T.detail else 8
-    sk.lathe(g, [(.038, -.045), (.04, .043), (.036, .045)], (.058, 0, 0), f['cd-white'], sides, axis=(0, 0, 1), cap0=True)
-    sk.lathe(g, [(.036, .041), (.0, .041)], (.058, 0, 0), f['metal-dark'], sides, axis=(0, 0, 1))
-    tube(g, [(.022, 0, .028), (.004, 0, .022), (-.004, 0, 0), (.004, 0, -.022), (.022, 0, -.028)], .007, f['cd-white'], 5, caps=False)
+    sk.lathe(g, [(.032, -.045), (.034, .043), (.031, .045)], (0, 0, 0), f['cd-white'], sides, axis=(0, 0, 1), cap0=True)
+    sk.lathe(g, [(.031, .041), (.0, .041)], (0, 0, 0), f['metal-dark'], sides, axis=(0, 0, 1))
+    tube(g, [(.03, 0, .026), (.052, 0, .02), (.056, 0, 0), (.052, 0, -.02), (.03, 0, -.026)], .006, f['cd-white'], 5, caps=False)
     return g
 
 

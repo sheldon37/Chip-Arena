@@ -296,7 +296,7 @@ namespace ChipArena.UnityConversion
 #endif
             camp.Frame(WorldEye,now,pilot,LowGraphics,EffectsQuality<.5f,EffectsQuality,show,dt);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if(show)CampPreviewMachines(arena,now);
+            if(show){CampPreviewMachines(arena,now);CampPreviewRevive(now);}
 #endif
         }
         /// <summary>The camp built for this arena's map (behind the loading screen through PrewarmCamp, else on its first frame): the live

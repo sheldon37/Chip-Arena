@@ -67,7 +67,10 @@ namespace ChipArena.UnityConversion
                 if(s.PosedFrame<Time.frameCount-1)s.Body.Binding.State.Forget();
                 double clock=Time.unscaledTimeAsDouble;s.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,clock-s.PoseTime));s.PoseTime=clock;
                 bool left=prop!=null&&prop.StartsWith("l:",StringComparison.Ordinal);
-                s.Body.Binding.Apply(campPose,new NativeVisualRig.Grasp{Exact=1,RightGrip=prop!=null&&!left?.85f:0,LeftGrip=left?.85f:0},false,false);
+                // a prop in hand: the fist seated on its handle (a sword's grip along the wrist's +z), the arm otherwise the clip's
+                var grasp=new NativeVisualRig.Grasp{Exact=1};var handle=NativeVisualRig.Blade(System.Numerics.Quaternion.Identity);
+                if(prop!=null){if(left){grasp.LeftGrip=1;grasp.Left=handle;}else{grasp.RightGrip=1;grasp.Right=handle;}}
+                s.Body.Binding.Apply(campPose,grasp,false,false);
                 s.PosedFrame=Time.frameCount;camp.Skinned.Add(post.Id);CampSkinnedCount++;
                 // what it holds: the beat's prop in its fist (the binding's weapon frames), a worn one on its head
                 var root=t.localToWorldMatrix;
@@ -78,10 +81,25 @@ namespace ChipArena.UnityConversion
                     var hold=NativeCampSurvivors.Hold(key,left);
                     camp.DrawProp(key,root*Matrix4x4.TRS(p,q,Vector3.one)*Matrix4x4.TRS(new Vector3(hold.X,hold.Y,hold.Z),Quaternion.Euler(hold.Pitch,hold.Yaw,hold.Roll),Vector3.one));
                 }
+                else if(role.Keeps!=null)
+                {
+                    var rest=NativeCampSurvivors.Rest(role);var key=role.Keeps.StartsWith("l:",StringComparison.Ordinal)?role.Keeps.Substring(2):role.Keeps;
+                    camp.DrawProp(key,root*Matrix4x4.TRS(new Vector3(rest.X,rest.Y,rest.Z),Quaternion.Euler(rest.Pitch,rest.Yaw,rest.Roll),Vector3.one));
+                }
                 if(role.Head!=null&&s.Head!=null)camp.DrawProp(role.Head,s.Head.localToWorldMatrix*s.HeadProp);
             }
             // the bodies not drawn this frame go hidden (kept for when the eye comes back)
             foreach(var s in campSurvivors.Values)if(s.Body?.Root!=null&&s.PosedFrame!=Time.frameCount&&s.Body.Root.activeSelf)s.Body.Root.SetActive(false);
+        }
+        /// <summary>The REVIVE-O-MATIC where the live hub stands it (NativeReviveMachine.Spot on the generated map): Sparks works at it in the
+        /// preview. Idle (its sequence's rest), its lights on the presentation clock; drawn with the preview's machines.</summary>
+        private readonly List<(string id,System.Numerics.Matrix4x4 m)> campReviveParts=new List<(string,System.Numerics.Matrix4x4)>(96);
+        private void CampPreviewRevive(float t)
+        {
+            if(sourceModels==null||!NativeReviveMachine.Spot(NativeExpeditionGeneratedWorld.MapId,out var at,out float yaw))return;
+            NativeReviveMachine.PoseParts(0,campReviveParts,t);
+            var root=Matrix4x4.TRS(new Vector3(at.X,at.Y,at.Z),Quaternion.Euler(0,yaw*Mathf.Rad2Deg,0),Vector3.one);
+            for(int i=0;i<campReviveParts.Count;i++){var (id,m)=campReviveParts[i];sourceModels.Queue(id,root*UnityM(m));}
         }
         /// <summary>The preview off, or a frame without the bank: every survivor's body hidden, every figure drawn.</summary>
         private void CampSurvivorsHide()

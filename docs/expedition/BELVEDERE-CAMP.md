@@ -85,17 +85,67 @@ in a live run: the walk's map is the only map it answers to, and its switches ar
   - the generator;
   - eight sandbag walls.
 - The camp's two machines (their real models).
-- The survivors at their posts: 13 from the start, and up to five rescued joiners. They are rigid posed figures, seeded per run, and
-  never replicated.
+- The survivors at their posts: 13 from the start, and up to five rescued joiners, never replicated. The nearest six within 30 m
+  are the pilot model, dressed for their roles and living on pack clips (see Survivors below). The rest are the bank's rigid posed
+  figures, seeded per run.
 - Glass you can see through where a survivor stands behind it.
 
 **Keys:**
 - C: the preview on or off.
-- U: how many rescued survivors have joined (0-5).
+- U: how many rescued survivors have joined (0-5). A survivor joining brings a cheer or a wave from the standing civilians.
+- Y: that cheer, to review it without a rescue.
 - K: the clearance overlay, as filled boxes (never ring outlines): A1's blocks, the gates' leaf travel and track, the 4 m lanes,
   the ring's walkway, and the landing field's pods for the walk's deal (hull, skid apron, and the capsule at ExitReach 2.4 m).
 
 A banner says DEV PREVIEW · BELVEDERE CAMP (W5 PLAN) · NOT GAMEPLAY.
+
+### Survivors
+
+Owner (2026-11-20): "For the people in the hub, We can use our player model. Of course, dress the NPC's appropriately".
+
+**Roles:** Core `NativeCampSurvivors` gives every post a role. Each role has a clean outfit and a loop of pack clips.
+
+**Outfits** go through the zombies' dressing (Runtime `NativeZombieModelPresentation.cs`), made clean:
+- the pack's pieces;
+- the garment bank's apron (the cook, the Quartermaster, the welder), lab coat (Doc, with her lanyard), coveralls (Sparks) and
+  scrubs (the nurse);
+- parkas with beanies or caps for the lookouts and sentries;
+- a Locker skin tone and human eyes;
+- no wear, rot or blood.
+
+**Clips** come from the camp's own motion bank, `Resources/ChipArenaCampMotion`. It is local and never committed. The local tool's
+intromotion request bakes it (the hold script is `scratch/camp/hold/bake-motion2.sh`). It holds:
+- the Crafting pack's chair clips (Idle, Talk, Drink, Eat) for the benches;
+- its work clips (Hammer-Table, Use, Chisel) at the kiosk and the infirmary;
+- its kneel clips for Sparks at the REVIVE-O-MATIC;
+- its idles, cheers and wave;
+- the RPG pack's unarmed watch, alert and injured idles for the lookouts, the sentries and the rescued office worker.
+
+**How the clips play:**
+- They play as keyed poses (Core `NativeIntroPack`, as the intros' pack clips do), eased .45 s between beats.
+- Each survivor's loop starts at its own phase.
+- A seated clip's hips go down onto the bench (the bench's .47 m seat against the chair's .55 m), and its legs are re-solved to
+  keep its feet where the clip has them.
+- Props are drawn from the camp bank: a mug, a bowl, a hammer, and the radio operator's headset. Each sits in its fist (the
+  binding's weapon frames) or on its head.
+
+**Budget:** at most six survivors draw on the model, the nearest within 30 m, kept until 33 m (Runtime
+`NativeCampSurvivorsDraw.cs`, Editor and development builds only, the walk only). The rest stay the bank's figures, which now draw
+one by one so that a survivor on the model leaves its figure out.
+
+**Checks:** `CampChecks` holds:
+- a role for every post;
+- clean looks from the banks' own pieces, garments and gear;
+- whole loops;
+- the six-nearest pick and its slack.
+
+With `CHIPARENA_CAMP_MOTION` set, it also holds every role on the bank's clips:
+- whole poses;
+- the feet by the floor;
+- a seated clip's feet held while its hips go down;
+- no allocation per sample.
+
+`--camp-motion-probe BANK` prints each clip's hips, knees, feet and hands on the model.
 
 ## The hub plan table (the A1 contract)
 

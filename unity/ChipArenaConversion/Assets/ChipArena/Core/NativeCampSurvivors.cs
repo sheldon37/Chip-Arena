@@ -37,6 +37,8 @@ namespace ChipArena.UnityConversion
             public string Post,Name;public Stance Stance;public Beat[] Beats;public NativeZombieLooks.Variant Look;
             /// <summary>Worn on the head the whole time (camp/prop/headset), or null.</summary>
             public string Head;
+            /// <summary>The prop it owns (a beat's Prop when in its fist), at rest by its post the rest of the loop (Rest), or null.</summary>
+            public string Keeps;
             /// <summary>Whether a rescue brings a cheer or a wave (the standing civilians; never a sentry at his post).</summary>
             public bool Cheers;
             /// <summary>The loop's length (s).</summary>
@@ -51,17 +53,21 @@ namespace ChipArena.UnityConversion
         /// <summary>Every clip a role plays (the bake's list must hold them; CampChecks).</summary>
         public static IEnumerable<string> Clips(){var seen=new HashSet<string>(StringComparer.Ordinal);foreach(var r in Roles)foreach(var b in r.Beats)if(seen.Add(b.Clip))yield return b.Clip;foreach(var c in new[]{Cheer1,Cheer2,Wave})if(seen.Add(c))yield return c;}
         /// <summary>The props (camp bank keys; "l:" in a beat: held in the left fist).</summary>
-        public const string Mug="camp/prop/mug",Bowl="l:camp/prop/bowl",HammerProp="camp/prop/hammer",Headset="camp/prop/headset";
-        /// <summary>A prop's seat in its fist: its offset (m) and turn (degrees) in the binding's weapon frame (the game wrist's turn at the
-        /// visual fist; a sword's grip runs along its +z).</summary>
+        public const string Mug="camp/prop/mug",HammerProp="camp/prop/hammer",Headset="camp/prop/headset";
+        /// <summary>A prop's place: its offset (m) and turn (degrees, Unity's Euler) in a frame.</summary>
         public readonly struct Seat{public readonly float X,Y,Z,Pitch,Yaw,Roll;public Seat(float x,float y,float z,float pitch=0,float yaw=0,float roll=0){X=x;Y=y;Z=z;Pitch=pitch;Yaw=yaw;Roll=roll;}}
-        public static Seat Hold(string prop,bool left)
+        /// <summary>A prop in its fist: the binding seats the fist on a handle along the game wrist's +z (NativeVisualRig.Blade, as a sword's
+        /// grip), so the prop's own grip (its origin, its handle along +z) sits at the weapon frame as modelled.</summary>
+        public static Seat Hold(string prop,bool left)=>new Seat(0,0,0);
+        /// <summary>Where role `r`'s kept prop rests while it is not in hand (the post's frame: +x its right, +z where it faces): the cook's
+        /// mug on the bench by her, the hammer on the kiosk's counter, Sparks's on the floor by his knee.</summary>
+        public static Seat Rest(Role r)
         {
-            switch(prop)
+            switch(r.Post)
             {
-                case "camp/prop/mug":return new Seat(0,-.035f,.02f,0,0,0);
-                case "camp/prop/bowl":return new Seat(0,-.05f,.02f,0,0,0);
-                case "camp/prop/hammer":return new Seat(0,0,.03f,0,0,0);
+                case "fire-1":return new Seat(.3f,BenchSeat,-.02f,-90,0,0);
+                case "quartermaster":case "welder":return new Seat(.12f,.985f,.36f,0,80,0);
+                case "sparks":return new Seat(.34f,.018f,.3f,0,70,0);
                 default:return new Seat(0,0,0);
             }
         }
@@ -78,8 +84,8 @@ namespace ChipArena.UnityConversion
                 Build=new NativeZombieLooks.Build(),Decay=Array.Empty<string>(),Garments=garments??Array.Empty<string>(),GarmentColours=garmentColours??Array.Empty<int>(),Gear=gear??Array.Empty<string>(),Upright=1};
         private static Role R(string post,string name,Stance stance,NativeZombieLooks.Variant look,Beat[] beats,string head=null,bool cheers=false)
         {
-            float length=0;foreach(var b in beats)length+=b.Seconds;
-            return new Role{Post=post,Name=name,Stance=stance,Look=look,Beats=beats,Head=head,Cheers=cheers,Length=length};
+            float length=0;string keeps=null;foreach(var b in beats){length+=b.Seconds;keeps??=b.Prop;}
+            return new Role{Post=post,Name=name,Stance=stance,Look=look,Beats=beats,Head=head,Cheers=cheers,Length=length,Keeps=keeps};
         }
         private static Beat B(string clip,float seconds,bool loop=true,string prop=null)=>new Beat(clip,seconds,loop,1,prop);
         public static readonly Role[] Roles=
@@ -90,10 +96,10 @@ namespace ChipArena.UnityConversion
                 new[]{B(ChairTalk,4f,false),B(ChairIdle,6f),B(ChairTalk,4f,false),B(ChairIdle,5f)}),
             R("fire-1","the cook",Stance.Seated,Dress("cook",true,"tied-back","z-work-shirt|tee","z-dress-pants|khakis","bare","lace-ups",
                 new[]{0x2A1A12,0xD8D2C4,0x3C3A36,Keep,0x2A221C},0xAC7250,Body(-10,30,5,20,35,15,30,30,10,45),new[]{NativeZombieLooks.ApronGarment},new[]{0xC9C2B0}),
-                new[]{B(ChairIdle,5f,true,Mug),B(ChairDrink,2.66f,true,Mug),B(ChairIdle,4f,true,Mug),B(ChairDrink,1.33f,true,Mug),B(ChairTalk,4f,false,Mug)}),
+                new[]{B(ChairIdle,5f),B(ChairDrink,2.66f,true,Mug),B(ChairIdle,4f),B(ChairDrink,1.33f,true,Mug),B(ChairTalk,4f,false)}),
             R("fire-2","an old hand",Stance.Seated,Dress("elder",false,"side-swept","sweater","khakis","bare","lace-ups",
                 new[]{0x9A9894,0x5A6B4A,0x5A4E3C,Keep,0x2E2620},0xE6B796,Body(45,35,5,35,10,35,0,0,10,80)),
-                new[]{B(ChairEat,4.5f,true,Bowl),B(ChairIdle,6f),B(ChairTalk,4f,false)}),
+                new[]{B(ChairEat,4.5f),B(ChairIdle,6f),B(ChairTalk,4f,false)}),
             R("quartermaster","the Quartermaster",Stance.Standing,Dress("quartermaster",false,"z-newsboy|side-swept","z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",
                 new[]{0x4A4036,0x8A7A5A,0x4A4638,0x3A2E22,0x3B2E24},0xC48A62,Body(55,45,20,40,15,40,0,0,10,60),new[]{NativeZombieLooks.ApronGarment},new[]{0x5E3D25}),
                 new[]{B(Hammer,4f,true,HammerProp),B(Bored,2.67f,false),B(Use,2.66f),B(Idle,3f)},cheers:true),
@@ -125,7 +131,7 @@ namespace ChipArena.UnityConversion
             // Sparks keeps the REVIVE-O-MATIC going, on one knee at its works
             R("sparks","Sparks, the mechanic",Stance.Kneeling,Dress("sparks",false,"z-ball-cap|spiky","tee","baggy-pants","gloves","work-boots",
                 new[]{0xB03A2A,0x6E6A60,0x3A4A6A,0x2A2620,0x2E2620},0xE6B796,Body(50,20,30,10,15,30,0,0,0,30),new[]{NativeZombieLooks.CoverallsGarment},new[]{0x3E5A7A}),
-                new[]{B(KneelIdle,3.2f,true,HammerProp),B(KneelHammer,3f,true,HammerProp),B(KneelIdle,1.6f,true,HammerProp)}),
+                new[]{B(KneelIdle,3.2f),B(KneelHammer,3f,true,HammerProp),B(KneelIdle,1.6f)}),
             // the rescued, one per cleared instance
             R("nurse","a nurse",Stance.Standing,Dress("nurse",true,"tied-back","z-scrubs-top|tee","z-scrub-pants|baggy-pants","bare","sneakers",
                 new[]{0x3A2A1C,0x3E8C86,0x3E8C86,Keep,0xE2E2E2},0xD8A07A,Body(-10,15,5,5,30,10,25,20,0,35),new[]{NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants},new[]{0x3E8C86,0x3E8C86}),

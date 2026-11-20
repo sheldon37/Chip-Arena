@@ -137,7 +137,7 @@ namespace ChipArena.UnityConversion
             new Post("fire-0","survivor","camp-bench-0",0,0,3.4f,180,"seated-warm",Cover.SeatedRoof),
             new Post("fire-1","survivor","camp-bench-1",3.4f,0,0,270,"seated-mug",Cover.SeatedRoof),
             new Post("fire-2","survivor","camp-bench-2",0,0,-3.4f,0,"seated-lantern",Cover.SeatedRoof),
-            new Post("quartermaster","Quartermaster","camp-kiosk",15.75f,0,15.75f,225,"hatch-lean",Cover.Hatch),
+            new Post("quartermaster","Quartermaster","camp-kiosk",15.6f,0,16f,270,"hatch-lean",Cover.Hatch),
             new Post("doc","Doc","camp-infirmary",-16f,0,-16f,45,"hatch-clipboard",Cover.Hatch),
             new Post("radio","radio operator","camp-radio",12.1f,0,23.75f,180,"seated-radio",Cover.Glass),
             new Post("lookout-0","lookout","camp-lookout-cabin",12.5f,9f,-13.6f,270,"stand-binoculars",Cover.Glass),
@@ -150,7 +150,7 @@ namespace ChipArena.UnityConversion
             // the rescued, one per cleared instance, in the camp's own look (plan R6)
             new Post("nurse","nurse","camp-infirmary",-17.7f,0,-16.05f,0,"hatch-arms",Cover.Hatch,"exp-ward-zero"),
             new Post("clerk","ticket clerk","camp-radio",14.1f,0,23.75f,180,"seated-ledger",Cover.Glass,"exp-transit"),
-            new Post("welder","welder","camp-kiosk",15.7f,0,17.4f,270,"hatch-welder",Cover.Hatch,"exp-foundry"),
+            new Post("welder","welder","camp-kiosk",16.05f,0,15.6f,180,"hatch-welder",Cover.Hatch,"exp-foundry"),
             new Post("office","office worker","camp-supply",-12.5f,0,-23.45f,0,"stand-blanket",Cover.Glass,"exp-backrooms"),
             new Post("attendant","pool attendant","camp-bench-3",-3.4f,0,0,90,"seated-towel",Cover.SeatedRoof,"exp-poolrooms"),
         };
