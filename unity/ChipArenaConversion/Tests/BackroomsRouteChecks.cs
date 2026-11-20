@@ -7,15 +7,41 @@ namespace ChipArena.UnityConversion
     // Backrooms collision. Unlike the old dry-only/graph-only checks, capsule bottoms have no step allowance.
     internal static class BackroomsRouteChecks
     {
-        private sealed class Probe
+        internal sealed class Probe
         {
-            readonly ContentMap map; readonly ContentBlock[] boxes;
+            readonly ContentMap map;
+            private readonly Dictionary<ContentBlock,(float cos,float sin)> rotation=new Dictionary<ContentBlock,(float,float)>();
+            private void Local(ContentBlock b,V3 p,out float x,out float z)
+            {
+                var (c,s)=rotation[b];
+                float dx=p.x-b.pos.x,dz=p.z-b.pos.z;
+                x=Math.Abs(dx*c-dz*s);z=Math.Abs(dx*s+dz*c);
+            }
             readonly Dictionary<(float,float),MapNavNode[]> clearNodes=new Dictionary<(float,float),MapNavNode[]>();
             public MapNavNode Nearest(V3 p,float radius,float height)
             {if(!clearNodes.TryGetValue((radius,height),out var nodes))clearNodes[(radius,height)]=nodes=map.nav.nodes.Where(n=>Supported(n.pos-new V3(0,.85f,0),radius,height)).ToArray();return nodes.OrderBy(n=>(n.pos-p-new V3(0,.85f,0)).Length).FirstOrDefault();}
             readonly Dictionary<(int,int),List<ContentBlock>> grid=new Dictionary<(int,int),List<ContentBlock>>();
             IEnumerable<ContentBlock> Near(V3 p)=>grid.TryGetValue(((int)Math.Floor(p.x/4),(int)Math.Floor(p.z/4)),out var list)?list:Enumerable.Empty<ContentBlock>();
-            public Probe(ContentMap m){map=m;var off=new HashSet<string>((m.ramps??Array.Empty<MapRamp>()).SelectMany(r=>r.blocks));boxes=m.blocks.Where(b=>!off.Contains(b.id)).ToArray();foreach(var b in boxes)for(int x=(int)Math.Floor((b.pos.x-b.size.x/2-1)/4);x<=(int)Math.Floor((b.pos.x+b.size.x/2+1)/4);x++)for(int z=(int)Math.Floor((b.pos.z-b.size.z/2-1)/4);z<=(int)Math.Floor((b.pos.z+b.size.z/2+1)/4);z++){if(!grid.TryGetValue((x,z),out var list))grid[(x,z)]=list=new List<ContentBlock>();list.Add(b);}}
+            public Probe(ContentMap m)
+            {
+                map=m;
+                var off=new HashSet<string>((m.ramps??Array.Empty<MapRamp>()).SelectMany(r=>r.blocks));
+                off.UnionWith(m.navHints?.collisionOff??Array.Empty<string>());
+                foreach(var b in m.blocks.Where(box=>!off.Contains(box.id)))
+                {
+                    double yaw=2*Math.Atan2(b.rotation.y,b.rotation.w);
+                    float c=(float)Math.Cos(yaw),s=(float)Math.Sin(yaw);
+                    rotation[b]=(c,s);
+                    float rx=(Math.Abs(c)*b.size.x+Math.Abs(s)*b.size.z)/2+1;
+                    float rz=(Math.Abs(s)*b.size.x+Math.Abs(c)*b.size.z)/2+1;
+                    for(int x=(int)Math.Floor((b.pos.x-rx)/4);x<=(int)Math.Floor((b.pos.x+rx)/4);x++)
+                    for(int z=(int)Math.Floor((b.pos.z-rz)/4);z<=(int)Math.Floor((b.pos.z+rz)/4);z++)
+                    {
+                        if(!grid.TryGetValue((x,z),out var list))grid[(x,z)]=list=new List<ContentBlock>();
+                        list.Add(b);
+                    }
+                }
+            }
             static float Dot(V3 a,V3 b)=>a.x*b.x+a.y*b.y+a.z*b.z;
             static bool Surface(MapRamp r,V3 p,out float y,out float normal)
             {
@@ -26,7 +52,7 @@ namespace ChipArena.UnityConversion
             public bool Ground(V3 p,float up,float down,out V3 floor,out float normal)
             {
                 float y=float.NegativeInfinity;normal=1;
-                foreach(var b in Near(p)){float top=b.pos.y+b.size.y/2;if(Math.Abs(p.x-b.pos.x)<=b.size.x/2&&Math.Abs(p.z-b.pos.z)<=b.size.z/2&&top<=p.y+up+.00001f&&top>=p.y+up-down-.00001f&&top>y){y=top;normal=1;}}
+                foreach(var b in Near(p)){float top=b.pos.y+b.size.y/2;Local(b,p,out float x,out float z);if(x<=b.size.x/2&&z<=b.size.z/2&&top<=p.y+up+.00001f&&top>=p.y+up-down-.00001f&&top>y){y=top;normal=1;}}
                 foreach(var r in map.ramps??Array.Empty<MapRamp>())if(Surface(r,p,out float top,out float n)&&top<=p.y+up+.00001f&&top>=p.y+up-down-.00001f&&top>y){y=top;normal=n;}
                 floor=new V3(p.x,y,p.z);return !float.IsNegativeInfinity(y);
             }
@@ -36,7 +62,7 @@ namespace ChipArena.UnityConversion
                 float lift=.04f+radius*(1/normal-1),lo=p.y+radius+lift,hi=p.y+height-radius+lift;
                 foreach(var b in Near(p))
                 {
-                    float dx=Math.Max(0,Math.Abs(p.x-b.pos.x)-b.size.x/2),dz=Math.Max(0,Math.Abs(p.z-b.pos.z)-b.size.z/2),dy=Math.Max(0,Math.Max(b.pos.y-b.size.y/2-hi,lo-(b.pos.y+b.size.y/2)));
+                    Local(b,p,out float x,out float z);float dx=Math.Max(0,x-b.size.x/2),dz=Math.Max(0,z-b.size.z/2),dy=Math.Max(0,Math.Max(b.pos.y-b.size.y/2-hi,lo-(b.pos.y+b.size.y/2)));
                     if(dx*dx+dy*dy+dz*dz<radius*radius-.000001f)return false;
                 }
                 foreach(var r in map.ramps??Array.Empty<MapRamp>())
@@ -48,16 +74,21 @@ namespace ChipArena.UnityConversion
                 }
                 return true;
             }
+            public bool WalkLink(V3 a,V3 b,float radius,float height)
+            {
+                bool ok=true;int steps=Math.Max(1,(int)Math.Ceiling((b-a).Length/.4));
+                for(int i=1;i<steps&&ok;i++){var p=a+(b-a)*(i/(float)steps);ok=Ground(p,.2f,.4f,out var floor,out float normal)&&normal>=.65f&&Supported(floor,radius,height);}
+                // Generated links cross one cell edge only; wall crossings must also pass the raised LOS.
+                for(int i=0;i<=steps*2&&ok;i++){var p=a+(b-a)*(i/(float)(steps*2))+new V3(0,radius+.4f,0);ok=!Near(p).Any(box=>{Local(box,p,out float x,out float z);return x<box.size.x/2-.00001f&&Math.Abs(p.y-box.pos.y)<box.size.y/2-.00001f&&z<box.size.z/2-.00001f;});}
+                return ok;
+            }
             public HashSet<string> Flood(V3 origin,float radius,float height)
             {
                 var nodes=map.nav.nodes.ToDictionary(n=>n.id);var clear=nodes.Values.ToDictionary(n=>n.id,n=>Supported(n.pos-new V3(0,.85f,0),radius,height));
                 var edges=nodes.Keys.ToDictionary(id=>id,id=>new List<string>());
                 foreach(var link in map.nav.links)
                 {
-                    if(!clear[link.a]||!clear[link.b])continue;var a=nodes[link.a].pos-new V3(0,.85f,0);var b=nodes[link.b].pos-new V3(0,.85f,0);bool ok=true;int steps=Math.Max(1,(int)Math.Ceiling((b-a).Length/.4));
-                    for(int i=1;i<steps&&ok;i++){var p=a+(b-a)*(i/(float)steps);ok=Ground(p,.2f,.4f,out var floor,out float normal)&&normal>=.65f&&Supported(floor,radius,height);}
-                    // Generated links cross one cell edge only; wall crossings must also pass the raised LOS.
-                    for(int i=0;i<=steps*2&&ok;i++){var p=a+(b-a)*(i/(float)(steps*2))+new V3(0,radius+.4f,0);ok=!Near(p).Any(box=>Math.Abs(p.x-box.pos.x)<box.size.x/2-.00001f&&Math.Abs(p.y-box.pos.y)<box.size.y/2-.00001f&&Math.Abs(p.z-box.pos.z)<box.size.z/2-.00001f);}
+                    if(!clear[link.a]||!clear[link.b])continue;var a=nodes[link.a].pos-new V3(0,.85f,0);var b=nodes[link.b].pos-new V3(0,.85f,0);bool ok=WalkLink(a,b,radius,height);
                     if(ok){edges[link.a].Add(link.b);edges[link.b].Add(link.a);}
                 }
                 var start=nodes.Values.Where(n=>clear[n.id]).OrderBy(n=>(n.pos-origin-new V3(0,.85f,0)).Length).First();var seen=new HashSet<string>{start.id};var q=new Queue<string>(seen);

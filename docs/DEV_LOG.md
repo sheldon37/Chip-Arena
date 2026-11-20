@@ -1,3 +1,9 @@
+## 2026-11-19 — Astra: authored instance cache routes
+
+Branch `codex/instance-cache-routes` from shared `eba02d3a`. A block-aware CoreTests run on the previous bays reproduced `Unreachable cache approach: exp-ward-zero:cache:1`. Moved both upper northeast stair bays to the ground-floor intake lockers. Testing Central Station exposed an obstructed pilot interaction at its second west-side cache-0 bay, now at the west pier. Regenerated the fixture and resource. Hulk clearance and the live geometry gate are preserved.
+
+`--instance-cache-routes` exercises the full area geometry gate for every authored locker combination, including solid lockers, rotated blocks, ramp wedges, disabled collision and capsule-checked navigation links. All 16 candidates across 20 combinations passed. City startup regressions (2 seeds), deployment (4,839 checks) and Backrooms collision (20,700 anchors) passed. Added the first black-siren roll of seed 1964354793 to Editor deployment acceptance. Windows Editor startup and test publication remain with the integrator.
+
 ## 2026-11-20 — Claude: the black wall behind the Arcades cache (fire escapes' stepped bases); cache walls checked (integrator's fix; presentation only)
 
 **Branch and status:** branch `claude/meridian-bleed`, fix commit `48d321ac` on top of `59392a95`. Pushed, not merged.

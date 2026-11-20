@@ -55,6 +55,10 @@ namespace ChipArena.UnityConversion.Editor
                     if(roll==1)CheckExpeditionActivation(content,locked);
                     Debug.Log("PASS deployment seed acceptance: seed="+seed+", roll="+roll+", identity="+locked.Identity+", totalMs="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", simulatedTicks="+(roll==1?1800:0));
                 }
+                // Replay the Ward Zero cache startup incident through the live geometry loader.
+                var cacheRun=new ExpeditionDeploymentRoom("cache-startup","p1",1964354793u,"black-siren",layout,content);
+                if(!cacheRun.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances))throw new Exception("Cache regression roll refused");
+                CheckGeneratedDeploymentWorld(content,cacheRun);
                 CheckExpeditionLoadBudget();
                 MeasureChangedMeridianCandidates();
                 if(errors.Count>0)throw new Exception("Deployment acceptance logged native errors: "+string.Join(" | ",errors));

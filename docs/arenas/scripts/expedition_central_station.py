@@ -244,7 +244,7 @@ breach_panel('concourse-w', -40.0, 10.6, 1); breach_panel('concourse-e', 40.0, 9
 ENTRIES_IN = [pt(x, 0, z, 180.0) for z in (32.8, 31.4) for x in (-3.6, -2.1, 2.1, 3.6)]
 # Run-seeded cache bays, (x, floor y, z, front yaw in degrees).
 CACHE_CANDIDATES = {
-    'exp-transit:cache:0': [(-29.5, 0, 19.082, 180), (-29.5, 0, 12.623, 0)],
+    'exp-transit:cache:0': [(-29.5, 0, 19.082, 180), (-31.5, 0, -7.54, 180)],
     'exp-transit:cache:1': [(10.34, 0, 7.5, 90), (10.34, 0, 4.5, 90)],
     'exp-transit:cache:2': [(31.5, -1.2, -31.66, 0), (29.5, -1.2, -31.66, 0)],
 }
