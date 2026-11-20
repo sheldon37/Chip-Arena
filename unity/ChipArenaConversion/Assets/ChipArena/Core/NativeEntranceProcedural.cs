@@ -698,7 +698,7 @@ namespace ChipArena.UnityConversion
             }
             // The aura: every joint flares at the surge and pulses down on the beat.
             float aura=NativeEntranceMath.Pulse(t,Surge,.02f,.5f)+.35f*NativeEntranceMath.Pulse(t,2.0f,.02f,.2f)+.25f*NativeEntranceMath.Pulse(t,2.4f,.02f,.2f)+.15f*NativeEntranceMath.Pulse(t,2.8f,.02f,.2f);
-            if(aura>.02f)for(int j=0;j<(int)NativeEntranceAnchor.Count;j++){var which=(NativeEntranceAnchor)j;if(which==NativeEntranceAnchor.Root||which==NativeEntranceAnchor.Forward||which==NativeEntranceAnchor.Focus||which==NativeEntranceAnchor.LeftTip||which==NativeEntranceAnchor.RightTip)continue;fx.Glow(Anchor(which,t),gold*(.7f*aura),0,.3f,0,0,5800+j);}
+            if(aura>.02f)for(int j=0;j<=(int)NativeEntranceAnchor.Focus;j++){var which=(NativeEntranceAnchor)j;if(which==NativeEntranceAnchor.Root||which==NativeEntranceAnchor.Forward||which==NativeEntranceAnchor.Focus||which==NativeEntranceAnchor.LeftTip||which==NativeEntranceAnchor.RightTip)continue;fx.Glow(Anchor(which,t),gold*(.7f*aura),0,.3f,0,0,5800+j);}
             NativeEntranceFx.Sparks(fx,t,Surge,Anchor(NativeEntranceAnchor.Chest,Surge),Vector3.Zero,1,36,4.4f,.8f,4,1.4f,white*3,gold,.02f,5850,q,NativeEntranceStage.FloorY);
             NativeEntranceFx.GroundDust(fx,t,Surge,new Vector3(0,NativeEntranceStage.FloorY,0),22,.35f,2.0f,1.8f,NativeEntranceFx.Hex(0x8f8a80),.5f,.42f,5900,q,NativeEntranceStage.FloorY);
         }
