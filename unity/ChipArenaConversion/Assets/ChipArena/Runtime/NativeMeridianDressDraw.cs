@@ -47,7 +47,11 @@ namespace ChipArena.UnityConversion
             Release();if(input?.Map==null)return false;
             try
             {
-                bank=NativePackBanks.Bank(NativeMeridianDress.Bank);if(bank==null)return false;modules=NativeMeridianDress.Modules(bank);if(modules.Count==0)return false;
+                bank=NativePackBanks.Bank(NativeMeridianDress.Bank);if(bank==null)return false;
+                // the bleed's themed variants (key@theme, in ChipArenaCityBleed) join the module table: ThemeAt picks them, and the plain
+                // key draws where a theme has none
+                bank=NativeMeridianDress.WithVariants(bank,NativePackBanks.Bank(NativeCityBleedDress.Bank));
+                modules=NativeMeridianDress.Modules(bank);if(modules.Count==0)return false;
                 shader=Resources.Load<Shader>("NativeStageLit");if(shader==null||!shader.isSupported)throw new InvalidOperationException("ChipArena/StageLit is missing or unsupported");
                 var watch=System.Diagnostics.Stopwatch.StartNew();
                 plan=NativeMeridianDress.Build(input,modules.ContainsKey);PlanMs=(float)watch.Elapsed.TotalMilliseconds;watch.Restart();

@@ -13,6 +13,21 @@ namespace ChipArena.UnityConversion
         // ------------------------------------------------------------------------------------------------------------------
         // A lot: its facades bay by bay and storey by storey (bible 2.3, 5.1-5.4), its cornice, its roof, its pavement
         // ------------------------------------------------------------------------------------------------------------------
+        // A bay wholly under the bleed's skins (nine points across it: its ends and middle, low, mid and high): the skins stand
+        // there instead of the module.
+        private static bool BayCovered(V3 at,V3 along,V3 n,float w,float h)
+        {
+            var c=FacadeCovered;if(c==null)return false;
+            foreach(float u in new[]{-.42f,0,.42f})foreach(float v in new[]{.12f,.5f,.88f})if(!c(at+along*(u*w)+new V3(0,v*h,0),n))return false;
+            return true;
+        }
+        // The bleed's lamps stand here (D3), or a cache keeps the place clear.
+        private static bool LampLeft(Builder b,V3 p)=>LampsReplaced?.Invoke(p)==true||KeptOut(b,p,1.2f,3f);
+        private static bool KeptOut(Builder b,V3 p,float r,float h)
+        {
+            var ko=b.In.KeepOut;if(ko==null)return false;var lo=new V3(p.x-r,p.y-.2f,p.z-r);var hi=new V3(p.x+r,p.y+h,p.z+r);
+            foreach(var k in ko)if(k.Hits(lo,hi))return true;return false;
+        }
         private static void DressLot(Builder b,int bi)
         {
             var blk=b.Blocks[bi];int o=bi*6;var B=b.S.B;float bottom=B[o+2],top=B[o+3];
@@ -75,7 +90,7 @@ namespace ChipArena.UnityConversion
                                 case 'm':key=Unit(Mix(baySeed,3))<.15f?"g.shutter":"g.shop."+MarketTrades[Mix(lotSeed,(uint)(i/3))%(uint)MarketTrades.Length];break;
                                 default:key=door==1?V("g.door."+wallVar,3,baySeed):V("g.window."+wallVar,3,baySeed);break;
                             }
-                            b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true,false,false,0);
+                            if(!BayCovered(at,uh,N,w,fh))b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true,false,false,0);
                             continue;
                         }
                         if(blind)key=Unit(Mix(baySeed,(uint)k))<.45f?V("u.blind",2,Mix(baySeed,(uint)k)):"u.plain";
@@ -87,7 +102,7 @@ namespace ChipArena.UnityConversion
                             default:key=oriel&&fy-.8f>=floorFront+Hug&&k<=2?"u.oriel":V("u.win."+wallVar,3,Mix(baySeed,(uint)k));break;
                         }
                         if(hug&&key!="u.oriel")key+=".h";
-                        b.Add(key,at,uh,N,w/Bay,fh/Storey,bi,f,ua,ub,fy,fy+fh,floorFront,hug,false,false,UpperLayers);
+                        if(!BayCovered(at,uh,N,w,fh))b.Add(key,at,uh,N,w/Bay,fh/Storey,bi,f,ua,ub,fy,fy+fh,floorFront,hug,false,false,UpperLayers);
                     }
                     // the cornice under the roof line (overhead: only where it hangs 3.1 m or more over the floor in front)
                     // (and not where a block stands against the face at the roof line, a landing or a neighbour's roof: the cornice would
@@ -174,6 +189,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=new V3(pts[k],pts[k+1],pts[k+2]);int route=NearestRoute(b,p);uint h=Mix(runSeed,(uint)k);
                 int state=Unit(Mix(h,5))<FlickerShare?Flicker:Working;
+                if(LampLeft(b,p))continue;
                 if(!SwanAt(b,p,state,true,route,h)&&!SpanAt(b,p,state,true,route,h)&&!FlushAt(b,p,state,true,route,h))P.Unmounted++;
             }
             // the side streets: a lamp every 18 m along the street faces, clear of the route chain by 9 m, by the owner's rule
@@ -183,7 +199,7 @@ namespace ChipArena.UnityConversion
             {
                 if((m.At-last).Length<SideSpacing*.5f)continue;
                 bool near=false;foreach(var l in P.Lamps){var d=l.Mount-m.At;if(d.x*d.x+d.z*d.z<81&&Math.Abs(d.y-SwanPlate)<6){near=true;break;}}
-                if(near)continue;
+                if(near||LampLeft(b,m.At))continue;
                 var q=m.At+m.N*3f;if(b.S.Inside(q.x,m.Floor+1,q.z,-1))continue;
                 // where the lamps hang is the layout's (fixed); which are dead or flicker is the run's (bible 11.2)
                 uint place=Mix(b.Seed,Hash(m.At.x.ToString("F1",System.Globalization.CultureInfo.InvariantCulture)+","+m.At.z.ToString("F1",System.Globalization.CultureInfo.InvariantCulture)));
@@ -242,6 +258,7 @@ namespace ChipArena.UnityConversion
                 if(top<.9f)continue;best=t;bestDir=d;rise=Math.Min(2.4f,top-.4f);
             }
             if(bestDir<0)return false;var n=Dirs[bestDir]*-1;var at=p+Dirs[bestDir]*best+new V3(0,rise,0);var along=Cross(new V3(0,1,0),n);
+            if(KeptOut(b,new V3(at.x,p.y,at.z),.6f,3f))return false;
             string key=state==Dead?"lamp.flush.dead":prot?"lamp.flush.route":"lamp.flush";
             var l=new Lamp{Mount=at,Kind=Flush,State=state,Protected=prot,Route=route,Seed=Unit(Mix(h,13)),Radius=FlushPool};
             l.Bowl=at+n*.12f;var c=at+n*1.6f;float fl=b.S.Floor(c.x,c.z,at.y);l.Pool=new V3(c.x,fl<-1e5f?p.y:fl,c.z);

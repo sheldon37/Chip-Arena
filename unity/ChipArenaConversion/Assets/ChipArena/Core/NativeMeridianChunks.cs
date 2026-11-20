@@ -104,6 +104,27 @@ namespace ChipArena.UnityConversion
             foreach(var t in d.Values)for(int i=0;i<3;i++)if(t[i]<0)for(int k=1;k<3&&t[i]<0;k++){if(i-k>=0&&t[i-k]>=0)t[i]=t[i-k];else if(i+k<3&&t[i+k]>=0)t[i]=t[i+k];}
             return d;
         }
+        /// <summary>The city bank with another bank's modules (the bleed's themed variants, module/&lt;key&gt;@&lt;theme&gt;) added: a new
+        /// bank sharing the first's meshes and props, the second's module props and their meshes appended (indices moved past the
+        /// first's). The banks themselves are untouched; without the second, the first.</summary>
+        public static NativePackBank.Bank WithVariants(NativePackBank.Bank city,NativePackBank.Bank variants)
+        {
+            if(city==null||variants==null)return city;
+            var b=new NativePackBank.Bank();b.Textures.AddRange(city.Textures);b.Materials.AddRange(city.Materials);b.Meshes.AddRange(city.Meshes);
+            for(int i=0;i<city.Props.Count;i++){b.Props.Add(city.Props[i]);b.PropIndex[city.Props[i].Name]=i;}
+            var moved=new Dictionary<int,int>();
+            foreach(var p in variants.Props)
+            {
+                if(p.Group!="module"||b.PropIndex.ContainsKey(p.Name))continue;var parts=new NativePackBank.Part[p.Parts.Length];
+                for(int k=0;k<parts.Length;k++)
+                {
+                    int m=p.Parts[k].Mesh;if(!moved.TryGetValue(m,out int at)){at=b.Meshes.Count;b.Meshes.Add(variants.Meshes[m]);moved[m]=at;}
+                    parts[k]=new NativePackBank.Part{Mesh=at,Place=p.Parts[k].Place};
+                }
+                b.PropIndex[p.Name]=b.Props.Count;b.Props.Add(new NativePackBank.Prop{Name=p.Name,Group=p.Group,Min=p.Min,Max=p.Max,Parts=parts});
+            }
+            return b;
+        }
         /// <summary>Combines a chunk at a tier (0 LOD0, 2 LOD1): its placed modules (all but the dynamic ones) and its generated
         /// surfaces, into `into` (cleared first). Pure; reads the bank's arrays only.</summary>
         public static void Combine(Plan plan,int chunk,int tier,NativePackBank.Bank bank,Dictionary<string,int[]> modules,List<int> placements,List<int> quads,NativeMeridianMesh into)

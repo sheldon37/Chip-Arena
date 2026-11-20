@@ -71,6 +71,60 @@ internal static class BleedChecks
         Console.WriteLine("PASS bleed dressing: "+walks+" walks (5 layouts x 5 deals), "+pieces+" pieces inside the placement rules, deterministic; most "+maxPieces+" a walk, "+maxView+" within 60 m of an eye, "+maxDraws+" draws");
         Console.WriteLine("PASS bleed lamps: "+lamps+" lamps, "+dead+" dead ("+(100*deadShare).ToString("0")+"%), "+flicker+" flickering ("+(100*flickerShare).ToString("0")+"%)");
         Console.WriteLine("PASS bleed coverage: "+string.Join("; ",perTheme.OrderBy(kv=>kv.Key).Select(kv=>kv.Key+" rumour "+kv.Value[1]+" drift "+kv.Value[2]+" warp "+kv.Value[3]+" threshold "+kv.Value[4]+" lamps "+kv.Value[5])));
+        Combined();
+    }
+
+    // The whole Meridian look on the walk: the street dress (D1) planned with the bleed's three contracts, the landmarks (D2),
+    // and A2's caches kept clear by all three.
+    private static void Combined()
+    {
+        int themed=0,skipped=0,lampsWith=0,lampsWithout=0,caches=0,partial=0;
+        for(int layout=0;layout<NativeCityLayout.Plans.Count;layout++)
+        {
+            var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);var deal=Deals[layout%Deals.Length];
+            uint seed=NativeCityBleedDress.DealSeedFor((uint)(77+layout),deal);var slots=NativeCityLayout.DealHalls(seed,deal);
+            var bleed=NativeCityBleed.ForWalk(walk,slots);var plan=NativeCityBleedDress.ForWalk(walk,bleed,seed);
+            var keep=NativeCityBleedDress.CacheKeepOuts(walk.Caches,walk.Map);caches+=walk.Caches.Length;
+            if(walk.Caches.Length==0||keep.Count!=walk.Caches.Length+1)throw new Exception(walk.Map.name+": the caches' keep-outs ("+keep.Count+" for "+walk.Caches.Length+" caches and the kerb)");
+            // the bleed keeps off the caches and the 2 m before them
+            foreach(var p in plan.Pieces){NativeCityBleedDress.Bounds(p,out var lo,out var hi);foreach(var k in keep)if(k.Hits(lo,hi))throw new Exception(walk.Map.name+": "+NativeCityBleedDress.Kinds[p.Kind].Key+" at "+Show(p.At)+" over a cache");}
+            NativeMeridianDress.Input Input()=>new NativeMeridianDress.Input{Map=walk.Map,Layout=info.Seed,Run=seed,Slots=slots,Hatches=walk.RoofHatches.ToArray(),KeepOut=keep,
+                Routes=walk.Routes.Select(r=>new NativeMeridianDress.Route{Name=r.Name,Points=r.Points,Widths=r.Widths,Kinds=r.Kinds}).ToArray()};
+            var plain=NativeMeridianDress.Build(Input());lampsWithout+=plain.Lamps.Count;
+            NativeMeridianDress.ThemeAt=p=>bleed.ThemeAt(p);NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(plan,p,14);NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(plan,p,n);
+            NativeMeridianDress.Plan dressed;
+            try{dressed=NativeMeridianDress.Build(Input(),k=>!k.Contains("@")||k.StartsWith("g.",StringComparison.Ordinal)||k.StartsWith("u.",StringComparison.Ordinal)||k.StartsWith("t.",StringComparison.Ordinal));}
+            finally{NativeMeridianDress.ThemeAt=null;NativeMeridianDress.LampsReplaced=null;NativeMeridianDress.FacadeCovered=null;}
+            lampsWith+=dressed.Lamps.Count;
+            foreach(var pl in dressed.Placements)
+            {
+                if(pl.Key.Contains("@"))themed++;
+                // no facade bay of the street dress stands wholly under the bleed's skins (it gave them the bay)
+                if(pl.Block>=0&&(pl.Key.StartsWith("g.",StringComparison.Ordinal)||pl.Key.StartsWith("u.",StringComparison.Ordinal)))
+                {
+                    var along=new V3(pl.M[0],pl.M[4],pl.M[8]);float w=along.Length*NativeMeridianDress.Bay;var up=new V3(pl.M[1],pl.M[5],pl.M[9]);
+                    float h=up.Length*(pl.Key.StartsWith("g.",StringComparison.Ordinal)?NativeMeridianDress.GroundStorey:NativeMeridianDress.Storey);
+                    var n=new V3(pl.M[2],pl.M[6],pl.M[10]);var at=new V3(pl.M[3],pl.M[7],pl.M[11]);along=along/along.Length;bool all=true;
+                    bool some=false;foreach(float u in new[]{-.42f,0,.42f})foreach(float v in new[]{.12f,.5f,.88f})if(!NativeCityBleedDress.Covers(plan,at+along*(u*w)+new V3(0,v*h,0),n))all=false;else some=true;
+                    if(all)throw new Exception(walk.Map.name+": the street dress's "+pl.Key+" stands under the bleed's skins at "+Show(at));
+                    if(some)partial++;
+                }
+                // its paint keeps off the caches
+                if(pl.Paint){var at=new V3(pl.M[3],pl.M[7],pl.M[11]);foreach(var k in keep)if(k.Hits(at-new V3(.5f,.1f,.5f),at+new V3(.5f,.1f,.5f)))throw new Exception(walk.Map.name+": the street dress paints "+pl.Key+" over a cache");}
+            }
+            skipped+=plain.Placements.Count(x=>x.Block>=0&&(x.Key.StartsWith("g.",StringComparison.Ordinal)||x.Key.StartsWith("u.",StringComparison.Ordinal)))-dressed.Placements.Count(x=>x.Block>=0&&(x.Key.StartsWith("g.",StringComparison.Ordinal)||x.Key.StartsWith("u.",StringComparison.Ordinal)));
+            // no dress covers (hides) a cache or its kerb: the street dress, the landmarks
+            var land=NativeMeridianLandmarks.Place(info.Seed,walk.Map,walk.Routes.Select(r=>r.Destination).ToList(),slots);
+            foreach(var c in walk.Caches)
+            {
+                string id=c.id+"-block";
+                if(dressed.Covers.Contains(id)||land.Covers.Contains(id))throw new Exception(walk.Map.name+": a dress hides the cache "+id);
+            }
+            if(dressed.Covers.Contains("cache-roof-kerb")||land.Covers.Contains("cache-roof-kerb"))throw new Exception(walk.Map.name+": a dress hides the roof cache's kerb");
+        }
+        if(themed==0)throw new Exception("The street dress took no theme from the bleed");
+        if(lampsWith>lampsWithout)throw new Exception("The bleed's lamps added street lamps");
+        Console.WriteLine("PASS bleed with the street dress and the landmarks: "+themed+" themed modules, "+skipped+" bays given to the bleed's skins (none left wholly under them, "+partial+" partly), "+(lampsWithout-lampsWith)+" street lamps left to the bleed's own, "+caches+" caches and their kerbs clear of every dress");
     }
 
     private static void Curve()

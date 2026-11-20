@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         private void MeridianDressOpen(NativeLayeredCityWalk walk,uint layout,uint run)
         {
             MeridianDressClose();if(walk==null)return;
-            var input=new NativeMeridianDress.Input{Map=walk.Map,Layout=layout,Run=run,Slots=surveySlots,Hatches=walk.RoofHatches.ToArray(),
+            var input=new NativeMeridianDress.Input{Map=walk.Map,Layout=layout,Run=run,Slots=surveySlots,Hatches=walk.RoofHatches.ToArray(),KeepOut=NativeCityBleedDress.CacheKeepOuts(walk.Caches,walk.Map),
                 Routes=walk.Routes.Select(r=>new NativeMeridianDress.Route{Name=r.Name,Points=r.Points,Widths=r.Widths,Kinds=r.Kinds}).ToArray()};
             meridianDress=new GameObject("Meridian dress").AddComponent<NativeMeridianDressDraw>();
             if(!meridianDress.Prepare(input,cameraView)){Destroy(meridianDress.gameObject);meridianDress=null;return;}

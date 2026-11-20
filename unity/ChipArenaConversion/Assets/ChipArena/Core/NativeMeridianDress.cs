@@ -27,6 +27,12 @@ namespace ChipArena.UnityConversion
         /// final) or null for plain Meridian. Null by default. A themed module is the plain key plus "@" and the theme; the plain
         /// key draws where the bank has no such variant.</summary>
         public static Func<V3,string> ThemeAt;
+        /// <summary>Where the bleed's own lamps stand (D3's NativeCityBleed.ReplacesLamps, from the drift band on): the street's plain
+        /// lamps are left out there. Null by default (every lamp hangs).</summary>
+        public static Func<V3,bool> LampsReplaced;
+        /// <summary>Whether the bleed's facade skins stand at a point of a face with that outward normal (D3's
+        /// NativeCityBleedDress.Covers): a bay wholly under them is left out (the bleed substitutes; it does not add). Null by default.</summary>
+        public static Func<V3,V3,bool> FacadeCovered;
         public static readonly string[] Themes={"level0","poolrooms","wardzero","station","ironworks","final"};
         /// <summary>The presentation look table (plan W1, R4): a map id (or an id prefix ending in '-') and the look it draws in.
         /// Its one row: the Developer walk's five Meridian layouts draw in `expedition-night` (MapLooks.json, written by
@@ -49,7 +55,9 @@ namespace ChipArena.UnityConversion
         /// <summary>What the planner reads: the map's blocks and ramps, the layout (the plan's seed), the run's seed (dead lamps and
         /// flickers), the four routes (north to the final court, then east, south and west to the dealt halls), the roof hatches
         /// and the hall deal (slot 0 the final court).</summary>
-        public sealed class Input{public ContentMap Map;public uint Layout,Run;public Route[] Routes;public V3[] Hatches;public string[] Slots;}
+        public sealed class Input{public ContentMap Map;public uint Layout,Run;public Route[] Routes;public V3[] Hatches;public string[] Slots;
+            /// <summary>Boxes no paint or low lamp of the dress enters (the caches and the 2 m before them: NativeCityBleedDress.CacheKeepOuts).</summary>
+            public List<NativeCityBleedDress.KeepOut> KeepOut;}
 
         /// <summary>A module drawn at a place: its bank key (themed or plain), its 3 x 4 rows (module space to the world; the
         /// facades' are a rotation with a stretch along the facade and up), the chunk it is combined into, the block and face it

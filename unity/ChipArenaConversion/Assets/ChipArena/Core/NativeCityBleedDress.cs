@@ -53,6 +53,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The floor fields: each comes whole, with a ragged edge (+z), a ragged corner (+z and +x) and as scattered bits
         /// (the field's tiles lost tile by tile toward its rim, never a hard rectangle).</summary>
         public static readonly string[] Fields={"level0.carpet","poolrooms.tile","poolrooms.flood","wardzero.vinyl","station.platform","ironworks.plates"};
+        /// <summary>A whole pool cell comes in four (its caustic threads drawn four ways), so the threads never print a grid.</summary>
+        public static readonly string[] Pools={"poolrooms.flood","poolrooms.flood.w1","poolrooms.flood.w2","poolrooms.flood.w3"};
         public static readonly Kind[] Kinds=
         {
             // floors
@@ -68,6 +70,9 @@ namespace ChipArena.UnityConversion
             new Kind("poolrooms.flood.edge",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
             new Kind("poolrooms.flood.corner",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
             new Kind("poolrooms.flood.bits",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("poolrooms.flood.w1",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("poolrooms.flood.w2",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("poolrooms.flood.w3",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
             new Kind("wardzero.vinyl",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
             new Kind("wardzero.vinyl.edge",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
             new Kind("wardzero.vinyl.corner",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
@@ -171,6 +176,10 @@ namespace ChipArena.UnityConversion
             /// FrontLine m out).</summary>
             public readonly List<V3> Joins=new List<V3>();
             public readonly List<Front> Fronts=new List<Front>();
+            /// <summary>The plan's facade skins (Covers' index, made on its first call).</summary>
+            internal List<int> Skins;
+            /// <summary>The boxes nothing of the plan enters (the caches).</summary>
+            public readonly List<KeepOut> KeepOuts=new List<KeepOut>();
             public int WallSlots,FloorCells;
         }
         /// <summary>A door front: the door, its outward way, and the frontage's half width either side of the door.</summary>
@@ -195,11 +204,36 @@ namespace ChipArena.UnityConversion
         // half a bay (0 on the flat: only flat bays take skins and floor-anchored details).
         private struct Slot{public V3 Foot,Normal,Along;public float Top,Metres,Share,Rise;public int Block,Side;public NativeCityBleed.Bands Band;public bool Sloped=>Rise>.005f;}
 
-        /// <summary>The approach dressing for every instance door (the final court, slot 0, is M7's and left plain).</summary>
-        public static Plan Build(ContentMap map,NativeCityBleed bleed,IReadOnlyList<Street> streets,uint seed)
+        /// <summary>A box nothing of the dress may enter (a cache, its roof kerb and the 2 m in front of each cache).</summary>
+        public struct KeepOut{public V3 Lo,Hi;public KeepOut(V3 lo,V3 hi){Lo=lo;Hi=hi;}
+            public bool Hits(V3 lo,V3 hi)=>hi.x>Lo.x&&lo.x<Hi.x&&hi.y>Lo.y&&lo.y<Hi.y&&hi.z>Lo.z&&lo.z<Hi.z;}
+        /// <summary>The caches' keep-outs (A2's lockers on the walk, Core NativeExpeditionGeneratedWorld.CacheBlock): each locker's
+        /// footprint with 15 cm about it, and 2 m in front of it (its approach, where a pilot opens it), from just under its foot to
+        /// the clear height over it; and the roof cache's kerb. Every Meridian dress keeps out of them (the bleed's, the street
+        /// dress's paint and low lamps).</summary>
+        public static List<KeepOut> CacheKeepOuts(IEnumerable<ExpeditionWorldAnchor> caches,ContentMap map)
+        {
+            var list=new List<KeepOut>();
+            if(caches!=null)foreach(var a in caches)
+            {
+                double r=a.yaw*Math.PI/180;var f=new V3((float)Math.Sin(r),0,(float)Math.Cos(r));var side=new V3(f.z,0,-f.x);
+                var lo=new V3(1e9f,a.y-.1f,1e9f);var hi=new V3(-1e9f,a.y+Clear,-1e9f);
+                foreach(float u in new[]{-.46f-.15f,.46f+.15f})foreach(float v in new[]{-.29f-.15f,.29f+2f})
+                {var c=new V3(a.x,0,a.z)+side*u+f*v;lo=new V3(Math.Min(lo.x,c.x),lo.y,Math.Min(lo.z,c.z));hi=new V3(Math.Max(hi.x,c.x),hi.y,Math.Max(hi.z,c.z));}
+                list.Add(new KeepOut(lo,hi));
+            }
+            if(map?.blocks!=null)foreach(var b in map.blocks)
+                if(b?.id=="cache-roof-kerb")list.Add(new KeepOut(b.pos-b.size*.5f-new V3(.15f,.1f,.15f),b.pos+b.size*.5f+new V3(.15f,Clear,.15f)));
+            return list;
+        }
+        [ThreadStatic] private static List<KeepOut> keepOut;
+
+        /// <summary>The approach dressing for every instance door (the final court, slot 0, is M7's and left plain), clear of the
+        /// keep-outs (the caches).</summary>
+        public static Plan Build(ContentMap map,NativeCityBleed bleed,IReadOnlyList<Street> streets,uint seed,List<KeepOut> keepOuts=null)
         {
             if(map?.blocks==null||bleed==null||streets==null||streets.Count!=bleed.Doors.Length)throw new ArgumentException("A map, its bleed and one street per door.");
-            var plan=new Plan();var w=WorldOf(map);
+            var plan=new Plan();var w=WorldOf(map);keepOut=keepOuts;plan.KeepOuts.AddRange(keepOuts??new List<KeepOut>());
             for(int d=0;d<bleed.Doors.Length;d++)
             {
                 var door=bleed.Doors[d];plan.Joins.Add(door.At+door.Out*JoinOut);plan.Fronts.Add(FrontOf(w,door));
@@ -209,7 +243,7 @@ namespace ChipArena.UnityConversion
                 string theme=NativeCityBleed.Theme(bleed.Doors[d].Instance);if(theme==null||theme=="final")continue;
                 Dress(plan,w,bleed,d,streets[d],theme,seed);
             }
-            fitWorld=null;fitNear=null;
+            fitWorld=null;fitNear=null;keepOut=null;
             return plan;
         }
 
@@ -338,6 +372,7 @@ namespace ChipArena.UnityConversion
         {
             int k=KindOf(key);if(k<0)throw new InvalidOperationException("No bleed kind "+key);
             var piece=new Piece{Kind=k,At=at,Yaw=yaw,Scale=scale,Door=(byte)d,Band=band,Lamp=lamp,Light=light==0?Kinds[k].Light:light,Seed=NativeCityBleed.Hash(rs^(uint)i*2246822519u^(uint)k*3266489917u)};
+            if(keepOut!=null&&keepOut.Count>0){Bounds(piece,out var klo,out var khi);foreach(var ko in keepOut)if(ko.Hits(klo,khi))return false;}
             if(Kinds[k].Mount==Mount.Floor)
             {
                 // paint never lies on paint: two decals in one plane would fight (the 2 m grid parts the tiles; this parts the
@@ -417,6 +452,7 @@ namespace ChipArena.UnityConversion
                 if(missing==1){key+=".edge";yaw=!pz?0:!px?Q:!mz?2*Q:3*Q;}
                 else if(missing==2&&(px!=mx)){key+=".corner";yaw=!pz&&!px?0:!px&&!mz?Q:!mz&&!mx?2*Q:3*Q;}
                 else if(missing>=2)key+=".bits";
+                else if(key=="poolrooms.flood")key=Pools[(int)(Rand(rs,18,i)*Pools.Length)];
                 // the warp's outer half thins further: a ragged cell there may fall to bits
                 float t=(c.share-NativeCityBleed.WarpAt)/(NativeCityBleed.ThresholdAt-NativeCityBleed.WarpAt);
                 if(missing>0&&c.band==NativeCityBleed.Bands.Warp&&t<.35f&&Rand(rs,13,i)<.4f)key=field[i]+".bits";
@@ -537,9 +573,7 @@ namespace ChipArena.UnityConversion
                     {
                         string skin=ThresholdSkin(theme);if(skin==null)break;
                         Add(plan,skin,s.Foot,yaw,One,d,s.Band,rs,i);
-                        bool sheet=theme=="wardzero"&&s.Top>=Clear+2*Upper+Upper*.5f;
-                        Uppers(plan,s,skin+".upper",d,rs,i,sheet?2:3);
-                        if(sheet)Uppers(plan,s,"wardzero.sheet",d,rs,i+50000,1,2);
+                        Uppers(plan,s,skin+".upper",d,rs,i,8);
                         break;
                     }
                 }
@@ -552,7 +586,7 @@ namespace ChipArena.UnityConversion
             if(KindOf(key)<0)return;float yaw=YawOf(s.Normal);
             for(int row=from;row<from+rows;row++)
             {
-                float base_=Storey+row*Upper;float room=s.Top-base_;if(room<Upper*.5f)break;
+                float base_=Storey+row*Upper;float room=s.Top-base_;if(room<.3f)break;
                 float k=Math.Min(1,room/Upper);Add(plan,key,s.Foot+new V3(0,base_,0),yaw,new V3(1,k,1),d,s.Band,rs,i*8+row+1000000);
                 if(k<1)break;
             }
@@ -862,14 +896,22 @@ namespace ChipArena.UnityConversion
         /// substitutes; it does not add). Within 2 cm of the skin's plane and inside its bay.</summary>
         public static bool Covers(Plan plan,V3 at,V3 normal)
         {
-            foreach(var p in plan.Pieces)
+            if(plan.Skins==null){plan.Skins=new List<int>();for(int i=0;i<plan.Pieces.Count;i++){var kk=Kinds[plan.Pieces[i].Kind];if(kk.Mount==Mount.Wall&&Skin(kk.Key))plan.Skins.Add(i);}}
+            foreach(int pi in plan.Skins)
             {
-                var k=Kinds[p.Kind];if(k.Mount!=Mount.Wall||!Skin(k.Key))continue;
+                var p=plan.Pieces[pi];var k=Kinds[p.Kind];
                 float c=(float)Math.Cos(p.Yaw),s=(float)Math.Sin(p.Yaw);var n=new V3(s,0,c);if(V3.Dot(n,normal)<.99f)continue;
                 var o=at-p.At;float z=V3.Dot(o,n);if(Math.Abs(z)>.02f)continue;
                 float x=o.x*c-o.z*s,y=o.y;
                 if(x>=k.Min.x*p.Scale.x-1e-3f&&x<=k.Max.x*p.Scale.x+1e-3f&&y>=k.Min.y*p.Scale.y-1e-3f&&y<=k.Max.y*p.Scale.y+1e-3f)return true;
             }
+            return false;
+        }
+        /// <summary>Whether one of the plan's own lamps (or a lit ceiling) stands within `radius` m of a place: where the street dress
+        /// gives its plain lamps over to the bleed's (NativeCityBleed.ReplacesLamps there too), so a street is never left dark.</summary>
+        public static bool NearLamp(Plan plan,V3 p,float radius)
+        {
+            foreach(var q in plan.Pieces){if(q.Lamp==LampState.None)continue;float dx=q.At.x-p.x,dz=q.At.z-p.z;if(dx*dx+dz*dz<radius*radius&&Math.Abs(q.At.y-p.y)<8)return true;}
             return false;
         }
         /// <summary>Whether a kind is a facade skin (it stands in for the facade, rather than hanging on it).</summary>
@@ -900,7 +942,7 @@ namespace ChipArena.UnityConversion
         public static Plan ForWalk(NativeLayeredCityWalk walk,NativeCityBleed bleed,uint seed)
         {
             var streets=new List<Street>();foreach(var r in walk.Routes)streets.Add(new Street{Widths=r.Widths,Kinds=r.Kinds});
-            return Build(walk.Map,bleed,streets,seed);
+            return Build(walk.Map,bleed,streets,seed,CacheKeepOuts(walk.Caches,walk.Map));
         }
 #endif
     }

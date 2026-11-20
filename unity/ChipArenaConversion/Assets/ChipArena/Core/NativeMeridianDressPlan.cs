@@ -34,6 +34,8 @@ namespace ChipArena.UnityConversion
             {
                 // (what hangs on a wall without a bay of its own, a lamp, a plate, a clock, a siren, draws over the bays)
                 if(layer<0)layer=block<0&&!paint?MountLayers:0;
+                // paint keeps off the caches and the 2 m before them
+                if(paint&&In.KeepOut!=null){var plo=new V3(at.x-1.2f,at.y-.2f,at.z-1.2f);var phi=new V3(at.x+1.2f,at.y+.3f,at.z+1.2f);foreach(var k in In.KeepOut)if(k.Hits(plo,phi))return;}
                 var p=new Placement{Key=Pick(key,at,Has),Block=block,Face=face,U0=u0,U1=u1,V0=v0,V1=v1,Floor=floor,Hugs=hugs,Paint=paint,Dynamic=dynamic,Layer=layer};
                 var up=Cross(normal,along);
                 p.M[0]=along.x*sx;p.M[1]=up.x*sy;p.M[2]=normal.x;p.M[3]=at.x;

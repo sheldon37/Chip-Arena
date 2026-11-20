@@ -469,18 +469,21 @@ def field(g, T, key, variant):
         fn, top = WHOLE[key]
         slab(g, T, -1, 1, -1, 1, 0, top, F[fn], cell=0)
         return
+    shape = '' if variant.startswith('w') else variant  # a whole pool's four ways differ only in their threads
     for i in range(4):
         for j in range(4):
-            if kept(key, variant, i, j):
-                SUB[key](g, T, -1 + i * .5, -1 + j * .5, i, j, variant)
+            if kept(key, shape, i, j):
+                SUB[key](g, T, -1 + i * .5, -1 + j * .5, i, j, shape)
     if key == 'poolrooms.flood' and variant != 'bits':
         # the caustic glints: thin bright threads over the water (the runtime lets them shimmer)
         n = 2 if T.lod == 0 else 1
         for k in range(n):
             z0 = -.85 + 1.4 * h01('cz', variant, k)
-            pts = [(-.9 + 1.5 * h01('cx', variant, k) * .3 + .3 * m, z0 + .07 * math.sin(m * 2.3 + k)) for m in range(5)]
+            # each way its own threads: where they start, how they wander, how long (a cell turned at random by the planner too)
+            x0, amp, ph = -.9 + .45 * h01('cx', variant, k), .04 + .08 * h01('ca', variant, k), 6.3 * h01('cp', variant, k)
+            pts = [(x0 + (.22 + .12 * h01('cl', variant, k)) * m, z0 + amp * math.sin(m * 2.3 + ph)) for m in range(5)]
             for (a, b) in zip(pts, pts[1:]):
-                if max(abs(a[0]), abs(b[0])) > .98 or (variant != '' and max(a[1], b[1]) > .2) or (variant == 'corner' and max(a[0], b[0]) > .2):
+                if max(abs(a[0]), abs(b[0])) > .98 or (shape != '' and max(a[1], b[1]) > .2) or (shape == 'corner' and max(a[0], b[0]) > .2):
                     continue
                 dx, dz = b[0] - a[0], b[1] - a[1]
                 l = math.hypot(dx, dz) or 1
@@ -1234,7 +1237,7 @@ BUILD = {
     'level0.ceiling.light': lambda g, T: ceiling(g, T, 'light'),
 }
 for _key in SUB:
-    for _v in ('', 'edge', 'corner', 'bits'):
+    for _v in ('', 'edge', 'corner', 'bits') + (('w1', 'w2', 'w3') if _key == 'poolrooms.flood' else ()):
         BUILD[_key + ('.' + _v if _v else '')] = (lambda kk, vv: (lambda g, T: field(g, T, kk, vv)))(_key, _v)
 TURN = [-1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, -1.0, 0]  # half round about +y: the kit's facade frame to the kind's Wall frame
 # pieces worth a Cycles occlusion bake (relief); the flat paint takes none

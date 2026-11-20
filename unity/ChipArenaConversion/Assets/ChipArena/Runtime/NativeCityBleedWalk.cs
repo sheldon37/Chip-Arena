@@ -50,6 +50,15 @@ namespace ChipArena.UnityConversion
                 walkBleed=NativeCityBleed.ForWalk(cityWalk,surveySlots);
                 walkBleedPlan=NativeCityBleedDress.ForWalk(cityWalk,walkBleed,walkBleedSeed);
                 if(!walkBleedOff)bleedDraw=NativeCityBleedDraw.Open(walkBleed,walkBleedPlan,cityWalk.Map,cameraView,()=>presentation!=null&&presentation.LowGraphics);
+                // the street dress's three contracts (D1, planned right after this on the walk's open): its modules take the bleed's
+                // themes, and where the bleed draws, its lamps and its skins stand in for the street's own
+                if(bleedDraw!=null)
+                {
+                    var bleed=walkBleed;var plan=walkBleedPlan;
+                    NativeMeridianDress.ThemeAt=p=>bleed.ThemeAt(p);
+                    NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(plan,p,14);
+                    NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(plan,p,n);
+                }
             }
             catch(Exception e){Debug.LogWarning("City bleed: "+e.Message);}
         }
@@ -59,6 +68,7 @@ namespace ChipArena.UnityConversion
         {
             if(bleedDraw!=null)bleedDraw.Close();
             bleedDraw=null;walkBleed=null;walkBleedPlan=null;
+            NativeMeridianDress.ThemeAt=null;NativeMeridianDress.LampsReplaced=null;NativeMeridianDress.FacadeCovered=null;
         }
 
         /// <summary>The walk's keys: N the next deal, B the bleed off or on. True when one was used.</summary>
@@ -72,8 +82,8 @@ namespace ChipArena.UnityConversion
             }
             if(Input.GetKeyDown(KeyCode.B))
             {
-                walkBleedOff=!walkBleedOff;
-                if(walkBleedOff)CloseCityBleed();else OpenCityBleed();
+                // the street dress is planned with or without the bleed, so the walk opens again (every drawer rebuilds)
+                walkBleedOff=!walkBleedOff;ReopenCityWalk();
                 return true;
             }
             return false;
