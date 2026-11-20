@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
             StaffKey(s++,WalkFrom+.6f,.42f,.1f,.16f,.06f,1,.14f);StaffKey(s++,CrownAt-.15f,.42f,.06f,.1f,.08f,1,.06f);
             StaffKey(s++,CrownAt+.05f,.22f,.62f,.22f,.05f,1,.02f);StaffKey(s++,CrownSet-.15f,.2f,.7f,.24f,.04f,1,0);
             StaffKey(s++,CrownSet+.05f,.12f,.85f,.3f,.02f,1,.05f);StaffKey(s++,SlamAt,.12f,-.4f,.44f,.02f,1,.05f);StaffKey(s++,SlamAt+.17f,.13f,-.35f,.43f,.03f,1,.05f);
-            StaffKey(s++,CardAt-.05f,.3f,.08f,.2f,.06f,1,.1f);StaffKey(s++,CardAt+.25f,.27f,.1f,.17f,.06f,1,.1f);StaffKey(s++,Total,.27f,.1f,.17f,.06f,1,.1f);
+            StaffKey(s++,CardAt-.05f,.4f,.06f,.12f,.12f,1,.06f);StaffKey(s++,CardAt+.25f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
             // The camera: macro along a seam; a crane up and back to the caldera; low under the eruption; up the column; the walk
             // out at the lens; round under the crown; wide and low for the slam; the hero frame.
             Rig.Dolly(0,L(1.6f,.26f,8.6f),L(.9f,.3f,4.4f),L(1.1f,.04f,4.0f),L(.1f,.3f,-.8f),32,30).Ease(NativeIntroEase.InOut).Focus(0,0,.55f)
@@ -476,11 +476,11 @@ namespace ChipArena.UnityConversion
             k.Key(Total,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f);Keys=k;
             // The staff: planted at its side, overhead and level in both hands, carried back, swept across, the tap, at its side.
             int s=0;
-            StaffKey(s++,0,.27f,.1f,.16f,.06f,1,.1f);StaffKey(s++,RearFrom,.27f,.12f,.18f,.06f,1,.1f);
+            StaffKey(s++,0,.42f,.06f,.08f,.12f,1,.04f);StaffKey(s++,RearFrom,.42f,.08f,.1f,.12f,1,.05f);
             StaffKey(s++,RearFrom+.45f,.15f,.95f,.15f,-1,.15f,.1f);StaffKey(s++,RearAt+.15f,.2f,.9f,.1f,-1,.2f,.1f);
             StaffKey(s++,SweepAt-.08f,-.05f,.75f,-.05f,-.7f,.3f,-.6f);StaffKey(s++,SweepAt+.25f,.45f,.45f,.45f,.75f,.15f,.65f);StaffKey(s++,Parted,.5f,.4f,.4f,.8f,.2f,.55f);
             StaffKey(s++,FreezeAt-.12f,.22f,.35f,.4f,.05f,1,.05f);StaffKey(s++,FreezeAt,.2f,-.1f,.4f,.04f,1,.05f);
-            StaffKey(s++,FreezeAt+.45f,.25f,.08f,.25f,.06f,1,.1f);StaffKey(s++,CardAt-.3f,.27f,.1f,.17f,.06f,1,.1f);StaffKey(s++,Total,.27f,.1f,.17f,.06f,1,.1f);
+            StaffKey(s++,FreezeAt+.45f,.34f,.06f,.2f,.1f,1,.08f);StaffKey(s++,CardAt-.3f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
             // The camera: a glide over the water to the figure; up as the tide comes; low under the rearing wave; front and low as
             // it parts; an orbit through the frozen moment; ahead of it walking out; the centred hero frame between the walls.
             Rig.Dolly(0,L(.5f,.36f,9.6f),L(.3f,.4f,4.8f),m+new Vector3(0,1.0f,0),m+new Vector3(0,1.15f,0),38,34).Ease(NativeIntroEase.Out).Focus(0,0,.4f)
@@ -679,9 +679,9 @@ namespace ChipArena.UnityConversion
             // The staff: held out to its side in the landing, up at its side, down to the hip, thrust up, driven down, at its side.
             int s=0;
             StaffKey(s++,0,.46f,-.18f,.18f,.55f,.8f,.25f);StaffKey(s++,RiseFrom,.44f,-.12f,.2f,.5f,.82f,.25f);
-            StaffKey(s++,RiseFrom+.42f,.28f,.12f,.18f,.08f,1,.1f);StaffKey(s++,CallAt-.08f,.3f,-.05f,.05f,.1f,1,-.1f);
+            StaffKey(s++,RiseFrom+.42f,.42f,.06f,.1f,.12f,1,.05f);StaffKey(s++,CallAt-.08f,.3f,-.05f,.05f,.1f,1,-.1f);
             StaffKey(s++,CallAt+.15f,.18f,.75f,.12f,.04f,1,0);StaffKey(s++,CallStrike+.1f,.18f,.72f,.12f,.04f,1,0);
-            StaffKey(s++,SpireFire,.2f,.02f,.32f,.05f,1,.05f);StaffKey(s++,CardAt-.2f,.27f,.1f,.17f,.06f,1,.1f);StaffKey(s++,Total,.27f,.1f,.17f,.06f,1,.1f);
+            StaffKey(s++,SpireFire,.24f,.02f,.32f,.05f,1,.05f);StaffKey(s++,CardAt-.2f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
             // The camera: low and wide on the summit, tilting to the sky; straight up into the vortex, turning; down from the cloud;
             // the smash to the strike; a fast orbit; rising with it; wide with the spires firing; the hero frame.
             Rig.Dolly(0,L(4.6f,.42f,7.2f),L(4.1f,.46f,6.5f),L(0,1.8f,0),L(0,3.4f,-1.6f),52,54)
@@ -867,7 +867,7 @@ namespace ChipArena.UnityConversion
             int s=0;
             StaffKey(s++,0,.42f,.08f,.08f,.08f,1,.08f);StaffKey(s++,EyeAt+.1f,.42f,.08f,.1f,.08f,1,.08f);StaffKey(s++,WingsAt-.08f,.25f,.05f,.12f,.05f,1,.05f);
             StaffKey(s++,WingsAt+.3f,.22f,.45f,.42f,.12f,.8f,.6f);StaffKey(s++,SnapAt-.08f,.2f,.5f,.44f,.1f,.85f,.55f);
-            StaffKey(s++,SnapAt,.2f,-.12f,.36f,.04f,1,.05f);StaffKey(s++,CardAt-.3f,.27f,.1f,.17f,.06f,1,.1f);StaffKey(s++,Total,.27f,.1f,.17f,.06f,1,.1f);
+            StaffKey(s++,SnapAt,.24f,-.12f,.36f,.04f,1,.05f);StaffKey(s++,CardAt-.3f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
             // The camera: centred through the gate on the sun; a dolly zoom on the centre as the shadows pour; low and centred up at the
             // void under the black sun; locked off as it steps out; the eye; a slow pull back; the centred hero frame.
             Rig.Dolly(0,L(0,1.6f,12.5f),L(0,1.55f,10.8f),L(0,3.6f,-20),L(0,4.2f,-20),46,44)

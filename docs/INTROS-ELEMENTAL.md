@@ -45,20 +45,26 @@ Each is distinct in set, palette and camera:
   - Black Sun: walks low out of the void, hunches, throws the wings open, snaps the staff down.
   `--intro-elemental` fails on any match clip, a non-finite joint or a head turned more than .62 rad from its chest;
   `--intro-elemental-pose id t...` dumps the keyed joints (stick-figure sheets: the animation checked without the Editor).
-- **The drawn head** (`INativeIntroHead`): the crown, the eye and the frost breath follow the drawn head joint (`HeadShift`). That
-  joint is the game joint's frame, which rides about 20 cm under the model's head bone. Hold 2's frames put the model's visor
-  .15-.18 m above the keyed eye line, so Black Sun's eye and its close-up, and Forgeborn's crown, are raised by `ModelHeadLift`
-  (.16 m); hold 3 showed the eye on the visor.
+- **On the body as drawn** (the framework's model-aware anchors, `docs/INTROS-V2.md` 2a):
+  - Forgeborn's crown sits on `Anchor(Head)`, Black Sun's eye on `Anchor(Visor)`, and Still Tide's breath comes from just below
+    `Anchor(Eyes)`.
+  - The staff's head is `Anchor(LeftMuzzle)` along `WeaponBore`.
+  - The old hand-tuned offsets are gone (`HeadShift`, `ModelHeadLift`, the drawn-wrist shift). Only the eye close-up keeps a
+    keyed framing (`CameraEyeLift`, camera only), since the camera reads the keyed anchors.
+- **Its own light** (`docs/INTROS-V2.md` 3a): the arena's lights, probe, volume and ambient no longer reach an intro, and point
+  lights reach only the pilot. So each set is lit by its own directional and ambient, and mirrors its own sky (`Reflect*`):
+  - Forgeborn: a warm key from the fire over the dais, lava light from below.
+  - Still Tide: the moon through the rose window, a cold sky in the ice and the water.
+  - Strike Point: cloud light flashing with the storm, mirrored in the wet rock.
+  - Black Sun: a low white key, a violet horizon in the obsidian.
 - **Sets:** `tools/intros/elemental_set.py` (Blender 5.2.3 headless, the stage kit's geometry, finishes, AO and bank format),
   modelled in the intros' source frame and mirrored into the bank's Unity space at export (so the script and the scripts share
   their numbers; `IntroElementalChecks` reads them from the script). `<prop>` is the Fine tier, `<prop>/low` the Low tier. The bank
   `ChipArenaIntroElemental.bytes` (about 6.5 MB, 133k vertices over both tiers) is local and never committed; without it every
   intro plays on the framework's dark lit void in its own light, fog and effects.
-- **Gloss and darkness:** every set finish stays at smoothness .35 or less: the set reflects the arena's own probe, and Cyber
-  City's magenta neon showed on the water, the ice and the obsidian in the first captures. NativeStageLit scales the probe's
-  reflection and the ambient by the baked occlusion (vertex alpha), so the sets that must stay dark bake a low one: the obsidian
-  and the ash at .2, the storm's rock at .42, the ice at .58, the liquid wave's body at .62 (`darken`, `ice_colours`,
-  `wave_colours`). Their own lights (the bolts, the violet rim, the moon) still light them.
+- **Gloss:** every set finish stays at smoothness .35 or less. Before the intro owned its light, the sets mirrored the arena's
+  probe (Cyber City's magenta on the water, the ice and the obsidian), and low baked occlusion hid it. With the intro's own
+  reflection the caps are lifted to .8-.85 (`darken`, `ice_colours`, `wave_colours`).
 - **The name:** every card sits at `Y` .86, a band under the hero frame's feet, centred (`X` .5); each ending frames the pilot
   above it (the probe puts the feet at .72-.76).
 
