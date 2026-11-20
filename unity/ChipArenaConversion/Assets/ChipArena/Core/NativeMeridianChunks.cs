@@ -273,29 +273,20 @@ namespace ChipArena.UnityConversion
         {
             /// <summary>Per axis: the corners' coordinate clusters, sorted (the first value of each cluster is its canonical value).</summary>
             public readonly float[][] Lo=new float[3][],Hi=new float[3][];
-            /// <summary>The axis-aligned lines that two or more surface edges share.</summary>
-            public SeamLine[] Lines;
-            /// <summary>Per surface edge (quad * 4 + edge): its line where it shares a stretch with another edge (else null), and its
-            /// place among the line's edges.</summary>
-            public SeamLine[] EdgeLine;public int[] EdgeSlot;
+            /// <summary>The axis-aligned lines that two or more surface edges share; per line its axis, its two other coordinates
+            /// (canonical) and its members [LineAt[line], LineAt[line + 1]).</summary>
+            public int LineCount;public int[] LineAxis,LineAt;public float[] LineFb,LineFc;
+            /// <summary>Per member (an edge on a shared line, a line's members by their low end along it): its edge (quad * 4 + edge),
+            /// its line and its canonical ends.</summary>
+            public int[] MemberEdge,MemberLine;public float[] MemberS,MemberE;
+            /// <summary>Per surface edge (quad * 4 + edge): its member where it shares a stretch with another edge, else -1.</summary>
+            public int[] EdgeMember;
+            /// <summary>Per slot (member * 2 + 0 for LOD0, 1 for LOD1): the vertices it gains from the others on its stretch, ascending
+            /// along the axis (Extra from ExtraAt[slot], ExtraN[slot] of them), and its own cuts that snap to another value, by cut
+            /// index (FixIndex and FixValue from FixAt[slot], FixN[slot] of them).</summary>
+            public int[] ExtraAt,ExtraN,FixAt,FixN,FixIndex;public float[] Extra,FixValue;
             /// <summary>Each surface's triangles at LOD0 and LOD1 (quad * 2 + 0 or 1), its seams' fans included.</summary>
             public int[] Tris;
-        }
-        /// <summary>The surface edges on one axis-aligned line, swept once for both tiers. Per edge and tier (slot = edge * 2 + 0 for
-        /// LOD0 or 1 for LOD1): the vertices it gains from the others on its stretch (ascending along the axis), and its own cuts that
-        /// snap to a neighbour's canonical value (by cut index).</summary>
-        public sealed class SeamLine
-        {
-            /// <summary>The line's axis and its two other coordinates (canonical).</summary>
-            public int Axis;public float Fb,Fc;
-            /// <summary>The edges (quad * 4 + edge) by their low end along the axis, and their canonical ends.</summary>
-            public int[] Edges;public float[] S,E;
-            /// <summary>Per edge: whether it shares a stretch with another.</summary>
-            public bool[] On;
-            /// <summary>Per slot: its gained vertices, Extra[ExtraAt[slot]..ExtraAt[slot+1]).</summary>
-            public int[] ExtraAt;public float[] Extra;
-            /// <summary>Per slot: its own cuts that snap to another value, FixIndex/FixValue[FixAt[slot]..FixAt[slot+1]).</summary>
-            public int[] FixAt,FixIndex;public float[] FixValue;
         }
         /// <summary>Points closer than this (m) along a seam are one vertex.</summary>
         public const float SeamTolerance=1e-4f;
@@ -333,127 +324,192 @@ namespace ChipArena.UnityConversion
             int b=a==0?1:0,c=a==2?1:2;int i1=Cluster(t,b,Axis(s,b)),i2=Cluster(t,c,Axis(s,c));
             return i1<0||i2<0?-1:(long)a|((long)i1<<2)|((long)i2<<33);
         }
-        /// <summary>The seams of a plan's surfaces (see <see cref="SeamTable"/>): every shared line swept once, the lines in parallel (each
-        /// writes only its own edges), then every surface's triangle counts, in parallel. Deterministic.</summary>
+        private static void Grow<T>(ref T[] a,int n){if(a.Length<n)Array.Resize(ref a,Math.Max(n,a.Length*2));}
+        /// <summary>The seams of a plan's surfaces (see <see cref="SeamTable"/>): the edges grouped by line in an open-addressed table,
+        /// every shared line swept once, the lines in parallel (each writes only its own members and slots, into flat arrays and its
+        /// worker's buffers), then every surface's triangle counts, in parallel. Allocates a few dozen arrays per plan, none per line
+        /// (Mono's GC makes allocating threads wait for each other). Deterministic.</summary>
         public static SeamTable BuildSeams(Plan plan)
         {
-            var t=new SeamTable();var qs=plan.Quads;
-            for(int a=0;a<3;a++)
+            var t=new SeamTable();var qs=plan.Quads;int nq=qs.Count,ne=nq*4;
+            // the corners' clusters per axis (the three in parallel), chained: a corner within the tolerance of the cluster's last value
+            // joins it (two computations of one corner)
+            System.Threading.Tasks.Parallel.For(0,3,a=>
             {
-                var all=new float[qs.Count*4];int n=0;
-                foreach(var q in qs){for(int k=0;k<4;k++){EdgeOf(q,k,out var s,out _);all[n++]=Axis(s,a);}}
-                Array.Sort(all);var lo=new List<float>();var hi=new List<float>();
-                // chained: a corner within the tolerance of the cluster's last value joins it (two computations of one corner)
-                foreach(float x in all){if(lo.Count==0||x>hi[hi.Count-1]+SeamTolerance){lo.Add(x);hi.Add(x);}else hi[hi.Count-1]=x;}
-                t.Lo[a]=lo.ToArray();t.Hi[a]=hi.ToArray();
-            }
-            var lines=new Dictionary<long,List<int>>();
-            for(int q=0;q<qs.Count;q++)for(int k=0;k<4;k++)
+                var all=new float[ne];
+                for(int q=0;q<nq;q++){var Q=qs[q];var c1=Q.O+Q.U;var c2=c1+Q.V;var c3=Q.O+Q.V;all[q*4]=Axis(Q.O,a);all[q*4+1]=Axis(c1,a);all[q*4+2]=Axis(c2,a);all[q*4+3]=Axis(c3,a);}
+                Array.Sort(all);int nc=ne>0?1:0;for(int i=1;i<ne;i++)if(all[i]>all[i-1]+SeamTolerance)nc++;
+                var lo=new float[nc];var hi=new float[nc];int c=-1;
+                for(int i=0;i<ne;i++){float x=all[i];if(c<0||x>hi[c]+SeamTolerance){c++;lo[c]=x;}hi[c]=x;}
+                t.Lo[a]=lo;t.Hi[a]=hi;
+            });
+            // each axis-aligned edge's line (its axis and its two other coordinates' clusters; the keys in parallel), numbered as first met
+            var keys=new long[ne];int parts=Math.Max(1,Math.Min(64,nq/256));
+            System.Threading.Tasks.Parallel.For(0,parts,p=>
             {
-                EdgeOf(qs[q],k,out var s,out var e);int a=AxisOf(e-s);if(a<0)continue;long key=LineKey(t,a,s);if(key<0)continue;
-                if(!lines.TryGetValue(key,out var list))lines[key]=list=new List<int>(2);list.Add(q*4+k);
+                for(int q=(int)((long)nq*p/parts),q1=(int)((long)nq*(p+1)/parts);q<q1;q++)
+                {
+                    var Q=qs[q];for(int k=0;k<4;k++){EdgeOf(Q,k,out var s,out var e);int a=AxisOf(e-s);keys[q*4+k]=a<0?-1:LineKey(t,a,s);}
+                }
+            });
+            int cap=16;while(cap<ne*2)cap<<=1;var table=new long[cap];var tableLine=new int[cap];for(int i=0;i<cap;i++)table[i]=-1;
+            var lineOf=new int[ne];var size=new int[ne];var axisOf=new int[ne];int lines=0;
+            for(int ec=0;ec<ne;ec++)
+            {
+                long key=keys[ec];lineOf[ec]=-1;if(key<0)continue;
+                int h=(int)(((ulong)key*0x9E3779B97F4A7C15UL)>>40)&(cap-1);while(table[h]!=-1&&table[h]!=key)h=(h+1)&(cap-1);
+                if(table[h]==-1){table[h]=key;tableLine[h]=lines;axisOf[lines]=(int)(key&3);lines++;}
+                int l=tableLine[h];lineOf[ec]=l;size[l]++;
             }
-            var shared=new List<SeamLine>();foreach(var kv in lines)if(kv.Value.Count>1)shared.Add(new SeamLine{Axis=(int)(kv.Key&3),Edges=kv.Value.ToArray()});
-            t.Lines=shared.ToArray();t.EdgeLine=new SeamLine[qs.Count*4];t.EdgeSlot=new int[qs.Count*4];
+            // the lines two or more edges share, and their members in edge order
+            var shared=new int[lines];int ns=0,members=0;
+            for(int l=0;l<lines;l++){if(size[l]>1){shared[l]=ns++;members+=size[l];}else shared[l]=-1;}
+            t.LineCount=ns;t.LineAxis=new int[ns];t.LineAt=new int[ns+1];t.LineFb=new float[ns];t.LineFc=new float[ns];
+            for(int l=0,at=0;l<lines;l++){int sl=shared[l];if(sl<0)continue;t.LineAxis[sl]=axisOf[l];t.LineAt[sl]=at;at+=size[l];}
+            t.LineAt[ns]=members;
+            t.MemberEdge=new int[members];t.MemberLine=new int[members];t.MemberS=new float[members];t.MemberE=new float[members];
+            var fill=new int[ns];
+            for(int ec=0;ec<ne;ec++){int l=lineOf[ec];if(l<0)continue;int sl=shared[l];if(sl<0)continue;int g=t.LineAt[sl]+fill[sl]++;t.MemberEdge[g]=ec;t.MemberLine[g]=sl;}
+            t.EdgeMember=new int[ne];for(int i=0;i<ne;i++)t.EdgeMember[i]=-1;
+            t.ExtraAt=new int[members*2];t.ExtraN=new int[members*2];t.FixAt=new int[members*2];t.FixN=new int[members*2];
             plan.Seams=t;
-            System.Threading.Tasks.Parallel.For(0,t.Lines.Length,()=>new Sweeper(),(i,_,sw)=>{sw.Run(plan,t,t.Lines[i]);return sw;},_=>{});
-            t.Tris=new int[qs.Count*2];
-            System.Threading.Tasks.Parallel.For(0,qs.Count,()=>new Seam(),(q,_,seam)=>{t.Tris[q*2]=Fan(plan,q,0,seam,null);t.Tris[q*2+1]=Fan(plan,q,2,seam,null);return seam;},_=>{});
+            // the sweeps; each worker appends its lines' results to its own buffers, then they are joined
+            var workers=new List<Sweeper>();var lineWorker=new int[ns];
+            System.Threading.Tasks.Parallel.For(0,ns,()=>{var w=new Sweeper();lock(workers){w.Id=workers.Count;workers.Add(w);}return w;},
+                (l,_,w)=>{w.Run(plan,t,l);lineWorker[l]=w.Id;return w;},_=>{});
+            var baseX=new int[workers.Count];var baseF=new int[workers.Count];int nx=0,nf=0;
+            foreach(var w in workers){baseX[w.Id]=nx;nx+=w.NX;baseF[w.Id]=nf;nf+=w.NF;}
+            t.Extra=new float[nx];t.FixIndex=new int[nf];t.FixValue=new float[nf];
+            foreach(var w in workers){Array.Copy(w.OutX,0,t.Extra,baseX[w.Id],w.NX);Array.Copy(w.OutFi,0,t.FixIndex,baseF[w.Id],w.NF);Array.Copy(w.OutFv,0,t.FixValue,baseF[w.Id],w.NF);}
+            for(int l=0;l<ns;l++){int bx=baseX[lineWorker[l]],bf=baseF[lineWorker[l]];for(int s=t.LineAt[l]*2,s1=t.LineAt[l+1]*2;s<s1;s++){t.ExtraAt[s]+=bx;t.FixAt[s]+=bf;}}
+            t.Tris=new int[nq*2];
+            System.Threading.Tasks.Parallel.For(0,nq,()=>new Seam(),(q,_,seam)=>{t.Tris[q*2]=Fan(plan,q,0,seam,null);t.Tris[q*2+1]=Fan(plan,q,2,seam,null);return seam;},_=>{});
             return t;
         }
-        /// <summary>One line's sweep (a thread's buffers). The line is cut where any of its edges ends; on each piece two or more edges
-        /// cover, every one of them takes the others' cuts. The surfaces of one 32 m cell draw at one tier together (the drawer switches
-        /// a cell's chunks together), so a piece covered from one cell takes that tier's cuts; a piece covered from two cells can meet at
-        /// either tier, so it takes both tiers' cuts of all of them. Each piece's choice is the same for every edge covering it. One
-        /// vertex per cluster of cuts: a corner's canonical value where the cluster holds one, else its least value.</summary>
+        /// <summary>One worker's sweeps (its buffers, reused line after line). The line is cut where any of its edges ends; on each
+        /// piece two or more edges cover, every one of them takes the others' cuts. The surfaces of one 32 m cell draw at one tier
+        /// together (the drawer switches a cell's chunks together), so a piece covered from one cell takes that tier's cuts; a piece
+        /// covered from two cells can meet at either tier, so it takes both tiers' cuts of all of them. Each piece's choice is the same
+        /// for every edge covering it. One vertex per cluster of cuts: a corner's canonical value where the cluster holds one, else its
+        /// least value.</summary>
         private sealed class Sweeper
         {
-            private float[] lo=new float[16],hi=new float[16],keys=new float[16];private int[] cell=new int[16],n0=new int[16],n2=new int[16],order=new int[16],stamp=new int[64];
-            private readonly List<float> ends=new List<float>();private readonly List<int> active=new List<int>();
-            private readonly List<(float x,bool corner,int m,int i,bool own,float raw)> cand=new List<(float,bool,int,int,bool,float)>();
-            private readonly List<float> start=new List<float>(),rep=new List<float>();private readonly List<int> clusterOf=new List<int>();
-            private List<float>[] extra=new List<float>[32];private List<(int i,float v)>[] fix=new List<(int,float)>[32];
-            private static readonly Comparison<(float x,bool corner,int m,int i,bool own,float raw)> ByX=(p,r)=>p.x.CompareTo(r.x);
-            public void Run(Plan plan,SeamTable t,SeamLine L)
+            public int Id;
+            /// <summary>The gains (OutX) and snaps (OutFi, OutFv) of the lines this worker swept, line after line, slot after slot.</summary>
+            public float[] OutX=new float[1024],OutFv=new float[256];public int[] OutFi=new int[256];public int NX,NF;
+            // per member, by low end: its edge, ends, cell and cuts per tier; then the sort's
+            private int[] order=new int[16],tmp=new int[16],code=new int[16],cell=new int[16],n0=new int[16],n2=new int[16],active=new int[16];
+            private float[] key=new float[16],s0=new float[16],e0=new float[16],S=new float[16],E=new float[16],lo=new float[16],hi=new float[16],ends=new float[32];
+            private bool[] on=new bool[16];
+            // per slot: its gains and snaps so far, and the last of each (a value is never taken twice in a row)
+            private int[] xn=new int[32],fn=new int[32],lastFi=new int[32],xpos=new int[32],fpos=new int[32];private float[] lastX=new float[32];
+            // the line's results in the order made: gains (slot, value) and snaps (slot, cut, value)
+            private int[] recXs=new int[64],recFs=new int[64],recFi=new int[64];private float[] recXv=new float[64],recFv=new float[64];private int nrx,nrf;
+            // a piece's cuts, their order along the line and their clusters
+            private float[] cx=new float[64],craw=new float[64],sortKey=new float[64],start=new float[64],rep=new float[64];
+            private int[] cm=new int[64],ci=new int[64],cord=new int[64],cluster=new int[64],stamp=new int[64];private bool[] ccorner=new bool[64],cown=new bool[64];
+            private void Room(int n)
             {
-                int M=L.Edges.Length,a=L.Axis;var qs=plan.Quads;
-                if(lo.Length<M){int n=Math.Max(M,lo.Length*2);lo=new float[n];hi=new float[n];keys=new float[n];cell=new int[n];n0=new int[n];n2=new int[n];order=new int[n];}
-                if(extra.Length<M*2){Array.Resize(ref extra,M*4);Array.Resize(ref fix,M*4);}
-                var S=new float[M];var E=new float[M];
+                if(cx.Length>=n)return;Grow(ref cx,n);Grow(ref craw,n);Grow(ref sortKey,n);Grow(ref start,n);Grow(ref rep,n);
+                Grow(ref cm,n);Grow(ref ci,n);Grow(ref cord,n);Grow(ref cluster,n);Grow(ref stamp,n);Grow(ref ccorner,n);Grow(ref cown,n);
+            }
+            // a cut within the tolerance of an edge's end on this line is that end (one rule for the whole line, so a point near a
+            // piece's end is the same vertex in every piece and for every edge)
+            private float Snap(float x,int n)
+            {
+                int i=0,j=n-1;while(i<=j){int h=(i+j)>>1;if(ends[h]<x)i=h+1;else j=h-1;}
+                float best=x,d=SeamTolerance;if(i<n&&Math.Abs(ends[i]-x)<=d){best=ends[i];d=Math.Abs(ends[i]-x);}if(i>0&&Math.Abs(ends[i-1]-x)<d)best=ends[i-1];return best;
+            }
+            private bool IsEnd(float x,int n){int i=0,j=n-1;while(i<=j){int h=(i+j)>>1;if(ends[h]<x)i=h+1;else if(ends[h]>x)j=h-1;else return true;}return false;}
+            // order[0..M) by key, stable (the members come in edge order, so ties keep it)
+            private void SortMembers(int M)
+            {
+                if(M<=32){for(int i=1;i<M;i++){int v=order[i];float k=key[v];int j=i-1;while(j>=0&&key[order[j]]>k){order[j+1]=order[j];j--;}order[j+1]=v;}return;}
+                Grow(ref tmp,M);int[] src=order,dst=tmp;
+                for(int w=1;w<M;w*=2)
+                {
+                    for(int l0=0;l0<M;l0+=2*w){int mid=Math.Min(l0+w,M),h1=Math.Min(l0+2*w,M),i=l0,j=mid,o=l0;while(i<mid&&j<h1)dst[o++]=key[src[j]]<key[src[i]]?src[j++]:src[i++];while(i<mid)dst[o++]=src[i++];while(j<h1)dst[o++]=src[j++];}
+                    var x=src;src=dst;dst=x;
+                }
+                if(src!=order)Array.Copy(src,order,M);
+            }
+            // cord[0..n) by the cuts' place along the line (equal places in any order: the clusters and every result are the same)
+            private void SortCuts(int n)
+            {
+                for(int j=0;j<n;j++)cord[j]=j;
+                if(n<=32){for(int i=1;i<n;i++){int v=cord[i];float x=cx[v];int j=i-1;while(j>=0&&cx[cord[j]]>x){cord[j+1]=cord[j];j--;}cord[j+1]=v;}return;}
+                for(int j=0;j<n;j++)sortKey[j]=cx[j];Array.Sort(sortKey,cord,0,n);
+            }
+            private void Gain(int slot,float v){if(nrx==recXs.Length){Grow(ref recXs,nrx+1);Grow(ref recXv,nrx+1);}recXs[nrx]=slot;recXv[nrx]=v;nrx++;xn[slot]++;lastX[slot]=v;}
+            private void Fix(int slot,int i,float v){if(nrf==recFs.Length){Grow(ref recFs,nrf+1);Grow(ref recFi,nrf+1);Grow(ref recFv,nrf+1);}recFs[nrf]=slot;recFi[nrf]=i;recFv[nrf]=v;nrf++;fn[slot]++;lastFi[slot]=i;}
+            public void Run(Plan plan,SeamTable t,int l)
+            {
+                var qs=plan.Quads;int g0=t.LineAt[l],M=t.LineAt[l+1]-g0,a=t.LineAxis[l],ne2=2*M;
+                if(order.Length<M){Grow(ref order,M);Grow(ref code,M);Grow(ref cell,M);Grow(ref n0,M);Grow(ref n2,M);Grow(ref active,M);Grow(ref key,M);Grow(ref s0,M);Grow(ref e0,M);Grow(ref S,M);Grow(ref E,M);Grow(ref lo,M);Grow(ref hi,M);Grow(ref on,M);}
+                if(ends.Length<ne2){Grow(ref ends,ne2);Grow(ref xn,ne2);Grow(ref fn,ne2);Grow(ref lastFi,ne2);Grow(ref xpos,ne2);Grow(ref fpos,ne2);Grow(ref lastX,ne2);}
                 for(int m=0;m<M;m++)
                 {
-                    int ec=L.Edges[m];EdgeOf(qs[ec>>2],ec&3,out var s,out var e);S[m]=Canon(t,a,Axis(s,a));E[m]=Canon(t,a,Axis(e,a));keys[m]=Math.Min(S[m],E[m]);order[m]=m;
-                    if(m==0){int b=a==0?1:0,c=a==2?1:2;L.Fb=Canon(t,b,Axis(s,b));L.Fc=Canon(t,c,Axis(s,c));}
+                    int ec=t.MemberEdge[g0+m];code[m]=ec;EdgeOf(qs[ec>>2],ec&3,out var s,out var e);s0[m]=Canon(t,a,Axis(s,a));e0[m]=Canon(t,a,Axis(e,a));key[m]=Math.Min(s0[m],e0[m]);order[m]=m;
+                    if(m==0){int b=a==0?1:0,c=a==2?1:2;t.LineFb[l]=Canon(t,b,Axis(s,b));t.LineFc[l]=Canon(t,c,Axis(s,c));}
                 }
-                // the edges by their low end (ties by edge code: deterministic)
-                var k0=keys;var codes=L.Edges;
-                Array.Sort(order,0,M,Comparer<int>.Create((x,y)=>{int c=k0[x].CompareTo(k0[y]);return c!=0?c:codes[x].CompareTo(codes[y]);}));
-                var edges=new int[M];L.S=new float[M];L.E=new float[M];
+                SortMembers(M);
                 for(int r=0;r<M;r++)
                 {
-                    int m=order[r],ec=codes[m];edges[r]=ec;L.S[r]=S[m];L.E[r]=E[m];lo[r]=Math.Min(S[m],E[m]);hi[r]=Math.Max(S[m],E[m]);
-                    var q=qs[ec>>2];int k=ec&3;cell[r]=q.Chunk;n0[r]=Cells(q,k,0);n2[r]=Cells(q,k,2);
+                    int m=order[r],ec=code[m],g=g0+r;t.MemberEdge[g]=ec;S[r]=s0[m];E[r]=e0[m];t.MemberS[g]=S[r];t.MemberE[g]=E[r];lo[r]=Math.Min(S[r],E[r]);hi[r]=Math.Max(S[r],E[r]);
+                    var q=qs[ec>>2];int k=ec&3;cell[r]=q.Chunk;n0[r]=Cells(q,k,0);n2[r]=Cells(q,k,2);on[r]=false;
                 }
-                L.Edges=edges;L.On=new bool[M];
-                ends.Clear();for(int m=0;m<M;m++){ends.Add(lo[m]);ends.Add(hi[m]);}ends.Sort();
-                // a cut within the tolerance of an edge's end on this line is that end (one rule for the whole line, so a point near a
-                // piece's end is the same vertex in every piece and for every edge)
-                float Snap(float x){int i=0,j=ends.Count-1;while(i<=j){int h=(i+j)>>1;if(ends[h]<x)i=h+1;else j=h-1;}
-                    float best=x,d=SeamTolerance;if(i<ends.Count&&Math.Abs(ends[i]-x)<=d){best=ends[i];d=Math.Abs(ends[i]-x);}if(i>0&&Math.Abs(ends[i-1]-x)<d)best=ends[i-1];return best;}
-                bool IsEnd(float x){int i=ends.BinarySearch(x);return i>=0;}
-                for(int slot=0;slot<M*2;slot++){(extra[slot]??=new List<float>()).Clear();(fix[slot]??=new List<(int,float)>()).Clear();}
+                for(int m=0;m<M;m++){ends[2*m]=lo[m];ends[2*m+1]=hi[m];}Array.Sort(ends,0,ne2);
+                for(int s=0;s<ne2;s++){xn[s]=0;fn[s]=0;}nrx=nrf=0;
                 for(int ti=0;ti<2;ti++)
                 {
-                    int next=0;active.Clear();
-                    for(int p=0;p+1<ends.Count;p++)
+                    int next=0,na=0;
+                    for(int p=0;p+1<ne2;p++)
                     {
                         float c0=ends[p],c1=ends[p+1];if(c1-c0<=SeamTolerance)continue;float mid=(c0+c1)*.5f;
-                        while(next<M&&lo[next]<=mid)active.Add(next++);
-                        for(int r=active.Count-1;r>=0;r--)if(hi[active[r]]<mid)active.RemoveAt(r);
-                        if(active.Count<2)continue;
-                        bool mixed=false;foreach(int m in active){L.On[m]=true;if(cell[m]!=cell[active[0]])mixed=true;}
+                        while(next<M&&lo[next]<=mid)active[na++]=next++;
+                        int kept=0;for(int r=0;r<na;r++)if(!(hi[active[r]]<mid))active[kept++]=active[r];na=kept;
+                        if(na<2)continue;
+                        bool mixed=false;for(int r=0;r<na;r++){int m=active[r];on[m]=true;if(cell[m]!=cell[active[0]])mixed=true;}
                         // the cuts on the piece (and a tolerance either side): each covering edge's at this tier, at both where two cells meet
-                        cand.Clear();
-                        foreach(int m in active)for(int tr=0;tr<2;tr++)
+                        int nc=0;
+                        for(int r=0;r<na;r++){int m=active[r];for(int tr=0;tr<2;tr++)
                         {
-                            bool own=tr==ti;if(!own&&!mixed)continue;int n=tr==0?n0[m]:n2[m];float s=L.S[m],e=L.E[m];
+                            bool own=tr==ti;if(!own&&!mixed)continue;int n=tr==0?n0[m]:n2[m];float s=S[m],e=E[m];
                             float u0=(c0-SeamTolerance-s)/(e-s)*n,u1=(c1+SeamTolerance-s)/(e-s)*n;
                             int i0=Math.Max(0,(int)Math.Floor(Math.Min(u0,u1))-1),i1=Math.Min(n,(int)Math.Ceiling(Math.Max(u0,u1))+1);
-                            for(int i=i0;i<=i1;i++){float raw=Cut(s,e,i,n),x=Snap(raw);if(x>=c0-SeamTolerance&&x<=c1+SeamTolerance)cand.Add((x,i==0||i==n||IsEnd(x),m,i,own,raw));}
-                        }
-                        cand.Sort(ByX);
-                        start.Clear();rep.Clear();clusterOf.Clear();bool corner=false;
-                        foreach(var c in cand)
+                            Room(nc+Math.Max(0,i1-i0+1));
+                            for(int i=i0;i<=i1;i++){float raw=Cut(s,e,i,n),x=Snap(raw,ne2);if(x>=c0-SeamTolerance&&x<=c1+SeamTolerance){cx[nc]=x;ccorner[nc]=i==0||i==n||IsEnd(x,ne2);cm[nc]=m;ci[nc]=i;cown[nc]=own;craw[nc]=raw;nc++;}}
+                        }}
+                        SortCuts(nc);
+                        int ncl=0;bool corner=false;
+                        for(int jj=0;jj<nc;jj++)
                         {
-                            if(start.Count==0||c.x>start[start.Count-1]+SeamTolerance){start.Add(c.x);rep.Add(c.x);corner=c.corner;}
-                            else if(c.corner&&!corner){rep[rep.Count-1]=c.x;corner=true;}
-                            clusterOf.Add(start.Count-1);
+                            int j=cord[jj];float x=cx[j];
+                            if(ncl==0||x>start[ncl-1]+SeamTolerance){start[ncl]=x;rep[ncl]=x;ncl++;corner=ccorner[j];}
+                            else if(ccorner[j]&&!corner){rep[ncl-1]=x;corner=true;}
+                            cluster[jj]=ncl-1;
                         }
-                        if(stamp.Length<start.Count)stamp=new int[start.Count*2];
                         // per covering edge: its own cuts snap to their clusters; the clusters none of its own cuts holds are its gains
-                        foreach(int m in active)
+                        for(int r=0;r<na;r++)
                         {
-                            int slot=m*2+ti;for(int c=0;c<start.Count;c++)stamp[c]=0;
-                            for(int j=0;j<cand.Count;j++)
+                            int m=active[r],slot=m*2+ti;for(int c=0;c<ncl;c++)stamp[c]=0;
+                            for(int jj=0;jj<nc;jj++)
                             {
-                                var c=cand[j];if(c.m!=m||!c.own)continue;int cl=clusterOf[j];stamp[cl]=1;float v=rep[cl];
-                                if(v!=c.raw){var fl=fix[slot];if(fl.Count==0||fl[fl.Count-1].i!=c.i)fl.Add((c.i,v));}
+                                int j=cord[jj];if(cm[j]!=m||!cown[j])continue;int cl=cluster[jj];stamp[cl]=1;float v=rep[cl];
+                                if(v!=craw[j]&&(fn[slot]==0||lastFi[slot]!=ci[j]))Fix(slot,ci[j],v);
                             }
-                            float lim0=lo[m]+SeamTolerance,lim1=hi[m]-SeamTolerance;var el=extra[slot];
-                            for(int c=0;c<start.Count;c++){if(stamp[c]!=0)continue;float v=rep[c];if(v<=lim0||v>=lim1)continue;if(el.Count==0||el[el.Count-1]!=v)el.Add(v);}
+                            float lim0=lo[m]+SeamTolerance,lim1=hi[m]-SeamTolerance;
+                            for(int c=0;c<ncl;c++){if(stamp[c]!=0)continue;float v=rep[c];if(v<=lim0||v>=lim1)continue;if(xn[slot]==0||lastX[slot]!=v)Gain(slot,v);}
                         }
                     }
                 }
-                // the results by slot
-                int ne=0,nf=0;for(int slot=0;slot<M*2;slot++){if(!L.On[slot>>1])continue;ne+=extra[slot].Count;nf+=fix[slot].Count;}
-                L.ExtraAt=new int[M*2+1];L.FixAt=new int[M*2+1];L.Extra=new float[ne];L.FixIndex=new int[nf];L.FixValue=new float[nf];ne=nf=0;
-                for(int slot=0;slot<M*2;slot++)
-                {
-                    L.ExtraAt[slot]=ne;L.FixAt[slot]=nf;if(!L.On[slot>>1])continue;
-                    foreach(float v in extra[slot])L.Extra[ne++]=v;foreach(var (i,v) in fix[slot]){L.FixIndex[nf]=i;L.FixValue[nf]=v;nf++;}
-                }
-                L.ExtraAt[M*2]=ne;L.FixAt[M*2]=nf;
-                for(int m=0;m<M;m++)if(L.On[m]){t.EdgeLine[edges[m]]=L;t.EdgeSlot[edges[m]]=m;}
+                // the line's results into this worker's buffers, by slot (each slot's in the order made)
+                Grow(ref OutX,NX+nrx);Grow(ref OutFi,NF+nrf);Grow(ref OutFv,NF+nrf);int ox=NX,of=NF;
+                for(int s=0;s<ne2;s++){int gs=g0*2+s;t.ExtraAt[gs]=ox;t.ExtraN[gs]=xn[s];xpos[s]=ox;ox+=xn[s];t.FixAt[gs]=of;t.FixN[gs]=fn[s];fpos[s]=of;of+=fn[s];}
+                for(int r=0;r<nrx;r++)OutX[xpos[recXs[r]]++]=recXv[r];
+                for(int r=0;r<nrf;r++){int p=fpos[recFs[r]]++;OutFi[p]=recFi[r];OutFv[p]=recFv[r];}
+                NX=ox;NF=of;
+                for(int m=0;m<M;m++)if(on[m])t.EdgeMember[t.MemberEdge[g0+m]]=g0+m;
             }
         }
         /// <summary>A surface's four edges at a tier: each seamed edge's points (world, in the edge's order) and where the surface's own
@@ -470,16 +526,16 @@ namespace ChipArena.UnityConversion
         private static bool SeamEdge(Plan plan,int qi,int k,int tier,Seam into)
         {
             var t=plan.Seams;var pts=into.Points[k];var own=into.Own[k];pts.Clear();own.Clear();into.On[k]=false;
-            int ec=qi*4+k;var L=t.EdgeLine[ec];if(L==null)return false;int m=t.EdgeSlot[ec],slot=m*2+(tier==0?0:1);
-            int a=L.Axis,b=a==0?1:0,c=a==2?1:2;float fb=L.Fb,fc=L.Fc,sa=L.S[m],ea=L.E[m];bool up=ea>=sa;int n=Cells(plan.Quads[qi],k,tier);
+            int g=t.EdgeMember[qi*4+k];if(g<0)return false;int l=t.MemberLine[g],slot=g*2+(tier==0?0:1);
+            int a=t.LineAxis[l],b=a==0?1:0,c=a==2?1:2;float fb=t.LineFb[l],fc=t.LineFc[l],sa=t.MemberS[g],ea=t.MemberE[g];bool up=ea>=sa;int n=Cells(plan.Quads[qi],k,tier);
             V3 At(float x){var p=new V3();if(a==0)p.x=x;else if(a==1)p.y=x;else p.z=x;if(b==0)p.x=fb;else if(b==1)p.y=fb;else p.z=fb;if(c==0)p.x=fc;else if(c==1)p.y=fc;else p.z=fc;return p;}
-            int e0=L.ExtraAt[slot],e1=L.ExtraAt[slot+1],f0=L.FixAt[slot],f1=L.FixAt[slot+1];int xi=up?e0:e1-1;
+            int e0=t.ExtraAt[slot],e1=e0+t.ExtraN[slot],f0=t.FixAt[slot],f1=f0+t.FixN[slot];int xi=up?e0:e1-1;
             // the own cuts (snapped where a neighbour's corner holds one) and the gained vertices between them, in the edge's order
             for(int i=0;i<=n;i++)
             {
-                float x=Cut(sa,ea,i,n);for(int f=f0;f<f1;f++)if(L.FixIndex[f]==i){x=L.FixValue[f];break;}
-                if(up){while(xi<e1&&L.Extra[xi]<x){pts.Add(At(L.Extra[xi]));xi++;}}
-                else{while(xi>=e0&&L.Extra[xi]>x){pts.Add(At(L.Extra[xi]));xi--;}}
+                float x=Cut(sa,ea,i,n);for(int f=f0;f<f1;f++)if(t.FixIndex[f]==i){x=t.FixValue[f];break;}
+                if(up){while(xi<e1&&t.Extra[xi]<x){pts.Add(At(t.Extra[xi]));xi++;}}
+                else{while(xi>=e0&&t.Extra[xi]>x){pts.Add(At(t.Extra[xi]));xi--;}}
                 own.Add(pts.Count);pts.Add(At(x));
             }
             into.On[k]=true;return true;

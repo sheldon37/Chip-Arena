@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
                 int gaps=FenceGaps(map,plan,out int samples);
                 int t0=Enumerable.Range(0,plan.Quads.Count).Sum(q=>NativeMeridianDress.QuadTriangles(plan,q,0)),t2=Enumerable.Range(0,plan.Quads.Count).Sum(q=>NativeMeridianDress.QuadTriangles(plan,q,2));
                 int o0=plan.Quads.Sum(q=>NativeMeridianDress.QuadTriangles(q,0)),o2=plan.Quads.Sum(q=>NativeMeridianDress.QuadTriangles(q,2));
-                Console.WriteLine(name+": "+plan.Quads.Count+" surfaces, "+(seams?.Lines.Length??0)+" seam lines; T-junctions with seams: floors "+with.Floor+", walls "+with.Wall+" (near "+with.Near+"); each on its own grid: floors "+without.Floor+", walls "+without.Wall+" ("+without.Same+" at one tier, "+without.Mixed+" across tiers); fence footprint bare "+gaps+"/"+samples+
+                Console.WriteLine(name+": "+plan.Quads.Count+" surfaces, "+(seams?.LineCount??0)+" seam lines; T-junctions with seams: floors "+with.Floor+", walls "+with.Wall+" (near "+with.Near+"); each on its own grid: floors "+without.Floor+", walls "+without.Wall+" ("+without.Same+" at one tier, "+without.Mixed+" across tiers); fence footprint bare "+gaps+"/"+samples+
                     "; surface triangles LOD0 "+o0+" -> "+t0+", LOD1 "+o2+" -> "+t2+" ("+watch.ElapsedMilliseconds+" ms)");
                 foreach(var w in with.Worst)Console.WriteLine("  with: "+w);
                 foreach(var w in without.Worst)Console.WriteLine("  own grid: "+w);
@@ -184,7 +184,7 @@ namespace ChipArena.UnityConversion
                 double parallel=Median(()=>Time(()=>NativeMeridianDress.CombineUnits(plan,units,2,bank,modules,(c,m)=>{})));
                 var kept=plan.Seams;plan.Seams=null;List<NativeMeridianDress.DrawChunk> plain=null;double plainChunks=Median(()=>Time(()=>plain=NativeMeridianDress.DrawChunks(plan,bank,modules)));
                 double before=Median(()=>Time(()=>{foreach(var u in plain)NativeMeridianDress.Combine(plan,u.Cell,2,bank,modules,u.Placements,u.Quads,data);}));plan.Seams=kept;
-                Console.WriteLine(string.Format(inv,"{0}: plan {1:F0} ms, of which the seams {2:F0}; chunks {3:F0} ({4:F0} without); LOD1 combine one by one {5:F0} ms with the seams, {6:F0} without; in parallel batches {7:F0} with the seams. Before (shared): {8:F0} ms; now: {9:F0} ms (+{10:F0})",
+                Console.WriteLine(string.Format(inv,"{0}: plan {1:F0} ms, of which the seams {2:F0}; chunks {3:F0} ({4:F0} without); LOD1 combine one by one {5:F0} ms with the seams, {6:F0} without; in parallel batches {7:F0} with the seams. Before (shared): {8:F0} ms; now: {9:F0} ms ({10:+0;-0;0})",
                     name,build,seams,chunks,plainChunks,sequential,before,parallel,build-seams+plainChunks+before,build+chunks+parallel,build+chunks+parallel-(build-seams+plainChunks+before)));
             }
         }

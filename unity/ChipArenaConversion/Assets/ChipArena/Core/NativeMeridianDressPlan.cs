@@ -135,10 +135,12 @@ namespace ChipArena.UnityConversion
         private static bool[] Exposed(Builder b,int bi,int f,float[] us,float[] vs,V3 o,V3 u,V3 v)
         {
             var n=NormalOf(f);int nu=us.Length-1,nv=vs.Length-1;var e=new bool[nu*nv];
+            // (the face's three tests made once, not per cell: each is a new delegate)
+            Func<int,bool> ignore=f==2?b.FloorRunsUnder:(Func<int,bool>)null,drawn=f==2?b.DrawsTop:(Func<int,bool>)b.IsDressed,always=f==2?b.Undressed:(Func<int,bool>)b.SideDrawn;
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
             {
                 var p=o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f);
-                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi,.01f,f==2?b.FloorRunsUnder:null)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed,f==2?b.Undressed:b.SideDrawn);
+                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi,.01f,ignore)&&!b.S.Shared(p.x,p.y,p.z,f,bi,drawn,always);
             }
             return e;
         }
