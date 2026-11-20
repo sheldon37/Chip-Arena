@@ -104,6 +104,9 @@ namespace ChipArena.UnityConversion
             public readonly HashSet<string> Left=new HashSet<string>(StringComparer.Ordinal);
             /// <summary>Route lamp points that found no wall or span to hang from (dark gaps on the route; counted for the report).</summary>
             public int Unmounted;
+            /// <summary>The surfaces' seams (NativeMeridianChunks <see cref="BuildSeams"/>): made once the surfaces are, read-only after.
+            /// Null: each surface tessellates on its own grid (a plan built by hand).</summary>
+            public SeamTable Seams;
             public int ChunkOf(float x,float z){int cx=Math.Max(0,Math.Min(Nx-1,(int)Math.Floor((x-MinX)/ChunkSize)));int cz=Math.Max(0,Math.Min(Nz-1,(int)Math.Floor((z-MinZ)/ChunkSize)));return cx+cz*Nx;}
             /// <summary>A digest of the whole plan (keys, places, surfaces, lamps): the determinism checks compare it.</summary>
             public ulong Digest()
@@ -201,11 +204,11 @@ namespace ChipArena.UnityConversion
             }
             private int CX(float x)=>Math.Max(0,Math.Min(nx-1,(int)Math.Floor((x-minX)/Cell)));
             private int CZ(float z)=>Math.Max(0,Math.Min(nz-1,(int)Math.Floor((z-minZ)/Cell)));
-            /// <summary>Whether a point lies inside any block (more than eps inside it), other than `skip`.</summary>
-            public bool Inside(float x,float y,float z,int skip=-1,float eps=.01f)
+            /// <summary>Whether a point lies inside any block (more than eps inside it), other than `skip` and those `ignore` names.</summary>
+            public bool Inside(float x,float y,float z,int skip=-1,float eps=.01f,Func<int,bool> ignore=null)
             {
                 var c=cells[CX(x)+CZ(z)*nx];if(c==null)return false;
-                foreach(int i in c){if(i==skip)continue;int o=i*6;if(x>B[o]+eps&&x<B[o+1]-eps&&y>B[o+2]+eps&&y<B[o+3]-eps&&z>B[o+4]+eps&&z<B[o+5]-eps)return true;}
+                foreach(int i in c){if(i==skip||ignore!=null&&ignore(i))continue;int o=i*6;if(x>B[o]+eps&&x<B[o+1]-eps&&y>B[o+2]+eps&&y<B[o+3]-eps&&z>B[o+4]+eps&&z<B[o+5]-eps)return true;}
                 return false;
             }
             private readonly HashSet<int> near=new HashSet<int>();private readonly List<int> nearList=new List<int>();
