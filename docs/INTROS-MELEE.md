@@ -7,7 +7,8 @@ registers). The framework and its contract are I0's (`docs/INTROS-V2.md`). Prese
 
 Each is an authored scene: a story beat, a modelled set (scripted Blender, the local bank `ChipArenaIntroMelee`, never committed),
 the model playing the packs' clips from the motion bank, an authored camera, timed light, effects, a sound cue timeline and the live
-name card in the band under the pilot's feet in a full-length hero frame (`HeroFull`, `NameBelow`: the card's kicker and line stay centred, so the name stays centred too). Each differs from the others in set, mood and camera.
+name card centred in the clean band under the pilot's feet in a full-length hero frame (`HeroFull`, `NameBelow`). Each differs from the
+others in set, mood and camera.
 
 | Weapon | Intro (`intro2-weapon-<spec>`) | Length / name | Set (bank prefix) | Mood | Card |
 | --- | --- | --- | --- | --- | --- |
