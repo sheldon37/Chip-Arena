@@ -51,6 +51,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,(Mesh near,Mesh far)> models=new Dictionary<string,(Mesh,Mesh)>(StringComparer.Ordinal);
         private Material solid,glow,boxMat;private Mesh cube;private Mesh lanes;private MaterialPropertyBlock tintBlock;
         private int filled;private System.Threading.Tasks.Task<List<NativeMeridianStreetProps.Block>> pending;
+        private KeyCode lastKey;private float lastKeyAt=-9f;
 
         public static NativeMeridianStreetPropsPreview Open(NativeMeridianStreetLife.Input input,string mapId,Camera eye)
         {
@@ -70,13 +71,6 @@ namespace ChipArena.UnityConversion
             if(fx!=null){p.boxMat=new Material(fx){name="Street props blocks",renderQueue=3010};p.boxMat.SetFloat("_Radial",0);p.boxMat.SetFloat("_Cull",0);}
             p.cube=Cube();p.lanes=Lanes(input);
             return p;
-        }
-
-        private void Update()
-        {
-            if(Input.GetKeyDown(KeyCode.P))Shown=!Shown;
-            if(Input.GetKeyDown(KeyCode.O))Blocks=!Blocks;
-            if(Input.GetKeyDown(KeyCode.L))NativeMeridianStreetLifeDraw.Hidden=!NativeMeridianStreetLifeDraw.Hidden;
         }
 
         private void LateUpdate()
@@ -110,7 +104,15 @@ namespace ChipArena.UnityConversion
 
         private void OnGUI()
         {
-            if(props==null||Event.current.type!=EventType.Repaint)return;
+            var ev=Event.current;
+            // the keys as GUI events (a real key and a capture's keyboard event alike); a held key's repeats toggle nothing
+            if(ev.type==EventType.KeyDown&&GUIUtility.keyboardControl==0&&(ev.keyCode==KeyCode.P||ev.keyCode==KeyCode.O||ev.keyCode==KeyCode.L))
+            {
+                bool repeat=ev.keyCode==lastKey&&Time.unscaledTime-lastKeyAt<.6f;lastKey=ev.keyCode;lastKeyAt=Time.unscaledTime;ev.Use();if(repeat)return;
+                if(ev.keyCode==KeyCode.P)Shown=!Shown;else if(ev.keyCode==KeyCode.O)Blocks=!Blocks;else NativeMeridianStreetLifeDraw.Hidden=!NativeMeridianStreetLifeDraw.Hidden;
+                return;
+            }
+            if(props==null||ev.type!=EventType.Repaint)return;
             const string label="DEV PREVIEW · STREET PROPS ON PROPOSED BLOCKS (ASTRA'S TO BUILD) · NOT GAMEPLAY";
             if(Shown||Blocks)
             {

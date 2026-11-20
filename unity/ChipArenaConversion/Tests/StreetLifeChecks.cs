@@ -268,6 +268,42 @@ internal static class StreetLifeChecks
 
     public static void Probe(string root)
     {
+        if(Environment.GetEnvironmentVariable("STREETS_DUMP")!=null)
+        {
+            // each live deal's blocks, routes and pieces as CSV (a debug map: the capture paths are posed on it)
+            var dir=Environment.GetEnvironmentVariable("STREETS_DUMP");Directory.CreateDirectory(dir);
+            foreach(var live in HubZFightChecks.Worlds(root))
+            {
+                var world=live.World;var info=NativeCityLayout.Plans[live.Plan];uint seed=world.Blueprint.worldSeed;
+                var bleedPlan=NativeCityBleedDress.ForWalk(world.City,world.Bleed,seed);var dress=HubZFightChecks.Dress(live,null,true);
+                var input=NativeMeridianStreetLife.InputOf(world.City,info.Seed,seed,world.HallSlots,dress,world.Bleed,bleedPlan);var plan=NativeMeridianStreetLife.Build(input);
+                var props=NativeMeridianStreetLife.ProposeProps(input);
+                using var w=new StreamWriter(Path.Combine(dir,info.Seed+".csv"));var ci=System.Globalization.CultureInfo.InvariantCulture;
+                foreach(var b in world.City.Map.blocks)w.WriteLine(string.Format(ci,"B,{0},{1},{2},{3},{4},{5},{6}",b.id,b.pos.x-b.size.x/2,b.pos.x+b.size.x/2,b.pos.y-b.size.y/2,b.pos.y+b.size.y/2,b.pos.z-b.size.z/2,b.pos.z+b.size.z/2));
+                foreach(var r in world.City.Routes)w.WriteLine("R,"+r.Name.Replace(',',' ')+","+string.Join(";",r.Points.Select(q=>string.Format(ci,"{0:F1} {1:F1} {2:F1}",q.x,q.y,q.z))));
+                foreach(var p in plan.Pieces){NativeMeridianStreetLife.Bounds(p,out var lo,out var hi);w.WriteLine(string.Format(ci,"P,{0},{1},{2},{3},{4},{5},{6},{7}",NativeMeridianStreetLife.Kinds[p.Kind].Key,lo.x,hi.x,lo.y,hi.y,lo.z,hi.z,p.District));}
+                foreach(var b in props)w.WriteLine(string.Format(ci,"Q,{0},{1},{2},{3},{4},{5},{6},{7}",b.Stem,b.Lo.x,b.Hi.x,b.Lo.y,b.Hi.y,b.Lo.z,b.Hi.z,b.Filled?1:0));
+                Console.WriteLine("dumped "+info.Name+" seed "+live.Seed);
+            }
+            return;
+        }
+        if(Environment.GetEnvironmentVariable("STREETS_SPOTS")!=null)
+        {
+            foreach(var live in HubZFightChecks.Worlds(root))
+            {
+                var world=live.World;var info=NativeCityLayout.Plans[live.Plan];uint seed=world.Blueprint.worldSeed;
+                var bleedPlan=NativeCityBleedDress.ForWalk(world.City,world.Bleed,seed);var dress=HubZFightChecks.Dress(live,null,true);
+                var plan=NativeMeridianStreetLife.Build(NativeMeridianStreetLife.InputOf(world.City,info.Seed,seed,world.HallSlots,dress,world.Bleed,bleedPlan));
+                // the 16 m cells within 150 m of the camp with the most non-floor pieces, by district
+                foreach(char d in "tsmrwc")
+                {
+                    var cells=plan.Pieces.Where(p=>p.District==d&&NativeMeridianStreetLife.Kinds[p.Kind].Mount!=NativeMeridianStreetLife.Mount.Floor&&p.At.x*p.At.x+p.At.z*p.At.z<150*150)
+                        .GroupBy(p=>((int)Math.Floor(p.At.x/16),(int)Math.Floor(p.At.z/16),(int)Math.Round(p.At.y))).OrderByDescending(g=>g.Count()).Take(2);
+                    foreach(var g in cells)Console.WriteLine(FormattableString.Invariant($"{info.Name} seed {live.Seed} district {d}: cell ({g.Key.Item1*16+8},{g.Key.Item3},{g.Key.Item2*16+8}) {g.Count()} pieces: ")+string.Join(", ",g.GroupBy(p=>NativeMeridianStreetLife.Kinds[p.Kind].Key).Select(k=>k.Key+" "+k.Count())));
+                }
+            }
+            return;
+        }
         for(int li=0;li<NativeCityLayout.Plans.Count;li++)
         {
             var (walk,input,dress,_)=Walk(li,77);var sw=Stopwatch.StartNew();var plan=NativeMeridianStreetLife.Build(input);sw.Stop();

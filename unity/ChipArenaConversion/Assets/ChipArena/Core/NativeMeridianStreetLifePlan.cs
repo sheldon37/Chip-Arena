@@ -570,18 +570,24 @@ namespace ChipArena.UnityConversion
                 var d=gates[g];var right=new V3(d.z,0,-d.x);float yaw=YawOf(d*-1);
                 // ASSEMBLY POINT beside the lane out of the gate, and the painted lanes queueing into it
                 Add(w,plan,"mark.cd.0",d*(34f+4f*Rand(ls,20,g))+right*(Rand(ls,21,g)<.5f?-7f:7f),yaw,One,Life.None,PlaceHash(d*34),'p');
-                if(Rand(ls,22,g)<.7f)for(float s=30f;s<=50f;s+=4f)foreach(float u in new[]{-2.6f,2.6f})Add(w,plan,"mark.cd.1",d*s+right*u,yaw,One,Life.None,0,'p');
+                for(float s=30f;s<=50f;s+=4f)foreach(float u in new[]{-2.6f,2.6f})Add(w,plan,"mark.cd.1",d*s+right*u,yaw,One,Life.None,0,'p');
             }
             // the tents: two pitches of rows in the precinct's corners, the run's ones still marked; their fires' ash between them
             for(int q=0;q<4;q++)
             {
-                if(Rand(ls,23,q)>.55f)continue;float sx=(q&1)==0?1:-1,sz=(q&2)==0?1:-1;
+                if(Rand(ls,23,q)>.85f)continue;float sx=(q&1)==0?1:-1,sz=(q&2)==0?1:-1;
                 for(int i=0;i<4;i++)for(int j=0;j<3;j++)
                 {
                     var at=new V3(sx*(31f+i*4.2f),0,sz*(31f+j*4.6f));if(Rand(rs,24,q*16+i*4+j)<.3f)continue;
                     Add(w,plan,"ground.tent",at,(Rand(ls,25,q)<.5f?0:1)*(float)(Math.PI/2),One,Life.None,PlaceHash(at),'p');
                 }
                 for(int k=0;k<2;k++){var at=new V3(sx*(33f+8f*Rand(rs,26,q*2+k)),0,sz*(29f+2f*Rand(rs,27,q*2+k)));Add(w,plan,"ground.ash",at,0,One,Life.None,PlaceHash(at),'p');}
+            }
+            // the survivors' ring of flares round the plaza, most still burning: the way in, marked for whoever comes next
+            for(int k=0;k<10;k++)
+            {
+                float a=(k+.5f*Rand(rs,28,k))*(float)(Math.PI*2/10),r=34f+10f*Rand(rs,29,k);var at=new V3((float)Math.Sin(a)*r,0,(float)Math.Cos(a)*r);bool lit=Rand(rs,30,k)<.7f;
+                Add(w,plan,lit?"flare":"flare.spent",at,Rand(rs,31,k)*6.2832f,One,lit?Life.Burning:Life.Spent,Hash2(rs,(uint)(k+900)),'p');
             }
         }
 
@@ -601,6 +607,7 @@ namespace ChipArena.UnityConversion
                     float u=(s.Bay==0?-1:1)*(s.W*.5f-.18f);
                     if(Add(w,plan,"low.pipe",s.Foot+s.Along*u,yaw,new V3(1,s.Top-.12f,1),Life.None,h,s.Style,s.Block))s.Piped=true;
                 }
+                FloodAt(w,plan,s,i,yaw,h,ref floods);
                 if(s.Flat)continue;
                 bool shop=s.Key!=null?s.Key.StartsWith("g.shop.",StringComparison.Ordinal):(s.Style=='s'||s.Style=='m')&&s.Bay%3!=2;
                 // an awning over a lit shopfront (its valance's foot at 3.12 m)
@@ -623,16 +630,20 @@ namespace ChipArena.UnityConversion
                     float ac=s.Style=='t'?.16f:s.Style=='s'?.08f:s.Style=='c'?.04f:s.Style=='r'||s.Style=='v'?.03f:0;
                     float box=s.Style=='r'||s.Style=='v'?.16f:s.Style=='s'||s.Style=='m'?.06f:s.Style=='t'?.05f:0;
                     if(r<ac)Add(w,plan,"upper.ac",s.Foot+new V3(0,fy+.62f,0),yaw,One,Life.None,Hash2(h,(uint)k),s.Style,s.Block);
-                    else if(r<ac+box)Add(w,plan,"upper.box",s.Foot+new V3(0,fy+.75f,0),yaw,One,Life.None,Hash2(h,(uint)k),s.Style,s.Block,Bloom(Hash2(h,(uint)k)));
+                    else if(r<ac+box)Add(w,plan,"upper.box",s.Foot+new V3(0,fy+.75f,0),yaw,One,Life.None,Hash2(h,(uint)k),s.Style,s.Block);
                 }
                 // a civic face's flag over its middle bay
                 if(s.Style=='c'&&s.Bay==s.Bays/2&&s.Top>=8f&&Rand(h,41,0)<.5f)Add(w,plan,"upper.flag",s.Foot+new V3(0,6.75f,0),yaw,One,Life.None,h,s.Style,s.Block,Banner(h));
-                // a Civil Defence flood over the camp's plaza: faces within 80 m of the camp that look toward it
-                var to=new V3(-s.Foot.x,0,-s.Foot.z);float dist=to.Length;
-                if(floods<8&&dist<80f&&dist>26f&&V3.Dot(s.N,to/dist)>.6f&&s.Top>=9f&&s.Bay==s.Bays/2&&Rand(h,42,0)<.6f)
-                {
-                    float r=Rand(rs,43,i);if(Add(w,plan,"upper.flood",s.Foot+new V3(0,7.6f,0),yaw,One,r<.8f?Life.Steady:Life.Dead,h,s.Style,s.Block))floods++;
-                }
+            }
+        }
+        /// <summary>A Civil Defence flood over the camp's plaza: on a wall within 80 m of the camp that looks toward it, 6 m tall or
+        /// more (a lot or a retaining wall), a bay in four, under its top (ten at most).</summary>
+        private static void FloodAt(World w,Plan plan,Slot s,int i,float yaw,uint h,ref int floods)
+        {
+            var to=new V3(-s.Foot.x,0,-s.Foot.z);float dist=to.Length;
+            if(floods<10&&dist<80f&&dist>26f&&V3.Dot(s.N,to/dist)>.6f&&s.Top>=6f&&(s.Bay%4==2||s.Bays<4&&s.Bay==s.Bays/2)&&Rand(h,42,0)<.7f)
+            {
+                float r=Rand(w.RSeed,43,i);if(Add(w,plan,"upper.flood",s.Foot+new V3(0,Math.Min(7.6f,s.Top-1.2f),0),yaw,One,r<.8f?Life.Steady:Life.Dead,h,s.Style,s.Block))floods++;
             }
         }
         // the seeded colours (a tint multiplies the banked albedo; the pieces bank their tinted parts white or pale)
@@ -644,8 +655,6 @@ namespace ChipArena.UnityConversion
         private static uint Spray(uint h)=>Sprays[(int)(NativeMeridianDress.Mix(h,52)%(uint)Sprays.Length)];
         private static uint Chalk(uint h)=>Chalks[(int)(NativeMeridianDress.Mix(h,53)%(uint)Chalks.Length)];
         private static uint Banner(uint h)=>Banners[(int)(NativeMeridianDress.Mix(h,54)%(uint)Banners.Length)];
-        private static readonly uint[] Blooms={0,0xC8B080,0xB0C890,0xC890A8};
-        private static uint Bloom(uint h)=>Blooms[(int)(NativeMeridianDress.Mix(h,55)%4u)];
 
         // ------------------------------------------------------------------------------------------------------------------
         // Spans across the streets between facing walls: wires, washing lines in the tenements' slots, bunting and festoons over
@@ -804,7 +813,7 @@ namespace ChipArena.UnityConversion
                 }
                 else
                 {
-                    float litter=d=='s'?.13f:d=='m'?.15f:d=='t'?.12f:d=='p'?.16f:d=='r'||d=='v'?.07f:d=='c'?.07f:d=='w'||d=='h'?.05f:.035f;
+                    float litter=d=='s'?.13f:d=='m'?.15f:d=='t'?.12f:d=='p'?.24f:d=='r'||d=='v'?.07f:d=='c'?.07f:d=='w'||d=='h'?.05f:.035f;
                     litter*=(c.Pavement?1.5f:.55f)*(.25f+1.5f*clump);
                     float wear=Clump(ls,c.At,10f);
                     var rumour=RumourAt(w,c.At);
