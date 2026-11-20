@@ -135,7 +135,8 @@ namespace ChipArena.UnityConversion
             var adds=hordeAdds;adds.Clear();hordeTargets.Clear();hordeGrid.Clear();
             foreach(var m in Minions)if(m.Pve!=null&&!m.DevMonster){adds.Add(m);if(m.Pve.Target!=null){int id=m.Pve.Target.Seat.id;hordeTargets.TryGetValue(id,out int count);hordeTargets[id]=count+1;}if(m.Hp>0&&Time>=m.Pve.ActiveAt)hordeGrid.Add(adds.Count-1,m.Body.position.x,m.Body.position.z);}
             // Survey streets include occupied levels down to -14 m.
-            float hordeKillY = MapId.StartsWith("expedition-city-walk-",StringComparison.Ordinal) ? Map.bounds.killY : -6f;
+            bool layeredCity = MapId == NativeExpeditionGeneratedWorld.MapId || MapId.StartsWith("expedition-city-walk-",StringComparison.Ordinal);
+            float hordeKillY = layeredCity ? Map.bounds.killY : -6f;
             foreach(var m in adds)
             {
                 if(m.Hp<=0)continue;var a=m.Pve;
