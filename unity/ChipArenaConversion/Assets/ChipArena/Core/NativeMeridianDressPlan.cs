@@ -27,6 +27,8 @@ namespace ChipArena.UnityConversion
             // (a lot's roof is a generated surface too: a top two blocks share is drawn by the first, lot or not)
             // (a block the dress leaves, the greybox's or the landmarks', draws its own faces: a face of the dress in its plane is not drawn)
             public bool Undressed(int i)=>!Dressed(Roles[i]);
+            // (a lot's sides are its facade modules', wherever they stand: a face in their plane is theirs)
+            public bool SideDrawn(int i)=>!Dressed(Roles[i])||Roles[i]==RLot;
             public bool DrawsTop(int i)=>Dressed(Roles[i])&&Roles[i]!=RTread&&Roles[i]!=RParapet&&Roles[i]!=RRail&&Roles[i]!=RPost&&Roles[i]!=RWagon;
             public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false,int layer=-1)
             {
@@ -127,7 +129,7 @@ namespace ChipArena.UnityConversion
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
             {
                 var p=o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f);
-                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed,b.Undressed);
+                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed,f==2?b.Undressed:b.SideDrawn);
             }
             return e;
         }

@@ -201,7 +201,7 @@ internal static class MeridianDressChecks
             int ax=Math.Abs(q.N.x)>.5f?0:Math.Abs(q.N.y)>.5f?1:2;float plane=ax==0?q.O.x:ax==1?q.O.y:q.O.z;int key=ax*2+((ax==0?q.N.x:ax==1?q.N.y:q.N.z)>0?0:1);
             var k=(key,(int)Math.Round(plane*100));if(!quads.TryGetValue(k,out var l))quads[k]=l=new List<NativeMeridianDress.Quad>();l.Add(q);
         }
-        int sampled=0,missed=0;var covered=new HashSet<string>(plan.Covers);
+        int sampled=0,missed=0;var covered=new HashSet<string>(plan.Covers);var lotsOf=NativeMeridianDress.Lots(plan.Layout);
         for(int bi=0;bi<map.blocks.Length;bi++)
         {
             var blk=map.blocks[bi];if(!covered.Contains(blk.id))continue;var role=NativeMeridianDress.RoleOf(blk.id,NativeMeridianDress.Lots(plan.Layout));
@@ -223,7 +223,8 @@ internal static class MeridianDressChecks
                         var d=p-n*.05f-q.O;float s=V3.Dot(d,q.U)/V3.Dot(q.U,q.U),t=V3.Dot(d,q.V)/V3.Dot(q.V,q.V);if(s>=-.01f&&s<=1.01f&&t>=-.01f&&t<=1.01f){hit=true;break;}
                     }
                     // (a part of the face in the plane of a face the greybox or the landmarks draw is theirs)
-                    if(!hit&&solids.Shared(p.x-n.x*.05f,p.y,p.z-n.z*.05f,f,bi,_=>false,i=>!covered.Contains(map.blocks[i].id)))hit=true;
+                    // (and a part in the plane of a lot's side is the lot's facade's)
+                    if(!hit&&solids.Shared(p.x-n.x*.05f,p.y,p.z-n.z*.05f,f,bi,_=>false,i=>!covered.Contains(map.blocks[i].id)||lotsOf.ContainsKey(map.blocks[i].id)))hit=true;
                     if(!hit){missed++;if(Environment.GetEnvironmentVariable("MERIDIAN_DEBUG")!=null&&missed%25==1)Console.WriteLine("bare "+blk.id+" "+role+" f"+f+" a="+a.ToString("0.0")+" y="+p.y.ToString("0.0")+" b="+blk.pos.y+"/"+blk.size.y);}
                 }
             }
