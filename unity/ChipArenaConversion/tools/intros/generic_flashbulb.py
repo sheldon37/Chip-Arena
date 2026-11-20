@@ -223,7 +223,7 @@ def build(T):
     leaf.face((V(.08, .1, -.032), V(.87, .1, -.032), V(.87, 2.8, -.032), V(.08, 2.8, -.032)), F['glass'], normal=(0, 0, -1))
     sk.cylinder(leaf, V(.82, .9, .04), V(.82, 2.0, .04), .025, F['brass'], 6)
     sky = Geo()
-    dome(sky, 185, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
+    dome(sky, 172, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
 
     def sky_night(P):
         d = P / np.maximum(np.linalg.norm(P, axis=1, keepdims=True), 1e-9)

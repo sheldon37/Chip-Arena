@@ -70,10 +70,10 @@ def build(T):
 
     def far_h(r, t, x, z):
         y = .6 * (noise2(x, z, .03, 31) - .5) + ground_h(x * 58 / max(r, 1), z * 58 / max(r, 1)) * (1 - smoothstep(58, 70, r))
-        ridge = 22 * max(0.0, noise2(math.cos(t) * 40, math.sin(t) * 40, .05, 33) - .35) * smoothstep(105, 165, r)
+        ridge = 22 * max(0.0, noise2(math.cos(t) * 40, math.sin(t) * 40, .05, 33) - .35) * smoothstep(100, 160, r)
         return y + ridge
 
-    polar_field(ground, (0, 0), 57.5, 182, 14 if fine else 6, 72 if fine else 28, far_h,
+    polar_field(ground, (0, 0), 57.5, 170, 14 if fine else 6, 72 if fine else 28, far_h,
                 lambda x, y, z, nn: F['far'] if y > 2.0 else F['snow'], smooth=True, rpow=1.3)
 
     o = Geo()
@@ -241,7 +241,7 @@ def build(T):
 
     # ---- the aurora's curtains, folding in the sky behind ----
     aur = Geo()
-    for c, (a0, a1, d, y0, h, seed) in enumerate(((-2.35, -1.45, 150, 26, 44, 1), (-1.75, -.85, 165, 34, 52, 2), (-2.9, -2.25, 140, 30, 36, 3))):
+    for c, (a0, a1, d, y0, h, seed) in enumerate(((-2.35, -1.45, 122, 24, 40, 1), (-1.75, -.85, 134, 30, 46, 2), (-2.9, -2.25, 114, 26, 32, 3))):
         cols = 44 if fine else 14
         rows = 5 if fine else 3
         P = []
@@ -264,8 +264,8 @@ def build(T):
         y = P[:, 1]
         az = np.arctan2(P[:, 0], P[:, 2])
         # each curtain's own height band: bright green low, teal, violet at the top, black at both edges (the glow adds to the sky)
-        lo = np.where(az > -1.5, 34, np.where(az > -2.3, 26, 30)).astype(np.float64)
-        hh = np.where(az > -1.5, 52, np.where(az > -2.3, 44, 36)).astype(np.float64)
+        lo = np.where(az > -1.5, 30, np.where(az > -2.3, 24, 26)).astype(np.float64)
+        hh = np.where(az > -1.5, 46, np.where(az > -2.3, 40, 32)).astype(np.float64)
         v = np.clip((y - lo) / hh, 0, 1)
         col = mix_hex(0x38ff9a, 0x2fd6c8, np.clip(v / .45, 0, 1))
         col = col * (v < .45)[:, None] + mix_hex(0x2fd6c8, 0x8f5cff, np.clip((v - .45) / .55, 0, 1)) * (v >= .45)[:, None]
@@ -274,7 +274,7 @@ def build(T):
         return col * (edge * flick)[:, None]
 
     sky = Geo()
-    dome(sky, 185, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
+    dome(sky, 172, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
 
     def sky_night(P):
         d = P / np.maximum(np.linalg.norm(P, axis=1, keepdims=True), 1e-9)

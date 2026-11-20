@@ -337,7 +337,7 @@ def build(T):
         s = .8 + 1.4 * hash01('bs', k)
         rockball(canyon, V(x, sand_h(x, z) + s * .3, z), (s * 1.3, s * .9, s), F['cliff2'], 130 + k, 4 if fine else 3, 7 if fine else 5, .25, .4)
     sky = Geo()
-    dome(sky, 185, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
+    dome(sky, 172, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
     skyfn = sky_fn(0x2c2f6a, 0xf08a52, WG_SUN, 0xffb46a, .8, below=0x6a4a58)
     return [
         Piece('waygate/plaza', g, True, (0.0, top), seed=7),

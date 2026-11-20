@@ -89,7 +89,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The sunrise 0..1.</summary>
         public static float Sunrise(float t)=>NativeEntranceMath.Ramp(t,SunAt-.25f,SunAt+.6f);
         private static float SunElevation(float t)=>(-9.5f+12.5f*NativeEntranceMath.Smooth((t-3.4f)/2.6f))*(float)(Math.PI/180);
-        private Vector3 SunAt3(float t,float distance=178)
+        private Vector3 SunAt3(float t,float distance=160)
         {
             float e=SunElevation(t),c=(float)Math.Cos(e);return U(SunDir.X*c*distance,1+(float)Math.Sin(e)*distance,SunDir.Y*c*distance);
         }

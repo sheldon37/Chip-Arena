@@ -82,7 +82,9 @@ internal static class IntroGenericChecks
         public bool Has(string prop)=>Bank;
         public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){Pieces++;Sum+=at.X*.7+at.Y*.3+at.Z*.11+rotation.W+scale+glow.X+glow.Y+tint.Z;if(prop==null||!prop.Contains("/"))Missing.Add(prop??"null");}
         public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){Primitives++;Sum+=at.Y+scale.X+color.X;}
-        public void Reset(){Pieces=0;Primitives=0;Sum=0;}
+        public int Copies;
+        public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> turns,float scale,Vector3 tint){Copies+=at.Length;for(int i=0;i<at.Length;i++)Sum+=at[i].X*.01+at[i].Y*.02;}
+        public void Reset(){Pieces=0;Primitives=0;Copies=0;Sum=0;}
     }
     private sealed class Props:INativeEntranceProps
     {

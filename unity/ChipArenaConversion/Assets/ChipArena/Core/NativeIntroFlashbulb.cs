@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
                .Dolly(Photos[0]-.04f,new Vector3(2.5f,1.05f,2.5f),new Vector3(2.38f,1.04f,2.36f),new Vector3(0,1.2f,0),new Vector3(0,1.22f,0),30,28)
                .Dolly(Photos[1]-.04f,new Vector3(-2.35f,1.3f,2.75f),new Vector3(-2.22f,1.28f,2.6f),new Vector3(0,1.15f,0),new Vector3(0,1.17f,0),30,28)
                .Dolly(Photos[2]-.04f,new Vector3(0,.82f,3.0f),new Vector3(0,.84f,2.82f),new Vector3(0,1.32f,0),new Vector3(0,1.34f,0),32,30)
-               .Crane(StormAt-.05f,new Vector3(0,.95f,3.4f),new Vector3(0,1.25f,5.9f),.5f,new Vector3(0,1.6f,-1),new Vector3(0,2.6f,-4.5f),42,46).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.3f)
+               .Crane(StormAt-.05f,new Vector3(0,.95f,3.4f),new Vector3(0,1.25f,5.9f),.5f,new Vector3(0,1.6f,-1),new Vector3(0,2.6f,-4.5f),42,46).Ease(NativeIntroEase.InOut)
                .Dolly(CardAt-.3f,new Vector3(0,1.12f,3.7f),new Vector3(0,1.15f,3.35f),new Vector3(0,1.32f,0),new Vector3(0,1.34f,0),35,33).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f)
                .Bars(0,.8f).Bars(CardAt-.5f,.35f).Black(0,1).Black(.05f,0);
         }
@@ -89,6 +89,14 @@ namespace ChipArena.UnityConversion
         public static float Walk(float t)=>-6.4f+6.4f*(NativeEntranceMath.Clamp01((t-WalkAt)/(MarkAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(MarkAt-WalkAt)));
         /// <summary>The doors' swing (radians open).</summary>
         public static float Doors(float t)=>1.35f*NativeEntranceMath.EaseOut((t-DoorsAt)/.5f)*(t>DoorsAt?1:0)-.08f*(float)(Math.Exp(-6*Math.Max(0,t-DoorsAt-.5f))*Math.Sin(Math.Max(0,t-DoorsAt-.5f)*14))*(t>DoorsAt+.5f?1:0);
+        /// <summary>The stride on the model: the motion bank's walk, quickened to the carpet's pace (2.67 m/s against its 2.01); the
+        /// keyed rig carries the rest (the poses, the cover).</summary>
+        public override bool Clip(float t,out string clip,out float time)
+        {
+            if(t>=WalkAt+.04f&&t<MarkAt-.12f){clip="Armed-Walk";time=(t-WalkAt)*1.33f;return true;}
+            clip=null;time=0;return false;
+        }
+        public override float Fade(float t)=>.22f;
         public override float Solid(float t,int bone)=>t<DoorsAt+.05f?0:1;
         public override string AccentAt(float t)=>t<DoorsAt?"#1a0a14":"#ff5aa8";
         protected override Vector3 Focus(float t,Vector3 chest)=>chest;

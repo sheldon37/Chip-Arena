@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
             // for the leap (slowed), low on the platform as it slides in, the glance, the hero frame.
             Rig.Dolly(0,Ride(0)+new Vector3(-2.7f,.55f,.35f),Ride(.8f)+new Vector3(-2.5f,.6f,.3f),new Vector3(2.8f,-.2f,0),new Vector3(3.0f,-.25f,0),58,60).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.5f)
                .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.6f,-.1f,0),new Vector3(1.2f,-.15f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
-               .Dolly(LeapAt-.02f,new Vector3(-5.6f,1.35f,4.4f),new Vector3(-5.9f,1.25f,4.0f),new Vector3(-13,2.6f,-1.6f),new Vector3(-9.5f,1.6f,-.6f),50,46).In(NativeIntroCut.Whip,.13f)
+               .Dolly(LeapAt-.02f,new Vector3(-5.6f,1.35f,4.4f),new Vector3(-5.9f,1.25f,4.0f),new Vector3(-13,2.6f,-1.6f),new Vector3(-9.5f,1.6f,-.6f),50,46)
                .Dolly(LandAt-.03f,new Vector3(2.7f,.32f,1.0f),new Vector3(2.55f,.36f,.95f),new Vector3(-.2f,0,0),new Vector3(0,.15f,0),40,38).Follow(NativeEntranceAnchor.Chest,.06f)
                .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.35f)
                .Hero(CardAt-.3f,1,1.12f,3.1f,32).In(NativeIntroCut.Blend,.55f)
@@ -112,6 +112,14 @@ namespace ChipArena.UnityConversion
             else if(t<StopAt){var s=Slide(Math.Max(t,LandAt));stance[0]=s.X+.32f;stance[1]=s.Z+.14f;stance[4]=s.X-.42f;stance[5]=s.Z-.12f;}
             NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,stance,HeroAt,RootPath);Arms(t,pose,root,rotation);
         }
+        /// <summary>The sprint along the roof on the model: the motion bank's sprint, quickened to the run (about 10 m/s on the roof against
+        /// its 6.9); the keyed rig carries the crouch, the leap, the slide and the hero.</summary>
+        public override bool Clip(float t,out string clip,out float time)
+        {
+            if(t>=RunAt+.06f&&t<LeapAt-.04f){clip="Unarmed-Sprint";time=(t-RunAt)*1.45f;return true;}
+            clip=null;time=0;return false;
+        }
+        public override float Fade(float t)=>.12f;
         public override string AccentAt(float t)=>t<BurstAt?"#3fd8ff":t<LandAt?"#7ff0ff":"#16d6ff";
         protected override Vector3 Focus(float t,Vector3 chest)=>chest;
 

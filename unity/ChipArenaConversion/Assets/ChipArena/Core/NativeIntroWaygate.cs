@@ -47,11 +47,18 @@ namespace ChipArena.UnityConversion
             RootPath=(t,r)=>t<LandAt?Floating(t):t<StepAt?new Vector3(0,.88f,-1.0f):new Vector3(0,.88f,-1.0f+1.0f*NativeEntranceMath.Smooth((t-StepAt)/.95f));
             // The camera: centred and formal, pushing in; a quarter orbit as it comes through; low and centred under the ring.
             Rig.Dolly(0,new Vector3(0,1.55f,13.5f),new Vector3(0,2.1f,8.2f),Ring+new Vector3(0,-.4f,0),Ring+new Vector3(0,-.2f,0),40,36).Ease(NativeIntroEase.InOut)
-               .Orbit(ThroughAt-.05f,Vector3.Zero,78,12,5.4f,4.8f,2.4f,1.5f,new Vector3(0,.1f,0),new Vector3(0,.15f,0),38,34).Follow(NativeEntranceAnchor.Chest,.08f).In(NativeIntroCut.Blend,.5f).Ease(NativeIntroEase.InOut)
+               .Spline(ThroughAt-.05f,Arc(),new Vector3(0,.1f,0),new Vector3(0,.15f,0),38,34).Follow(NativeEntranceAnchor.Chest,.08f).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt+.05f,new Vector3(0,.95f,4.6f),new Vector3(0,.9f,4.25f),new Vector3(0,2.3f,-4.5f),new Vector3(0,2.2f,-4f),46,44).In(NativeIntroCut.Blend,.4f)
                .Dolly(CardAt-.35f,new Vector3(0,.78f,4.25f),new Vector3(0,.8f,3.75f),new Vector3(0,2.55f,-3),new Vector3(0,2.6f,-3),44,42).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.6f)
                .Bars(0,.9f).Bars(CardAt-.5f,.5f).Black(0,1).Black(.08f,0);
-            Ramps.Ramp(ThroughAt+.05f,.4f,.35f,.6f);
+        }
+        /// <summary>The quarter orbit's eye as it comes through: an arc about a fixed point between the gate and the landing, from its
+        /// left side round to its front, lowering (the look follows the pilot; the eye never takes the body's own sway).</summary>
+        private static Vector3[] Arc()
+        {
+            var p=new Vector3[6];var pivot=new Vector3(0,0,-3.3f);
+            for(int i=0;i<p.Length;i++){float u=i/(p.Length-1f),deg=78-66*u,r=5.6f-1.0f*u,h=2.4f-.9f*u;double a=deg*Math.PI/180+Facing;p[i]=pivot+new Vector3((float)Math.Sin(a)*r,h,(float)Math.Cos(a)*r);}
+            return p;
         }
         /// <summary>The float out of the gate: from the light's centre, out over the dais, down onto the plaza in front of it.</summary>
         public static Vector3 Floating(float t)

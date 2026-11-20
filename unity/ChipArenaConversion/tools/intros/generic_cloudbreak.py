@@ -236,7 +236,7 @@ def build(T):
 
     # ---- far peaks out of the clouds ----
     peaks = Geo()
-    for i, (px, pz, H, Rb) in enumerate(((-95, -120, 55, 48), (-22, -168, 82, 66), (72, -138, 62, 52), (142, -88, 46, 44), (-152, -40, 40, 42))):
+    for i, (px, pz, H, Rb) in enumerate(((-60, -108, 46, 52), (40, -112, 58, 50), (105, -62, 38, 45), (-118, -25, 34, 40))):
         base = -24.0
 
         def ph(r, t, x, z, H=H, Rb=Rb, i=i):
@@ -257,17 +257,17 @@ def build(T):
         y = -21.0 + 2.6 * (noise2(x, z, .022, 3) - .5) + 1.3 * (noise2(x, z, .07, 4) - .5) + .5 * (noise2(x, z, .18, 9) - .5)
         return y - 2.5 * (1 - smoothstep(18, 34, r))
 
-    polar_field(clouds, (0, 0), 16, 196, 26 if fine else 10, 80 if fine else 30, ch, lambda x, y, z, n: F['cloud'], smooth=True, rpow=1.65)
-    for i, (a, d, h, w) in enumerate(((-1.25, 150, 26, 30), (-2.1, 170, 34, 38), (-.55, 165, 22, 26), (2.4, 160, 18, 30), (-2.75, 140, 16, 22))):
+    polar_field(clouds, (0, 0), 16, 176, 26 if fine else 10, 80 if fine else 30, ch, lambda x, y, z, n: F['cloud'], smooth=True, rpow=1.65)
+    for i, (a, d, h, w) in enumerate(((-1.25, 140, 24, 26), (-2.1, 145, 30, 28), (-.55, 142, 20, 24), (2.4, 140, 16, 26), (-2.75, 130, 15, 20))):
         cx, cz = math.cos(a) * d, math.sin(a) * d
         prof = [(w * .95, -24), (w * 1.05, -18), (w * .9, -24 + h * .45), (w * .7, -24 + h * .7), (w * .45, -24 + h * .88), (w * .18, -24 + h), (.5, -24 + h * 1.02)]
         sk.lathe(clouds, prof, V(cx, 0, cz), F['cloud'], 16 if fine else 8, phase=i)
 
     # ---- the dawn sky and the sun ----
     sky = Geo()
-    dome(sky, 198, F['sky'], 12 if fine else 6, 36 if fine else 16, -16, 90)
+    dome(sky, 172, F['sky'], 12 if fine else 6, 36 if fine else 16, -16, 90)
     sun = Geo()
-    disc(sun, V(0, 0, 0), 8.0, F['sun'], 24 if fine else 12, normal=(0, 0, 1))
+    disc(sun, V(0, 0, 0), 7.2, F['sun'], 24 if fine else 12, normal=(0, 0, 1))
     skyfn = sky_fn(0x3d6db3, 0xf3b78e, CB_SUN_DIR, 0xffcf96, .75, below=0xd4c4cc)
 
     def cloudfn(P):
@@ -280,7 +280,7 @@ def build(T):
         shade = mix_hex(0xb9aecb, 0xf2ece8, up)
         warm = mix_hex(0xf2ece8, 0xffd9b8, sun * up)
         return shade * (1 - up[:, None] * .6) + warm * (up[:, None] * .6)
-    sun_at = (CB_SUN_DIR[0] * 186, 4.0, CB_SUN_DIR[1] * 186)
+    sun_at = (CB_SUN_DIR[0] * 160, 4.0, CB_SUN_DIR[1] * 160)
     sun_yaw = math.atan2(-CB_SUN_DIR[0], -CB_SUN_DIR[1])
     return [
         Piece('cloudbreak/summit', g, True, (Y, -.62), seed=1),
