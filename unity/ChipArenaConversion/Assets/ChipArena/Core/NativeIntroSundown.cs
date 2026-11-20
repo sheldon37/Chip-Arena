@@ -11,7 +11,8 @@ namespace ChipArena.UnityConversion
     /// the hip and fires one shot, slowed, the camera riding the bullet through the falling debris to strike the bell as it lands.
     /// It rings out, tumbles off its plinth and rolls down the street, rocking to rest at the pilot's boots. The pilot lifts the
     /// smoking barrel and blows the smoke away; the name, the bell's last ring.
-    /// Presentation only: pure functions of the presentation clock, thinned by quality; every beat kept in Reduced effects.
+    /// Every beat is bespoke keyed animation (no match clips; owner 2026-11-20). Presentation only: pure functions of the presentation
+    /// clock, thinned by quality; every beat kept in Reduced effects.
     /// </summary>
     public sealed class NativeIntroSundown:NativeRangedIntro
     {
@@ -44,18 +45,39 @@ namespace ChipArena.UnityConversion
                 Step(false,2.86f,3.02f,-.2f,-.06f,-.25f,.04f,aimYaw),Step(true,Rest-.22f,Rest+.06f,.15f,.08f,.08f,.04f),
             };
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,-1.35f,Facing).J(RA,-.18f,0,-.2f).J(RE,-.35f).J(LA,.1f,0,.16f).J(Hd,.06f);
-            k.Key(WalkTo,stand).Root(0,.88f,0,Facing).J(RA,-.16f,0,-.22f).J(RE,-.3f).J(LA,-.05f,0,.15f).J(Hd,.02f).PassKey();
+            // The walk: a gunslinger's slow walk down the street, keyed on every contact and passing pose with the step plan above:
+            // the gun hand hovering by the holster, the off arm swinging against the legs, the chest countering the hips, a low
+            // bob that drops on each contact, the head level on the belfry. (Owner 2026-11-20: bespoke animation, no match clips.)
+            k.Key(0,stand).Root(0,.88f,-1.35f,Facing).Drop(-.02f).J(P,0,-.04f,0).J(C,.02f,.05f,0).J(Hd,.04f,-.04f,0).J(RA,-.08f,.1f,-.3f).J(RE,-.5f).J(LA,.18f,0,.14f).J(LE,-.22f);
+            k.Key(.25f,stand).Root(0,.88f,-1.35f,Facing).Drop(.012f).J(P,0,0,0).J(C,.02f,0,0).J(Hd,.03f,-.02f,0).J(RA,-.05f,.1f,-.31f).J(RE,-.52f).J(LA,-.02f,0,.13f).J(LE,-.25f).PassKey();
+            k.Key(.45f,stand).Root(0,.88f,-1.35f,Facing).Drop(-.026f).J(P,0,.05f,0).J(C,.03f,-.05f,0).J(Hd,.04f,0,0).J(RA,0,.1f,-.32f).J(RE,-.55f).J(LA,-.24f,0,.12f).J(LE,-.32f);
+            k.Key(.65f,stand).Root(0,.88f,-1.35f,Facing).Drop(.012f).J(P,0,0,0).J(C,.02f,0,0).J(Hd,.03f,-.02f,0).J(RA,-.05f,.1f,-.31f).J(RE,-.52f).J(LA,-.02f,0,.13f).J(LE,-.25f).PassKey();
+            k.Key(.85f,stand).Root(0,.88f,-1.35f,Facing).Drop(-.026f).J(P,0,-.05f,0).J(C,.03f,.05f,0).J(Hd,.04f,-.04f,0).J(RA,-.1f,.1f,-.3f).J(RE,-.5f).J(LA,.2f,0,.14f).J(LE,-.2f);
+            k.Key(1.03f,stand).Root(0,.88f,-1.35f,Facing).Drop(.01f).J(P,0,0,0).J(C,.02f,0,0).J(Hd,.02f,-.02f,0).J(RA,-.05f,.1f,-.31f).J(RE,-.52f).J(LA,-.02f,0,.13f).J(LE,-.25f).PassKey();
+            k.Key(1.2f,stand).Root(0,.88f,-1.35f,Facing).Drop(-.024f).J(P,0,.04f,0).J(C,.02f,-.04f,0).J(Hd,0,0,0).J(RA,0,.1f,-.32f).J(RE,-.55f).J(LA,-.2f,0,.13f).J(LE,-.3f);
+            // the stop: the back foot comes up beside, the weight settles into the heels, the gun hand stays hovering
+            k.Key(WalkTo+.12f,stand).Root(0,.88f,0,Facing).Drop(-.03f).J(P,0,0,0).J(C,0,.03f,0).J(Hd,-.02f,.02f,0).J(RA,-.12f,.1f,-.24f).J(RE,-.32f).J(LA,-.05f,0,.15f).J(LE,-.22f);
             // the tolls: the head comes up toward the belfry
             k.Key(Toll2-.1f,stand).Root(0,.88f,0,Facing).J(Hd,-.12f,.12f,0).J(C,-.03f,.06f,0).J(RA,-.16f,0,-.24f).J(RE,-.3f).J(LA,-.05f,0,.15f);
             // the hand by the hip, fingers loose: the stillness
             k.Key(2.45f,stand).Root(0,.86f,0,Facing).Drop(-.03f).J(Hd,-.08f,.1f,0).J(C,0,.04f,0).J(RA,-.05f,.1f,-.32f).J(RE,-.55f).J(LA,-.05f,0,.18f).J(LE,-.2f);
             k.Key(Break,stand).Root(0,.86f,0,Facing).Drop(-.04f).J(Hd,-.1f,.12f,0).J(C,0,.04f,0).J(RA,-.02f,.1f,-.34f).J(RE,-.6f).J(LA,-.05f,0,.2f).J(LE,-.22f);
             // the draw and the aim at the bell (squared to it), the shot's kick, the follow-through
-            k.Key(AimFrom,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.05f,0).J(Hd,.02f,0,0).J(RA,-1.48f,.05f,-.08f).J(RE,-.08f).J(LA,-.3f,0,.25f).J(LE,-.6f).PassKey();
+            // The draw, bespoke: the hand drops to the holster (the knees give), whips the gun up past the shoulder with the barrel to the
+            // sky (the off arm flung out for balance, the hips turning to the bell), holds a heartbeat at the high ready, then snaps the
+            // muzzle down onto the bell, overshooting a hair below the line and settling. The sky-pointing beat is the flourish.
+            float midYaw=Facing+(aimYaw-Facing)*.55f;
+            k.Key(DrawFrom,stand).Root(0,.86f,0,Facing).Drop(-.065f).J(C,.06f,.05f,0).J(Hd,-.08f,.1f,0).J(RA,.14f,.1f,-.36f).J(RE,-.95f).J(LA,-.1f,0,.24f).J(LE,-.3f);
+            k.Key(DrawFrom+.08f,stand).Root(0,.86f,0,midYaw).Drop(-.075f).J(C,-.02f,.08f,0).J(Hd,-.05f,.06f,0).J(RA,-2.2f,.1f,-.38f).J(RE,-1.55f).J(LA,-.35f,0,.48f).J(LE,-.4f);
+            k.Key(DrawFrom+.15f,stand).Root(0,.86f,0,aimYaw).Drop(-.07f).J(C,-.04f,.06f,0).J(Hd,-.04f,0,0).J(RA,-2.45f,.08f,-.3f).J(RE,-1.7f).J(LA,-.3f,0,.4f).J(LE,-.5f).PassKey();
+            k.Key(DrawFrom+.23f,stand).Root(0,.86f,0,aimYaw).Drop(-.06f).J(C,-.02f,.05f,0).J(Hd,.03f,0,0).J(RA,-1.32f,.05f,-.08f).J(RE,-.02f).J(LA,-.3f,0,.3f).J(LE,-.58f).ImpactKey();
+            k.Key(DrawFrom+.32f,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.05f,0).J(Hd,.02f,0,0).J(RA,-1.48f,.05f,-.08f).J(RE,-.08f).J(LA,-.3f,0,.25f).J(LE,-.6f).PassKey();
+            // the settled stance on the bell: a slow breath, the arm dead still
+            k.Key(3.36f,stand).Root(0,.86f,0,aimYaw).Drop(-.055f).J(C,-.04f,.05f,0).J(Hd,.02f,0,0).J(RA,-1.49f,.05f,-.08f).J(RE,-.08f).J(LA,-.3f,0,.25f).J(LE,-.6f);
             k.Key(ShotAt,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.05f,0).J(Hd,.03f,0,0).J(RA,-1.5f,.05f,-.08f).J(RE,-.06f).J(LA,-.3f,0,.25f).J(LE,-.6f);
             k.Key(ShotAt+.05f,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.06f,.05f,0).J(Hd,-.02f,0,0).J(RA,-1.85f,.05f,-.08f).J(RE,-.3f).J(LA,-.3f,0,.25f).J(LE,-.6f).ImpactKey();
             k.Key(4.2f,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.04f,0).J(Hd,.02f,0,0).J(RA,-1.45f,.05f,-.08f).J(RE,-.1f).J(LA,-.3f,0,.25f).J(LE,-.6f);
+            k.Key(4.42f,stand).Root(0,.865f,0,aimYaw-.05f).Drop(-.04f).J(C,.02f,.02f,0).J(Hd,.14f,-.08f,0).J(RA,-1.1f,.05f,-.12f).J(RE,-.3f).J(LA,-.2f,0,.22f).J(LE,-.45f);
             // the barrel up by the face, the head leaning in to blow
             k.Key(BlowFrom+.25f,stand).Root(0,.87f,0,aimYaw-.1f).Drop(-.03f).J(C,0,-.05f,0).J(Hd,.05f,-.15f,0).J(RA,-.45f,.35f,-.5f).J(RE,-2.05f).J(LA,-.08f,0,.18f).J(LE,-.25f);
             k.Key(BlowAt,stand).Root(0,.87f,0,aimYaw-.1f).Drop(-.03f).J(C,.02f,-.08f,0).J(Hd,.16f,-.28f,.05f).J(RA,-.42f,.38f,-.5f).J(RE,-2.1f).J(LA,-.08f,0,.18f).J(LE,-.25f);
@@ -84,7 +106,7 @@ namespace ChipArena.UnityConversion
             // Slow motion through the shot and the strike; repaid while the bell rolls.
             Ramps.Ramp(3.48f,.28f,.85f,1.25f);
         }
-        // ---- the model's clips (the keyed rig drives the rest: the stillness, the blow, the hero) ----
+        // ---- the arms over the keys (no match clips: every beat is keyed above) ----
         /// <summary>The blow: the gun hand brought up by the mouth, the barrel raised, then down again (the keyed rig drives the model here).</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
@@ -97,17 +119,6 @@ namespace ChipArena.UnityConversion
             var muzzle=head+new Vector3(0,ModelHeadLift-.1f,0)+fwd*.28f-left*.15f;var at=muzzle-barrel*BlowReach;
             NativeEntrancePose.Reach(pose,root,rotation,false,at,Look(barrel,-fwd),w);
         }
-        public override bool Clip(float t,out string clip,out float time)
-        {
-            clip=null;time=0;
-            if(t<WalkTo+.06f){clip="Armed-Walk-Slow";time=(t+.4f)%1.6f;return true;}
-            if(t>=DrawFrom&&t<AimFrom){clip="Armed-Unsheath-R-FromArmed-Hips";time=.15f+.7f*NativeEntranceMath.Clamp01((t-DrawFrom)/(AimFrom-DrawFrom));return true;}
-            if(t>=AimFrom&&t<ShotAt-.08f){clip="Armed-Idle-Pistol-R";time=t-AimFrom;return true;}
-            if(t>=ShotAt-.08f&&t<ShotAt+.4f){clip="Pistol-Attack-R1";time=.32f+(t-(ShotAt-.08f));return true;}
-            if(t>=ShotAt+.4f&&t<BlowFrom){clip="Armed-Idle-Pistol-R";time=.6f+(t-ShotAt-.4f);return true;}
-            return false;
-        }
-        public override float Fade(float t)=>t<AimFrom+.05f?.1f:t<BlowFrom?.08f:.22f;
 
         // ---- the bell: swinging, falling, struck, off the plinth, rolling to the boots ----
         /// <summary>The bell's swing about its headstock (radians, toward the street negative) before the break.</summary>

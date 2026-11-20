@@ -61,8 +61,12 @@ palette.
 | 4.5–5.2 | The barrel up by the face; the smoke blown away |
 | 6.0 | The name (Wipe), the bell rocking at the boots; its last ring |
 
-Motion: the model plays `Armed-Walk-Slow`, `Armed-Unsheath-R-FromArmed-Hips`, `Armed-Idle-Pistol-R` and `Pistol-Attack-R1`; the keyed
-rig drives the stillness, the smoke blow and the rest. No gun spin: the framework has no held-weapon turn (I0, 2026-11-20). The blow
+Motion: bespoke keyed animation only, no match clips (owner, 2026-11-20 morning: "we dont need the matches own annimation system",
+as the Top Dog's and the Bombardier's intros): a gunslinger's slow walk keyed on every contact and passing pose (the gun hand
+hovering by the holster, the off arm swinging, the chest countering the hips, a bob dropping on each contact), the stillness, a fast
+draw whose flourish is the high ready (the gun whipped up past the shoulder, barrel to the sky, a heartbeat, then snapped down onto
+the bell with a small overshoot), a settled breath on the aim, the shot's kick and follow-through, the head following the bell in,
+the smoke blow and the rest. No gun spin: the framework has no held-weapon turn (I0, 2026-11-20). The blow
 reaches the gun hand so the muzzle stands just in front of the mouth, beside the visor: the head joint is the skull's pivot, so the
 mouth is placed from it lifted by `NativeRangedIntro.ModelHeadLift` (0.16 m to the eyes, as I5 measured).
 
