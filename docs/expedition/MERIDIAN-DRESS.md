@@ -130,6 +130,13 @@ sides, the brick wedges, the bare floors). `--meridian-stairs-probe` counts the 
 `--meridian-stairs-zfight PLAN` lists coplanar pairs touching a flight; `--meridian-stairs-export PLAN X Z RADIUS OUT.ply [roles]`
 writes the live deal's dress for a Blender check render (with `roles`, a colour per role).
 
+The flights' cost (2026-11-20, with the bank; shared → `claude/meridian-stairs`): worst views High / Low, Crown Hill 371,689 →
+377,544 / 161,838 → 165,726; The Navigation 467,614 → 440,293 / 157,358 → 176,724; The Arcades 508,799 → 514,794 / 208,494 → 230,415;
+The Stride 435,726 → 457,794 / 192,629 → 197,294; The Yards 240,698 → 222,355 / 104,181 → 122,180; draws up to 324 (High) and 194
+(Low); surfaces 1.6-1.8 times (the bars). The Editor's load (`plan` + `LOD1 combine`): The Navigation 668 + 102 → 686 + 153 ms, Crown
+Hill 424 + 131 → 423 + 166 ms. Captured views (one hold, xseeds 1013904226 and 2027808452): the sanctuary looking north-east, the
+sloped streets from top and bottom, fire escapes near and far, the stone stairs.
+
 `HubZFightChecks` (`--hub-zfight`, in the full suite): each street plan's live deal built as the station builds it, the dress
 planned as the live run plans it, and everything drawn in the hub (64 m square at the camp) gathered: the greybox boxes the arena
 dressing still draws (with their lifts), the dress's surfaces (with `CHIPARENA_MERIDIAN_BANK`, its modules) and the gates. No two
