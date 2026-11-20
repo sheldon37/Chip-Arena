@@ -1,49 +1,32 @@
 ## 2026-11-20 — Claude (M1): Meridian's flights on their lines: no staircasing; the fire escapes iron and caged (owner report; presentation only)
 
 **Branch and status:** `claude/meridian-stairs` from shared `7115bad3`; work `3113c4e0` and `1a30006f`, shared `d4ee788c` merged in
-(`6bc300fa`). Pushed, not merged.
-
-**The owner (2026-11-20):** "a lot of unnatural staircasing (reference right of picture)".
+(`6bc300fa`). Pushed, not merged. **The owner:** "a lot of unnatural staircasing (reference right of picture)".
 
 **The cause.** Every flight is Astra's MapRamp: a pilot stands on a closed wedge up to its slope, and its treads are boxes from the
 flight's bottom up to flat tops. The dress drew each tread's sides on its own:
-- fire escapes (192 of them, 527 flights) stood as solid stepped wedges in their host's brick, every upper flight hanging from its
-  landing: the owner's sawtooth building edges and dark zigzags;
-- sloped streets' sides stepped every 3-4 m, each step with its own coping;
-- walls beside a sloped street stopped at the treads' tops, leaving notches open over the setts;
+- fire escapes (192 of them, 527 flights) stood as solid stepped brick wedges, every upper flight hanging from its landing;
+- sloped streets' sides stepped every 3-4 m with their copings, and the walls beside them stopped at the treads' tops (notches);
 - stairs' stone sides stepped tread by tread.
 
-**What changed** (`Core/NativeMeridianDressStairs.cs`; `NativeMeridianDressPlan.cs`, `NativeMeridianDress.cs`, `NativeMeridianChunks.cs`):
-- Each tread side is cut on its flight's line (a sloped street's surface, a stair's nosings) under a 0.3 m band, as trapezoids
-  (`Quad.Taper`).
-- Sloped streets: brick retaining walls under a sloped coping; the walls beside them now run down under the street.
-- Stairs: stone cheeks under a sloped coping.
-- Fire escapes: iron, with a black stringer along the nosings. The wedge is solid to a pilot, so it is caged by flat bars 0.3 m
-  apart (no pilot passes the gap), with a grating under it, the stair's soffit behind and the floor run on under it. The bars stay
-  out of the seam table (`Quad.Free`).
+**What changed** (`Core/NativeMeridianDressStairs.cs`, with small changes in `NativeMeridianDressPlan.cs`, `NativeMeridianDress.cs`
+and `NativeMeridianChunks.cs`):
+- Each tread side is cut on its flight's line under a 0.3 m band, as trapezoids (`Quad.Taper`).
+- Sloped streets: brick retaining walls under a sloped coping. Stairs: stone cheeks under a sloped coping.
+- Fire escapes: iron. A stringer runs along the nosings; the wedge, solid to a pilot, is caged by bars 0.3 m apart, with a grating
+  under it and the floor running on beneath.
 - No collider or rule change.
 
-**The check:** `MeridianStairsChecks` (`--meridian-stairs`, in the full suite): no stepped side on any flight; walls down to the
-sloped streets; fire escapes iron and caged; the floors under the cages; no coplanar fight. It fails on the old dress.
+**The check:** `MeridianStairsChecks` (`--meridian-stairs`, in the full suite), which fails on the old dress.
+**Cost:** the worst views stay under budget; the Editor load is +0.03-0.07 s (figures in `docs/expedition/MERIDIAN-DRESS.md`).
+**Captures:** `F:/Chip Arena Development/scratch/meridian-stairs/clips/`, before/after in the Editor at night.
 
-**Cost:** the worst views stay under budget (High up to 515 k, Low up to 230 k triangles). The Editor load is +0.03-0.07 s.
-The per-plan figures are in `docs/expedition/MERIDIAN-DRESS.md`.
+**Checks:** full CoreTests the relgen5 way at `6bc300fa`, 1088 groups, exit 0. Also passing: `--meridian-dress` with the bank,
+`--dress-seams`, `--hub-zfight`, `--bleed`, the Unity compile gate, `git diff --check` and the pin scan. Not run: a Windows
+player build, multiplayer, the Low tier in the Editor.
 
-**Captures:** before/after sheets and clips (the Editor at night, The Navigation and Crown Hill, shared `7115bad3` against
-`3113c4e0`) are in `F:/Chip Arena Development/scratch/meridian-stairs/clips/`.
-
-**Checks:**
-- Full CoreTests the relgen5 way at `6bc300fa`: 1088 groups, exit 0.
-- Pass: `--meridian-dress` with the bank, `--dress-seams`, `--hub-zfight`, `--bleed`, `tools/check_unity_compile.py` (4
-  assemblies), `git diff --check` and the pin scan.
-- Not run: a Windows player build, multiplayer, the Low tier in the Editor.
-
-**Risks:**
-- The cage is honest but still a cage.
-- Far bars may shimmer.
-- Two route lamps hang on fire-escape cages.
-
-**For Astra:** thin, open fire-escape flights with rails, from the notes' `meridian-staircasing-astra.md`.
+**Risks:** the cage is honest but still a cage; far bars may shimmer; two route lamps hang on cages.
+**For Astra:** thin, open fire-escape flights with rails (the notes' `meridian-staircasing-astra.md`).
 
 ## 2026-11-20 — Claude: intros v2 batch 1 released, with the hub z-fight fix and the floor seams (integrator)
 Owner: "Ship five now" (the dev intro and four generic intros; Slipstream follows on its Runner Action pack run). Shared `076ae3fc`; the builder at `076ae3fc`, test channel revision `639308124444299384` (build `a24d67a4`, 380.9 MiB). Earlier today: the hub z-fight fix alone, shared `5d54766c`, revision `639308000396336573`.
