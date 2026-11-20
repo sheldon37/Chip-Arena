@@ -22037,3 +22037,5 @@ Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoic
 ## 2026-11-18 · Astra · Thunderheart Carillon
 
 Recovered the arena from the interrupted showcase run and integrated it on shared base 15dab150. The map, soundtrack, reactive mesh presentation, two tuning-stop routes and timed gates are covered in docs/THUNDERHEART-CARILLON.md alongside the art renders, CPU measurements and private lighting setup. Original targeted tests and pinned assembly compile passed. Windows multiplayer, GPU timing and licensed lighting remain unverified.
+
+2026-11-20 Astra, Meridian native roof-drop repair on shared base 662a6f8. Windows Unity rejected roof-170 because its nearby terrace stair failed Hulk capsule traversal. Roof encounters now drop into their assigned street zone's existing apron. The deployment compatibility revision changes with the layout, and the seeded deployment regression checks every roof exit against its zone. Windows publication requires another successful build.
