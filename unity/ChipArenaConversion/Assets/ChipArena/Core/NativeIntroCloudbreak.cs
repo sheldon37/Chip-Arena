@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
         public static float Heat(float t)=>NativeEntranceMath.Ramp(t,StreakAt-.03f,StreakAt+.1f)*(1-NativeEntranceMath.Ramp(t,DiveAt-.1f,FlipAt-.2f));
         /// <summary>The sunrise 0..1.</summary>
         public static float Sunrise(float t)=>NativeEntranceMath.Ramp(t,SunAt-.25f,SunAt+.6f);
-        private static float SunElevation(float t)=>(-9.5f+12.5f*NativeEntranceMath.Smooth((t-3.4f)/2.6f))*(float)(Math.PI/180);
+        private static float SunElevation(float t)=>(-9.5f+12.5f*NativeEntranceMath.Smooth((t-4.2f)/2.0f))*(float)(Math.PI/180);
         private Vector3 SunAt3(float t,float distance=160)
         {
             float e=SunElevation(t),c=(float)Math.Cos(e);return U(SunDir.X*c*distance,1+(float)Math.Sin(e)*distance,SunDir.Y*c*distance);
@@ -245,7 +245,7 @@ namespace ChipArena.UnityConversion
             }
             // The sun: its halo breaking over the cloud line, then a slow glint.
             {
-                float sun=Sunrise(t),rise=NativeEntranceMath.Ramp(t,3.6f,SunAt);var at=SunAt3(t,170);
+                float sun=Sunrise(t),rise=NativeEntranceMath.Ramp(t,4.4f,SunAt);var at=SunAt3(t,170);
                 if(rise>.01f){fx.Glow(at,Gold*(1.2f*rise+1.8f*sun),0,26+14*sun,1,0,21800);fx.Glow(at,Hot*(1.6f*sun),0,11,1,0,21801);}
             }
             // Ice crystals glittering in the air over the pad once the sun is up.
