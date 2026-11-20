@@ -188,7 +188,7 @@ namespace ChipArena.UnityConversion
                         var at=pelvis+side*(.45f+.25f*NativeEntranceMath.Rand(21201,i))+dir*((phase-.5f)*1.8f);
                         fx.Streak(at,-dir*Math.Min(speed,34),White*(.55f*(float)Math.Sin(Math.PI*phase)),.01f,.15f,.025f,.9f,phase,21200+i);
                     }
-                    int m=low?3:7;
+                    int m=t<FlipAt?(low?3:7):0;
                     for(int i=0;i<m;i++)
                     {
                         float born=t-((t*6+i/(float)m)%1f)*.5f,a=t-born;var p=Fall(Math.Max(StreakAt,born))+new Vector3(NativeEntranceMath.Signed(21300,i)*.35f,.5f+.3f*a,NativeEntranceMath.Signed(21301,i)*.25f);

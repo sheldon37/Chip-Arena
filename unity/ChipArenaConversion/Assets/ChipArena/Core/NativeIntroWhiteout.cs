@@ -118,14 +118,14 @@ namespace ChipArena.UnityConversion
                     if(NativeEntranceMath.Rand(22000,i)>level)continue;
                     var basePos=new Vector3(NativeEntranceMath.Signed(22001,i)*7,.05f+3.6f*NativeEntranceMath.Rand(22002,i)*NativeEntranceMath.Rand(22003,i),-5+19*NativeEntranceMath.Rand(22004,i));
                     float sp=Gust*(.7f+.6f*NativeEntranceMath.Rand(22005,i))*(.35f+.65f*storm);var v=Wind*sp+new Vector3(0,(float)Math.Sin(t*2.3f+i)*.6f,0);
-                    var p=basePos+v*t;p.X=Wrap(p.X,-7,7);p.Z=Wrap(p.Z,-5,14);
+                    var p=basePos+v*t;p.X=Wrap(p.X,-7,7);p.Z=Wrap(p.Z,-5,14);if(Near(p,1.6f))continue;
                     fx.Streak(p,v,Ice*(.55f+.35f*storm),.012f+.008f*NativeEntranceMath.Rand(22006,i),.04f,.035f,.7f,0,22000+i);
                 }
                 int m=low?10:26;
                 for(int i=0;i<m;i++)
                 {
                     var basePos=new Vector3(NativeEntranceMath.Signed(22200,i)*5,.2f+2.8f*NativeEntranceMath.Rand(22201,i),-2+12*NativeEntranceMath.Rand(22202,i));
-                    var p=basePos+Wind*(Gust*.5f*t);p.X=Wrap(p.X,-5,5);p.Z=Wrap(p.Z,-2,10);
+                    var p=basePos+Wind*(Gust*.5f*t);p.X=Wrap(p.X,-5,5);p.Z=Wrap(p.Z,-2,10);if(Near(p,1.2f))continue;
                     fx.Glow(p,Ice*(.22f*level),0,.05f+.04f*NativeEntranceMath.Rand(22203,i),3,0,22200+i);
                 }
                 // Spindrift: snow streaming low over the ground.
@@ -159,7 +159,7 @@ namespace ChipArena.UnityConversion
                     float life=1.3f+.6f*NativeEntranceMath.Rand(22500,i),u=((t+i*life/n)/life)%1f;
                     var from=i%3==0?Anchor(NativeEntranceAnchor.LeftShoulder,t-u*life*.3f):i%3==1?Anchor(NativeEntranceAnchor.RightShoulder,t-u*life*.3f):chest;
                     var p=from+new Vector3(NativeEntranceMath.Signed(22501,i)*.15f,.1f+1.1f*u,NativeEntranceMath.Signed(22502,i)*.12f)+Wind*(1.4f*u*u*(.3f+.7f*storm));
-                    fx.Smoke(p,Steam,.32f*level*(float)Math.Sin(Math.PI*u),.18f+.7f*u,u,22500+i,floor);
+                    fx.Smoke(p,Steam,.25f*level*(float)Math.Sin(Math.PI*u),.15f+.55f*u,u,22500+i,floor);
                 }
             }
             // The frost breaking: shards flicked off, a burst of steam and powder.
@@ -189,9 +189,9 @@ namespace ChipArena.UnityConversion
                     int n=low?12:28;
                     for(int i=0;i<n;i++)
                     {
-                        float ang=i*6.2831853f/n+NativeEntranceMath.Signed(22700,i)*.1f,life=1.4f+.7f*NativeEntranceMath.Rand(22701,i);if(a>life)continue;float u=a/life,reach=.4f+4.2f*NativeEntranceMath.EaseOut(u);
+                        float ang=i*6.2831853f/n+NativeEntranceMath.Signed(22700,i)*.1f,life=1.4f+.7f*NativeEntranceMath.Rand(22701,i);if(a>life)continue;float u=a/life,reach=.4f+2.8f*NativeEntranceMath.EaseOut(u);
                         var dir=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var p=new Vector3(0,floor,.2f)+dir*reach+new Vector3(0,.25f+1.3f*u*(.3f+.7f*NativeEntranceMath.Rand(22702,i)),0);
-                        fx.Smoke(p,i%2==0?Steam:Ice,.5f*(1-u)*NativeEntranceMath.Ramp(a,0,.08f),.6f+1.8f*u,u,22700+i,floor);
+                        if(Near(p,1.8f))continue;fx.Smoke(p,i%2==0?Steam:Ice,.5f*(1-u)*NativeEntranceMath.Ramp(a,0,.08f),.5f+1.4f*u,u,22700+i,floor);
                     }
                     if(a<.7f){int m=low?10:24;for(int i=0;i<m;i++){float ang=i*6.2831853f/m+.13f,u=a/.7f;var dir=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));fx.Streak(new Vector3(0,floor+.04f+.1f*NativeEntranceMath.Rand(22750,i),.2f)+dir*(.5f+4.5f*u),dir*6,Ice*(1.1f*(1-u)),.014f,.18f,.04f,.8f,u,22750+i);}}
                     float flash=Flash(t,PulseAt,.04f,.45f);if(flash>.01f){fx.Glow(chest,HeatHot*(2.6f*flash),0,1.8f,1,0,22790);fx.Glow(new Vector3(0,floor+.2f,.2f),Heat*(1.8f*flash),0,3.2f,1,0,22791);}

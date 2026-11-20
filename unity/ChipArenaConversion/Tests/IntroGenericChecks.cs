@@ -41,6 +41,16 @@ internal static class IntroGenericChecks
         public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){}
         public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> turns,float scale,Vector3 tint){}
     }
+    private sealed class RecordFx:INativeEntranceFx,INativeEntranceFire
+    {
+        public readonly System.Text.StringBuilder Out=new System.Text.StringBuilder();public bool First=true;
+        private static string F(float x)=>x.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture);
+        private void Add(int kind,Vector3 p,float size,Vector3 c,Vector3 a){Out.Append(First?"":",");First=false;Out.Append("["+kind+","+F(p.X)+","+F(p.Y)+","+F(p.Z)+","+F(size)+","+F(c.X)+","+F(c.Y)+","+F(c.Z)+","+F(a.X)+","+F(a.Y)+","+F(a.Z)+"]");}
+        public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed)=>Add(0,at,size,color,Vector3.Zero);
+        public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){var a=velocity*blur;if(a.Length()<minLength&&a.Length()>1e-6f)a*=minLength/a.Length();Add(1,head,width,color,a);}
+        public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor)=>Add(2,at,size,albedo*opacity,Vector3.Zero);
+        public void Fire(Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor)=>Add(0,at,size,tint*opacity,Vector3.Zero);
+    }
     private static void Dump(NativeIntroGenericScript s,string folder)
     {
         string F(float x)=>x.ToString("0.####",System.Globalization.CultureInfo.InvariantCulture);string P(Vector3 v)=>"["+F(v.X)+","+F(v.Y)+","+F(v.Z)+"]";
@@ -49,10 +59,10 @@ internal static class IntroGenericChecks
         s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};
         for(int i=0;i<=(int)(s.Length*10);i++)
         {
-            float age=i/10f,t=s.Clock(age);s.Camera(age,out var v);var rec=new Record();s.Set(t,rec);
+            float age=i/10f,t=s.Clock(age);s.Camera(age,out var v);var rec=new Record();s.Set(t,rec);var rfx=new RecordFx();s.Effects(t,rfx,1);
             sb.Append(i>0?",":"").Append("{\"age\":"+F(age)+",\"t\":"+F(t)+",\"eye\":"+P(v.Eye)+",\"look\":"+P(v.Look)+",\"fov\":"+F(v.Fov)+",\"solid\":"+F(s.Solid(t,0))+",\"anchors\":[");
             for(int k=0;k<anchors.Length;k++)sb.Append(k>0?",":"").Append(P(s.Anchor(anchors[k],t)));
-            sb.Append("],\"pieces\":["+rec.Out+"]}");
+            sb.Append("],\"pieces\":["+rec.Out+"],\"fx\":["+rfx.Out+"]}");
         }
         sb.Append("]}");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,s.Title.ToLowerInvariant()+".json"),sb.ToString());
     }

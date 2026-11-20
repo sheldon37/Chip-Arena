@@ -177,7 +177,7 @@ namespace ChipArena.UnityConversion
             }
             // The light spilling down the carpet from the open doors.
             {
-                float open=NativeEntranceMath.Ramp(t,DoorsAt,DoorsAt+.4f);if(open>.01f){fx.Glow(Foyer+new Vector3(0,.2f,.8f),Warm*(.9f*open),0,2.2f,1,0,25300);fx.Glow(new Vector3(0,floor+.05f,FrontZ+1.4f),Warm*(.5f*open),0,1.8f,1,0,25301);}
+                float open=NativeEntranceMath.Ramp(t,DoorsAt,DoorsAt+.4f);if(open>.01f){fx.Glow(Foyer+new Vector3(0,.3f,-.4f),Warm*(.9f*open),0,2.2f,1,0,25300);fx.Glow(new Vector3(0,floor+.05f,FrontZ+1.4f),Warm*(.5f*open),0,1.8f,1,0,25301);}
             }
             // The photographers' flashes: a white burst at each, a sparkle of glints.
             for(int i=0;i<FlashT.Length;i++)

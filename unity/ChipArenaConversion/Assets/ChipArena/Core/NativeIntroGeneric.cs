@@ -57,6 +57,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The eye of this frame's camera and the point it looks at (after Look).</summary>
         protected Vector3 Eye=>view.Eye;
         protected Vector3 LookAt=>view.Look;
+        /// <summary>Whether point p lies within r m of this frame's eye (after Look): an effect that close would fill the lens.</summary>
+        protected bool Near(Vector3 p,float r)=>viewSet&&(p-view.Eye).LengthSquared()<r*r;
 
         // ---- small shared shapes ----
         /// <summary>0..1 on a beat `at`, eased in over `rise` and out over `fall` (a light's or a glow's level).</summary>
