@@ -6,7 +6,8 @@ origin facing +z. Pieces (generic_sets.py writes them):
   whiteout/windows   the hut's lit windows (glow; world frame)     whiteout/lamps   the door lamp (glow; world frame)
   whiteout/flood     the floodlights' four lenses (glow; world frame)
   whiteout/beacon    the radio mast's red beacon (glow; world frame)
-  whiteout/thaw      the wet ground the heat pulse leaves: a disc of radius 1 on the floor at the origin (Core scales it)
+  whiteout/thaw      the ground the heat pulse melts: wet at the heart, slush, a low snow rim, radius about 1.1 at the origin (Core
+                     scales it)
   whiteout/aurora    the aurora's curtains (glow; world frame)  whiteout/sky   the night sky dome (glow)
 """
 import math
@@ -60,6 +61,8 @@ def build(T):
         flood=sk.fin('wo-flood', 0xf2f6ff, glow=1.0, dirt=0),
         beacon=sk.fin('wo-beacon', 0xff3524, glow=1.0, dirt=0),
         aurora=sk.fin('wo-aurora', 0xffffff, glow=1.0, dirt=0),
+        aurora1=sk.fin('wo-aurora1', 0xffffff, glow=1.0, dirt=0),
+        aurora2=sk.fin('wo-aurora2', 0xffffff, glow=1.0, dirt=0),
         sky=sk.fin('wo-sky', 0xffffff, glow=1.0, dirt=0),
     )
     fine = T.i == 0
@@ -228,22 +231,45 @@ def build(T):
         rockball(ice, V(0, 0, 0), (.9 * s, .7 * s, .6 * s), F['ice'], 70 + k, 3, 5, .3, .3)
         place(o, ice, M((x, ground_h(x, z) + .1 * s, z), yaw=yaw, roll=tilt))
 
-    # ---- the thaw (a wet disc, scaled by Core) ----
+    # ---- the thaw (scaled by Core): melted ground, dark and wet at the heart, through grey slush to a low rim of packed snow that
+    # fades into the snowfield (rings with a ragged edge, coloured by radius in thawfn), not a flat dark disc ----
     thaw = Geo()
     nn = 32 if fine else 12
-    pts = []
-    for k in range(nn):
-        a = TAU * k / nn
-        rr = 1.0 + .08 * math.sin(a * 5 + 1) + .05 * math.sin(a * 9)
-        pts.append(V(rr * math.cos(a), .0, rr * math.sin(a)))
-    for k in range(nn):
-        thaw.face((V(0, 0, 0), pts[k], pts[(k + 1) % nn]), F['wet'], normal=(0, 1, 0))
+    rings = ((0.0, 0.0), (.45, 0.0), (.72, .004), (.88, .012), (.97, .022), (1.04, .014), (1.12, 0.0)) if fine else         ((0.0, 0.0), (.6, 0.0), (.92, .015), (1.12, 0.0))
 
-    # ---- the aurora's curtains, folding in the sky behind ----
+    def tpt(r, k):
+        a = TAU * k / nn
+        rag = 1.0 + .08 * math.sin(a * 5 + 1) + .05 * math.sin(a * 9) + .03 * math.sin(a * 17 + 2)
+        return V(r * rag * math.cos(a), rings_h[r], r * rag * math.sin(a))
+    rings_h = dict(rings)
+    for (r0, _), (r1, _) in zip(rings, rings[1:]):
+        for k in range(nn):
+            if r0 == 0:
+                thaw.face((tpt(0.0, 0), tpt(r1, k), tpt(r1, k + 1)), F['wet'], normal=(0, 1, 0))
+            else:
+                thaw.face((tpt(r0, k), tpt(r1, k), tpt(r1, k + 1), tpt(r0, k + 1)), F['wet'], normal=(0, 1, 0))
+
+    def thawfn(P):
+        r = np.hypot(P[:, 0], P[:, 2])
+        wet = mix_hex(0x26313d, 0x55606c, np.clip((r - .35) / .45, 0, 1))
+        slush = mix_hex(0x8d99a6, 0xe9eff7, np.clip((r - .86) / .22, 0, 1))
+        return np.where((r < .8)[:, None], wet, slush)
+
+    # ---- the aurora's curtains, folding in the sky behind: each a sheet of rays of ragged heights (aurora rays), bright green at its
+    # sharp foot, teal, violet toward each ray's own top, where it fades. The glow sub-mesh is opaque, so a ray ends where its light
+    # does: no dark panel stands above the light against the sky. Each curtain has its own finish so its colour knows its rays. ----
     aur = Geo()
-    for c, (a0, a1, d, y0, h, seed) in enumerate(((-2.35, -1.45, 122, 24, 40, 1), (-1.75, -.85, 134, 30, 46, 2), (-2.9, -2.25, 114, 26, 32, 3))):
-        cols = 44 if fine else 14
-        rows = 5 if fine else 3
+    CURTAINS = ((-2.35, -1.45, 122, 24, 40, 1, 'aurora'), (-1.75, -.85, 134, 30, 46, 2, 'aurora1'), (-2.9, -2.25, 114, 26, 32, 3, 'aurora2'))
+
+    def ray(u, seed):
+        """A ray's height share (.45..1): long folds and short rays."""
+        return .45 + .55 * (.5 + .5 * math.sin(u * 11 + seed)) * (.55 + .45 * (.5 + .5 * math.sin(u * 71 + seed * 5)))
+
+    def wave(u, seed):
+        return 6 * math.sin(u * 7 + seed)
+    for a0, a1, d, y0, h, seed, fin in CURTAINS:
+        cols = 72 if fine else 18
+        rows = 6 if fine else 3
         P = []
         for i in range(rows + 1):
             v = i / rows
@@ -252,26 +278,27 @@ def build(T):
                 u = j / cols
                 a = a0 + (a1 - a0) * u
                 dd = d + 9 * math.sin(u * 9 + seed) + 4 * math.sin(u * 23 + seed * 2)
-                row.append(V(math.sin(a) * dd, y0 + h * v + 6 * math.sin(u * 7 + seed) * v, math.cos(a) * dd))
+                row.append(V(math.sin(a) * dd, y0 + (h * ray(u, seed) + wave(u, seed)) * v, math.cos(a) * dd))
             P.append(row)
         for i in range(rows):
             for j in range(cols):
                 a, b, cc, dd_ = P[i][j], P[i][j + 1], P[i + 1][j + 1], P[i + 1][j]
                 mid = mul(_add(_add(a, b), _add(cc, dd_)), .25)
-                aur.face((a, b, cc, dd_), F['aurora'], normal=_norm((-mid[0], 0, -mid[2])))
+                aur.face((a, b, cc, dd_), F[fin], normal=_norm((-mid[0], 0, -mid[2])))
 
-    def aurora_fn(P):
-        y = P[:, 1]
-        az = np.arctan2(P[:, 0], P[:, 2])
-        # each curtain's own height band: bright green low, teal, violet at the top, black at both edges (the glow adds to the sky)
-        lo = np.where(az > -1.5, 30, np.where(az > -2.3, 24, 26)).astype(np.float64)
-        hh = np.where(az > -1.5, 46, np.where(az > -2.3, 40, 32)).astype(np.float64)
-        v = np.clip((y - lo) / hh, 0, 1)
-        col = mix_hex(0x38ff9a, 0x2fd6c8, np.clip(v / .45, 0, 1))
-        col = col * (v < .45)[:, None] + mix_hex(0x2fd6c8, 0x8f5cff, np.clip((v - .45) / .55, 0, 1)) * (v >= .45)[:, None]
-        edge = np.clip(v / .12, 0, 1) * np.clip((1 - v) / .5, 0, 1) ** 1.4
-        flick = .75 + .25 * np.sin(az * 31)
-        return col * (edge * flick)[:, None]
+    def aurora_fn_of(a0, a1, y0, h, seed):
+        def fn(P):
+            u = np.clip((np.arctan2(P[:, 0], P[:, 2]) - a0) / (a1 - a0), 0, 1)
+            top = h * (.45 + .55 * (.5 + .5 * np.sin(u * 11 + seed)) * (.55 + .45 * (.5 + .5 * np.sin(u * 71 + seed * 5))))                 + 6 * np.sin(u * 7 + seed)
+            v = np.clip((P[:, 1] - y0) / np.maximum(top, 1e-3), 0, 1)       # the share up its own ray
+            col = mix_hex(0x38ff9a, 0x2fd6c8, np.clip(v / .45, 0, 1))
+            col = col * (v < .45)[:, None] + mix_hex(0x2fd6c8, 0x8f5cff, np.clip((v - .45) / .55, 0, 1)) * (v >= .45)[:, None]
+            edge = np.clip(v / .1, 0, 1) * np.clip((1 - v) / .4, 0, 1) ** 1.2
+            edge = .06 + .94 * edge                                         # the fade's floor: night-sky dark, not black
+            flick = .75 + .25 * np.sin(u * 140 + seed)
+            return col * (edge * flick)[:, None] + (1 - edge)[:, None] * np.array([.035, .055, .1])
+        return fn
+    aurora_recolour = [({F[fin]}, aurora_fn_of(a0, a1, y0, h, seed)) for a0, a1, d, y0, h, seed, fin in CURTAINS]
 
     sky = Geo()
     dome(sky, 172, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
@@ -288,8 +315,8 @@ def build(T):
         Piece('whiteout/lamps', lamps, False),
         Piece('whiteout/flood', flood, False),
         Piece('whiteout/beacon', beacon, False),
-        Piece('whiteout/thaw', thaw, False, (-50.0,), preview=[M((0, .02, 0), s=2.6)]),
-        Piece('whiteout/aurora', aur, False, (-500.0,), recolour=({F['aurora']}, aurora_fn)),
+        Piece('whiteout/thaw', thaw, False, (-50.0,), recolour=({F['wet']}, thawfn), preview=[M((0, .02, 0), s=2.6)]),
+        Piece('whiteout/aurora', aur, False, (-500.0,), recolour=aurora_recolour),
         Piece('whiteout/sky', sky, False, (-500.0,), recolour=({F['sky']}, sky_night)),
     ]
 

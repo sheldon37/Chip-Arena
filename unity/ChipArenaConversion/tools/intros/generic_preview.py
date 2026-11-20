@@ -97,7 +97,8 @@ for key in only:
             continue
         bk = sk.Bake(p.g, None, floors=p.floors, seed=p.seed or 1)
         if p.recolour:
-            kit.recolour(p.g, bk, p.recolour[0], p.recolour[1])
+            for fins, fn in (p.recolour if isinstance(p.recolour, list) else [p.recolour]):
+                kit.recolour(p.g, bk, fins, fn)
         meshes[p.name] = mesh_of(p.name, p.g, bk)
     pool = {}
     if limb_mesh is None:

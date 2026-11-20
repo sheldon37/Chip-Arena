@@ -69,7 +69,9 @@ def main():
             for p, ao in zip(pieces, aos):
                 bk = sk.Bake(p.g, ao, floors=p.floors, seed=p.seed or int(kit.hash01(p.name) * 1000))
                 if p.recolour:
-                    kit.recolour(p.g, bk, p.recolour[0], p.recolour[1])
+                    # one (finishes, fn) pair, or a list of them (a piece whose parts colour by their own rules)
+                    for fins, fn in (p.recolour if isinstance(p.recolour, list) else [p.recolour]):
+                        kit.recolour(p.g, bk, fins, fn)
                 name = p.name if lod == 0 else p.name + '/low'
                 om = sk.to_mesh(name, p.g, bk)
                 if om is None:
