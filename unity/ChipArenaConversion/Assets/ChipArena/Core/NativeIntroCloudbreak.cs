@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         // The set (Unity space, generic_cloudbreak.py): the mast's beacon, the windsocks' pivots, the sun's azimuth.
         private static readonly Vector3 Beacon=U(3.9f,15.72f,-4.9f);
         private static readonly Vector3[] SockAt={new Vector3(3.95f,3.28f,1.52f),new Vector3(-3.95f,3.28f,1.52f)};
-        private static readonly Vector2 SunDir=Vector2.Normalize(new Vector2(-.3f,-.954f));
+        private static readonly Vector2 SunDir=new Vector2(0,-1);
         // The fall (source frame): the streak in from far up, the dive, the flare, the braking burn onto the pad. Hermite keys.
         private static readonly float[] FallT={StreakAt,DiveAt,FlipAt,TouchAt};
         private static readonly Vector3[] FallP={new Vector3(30,125,-105),new Vector3(6,38,-22),new Vector3(0,7.5f,.15f),new Vector3(0,.88f,0)};
@@ -63,11 +63,11 @@ namespace ChipArena.UnityConversion
             // and slowed, a low orbit through the rise, the hero frame.
             var e0=new Vector3(-.6f,.45f,3.6f);
             Rig.Crane(0,e0,new Vector3(-.25f,.5f,3.1f),.15f,e0+Dir(.24f,-.97f,.44f)*30,new Vector3(-.25f,.5f,3.1f)+Dir(.18f,-.98f,.76f)*30,58,54).Ease(NativeIntroEase.InOut)
-               .Dolly(DiveAt,new Vector3(5.4f,1.0f,6.2f),new Vector3(5.1f,.95f,5.7f),Vector3.Zero,Vector3.Zero,21,27).Follow(NativeEntranceAnchor.Chest,.05f).Ease(NativeIntroEase.Linear)
+               .Dolly(DiveAt,new Vector3(5.4f,1.0f,6.2f),new Vector3(5.1f,.95f,5.7f),Vector3.Zero,Vector3.Zero,14,21).Follow(NativeEntranceAnchor.Chest,.05f).Ease(NativeIntroEase.Linear)
                .Spline(2.2f,Alongside(2.2f,2.95f),Vector3.Zero,new Vector3(0,-.1f,0),44,50).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear)
                .Dolly(2.95f,new Vector3(-3.7f,.42f,4.5f),new Vector3(-3.35f,.5f,4.05f),new Vector3(0,1.7f,0),new Vector3(0,.75f,0),46,42).Ease(NativeIntroEase.Out)
                .Orbit(RiseAt-.05f,Vector3.Zero,-52,8,3.7f,3.2f,.42f,.8f,new Vector3(0,-.1f,0),new Vector3(0,.12f,0),40,36).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.4f).Handheld(.4f)
-               .Hero(CardAt-.25f,-1,1.12f,3.2f,31).In(NativeIntroCut.Blend,.55f)
+               .Hero(CardAt-.25f,1,1.12f,3.2f,31).In(NativeIntroCut.Blend,.55f)
                .Bars(0,.85f).Bars(CardAt-.6f,.4f).Black(0,1).Black(.06f,0);
             Ramps.Ramp(2.95f,.35f,.6f,.8f);
         }

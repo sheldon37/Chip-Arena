@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             RootPath=(t,r)=>t<StopAt?Ride(t):r;
             // The camera: low on the roof behind it in the tunnel, beside the train keeping pace into the hall, a whip to the platform
             // for the leap (slowed), low on the platform as it slides in, the glance, the hero frame.
-            Rig.Dolly(0,Ride(0)+new Vector3(-2.7f,.55f,.35f),Ride(.8f)+new Vector3(-2.5f,.6f,.3f),new Vector3(2.8f,-.2f,0),new Vector3(3.0f,-.25f,0),58,60).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.5f)
+            Rig.Dolly(0,Ride(0)+new Vector3(-2.5f,.12f,.05f),Ride(.8f)+new Vector3(-2.3f,.14f,.05f),new Vector3(2.8f,-.2f,0),new Vector3(3.0f,-.25f,0),58,60).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.5f)
                .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.6f,-.1f,0),new Vector3(1.2f,-.15f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
                .Dolly(LeapAt-.02f,new Vector3(-5.6f,1.35f,4.4f),new Vector3(-5.9f,1.25f,4.0f),new Vector3(-13,2.6f,-1.6f),new Vector3(-9.5f,1.6f,-.6f),50,46)
                .Dolly(LandAt-.03f,new Vector3(2.7f,.32f,1.0f),new Vector3(2.55f,.36f,.95f),new Vector3(-.2f,0,0),new Vector3(0,.15f,0),40,38).Follow(NativeEntranceAnchor.Chest,.06f)

@@ -21,7 +21,7 @@ CB_HUT = (-4.9, -.62, -3.7)
 CB_SOCKS = ((3.95, 1.52), (-3.95, 1.52))   # the windsock poles (x, z)
 CB_SOCK_TOP = 3.2                # the sock's pivot height (Unity y)
 CB_BEACON_Y = 15.72
-CB_SUN_DIR = (-.3, -.954)        # the sun's azimuth (Unity x, z), low behind the pilot
+CB_SUN_DIR = (0.0, -1.0)         # the sun's azimuth (Unity x, z), low behind the pilot (behind its shoulder in the hero frame)
 
 
 def octo(th):

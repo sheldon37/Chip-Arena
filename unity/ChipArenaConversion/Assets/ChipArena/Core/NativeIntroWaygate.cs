@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(0,new Vector3(0,1.55f,13.5f),new Vector3(0,2.1f,8.2f),Ring+new Vector3(0,-.4f,0),Ring+new Vector3(0,-.2f,0),40,36).Ease(NativeIntroEase.InOut)
                .Spline(ThroughAt-.05f,Arc(),new Vector3(0,.1f,0),new Vector3(0,.15f,0),38,34).Follow(NativeEntranceAnchor.Chest,.08f).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt+.05f,new Vector3(0,.95f,4.6f),new Vector3(0,.9f,4.25f),new Vector3(0,2.3f,-4.5f),new Vector3(0,2.2f,-4f),46,44).In(NativeIntroCut.Blend,.4f)
-               .Dolly(CardAt-.35f,new Vector3(0,.78f,4.25f),new Vector3(0,.8f,3.75f),new Vector3(0,2.55f,-3),new Vector3(0,2.6f,-3),44,42).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.6f)
+               .Dolly(CardAt-.35f,new Vector3(0,.85f,3.45f),new Vector3(0,.88f,3.05f),new Vector3(0,2.35f,-3),new Vector3(0,2.4f,-3),46,44).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.6f)
                .Bars(0,.9f).Bars(CardAt-.5f,.5f).Black(0,1).Black(.08f,0);
         }
         /// <summary>The quarter orbit's eye as it comes through: an arc about a fixed point between the gate and the landing, from its

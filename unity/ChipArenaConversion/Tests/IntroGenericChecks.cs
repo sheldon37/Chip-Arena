@@ -20,6 +20,9 @@ internal static class IntroGenericChecks
     };
     public static void Run(string root)
     {
+        // (A review aid, not a check: with INTRO_GENERIC_VIEWS set to a folder, each intro's camera, anchors and set pieces every
+        // 0.1 s are written there as JSON for an offline Blender preview of the framing; tools/intros/generic_preview.py.)
+        var views=Environment.GetEnvironmentVariable("INTRO_GENERIC_VIEWS");if(!string.IsNullOrEmpty(views))foreach(var s in Make())Dump(s,views);
         count=0;var names=new HashSet<string>();var ids=new HashSet<string>();
         foreach(var s in Make())
         {
@@ -28,6 +31,30 @@ internal static class IntroGenericChecks
         }
         Check(NativeIntroCatalog.Find(NativeIntroCatalog.DefaultId)?.Make() is NativeIntroCloudbreak,"the new default is Cloudbreak");
         Console.WriteLine("PASS generic intros ("+count+" checks)");
+    }
+
+    private sealed class Record:INativeIntroSet
+    {
+        public bool Ready=>true;public bool Has(string prop)=>true;public readonly System.Text.StringBuilder Out=new System.Text.StringBuilder();public bool First=true;
+        private static string F(float x)=>x.ToString("0.####",System.Globalization.CultureInfo.InvariantCulture);
+        public void Piece(string prop,Vector3 at,Quaternion r,float scale,Vector3 tint,Vector3 glow){Out.Append(First?"":",");First=false;Out.Append("[\""+prop+"\","+F(at.X)+","+F(at.Y)+","+F(at.Z)+","+F(r.X)+","+F(r.Y)+","+F(r.Z)+","+F(r.W)+","+F(scale)+","+F(glow.X+glow.Y+glow.Z)+"]");}
+        public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){}
+        public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> turns,float scale,Vector3 tint){}
+    }
+    private static void Dump(NativeIntroGenericScript s,string folder)
+    {
+        string F(float x)=>x.ToString("0.####",System.Globalization.CultureInfo.InvariantCulture);string P(Vector3 v)=>"["+F(v.X)+","+F(v.Y)+","+F(v.Z)+"]";
+        var anchors=new[]{NativeEntranceAnchor.Head,NativeEntranceAnchor.Chest,NativeEntranceAnchor.Pelvis,NativeEntranceAnchor.LeftShoulder,NativeEntranceAnchor.LeftElbow,NativeEntranceAnchor.LeftHand,NativeEntranceAnchor.RightShoulder,NativeEntranceAnchor.RightElbow,NativeEntranceAnchor.RightHand,NativeEntranceAnchor.LeftKnee,NativeEntranceAnchor.LeftFoot,NativeEntranceAnchor.RightKnee,NativeEntranceAnchor.RightFoot};
+        var sb=new System.Text.StringBuilder();sb.Append("{\"title\":\""+s.Title+"\",\"frames\":[");
+        s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};
+        for(int i=0;i<=(int)(s.Length*10);i++)
+        {
+            float age=i/10f,t=s.Clock(age);s.Camera(age,out var v);var rec=new Record();s.Set(t,rec);
+            sb.Append(i>0?",":"").Append("{\"age\":"+F(age)+",\"t\":"+F(t)+",\"eye\":"+P(v.Eye)+",\"look\":"+P(v.Look)+",\"fov\":"+F(v.Fov)+",\"solid\":"+F(s.Solid(t,0))+",\"anchors\":[");
+            for(int k=0;k<anchors.Length;k++)sb.Append(k>0?",":"").Append(P(s.Anchor(anchors[k],t)));
+            sb.Append("],\"pieces\":["+rec.Out+"]}");
+        }
+        sb.Append("]}");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,s.Title.ToLowerInvariant()+".json"),sb.ToString());
     }
 
     // ---- the registry and the timeline ----

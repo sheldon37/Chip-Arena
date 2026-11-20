@@ -51,10 +51,10 @@ namespace ChipArena.UnityConversion
             // The camera: telephoto into the storm, a close insert on the frost, a tilt up with the rise, the pulse low and wide, the
             // reveal pulling out as the storm parts, the hero.
             Rig.Dolly(0,new Vector3(1.3f,.62f,13.5f),new Vector3(.75f,.72f,7.4f),new Vector3(0,.72f,.1f),new Vector3(0,.8f,.1f),17,19).Ease(NativeIntroEase.InOut).Focus(0,0,.6f).Handheld(.35f)
-               .Dolly(HeatAt,new Vector3(.62f,1.12f,1.45f),new Vector3(.52f,1.06f,1.22f),new Vector3(0,-.05f,0),new Vector3(0,-.02f,0),27,24).Follow(NativeEntranceAnchor.Head).Focus(0,0,.5f)
+               .Dolly(HeatAt,new Vector3(.85f,1.2f,1.8f),new Vector3(.72f,1.15f,1.58f),new Vector3(0,-.12f,0),new Vector3(0,-.08f,0),28,25).Follow(NativeEntranceAnchor.Head).Focus(0,0,.5f)
                .Crane(CrackAt+.2f,new Vector3(1.7f,.45f,3.1f),new Vector3(1.45f,.55f,2.7f),.35f,new Vector3(0,.05f,0),new Vector3(0,.15f,0),34,37).Follow(NativeEntranceAnchor.Chest,.06f)
-               .Dolly(PulseAt-.25f,new Vector3(-2.6f,.32f,4.3f),new Vector3(-2.75f,.36f,4.6f),new Vector3(0,1.05f,.1f),new Vector3(0,1.1f,.1f),52,54)
-               .Crane(PartAt+.05f,new Vector3(-2.75f,.36f,4.6f),new Vector3(-4.0f,.9f,8.2f),1.1f,new Vector3(0,1.1f,.1f),new Vector3(-.8f,2.6f,-6),54,50).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.45f)
+               .Dolly(PulseAt-.25f,new Vector3(-1.85f,.34f,3.05f),new Vector3(-2.05f,.37f,3.35f),new Vector3(0,1.0f,.2f),new Vector3(0,1.05f,.2f),48,50)
+               .Crane(PartAt+.05f,new Vector3(-2.05f,.37f,3.35f),new Vector3(-4.0f,.9f,8.2f),1.1f,new Vector3(0,1.1f,.1f),new Vector3(-.8f,2.6f,-6),54,50).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.45f)
                .Hero(CardAt-.45f,1,1.12f,3.4f,33).In(NativeIntroCut.Blend,.6f)
                .Bars(0,.9f).Bars(CardAt-.6f,.45f);
             Ramps.Ramp(PulseAt-.02f,.42f,.3f,.7f);
