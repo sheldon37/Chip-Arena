@@ -84,6 +84,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether a foot on the floor may move at `t` (a slide on the boots or a knee, a cut that puts the feet down elsewhere,
         /// a knee snapping down in a landing): Tests/IntroGenericChecks holds every other planted foot of the model still.</summary>
         public virtual bool Sliding(float t)=>false;
+        /// <summary>The framework's own feet check (Tests/IntroPoseChecks, FeetSliding) reads the same slides.</summary>
+        public override bool FeetSliding(float t)=>Sliding(t);
         /// <summary>
         /// The feet at `t` (per foot x, z, yaw and lift, the model's) from Start through Steps, as NativeEntrancePose.Feet, with a
         /// walking foot's roll: before a step (a swing of .2 s or more over .25 m or more) the heel rises onto the ball (HeelRise over
