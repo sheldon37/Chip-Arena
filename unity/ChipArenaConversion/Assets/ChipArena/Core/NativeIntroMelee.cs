@@ -153,21 +153,19 @@ namespace ChipArena.UnityConversion
 
         // ---- the hands as drawn (handed in before Props, Set and Effects; a checker never hands them in) ----
         private NativeIntroHand handR,handL;private float handsAt=-100;
-        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;Learn(t,0,right);Learn(t,1,left);Record(t,0,right);Record(t,1,left);}
-        // ---- the blade's axis in the drawn hand's frame ----
-        // The Standard blades are drawn along the keyed wrist's +z; the blade classes' (the Katana's, the Fangs') on their palm grip, along
-        // another axis (the first keyed capture drew Still Rain's cut pointing up). It is learnt from the blade the runtime hands in
-        // (NativeBladeIntro.Held) against the drawn hand's frame, once, and the wield aims that axis; +z until then and in a checker.
-        private Vector3 axisR=Vector3.UnitZ,axisL=Vector3.UnitZ;private bool learntR,learntL;
-        private void Learn(float t,int hand,in NativeIntroHand h)
-        {
-            if((hand==0?learntR:learntL)||!h.Model||!Held(t,hand,out var r,out var p))return;var d=p-r;if(d.LengthSquared()<1e-4f||!float.IsFinite(h.Turn.W))return;
-            var a=Vector3.Normalize(Vector3.Transform(Vector3.Normalize(d),Quaternion.Inverse(h.Turn)));if(hand==0){axisR=a;learntR=true;}else{axisL=a;learntL=true;}
-        }
+        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;Record(t,0,right);Record(t,1,left);}
+        // ---- the blade's axis in the keyed hand's frame ----
+        /// <summary>
+        /// Which way the weapon lies in the hand's frame. The Standard weapons are drawn along the keyed wrist's +z. A clip-free Katana
+        /// is drawn along its +y (the keyed captures: Still Rain's cut stood straight up when its +z was laid along the cut), and the
+        /// runtime's blade line and the framework's tip anchor still take +z for it; an intro whose weapon lies otherwise says so here,
+        /// and the wield aims that axis and the drawn sweeps take it.
+        /// </summary>
+        protected virtual Vector3 BladeAxis(bool left)=>Vector3.UnitZ;
         /// <summary>The wrist's turn that lays the blade (its axis in the hand's frame) along `z`, the hand's +y as near `y` as it allows.</summary>
         private Quaternion Aim(Vector3 x,Vector3 y,Vector3 z,bool left)
         {
-            var turn=CapturedRig.Basis(x,y,z);var a=left?axisL:axisR;if(a.Z>.9999f)return turn;
+            var turn=CapturedRig.Basis(x,y,z);var a=Vector3.Normalize(BladeAxis(left));if(a.Z>.9999f)return turn;
             // (the turn taking +z onto the blade's axis, undone under the aimed frame)
             var axis=Vector3.Cross(Vector3.UnitZ,a);float s=axis.Length();var q=s<1e-5f?Quaternion.CreateFromAxisAngle(Vector3.UnitX,(float)Math.PI):Quaternion.CreateFromAxisAngle(axis/s,(float)Math.Atan2(s,a.Z));
             return Quaternion.Normalize(turn*Quaternion.Inverse(q));
@@ -195,8 +193,9 @@ namespace ChipArena.UnityConversion
             if(!h.Model||!float.IsFinite(h.At.X)||!float.IsFinite(h.Turn.W)){drawnCount[hand]=0;return;}
             // (the weapon anchors as drawn, the framework's: the weapon frame's origin and its tip socket; else along the learnt axis)
             float len=TipLength(hand==1);Vector3 root,tip;var gripAt=hand==1?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip;var tipAt=hand==1?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip;
-            if(IsDrawn(gripAt)&&IsDrawn(tipAt)){var g=Anchor(gripAt,t);tip=Anchor(tipAt,t);var d=tip-g;float l=d.Length();root=l>1e-4f?g+d*(Math.Min(.18f,l*.2f)/l):g;}
-            else{var axis=Vector3.Transform(hand==1?axisL:axisR,h.Turn);root=h.At+axis*Math.Min(.18f,len*.2f);tip=h.At+axis*len;}
+            var along=BladeAxis(hand==1);
+            if(along.Z>.9999f&&IsDrawn(gripAt)&&IsDrawn(tipAt)){var g=Anchor(gripAt,t);tip=Anchor(tipAt,t);var d=tip-g;float l=d.Length();root=l>1e-4f?g+d*(Math.Min(.18f,l*.2f)/l):g;}
+            else{var axis=Vector3.Transform(Vector3.Normalize(along),h.Turn);root=h.At+axis*Math.Min(.18f,len*.2f);tip=h.At+axis*len;}
             int c=drawnCount[hand],k=drawnHead[hand],o=hand*DrawnMax;
             if(c>0&&t-drawnAt[o+k]<1/240f){drawnRoot[o+k]=root;drawnTip[o+k]=tip;return;}
             k=(k+1)%DrawnMax;drawnRoot[o+k]=root;drawnTip[o+k]=tip;drawnAt[o+k]=t;drawnHead[hand]=k;drawnCount[hand]=Math.Min(DrawnMax,c+1);

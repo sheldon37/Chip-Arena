@@ -146,6 +146,8 @@ namespace ChipArena.UnityConversion
             else WieldAt(pose,root,rotation,false,seat,axis,1);
         }
         protected override float TipLength(bool left)=>left?.15f:BladeLong;
+        /// <summary>The clip-free Katana is drawn along the keyed wrist's +y (see the base's BladeAxis).</summary>
+        protected override Vector3 BladeAxis(bool left)=>left?Vector3.UnitZ:Vector3.UnitY;
         public override bool Sheathed(float t)=>t<CutAt-.04f||t>=ClickAt-.02f;
 
         // ---- the rain's own clock: it stops in the freeze ----
@@ -280,8 +282,9 @@ namespace ChipArena.UnityConversion
             if(t>=GrabAt-.05f&&t<GrabAt+.25f){Hand(t,1,out var hip);float g=NativeEntranceMath.Bump(t,GrabAt-.05f,GrabAt+.25f);NativeEntranceFx.Glint(fx,hip+new Vector3(.02f,.02f,.12f),(White+Steel)*(1.6f*g),.14f*g,Vector3.UnitX,Vector3.UnitY,32820);}
             // The cut: the blade's sweep (a razor's line, crimson fringe) from the blade as the model holds it.
             // (the sweep fades on its own through the freeze's first moment; the frozen line is the hairline below)
-            if(t>=GrabAt&&t<FreezeAt+.25f)Trail(fx,t,0,.2f,Crimson,White,.012f,1.2f,32900,true);
-            if(t>=CutAt-.02f&&t<CutAt+.2f&&Held(t,0,out _,out var tip)){float g=Flash(t,CutAt,.01f,.06f);fx.Glow(tip,(White*2+Crimson)*(1.4f*g),0,.18f,1,0,32990);}
+            // (the cut's sweep and its flash on the blade as drawn: the runtime's blade line takes the wrist's +z, the Katana lies along +y)
+            if(t>=CutAt-.05f&&t<FreezeAt+.25f)BladeSweep(fx,t,0,CutAt-.05f,.2f,White*1.4f+Crimson,Crimson,.014f,.4f,32900,low);
+            if(t>=CutAt-.02f&&t<CutAt+.2f){var tip=DrawnTip(t,0);float g=Flash(t,CutAt,.01f,.06f);fx.Glow(tip,(White*2+Crimson)*(1.4f*g),0,.18f,1,0,32990);}
             // The line the cut leaves: drawn out along its length in a breath, held through the freeze, then broken into falling light.
             if(t>=CutAt&&t<ResumeAt+1.2f)
             {
