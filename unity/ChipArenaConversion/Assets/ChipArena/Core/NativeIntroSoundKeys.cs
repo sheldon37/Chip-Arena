@@ -18,6 +18,23 @@ namespace ChipArena.UnityConversion
             // ---- I0: the showcase (no request: it plays its Alt and Clip sounds) ----
             //
             // ---- I1 (dev) ----
+            K("intro2.architect.strike",1.3f),
+            K("intro2.architect.glitch",0.45f),
+            K("intro2.architect.crack",0.9f),
+            K("intro2.architect.dissolve",2.4f),
+            K("intro2.architect.tear",1f),
+            K("intro2.architect.presence",1.8f),
+            K("intro2.architect.pulse",0.5f),
+            K("intro2.architect.draft",1.6f),
+            K("intro2.architect.condense",0.5f),
+            K("intro2.architect.form",1f),
+            K("intro2.architect.blueprint",2.6f),
+            K("intro2.architect.gather",2.2f),
+            K("intro2.architect.snap",0.3f),
+            K("intro2.architect.inhale",0.5f),
+            K("intro2.architect.lock",1.6f),
+            K("intro2.architect.forge",1.5f),
+            K("intro2.architect.settle",1.8f),
             //
             // ---- I2 (generic) ----
             //

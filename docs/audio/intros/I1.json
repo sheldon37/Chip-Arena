@@ -1,0 +1,262 @@
+{
+ "author": "I1",
+ "intro": "dev-architect",
+ "note": "DEV · Architect of Reality (Core/NativeIntroArchitect.cs CueSheet; docs/audio/intros/dev-architect.md): the song carries the big hits, these fill the gaps. Flat, one level (boss) with a trim each.",
+ "sounds": [
+  {
+   "key": "intro2.architect.strike",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.3
+   },
+   "levelDb": -2,
+   "fadeOutMs": 120,
+   "prompt": "A single colossal bolt of pure white energy striking a stone floor from the sky, a bright electric crack with a deep concussive boom and a short sizzling tail, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.glitch",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.2,
+    "max": 0.45
+   },
+   "levelDb": -8,
+   "fadeOutMs": 30,
+   "prompt": "A short digital glitch stutter, a burst of corrupted data with a bit-crushed crackle and a stuttering electronic buzz, isolated, dry, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.crack",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 0.9
+   },
+   "levelDb": -6,
+   "fadeOutMs": 60,
+   "prompt": "A stone floor splitting open with light inside it, a sharp rocky fracture racing outward with a thin crackle of electricity, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.dissolve",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.8,
+    "max": 2.4
+   },
+   "levelDb": -4,
+   "fadeOutMs": 300,
+   "prompt": "Reality dissolving into data, a vast airy shimmer of thousands of tiny glassy particles and a soft electronic sizzle rising and thinning away to nothing, ethereal, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.tear",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.0
+   },
+   "levelDb": -5,
+   "fadeOutMs": 80,
+   "prompt": "A horizontal rip through space, a bright tearing electric zip with a hollow rushing whoosh behind it, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.presence",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.2,
+    "max": 1.8
+   },
+   "levelDb": -4,
+   "fadeOutMs": 200,
+   "prompt": "A deep reversed swell drawing inward into a single point, a low rising hum condensing into a soft bright bell-like tone, mysterious and vast, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.pulse",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.5
+   },
+   "levelDb": -8,
+   "fadeOutMs": 60,
+   "prompt": "A soft deep energy pulse, a short muffled thump with a glassy shimmer on top, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.draft",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.2,
+    "max": 1.6
+   },
+   "levelDb": -6,
+   "fadeOutMs": 150,
+   "prompt": "Pens of light drawing lines in the air, fast thin rising electric laser scribbles and soft glassy zips, delicate and precise, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.condense",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.5
+   },
+   "levelDb": -6,
+   "fadeOutMs": 60,
+   "prompt": "Glittering particles rushing inward and condensing, a fast rising shimmer that ends in a soft solid thud, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.form",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.0
+   },
+   "levelDb": -4,
+   "fadeOutMs": 120,
+   "prompt": "A body materialising out of light, a deep warm pressure whoomp with a bright crystalline ring and an electric hum switching on, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.blueprint",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 3.0,
+   "targetSeconds": {
+    "min": 2.0,
+    "max": 2.6
+   },
+   "levelDb": -8,
+   "fadeOutMs": 300,
+   "prompt": "Thin lines of light being drawn in a vast silent void, soft high glassy tones and faint electronic ticks, calm and spacious, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.gather",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.6,
+    "max": 2.2
+   },
+   "levelDb": -4,
+   "fadeOutMs": 200,
+   "prompt": "A rising rush of wind and debris pulled in from far away, a building roar of air and distant grinding stone, accelerating, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.snap",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.5,
+   "targetSeconds": {
+    "min": 0.15,
+    "max": 0.3
+   },
+   "levelDb": -8,
+   "fadeOutMs": 30,
+   "prompt": "A heavy stone block snapping into a socket, a tight deep clack with a faint electric tick, isolated, dry, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.inhale",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.5
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A sudden reversed inhale of air, a short suction whoosh that stops dead, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.lock",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.0,
+    "max": 1.6
+   },
+   "levelDb": -2,
+   "fadeOutMs": 250,
+   "prompt": "Massive stone architecture slamming into place all at once, a huge deep impact of stone locking with a resonant metallic ring, cinematic, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.forge",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.6,
+   "targetSeconds": {
+    "min": 1.0,
+    "max": 1.5
+   },
+   "levelDb": -5,
+   "fadeOutMs": 200,
+   "prompt": "Letters of light being forged in the air, a bright crackling electric sizzle with a clean ringing metallic chime, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.architect.settle",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.2,
+    "max": 1.8
+   },
+   "levelDb": -8,
+   "fadeOutMs": 400,
+   "prompt": "A deep soft resonant hum fading out, a calm powerful afterglow with a faint high shimmer, isolated, no reverb, no music, no background noise"
+  }
+ ]
+}
