@@ -191,7 +191,8 @@ namespace ChipArena.UnityConversion
                     bool onCut=Math.Abs(d)<.05f&&along>-.5f&&along<LineLength&&off<1.1f&&cycle==CycleAtFreeze(idx);
                     if(still>0)
                     {
-                        if(onCut){var nrm=PlaneNormal*.018f;fx.Streak(at+nrm,new Vector3(0,.035f,0),rain*1.6f+Crimson*.25f,.0045f,.03f,1,.5f,0,31000+i);fx.Streak(at-nrm,new Vector3(0,.035f,0),rain*1.6f+Crimson*.25f,.0045f,.03f,1,.5f,0,31500+i);}
+                        // (a drop on the cut: its two halves held apart, a pin of light where the edge went through)
+                        if(onCut){var nrm=PlaneNormal*.03f;fx.Streak(at+nrm,new Vector3(0,.03f,0),rain*1.7f+Crimson*.3f,.005f,.025f,1,.5f,0,31000+i);fx.Streak(at-nrm,new Vector3(0,.03f,0),rain*1.7f+Crimson*.3f,.005f,.025f,1,.5f,0,31500+i);fx.Glow(at,(White+Crimson)*(.5f*still),0,.014f,0,0,31800+i);}
                         else fx.Streak(at,new Vector3(Wind.X,-Fall,Wind.Z)*.006f,rain*1.25f,.004f,.04f,1,.4f,0,31000+i);
                         continue;
                     }
