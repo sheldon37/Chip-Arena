@@ -575,3 +575,63 @@ script, the blade intros too). It changes what your keys mean:
   - no ball, ankle, knee, hip or pelvis goes more than 4 cm into the floor.
 
   The canonical walk slides at most 0.05 m/s, the run 0.29 m/s at its toe-off, and no pose goes more than 1 cm in.
+
+## 9d. Pack clips as keys: `FromPack` (I0d, 2026-11-20; owner on Slipstream: "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I have")
+
+An animation pack's humanoid clips can drive an intro's keyed body. There is still no match animation system in an intro: no `Clip()`,
+and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the model as any keys are.
+
+- **The bank:** `Resources/ChipArenaIntroMotion.bytes` in the git-ignored local assets (Core `NativeIntroPack.Resource`). It is the
+  intros' own bank, never the match's motion bank (`ChipArenaVisualMotion.bytes`, sha 37ec44d2, which holds check). It is baked by the
+  local tool's `bozo-intromotion.request` (the scratch patch `intromotion_patch.py`). The bake samples each clip on the baked body the
+  way the motion bank does (a manual graph, root motion off, foot IK on), at 60 Hz. It records the bones' rotations rather than
+  muscles, and it records the body's own rest skeleton. Never commit the bank or the pack's FBX. The bank ships as a local asset, as
+  the motion bank does.
+  - The runner pack (BIPER "Runner Action Animation Pack", `CLazyRunnerActionAnimPack`) installs under
+    `Assets/LocalAssets/CLazyRunnerActionAnimPack`. Extract only the clips you need, plus `Models/ClazyRunner.FBX`, their avatar source.
+    Keep each file's `.meta` so its GUID is kept.
+- **The conversion (Core `NativeIntroPack`):** each frame is the model binding (`NativeVisualRig.Pose`) run backwards on the bank's
+  skeleton. A keyed joint's turn is its chain's last bone's world turn off the aligned rest, less the chain's start. The arms' spread
+  and the wrist's eased bend are undone. The pelvis's offset goes on the keyed body over the legs' ratio. So the keys drawn on the model
+  are the clip on the model: the round trip on the measured skeleton redraws the body within 0.01 degrees.
+  - The drawn body takes a pack clip's arms exactly as keyed (`NativeVisualRig.Grasp.Exact`, set from
+    `NativeProceduralEntrance.PackWeight(t, Arms)`). The voxel-body corrections are let go: Inside (a hand inside the shoulders) and
+    Clear (a fist kept off the body). Without that, the slide's left arm was drawn 18 degrees off the clip. The match never sets it.
+- **The API:**
+
+  | Call | What it does |
+  | --- | --- |
+  | `k.FromPack(clip, from, to, start = 0, speed = 1, loop = false, root = Path, mask = All, blendIn = .1, blendOut = .1)` | Plays `clip` over the keys from intro time `from` to `to`, `start` seconds into the clip at `speed`. Its joints in `mask` ease in and out from what the keys put there. The planting lets go while its legs play. A foot the clip has on the floor is held where it came down against the intro's root (the keyed leg as a hinge), eased out over the last 30 ms before it lifts. |
+  | `NativeIntroPack.RootMode.Path` | The intro's root (its keys or `RootPath`). Move it at the clip's `Speed` along the facing for the drawn feet to hold. |
+  | `NativeIntroPack.RootMode.Kept` | The clip's own travel: on from the root at `from`, along the facing, at `Speed`. |
+  | masks `All`, `Legs`, `Torso`, `Arms`, `LeftArm`, `RightArm` | `Legs` includes the pelvis's turn and place. Keys and `Arms()` still key what a mask leaves out, such as a weapon carry over a pack run (`Legs \| Torso`). The grip IK works on top. |
+  | `NativeIntroPack.Local.TryGet(name, out clip)` | The clip: `Length`, `Rate`, `Frames`, `Speed`, `Travel`, and `Loop` as the pack marks it. |
+  | `clip.Sample(time, loop, joints, out body)` | Each keyed joint's local turn (22, CapturedRig's order) and the keyed body's offset. `NativeIntroPack.Euler(q, near)` gives the keys' XYZ angles. Allocation-free. |
+  | `clip.Foot(time, loop, left, out ankle, out ball)`, `clip.OnFloor(time, loop, left)` | The drawn foot in the rig frame (the model's metres) and whether it is down: for planning the feet in the model's space (a car's frame). |
+  | `bank.Model(clip, frame, world, at)` | The frame as baked on the model, bone by bone (for checks). |
+
+- **Without the bank** (CI, a build without the local assets), a segment does nothing and the keys under it play. Key a fallback
+  under every pack segment.
+- **Speed:** a clip samples in place. `Speed` is how fast a foot on the floor moves back under the body, which is the speed the root
+  must travel for that foot to hold. Match the root to it, or use `Kept`. Where the intro's path must differ (a train, a car), plan
+  the feet in the model's space from `Foot` and `OnFloor`.
+- **The first bank** (Slipstream's clips, I2b's picks; 2026-11-20): 9 clips, 131,257 bytes, at 60 Hz on the body's 180-bone skeleton:
+  `Mvm_PowerDash_Front`, `Mvm_Dash`, `Mvm_Boost`, `Jmp_FrontAir_A_Start`, `Jump_Down_A_Loop`, `Esc_Slide_All`, `Esc_Slide_Start`,
+  `Esc_Slide_Loop` and `Esc_Slide_End`. Each clip's keys draw its limbs within 0.1 degrees of the clip on the model, with the ankles
+  within a millimetre. The turns are within 4.7 degrees, the worst being `Esc_Slide_Start`'s right hand, a wrist bent past what the
+  binding's eased wrist reaches.
+  - `Speed`: `Mvm_Dash` 9.12 m/s, `Mvm_PowerDash_Front` 7.95, `Jmp_FrontAir_A_Start` 2.21. On its own travel the Dash's feet slide
+    0.00 m/s.
+  - `Mvm_Boost` barely touches the floor on this body: its feet are down in 12% of frames, and its stance ankle stays about 5 cm high.
+    Prefer the Dash, or lower the root.
+  - The slides put a leg up to 6 cm into the floor (`Esc_Slide_Loop`). Lift the root by that much while sliding.
+- **Checked** (`Tests/IntroPackChecks`, `--intro-pack`, and in `--intros-v2`):
+  - always: the Euler round trip, the binding's round trip on the measured skeleton, and that sampling allocates nothing;
+  - with the local bank (`CHIPARENA_INTRO_MOTION`, the local assets' copy, or `scratch/intro-framework/ChipArenaIntroMotion.bytes`):
+    every clip's keys draw its limbs along the clip on the model, and its ankles where the clip's are. A grounded clip (a foot down a
+    sixth of the time or more), played through `FromPack` on its own travel, keeps its feet still and out of the floor.
+  - `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits. The keyed wrist
+    is the weapon's frame, which the binding eases, so a mocap wrist reads as bent past its range there. The keyed torso is the voxel
+    body's. `IntroPackChecks` lists those keyed findings per clip, for information.
+  - `CHIPARENA_PACK_DUMP=<clip>` prints that clip's feet frame by frame.
+  - `IntroPoseChecks` loads the local bank first, so `--intro-limits` checks an intro's pack segments as the game plays them.
