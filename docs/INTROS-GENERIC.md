@@ -149,8 +149,9 @@ body until the crack. The visor is the model's own, lit by its accent; its light
 
 ## Slipstream (7.4 s, the name at 5.6 s)
 Underground, at speed. The pilot rides crouched on the roof of a maglev racing through a tunnel, its light strips streaking past.
-The train bursts into a station hall; the pilot rises, sprints along the roof and leaps off for the platform, lands in a slide with
-sparks off its boots and a hand dragging, and stops on the mark as the train pulls away into the far tunnel, its tail lights fading.
+The train bursts into a station hall; the pilot springs up, sprints along the roof and leaps off for the platform, lands in a slide
+with sparks off its boots and a hand dragging, and rises onto the mark as the train pulls away into the far tunnel, its tail lights
+fading.
 
 **The set (maglev station):** a ribbed concrete tunnel with light strips at each end; the trackbed and guideway; a tiled platform
 with a tactile strip and a lit edge; a tiled far wall with a teal band, lit ad panels, signs and a split-flap departure board; a
@@ -161,20 +162,37 @@ middle car the pilot rides, a nose at the tail), its windows lit.
 | --- | --- | --- |
 | 0.00 | The tunnel: the pilot crouched on the roof, the strips streaking past | low on the roof behind it |
 | 0.80 | (the ride) | beside the train, keeping pace |
-| 1.55 | It stands; the train bursts into the hall (1.66) | (rising out of the tunnel with it) |
-| 1.78 | It sprints along the roof: leaning in, knees driving, arms pumping | (keeps pace) |
+| 1.55 | It springs up; the train bursts into the hall (1.66) | (rising out of the tunnel with it) |
+| 1.80 | It sprints along the roof (a footfall every .27 s at 9.1 m/s): the right foot, the left, the right | (keeps pace) |
+| 2.60 | The take-off, planted on the left foot | |
 | 2.70 | The leap: it hangs at the take-off (0.3x) and snaps back to speed | a cut to the platform, wide, the train behind |
-| 3.30 | It lands in a knee slide: sparks off the knee and the dragging hand, a scorch on the floor, the train's wake | low on the platform as it slides at the lens |
-| 4.30 | It stops on the mark and stands; a glance after the train (4.45); the tail lights fade into the tunnel | a low orbit |
+| 3.30 | It lands on the right foot into a slide: sparks off the boot, the folded knee and the dragging hand, a scorch on the floor, the train's wake | low on the platform as it slides at the lens |
+| 4.30 | It stops short of the mark and rises over its left foot onto it; a glance after the train (4.45); the tail lights fade into the tunnel | a low orbit |
 | 5.00 | The station chime | (holds) |
 | 5.60 | **The name** (typed). The departure board clatters over | the closing from its right, the hall receding behind it |
 
-**Motion:** keyed: a surfer's crouch on the moving roof (the feet planted in the car's frame on its roof), up and away into a sprint
-(accelerating, two keys a stride: the forward lean, the hips and shoulders countering, the arms pumping, the heels kicking up and the
-knees driving), a loaded take-off off the left foot, a split leap, and a knee slide: the right foot out in front and the left knee down
-on the platform (sparks off the knee and the dragging left hand, the body leaning toward it, the right arm out), turning to the lens as
-it slows; it rises forward over the right foot onto the mark, glances after the train, brushes the slide's dust off its left
-shoulder and settles loose and cocked (the weight on one leg, the shoulders tilted), the head tilting to the lens on the name.
+**Motion:** the sprint, the take-off and the slide are the owner's Runner Action pack's clips (owner: "The run is very 'cartoon'
+like, can we make this more realistic? Could use the running pack I have"), keyed over this intro's own keys from the intros' local
+motion bank (`docs/INTROS-V2.md` 9d; `ChipArenaIntroMotion.bytes`, never committed): `Mvm_Dash` for the sprint (its root moving along
+the roof at the clip's 9.12 m/s, so the drawn feet hold), `Jmp_FrontAir_A_Start` for the take-off (held on its airborne frame into the
+keyed leap), and `Esc_Slide_All` for the slide (the right foot down on the landing, the leg folding under, the left leg out in front,
+its feet sliding with it until it stops) and the rise (held feet, the body forward over the left foot onto the mark).
+- **Keyed:** a surfer's crouch on the moving roof, the spring up off the front (left) foot as the right swings through, the split leap
+  in the air, and the hero beats: it glances after the train, brushes the slide's dust off its left shoulder and settles loose and
+  cocked (the weight on one leg, the shoulders tilted), the head tilting to the lens on the name.
+- **The moving roof:** the body is posed in the car's frame until the leap (`Carried`), so its feet, planted or held by a clip, stay
+  on the moving roof; `IntroGenericChecks.Roof` holds them there (under .45 m/s against the car).
+- **Under the clips:** the keyed lean is on the pelvis, not the body (a clip plays every joint but the body's turn, so a keyed body
+  lean tilted the whole clip 20 degrees); the slide's right hand is keyed (in line with its forearm, the fingertips dragging), as the
+  clip's wrist, bent back flat on the floor, draws further off its keyed turn than the binding allows a hand; the root rides 2 cm higher
+  while the slide plays; and as the rise hands over to the keyed stand both feet are pinned to the keys' plan (`Repin`), the left on the
+  hero stance's spot, where the slide stops it (`LeftReach`), the right stepping up beside it.
+- **Without the bank** (CI, a build without the local assets) the keys play: the same beats and footfalls, keyed (an accelerating
+  sprint at the clip's stride, a take-off off the left foot, a knee slide on the right knee with the left foot out in front and the
+  right hand dragging, the right foot planting under the rising body). The sparks follow whatever is down (the folded leg's knee, the
+  boot out in front, the dragging hand's fingertips), so both read the same.
+- **Checks:** with the bank, its timing is the clips' (`IntroGenericChecks.Clips`: the sprint's speed and stride, the footfalls, the
+  take-off's plant, the slide's touchdown), and Slipstream is checked both ways (its feet, the tunnel, the roof, the budgets).
 
 ## Threshold (8.2 s, the name at 6.4 s)
 Dusk in a canyon. At the end of a ruined plaza two leaning standing stones meet in a cleft. A crack of light runs up the seam between
