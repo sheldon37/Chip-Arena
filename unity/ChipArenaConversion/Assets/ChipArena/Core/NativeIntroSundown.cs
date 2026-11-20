@@ -4,7 +4,7 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// "Sundown", the pistol's v2 intro (I4, owner 2026-11-20: replaces Deadeye; docs/INTROS-RANGED.md). 8.2 s, the name at 6.3 s.
+    /// "Sundown", the pistol's v2 intro (I4, owner 2026-11-20: replaces Deadeye; docs/INTROS-RANGED.md). 7.8 s, the name at 6.0 s.
     /// A frontier street at sundown: the pilot walks out of the low sun's glare toward an old timber belfry at the edge of town, a
     /// tumbleweed crossing. The bell tolls by itself, once, twice; on the second toll its headstock cracks. A beat of stillness, the
     /// hand by the hip. The belfry gives way: shingles and boards come down and the bell drops through them; the pilot draws from
@@ -16,10 +16,10 @@ namespace ChipArena.UnityConversion
     public sealed class NativeIntroSundown:NativeRangedIntro
     {
         public const string Id=NativeIntroCatalog.WeaponPrefix+"pistol";
-        public const float Total=8.2f,CardAt=6.3f;
+        public const float Total=7.8f,CardAt=6.0f;
         // Beats (presentation s).
         public const float WalkTo=1.32f,Toll1=1.15f,Toll2=1.85f,Break=2.8f,FallFrom=2.82f,DrawFrom=2.86f,AimFrom=3.1f,ShotAt=3.55f,HitAt=3.72f,Plinth=3.78f,
-            OffEdge=3.98f,Ground=4.18f,RollTo=5.5f,BlowFrom=4.62f,BlowAt=5.0f,BlowTo=5.4f,Rest=5.75f,LastRing=6.32f;
+            OffEdge=3.98f,Ground=4.18f,RollTo=5.3f,BlowFrom=4.5f,BlowAt=4.85f,BlowTo=5.2f,Rest=5.5f,LastRing=6.02f;
         // The set (Unity space, ranged_sundown.py).
         private static readonly Vector3 BelfryU=new Vector3(-2.4f,0,10.8f);private const float HangY=6.32f,BellH=1.1f,PlinthY=.9f;
         /// <summary>The bell's hang point and where it comes to rest (source frame).</summary>
@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 Step(false,.05f,.45f,-.16f,-1.35f+.42f,-.3f,.07f),Step(true,.45f,.85f,.14f,-1.35f+.82f,.05f,.07f),Step(false,.85f,1.2f,-.16f,-.12f,-.32f,.06f),
                 Step(true,1.18f,1.42f,.15f,.07f,.08f,.05f),
                 // squaring to the bell for the shot, and back to the street for the rest
-                Step(false,2.86f,3.02f,-.2f,-.06f,-.25f,.04f,aimYaw),Step(true,5.5f,5.78f,.15f,.08f,.08f,.04f),
+                Step(false,2.86f,3.02f,-.2f,-.06f,-.25f,.04f,aimYaw),Step(true,Rest-.22f,Rest+.06f,.15f,.08f,.08f,.04f),
             };
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             k.Key(0,stand).Root(0,.88f,-1.35f,Facing).J(RA,-.18f,0,-.2f).J(RE,-.35f).J(LA,.1f,0,.16f).J(Hd,.06f);

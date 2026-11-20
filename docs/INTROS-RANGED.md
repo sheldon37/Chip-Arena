@@ -6,7 +6,7 @@ background and designs, etc. With great camera work as well!" These four replace
 
 | Weapon | Intro (id) | Length / name beat | Set | Card |
 | --- | --- | --- | --- | --- |
-| Pistol | **Sundown** (`intro2-weapon-pistol`) | 8.2 s / 6.3 s | a frontier street at sundown, a timber belfry at the edge of town | Wipe, warm |
+| Pistol | **Sundown** (`intro2-weapon-pistol`) | 7.8 s / 6.0 s | a frontier street at sundown, a timber belfry at the edge of town | Wipe, warm |
 | Rifle | **One Breath** (`intro2-weapon-rifle`) | 8.4 s / 6.4 s | a rain-soaked rooftop at night over a city avenue | Type, ice blue |
 | Machine gun | **Brass Storm** (`intro2-weapon-machinegun`) | 7.8 s / 6.0 s | a freight depot's yard at night under sodium floodlights | Slam, sodium |
 | Bow | **Lightfall** (`intro2-weapon-bow`) | 8.0 s / 6.2 s | an old shrine in a moonlit forest clearing | Assemble, gold |
@@ -53,9 +53,9 @@ palette.
 | 2.8 | The belfry gives way: shingles and boards fall, the bell drops; the pilot draws from the hip (side-on wide) |
 | 3.55 | One shot, slowed: the camera rides beside the bullet through the falling boards |
 | 3.72 | It strikes the bell as it lands on the plinth: a ringing strike, sparks |
-| 3.98–5.5 | The bell tips off the plinth, drops into the street and rolls to the boots (ground level) |
-| 4.62–5.4 | The barrel up by the face; the smoke blown away |
-| 6.3 | The name (Wipe), the bell rocking at the boots; its last ring |
+| 3.98–5.3 | The bell tips off the plinth, drops into the street and rolls to the boots (ground level) |
+| 4.5–5.2 | The barrel up by the face; the smoke blown away |
+| 6.0 | The name (Wipe), the bell rocking at the boots; its last ring |
 
 Motion: the model plays `Armed-Walk-Slow`, `Armed-Unsheath-R-FromArmed-Hips`, `Armed-Idle-Pistol-R` and `Pistol-Attack-R1`; the keyed
 rig drives the stillness, the smoke blow and the rest. No gun spin: the framework has no held-weapon turn (I0, 2026-11-20).
