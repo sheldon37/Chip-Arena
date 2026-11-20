@@ -58,6 +58,12 @@ internal static class MeridianStairsChecks
                 }
                 return false;
             }
+            // every surface by the plane it lies in (its normal and offset to 5 mm): a side's point may be drawn by another block's face in
+            // that plane (a terrace's face the flight's first tread continues: it draws it, the flight leaves it)
+            var byPlane=new Dictionary<(int,int,int,long),List<int>>();
+            (int,int,int,long) PlaneKey(V3 nn,V3 at)=>((int)Math.Round(nn.x*100),(int)Math.Round(nn.y*100),(int)Math.Round(nn.z*100),(long)Math.Round(V3.Dot(at,nn)*200));
+            for(int qi=0;qi<plan.Quads.Count;qi++){var k=PlaneKey(plan.Quads[qi].N,plan.Quads[qi].O);if(!byPlane.TryGetValue(k,out var l))byPlane[k]=l=new List<int>();l.Add(qi);}
+            bool InPlane(V3 p,V3 nn){var k=PlaneKey(nn,p);for(long dd=k.Item4-1;dd<=k.Item4+1;dd++)if(byPlane.TryGetValue((k.Item1,k.Item2,k.Item3,dd),out var l))foreach(int qi in l)if(InQuad(plan.Quads[qi],p))return true;return false;}
             int flights=0,escapes=0,sides=0,missed=0,above=0,walls=0,wallMissed=0,cage=0,gaps=0,floors=0,floorsMissed=0,slabs=0;
             foreach(var r in map.ramps??Array.Empty<MapRamp>())
             {
@@ -78,7 +84,7 @@ internal static class MeridianStairsChecks
                     for(float d=.1f;d<F.Run-.1f;d+=.25f)
                     {
                         float y=F.Line(d)-.05f;if(y<F.Bottom+.02f)continue;var p=side+F.Dir*d;p.y=y;
-                        if(Seen(d,y)){sides++;if(!sideQuads.Any(q=>InQuad(q,p))){missed++;if(missed<4)Console.WriteLine(FormattableString.Invariant($"  {name} {r.id}: the side under its line is bare at {p.x:F2},{p.y:F2},{p.z:F2}"));}continue;}
+                        if(Seen(d,y)){sides++;if(!sideQuads.Any(q=>InQuad(q,p))&&!InPlane(p,n)){missed++;if(missed<4)Console.WriteLine(FormattableString.Invariant($"  {name} {r.id}: the side under its line is bare at {p.x:F2},{p.y:F2},{p.z:F2}"));}continue;}
                         if(F.Stair)continue;
                         // a wall beside a sloped street: drawn down to the street (just over its surface)
                         var w=side+F.Dir*d;w.y=F.Line(d)+.05f;int wb=BlockAt(w+n*.05f,own);if(wb<0||plan.Left.Contains(map.blocks[wb].id)||!plan.Covers.Contains(map.blocks[wb].id))continue;
@@ -130,6 +136,10 @@ internal static class MeridianStairsChecks
                 NativeMeridianDress.EdgeOf(q,2,out var c2,out var c3);Check((NativeMeridianDress.QuadAt(q,1,1)-c2).Length<1e-4f&&(NativeMeridianDress.QuadAt(q,0,1)-c3).Length<1e-4f,name+": a trapezoid's corners are its edges'");
             }
             Check(tapers>100,name+": the flights' sides are trapezoids on their lines ("+tapers+")");
+            // nothing of a flight lies in one plane with another surface, turned the same way, on one layer (a band under a first
+            // tread dipped into the terrace face it continues)
+            var (fights,fightArea)=Coplanar(plan,map,false);
+            Check(fights==0,name+FormattableString.Invariant($": {fights} surfaces of the flights lie in one plane with another, turned the same way ({fightArea:F3} m2; --meridian-stairs-zfight lists them)"));
             report.Add(FormattableString.Invariant($"{name}: {flights} flights ({escapes} fire escape flights), {sides} side points on their lines, {walls} wall points beside sloped streets, {cage} caged points, {floors} floor points under cages, {tapers} trapezoids"));
         }
         foreach(var line in report)Console.WriteLine("  "+line);
@@ -251,4 +261,64 @@ internal static class MeridianStairsChecks
         }
     }
     private static V3 Cross(V3 a,V3 b)=>new V3(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
+
+    // `--meridian-stairs-zfight PLAN`: the generated surfaces that lie in one plane, turned the same way, and overlap (within 0.5 mm,
+    // over 2 cm2), on the same layer, where either is a flight's (its treads' or a wall beside a sloped street): a diagnostic.
+    public static void ZFight(string root,int planIndex)
+    {
+        var live=HubZFightChecks.Worlds(root).First(l=>l.Plan==planIndex);var plan=HubZFightChecks.Dress(live,null,false);
+        var (pairs,total)=Coplanar(plan,live.World.City.Map,true);
+        Console.WriteLine(FormattableString.Invariant($"{NativeCityLayout.Plans[planIndex].Name}: {pairs} same-facing coplanar pairs touching a flight, {total:F4} m2"));
+    }
+    /// <summary>The generated surfaces that lie in one plane (0.5 mm), turned the same way and on one layer, and overlap (over 2 cm2),
+    /// where either is a flight's (its treads', a trapezoid, a bar): the pairs and their area (they would fight).</summary>
+    private static (int,double) Coplanar(NativeMeridianDress.Plan plan,ContentMap map,bool print)
+    {
+        var lots=NativeMeridianDress.Lots(plan.Layout);var groups=new Dictionary<(int,int,int,long),List<int>>();
+        for(int i=0;i<plan.Quads.Count;i++)
+        {
+            var q=plan.Quads[i];var n=q.N;int nx=(int)Math.Round(n.x*1000),ny=(int)Math.Round(n.y*1000),nz=(int)Math.Round(n.z*1000);long d=(long)Math.Round(V3.Dot(q.O,n)*2000);
+            for(long dd=d-1;dd<=d+1;dd++){var k=(nx,ny,nz,dd);if(!groups.TryGetValue(k,out var l))groups[k]=l=new List<int>();if(dd==d)l.Add(i);}
+        }
+        double total=0;int pairs=0;var by=new Dictionary<string,double>();
+        foreach(var kv in groups)
+        {
+            var l=kv.Value;if(l.Count<2)continue;
+            for(int a=0;a<l.Count;a++)for(int c=a+1;c<l.Count;c++)
+            {
+                var A=plan.Quads[l[a]];var C=plan.Quads[l[c]];if(A.Layer!=C.Layer)continue;
+                if(Math.Abs(V3.Dot(A.O-C.O,A.N))>.0005f)continue;
+                double area=Overlap(A,C);if(area<2e-4)continue;
+                string Who(NativeMeridianDress.Quad q){if(q.Block<0)return q.Taper?"taper(-)":"street";var id=map.blocks[q.Block].id;var role=NativeMeridianDress.RoleOf(id,lots);return (q.Free?"bar ":q.Taper?"taper ":"")+role+(id.StartsWith("fire-escape-",StringComparison.Ordinal)?" fire":"");}
+                string wa=Who(A),wc=Who(C);bool mine=wa.Contains("tread")||wc.Contains("tread")||A.Taper||C.Taper||A.Free||C.Free||wa.Contains("fire")||wc.Contains("fire");
+                if(!mine)continue;pairs++;total+=area;string key=string.CompareOrdinal(wa,wc)<0?wa+" | "+wc:wc+" | "+wa;by.TryGetValue(key,out double t);by[key]=t+area;
+                if(print&&pairs<12)Console.WriteLine(FormattableString.Invariant($"  {wa} [{(A.Block>=0?map.blocks[A.Block].id:"-")}] | {wc} [{(C.Block>=0?map.blocks[C.Block].id:"-")}]: {area:F4} m2 at {A.O.x:F2},{A.O.y:F2},{A.O.z:F2} n {A.N.x:F2},{A.N.y:F2},{A.N.z:F2}"));
+            }
+        }
+        if(print)foreach(var kv in by.OrderByDescending(k=>k.Value))Console.WriteLine(FormattableString.Invariant($"  {kv.Key}: {kv.Value:F4} m2"));
+        return (pairs,total);
+    }
+    // the overlap area of two coplanar surfaces (convex polygons in their plane)
+    private static double Overlap(NativeMeridianDress.Quad A,NativeMeridianDress.Quad C)
+    {
+        var n=A.N;var ax=Math.Abs(n.x)>.5f?new V3(0,1,0):new V3(1,0,0);var u=Cross(n,ax);u=u/u.Length;var w=Cross(n,u);
+        List<(double,double)> Poly(NativeMeridianDress.Quad q){var r=new List<(double,double)>();foreach(var c in new[]{q.O,q.O+q.U,q.O+q.U+q.Vb,q.O+q.V})r.Add((V3.Dot(c,u),V3.Dot(c,w)));
+            double s=0;for(int i=0;i<4;i++){var p=r[i];var t=r[(i+1)%4];s+=p.Item1*t.Item2-t.Item1*p.Item2;}if(s<0)r.Reverse();return r;}
+        var P=Poly(A);var Q=Poly(C);
+        // Sutherland-Hodgman: clip P by each edge of Q (both counter-clockwise)
+        for(int i=0;i<Q.Count&&P.Count>0;i++)
+        {
+            var e0=Q[i];var e1=Q[(i+1)%Q.Count];var o=new List<(double,double)>();
+            double Side((double,double) p)=>(e1.Item1-e0.Item1)*(p.Item2-e0.Item2)-(e1.Item2-e0.Item2)*(p.Item1-e0.Item1);
+            for(int k=0;k<P.Count;k++)
+            {
+                var a=P[k];var b=P[(k+1)%P.Count];double sa=Side(a),sb=Side(b);
+                if(sa>=0)o.Add(a);
+                if(sa>=0!=sb>=0){double t=sa/(sa-sb);o.Add((a.Item1+(b.Item1-a.Item1)*t,a.Item2+(b.Item2-a.Item2)*t));}
+            }
+            P=o;
+        }
+        double area=0;for(int i=0;i<P.Count;i++){var p=P[i];var t=P[(i+1)%P.Count];area+=p.Item1*t.Item2-t.Item1*p.Item2;}
+        return Math.Abs(area)*.5;
+    }
 }

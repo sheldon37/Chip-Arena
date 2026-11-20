@@ -74,12 +74,22 @@ namespace ChipArena.UnityConversion
             if(OutOfBounds(b,bi,f))return;
             Lines(b,bi,f,1.5f,out var us,out var vs,out var o,out var u,out var v);int nu=us.Length-1,nv=vs.Length-1;
             var e=Exposed(b,bi,f,us,vs,o,u,v);var n=NormalOf(f);int ob=bi*6;float boxBottom=b.S.B[ob+2],boxTop=b.S.B[ob+3];
-            // the band along the line over [A, A+ru]: a coping or stringer (its foot may dip into a neighbour: unseen there); with a
-            // cheek, its top along the line and its inner face over the treads (from under the tread's top up to the line)
-            void Band(V3 A,V3 ru)
+            // the band along the line over [A, A+ru]: a coping or stringer, never under `floor` (the seen part's foot: below it lies a
+            // face another block draws in this plane, a terrace's under a flight's first tread); with a cheek, its top along the line
+            // and its inner face over the treads (from under the tread's top up to the line)
+            void Band(V3 A,V3 ru,float floor)
             {
                 float tA=F.Line(F.D(A)),tB=F.Line(F.D(A+ru)),cA=tA-Stringer,cB=tB-Stringer;
-                b.Quad(new V3(A.x,cA,A.z),ru+new V3(0,cB-cA,0),new V3(0,Stringer,0),bandFin,0,bi,boxBottom);
+                // its foot: the band's own, or the floor where the band dips under it (a break where they cross)
+                float sx=(floor-cA)*(floor-cB)<0?(floor-cA)/(cB-cA):-1;
+                void Part(float s0,float s1)
+                {
+                    float c0=cA+(cB-cA)*s0,c1=cA+(cB-cA)*s1,t0=c0+Stringer,t1=c1+Stringer,l0=Math.Max(floor,c0),l1=Math.Max(floor,c1);
+                    if(t0<=l0+.005f&&t1<=l1+.005f)return;var O=A+ru*s0;O.y=l0;var U=ru*(s1-s0)+new V3(0,l1-l0,0);
+                    if(Math.Abs((t0-l0)-(t1-l1))<1e-4f)b.Quad(O,U,new V3(0,t0-l0,0),bandFin,0,bi,boxBottom);
+                    else Trap(b,O,U,new V3(0,Math.Max(0,t0-l0),0),new V3(0,Math.Max(0,t1-l1),0),n,bandFin,0,bi,boxBottom);
+                }
+                if(sx>0&&sx<1){Part(0,sx);Part(sx,1);}else Part(0,1);
                 if(!cheek)return;
                 var inward=n*-StringThick;var tq0=new V3(A.x,tA,A.z);var tu=ru+new V3(0,tB-tA,0);
                 if(Cross(tu,inward).y>0)b.Quad(tq0,tu,inward,bandFin,0,bi,boxBottom);else b.Quad(tq0+tu,tu*-1,inward,bandFin,0,bi,boxBottom);
@@ -95,7 +105,7 @@ namespace ChipArena.UnityConversion
                 // the body's top: the band's foot, or a lower rect's own top where that is lower (a neighbour hides above it)
                 if(grille)Grille(b,bi,A,ru,n,F,y0,top?float.MaxValue:y1,cA,cB,top?.15f:0,foot,boxBottom);
                 else Under(b,bi,A,ru,n,y0,top?float.MaxValue:y1,cA,cB,bodyFin,boxBottom);
-                if(top)Band(A,ru);
+                if(top)Band(A,ru,y0);
             }
             // the band where the tread's own top is hidden but its line rises clear of what hides it (a neighbour's top between the
             // tread's flat top and the line: a wagon against a stair)
@@ -104,7 +114,7 @@ namespace ChipArena.UnityConversion
                 if(e[i+(nv-1)*nu])continue;
                 var A=o+u*us[i];A.y=boxBottom;var ru=u*(us[i+1]-us[i]);var m=A+ru*.5f;float t=F.Line(F.D(m));if(t<boxTop+.03f)continue;
                 m.y=t-.04f;m=m+n*.05f;if(b.S.Inside(m.x,m.y,m.z,bi))continue;
-                Band(A,ru);
+                Band(A,ru,boxTop);
             }
         }
         /// <summary>The region over a side's segment [A, A+ru] from y0 up to min(cap, the line from cA to cB), as rectangles and
