@@ -1,3 +1,85 @@
+## 2026-11-20 — Claude (I2b): the generic intros' bodies keyed for the model they are drawn on, an ending each, Slipstream's taller tunnel (owner: "weird orientations", "head in tunnel"; presentation only)
+
+**Branch and base:** `claude/intro-generic` (I2's branch, continued from `29e328f8` after the interrupt), with the framework
+`claude/intro-framework` merged at `3df01f3a` and then `f0e6e052`. Implementation commits `a7c8cdec`, `7545ab8d`, `f63686e4`,
+`82ee57fb`, `92b1c960`. Pushed, no PR, not merged; nothing released. As-built notes: `docs/INTROS-GENERIC.md` "Feet on the model"
+and each intro's "Motion".
+
+**What changed and why:** the owner saw sideways legs and odd orientations; the integrator asked for the five raised to the Top Dog
+and Bombardier standard. Measured offline on the model's own skeleton (a new review dump, `INTRO_GENERIC_MODEL`): the model takes the
+keyed legs' turns bone for bone on legs 1.7 times as long (hip to ankle .851 m against the rig's .5), under hips that move 1.7 times
+as far from rest, on the shared root, with its feet unplanted. So in every walk a keyed foot held still while the root travelled slid
+the drawn foot back at about 1 m/s (a quarter of a metre a step), and the keyed drops sat Whiteout's and Cloudbreak's kneels and
+Slipstream's slide on the floor with a knee 23-31 cm through it.
+- **The base** (`NativeIntroGenericScript`): stances and steps are written where the model's ankle goes, and each frame the keyed foot
+  is put where the drawn one lands (`OnModel`, from the keyed hips of a first pass); drops in the model's metres (`Sink`); a walking
+  foot's heel rises onto the ball (the ball held, the ankle coming over it), its toe trails and the heel strikes; `Kneel` puts the
+  model's knee on the floor under the hips with the shin behind and the toes tucked; walks on a speed `Track`, each step landing
+  where the hips will be half way through its stance (`Walk`); a ground height for feet on the train's roof (`Ground`).
+- **Re-keyed on it:** Cloudbreak's superhero landing (the right knee and fist on the pad, the left foot out front, the left arm swept
+  back) and its rise over the front foot, filmed closer; Whiteout's huddled kneel (forearm on the knee), the shiver, the crack, the
+  rise and the pulse; Slipstream's roof crouch, an accelerating sprint with pumping arms and knee drive, the take-off, a split leap
+  and a knee slide with a dragging hand; Threshold's measured walk out of the slit (strides of about .7 m every .49 s) and its glance
+  back; Flashbulb's catwalk strut (crossing feet, swinging hips), the three poses and a hands-on-hips cover. Hands that meet the body
+  were solved on the measured skeleton for where the model's hand lands, then keyed.
+- **An ending each** (the integrator's review: the last seconds stood at attention): Cloudbreak turns to the sunrise, rolls a shoulder
+  back, sets its left fist on its hip and brings its head round to the lens on the name; Whiteout looks up at the aurora on a long
+  breath, then lays its right hand over its heart; Slipstream brushes the slide's dust off its shoulder and settles loose and cocked;
+  Threshold sweeps its right arm out aside, hand open, presenting the gate; Flashbulb's hands-on-hips cover is taken by one last flash
+  from the lens as the name slams (not in Reduced effects).
+- **Slipstream's slide light** (the integrator's review: the hand's glow drew on the floor .43-.68 m under a hand keyed in the air):
+  the sparks and the scorch follow the drawn knee, and the hand's glow and sparks show only while the drawn fingertips touch the floor.
+- **Slipstream's tunnel a metre taller** (the owner: "head in tunnel"; the helmet reached into the curved ceiling as the pilot stood
+  and ran on the roof): the set's lining (`tools/intros/generic_slipstream.py` `ST_TUNNEL`, `ST_MOUTH`) and its mirror in Core
+  (`NativeIntroSlipstream.TunnelCeiling`); the shot swings out only once the pilot is out of the tunnel's mouth and stays inside the
+  lining until then. The set bank is rebuilt (local, v9).
+- **The framework merge** (`f0e6e052`: grip IK, opt-in `ModelFeet`, canonical poses): this base keeps its own model-space feet (it
+  overrides `Pose`, so nothing corrects twice) and reports its slides as the framework's `FeetSliding`, so the framework's new feet
+  check reads the same windows.
+- **Regression checks** (`IntroGenericChecks`): `Feet`: on the model, a foot flat on the floor stays put (under .45 m/s) except where
+  the intro slides it (`Sliding`), and no knee, ankle or ball goes 4 cm into the floor; `Tunnel`: Slipstream's helmet (the head bone
+  + .25 m) stays at least 5 cm under the tunnel's ceiling while inside it, and the camera stays inside the lining (it fails on the old
+  lining by 28 cm).
+
+**Systems touched:** Core `NativeIntroGeneric.cs` and the five intro files; Tests `IntroGenericChecks.cs`; the set generator
+`tools/intros/generic_slipstream.py`; `docs/INTROS-GENERIC.md`. No framework file, no Runtime file, no rules, no wire, no saves. The
+cues and effects are unchanged but for Threshold's footfall dust and step cues (on the new footfalls), Slipstream's slide sparks and
+scorch, Flashbulb's last flash and Cloudbreak's closer touchdown camera.
+
+**Checks (actual, on `92b1c960`; the docs commit after it changes no code and no check reads it):**
+- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the integrator's `banks-next`):
+  exit 0, 1083 PASS, 0 FAIL. Within it: generic intros 25,009 checks; intros v2 4,202; intro poses 484 with 0 limit, feet or grip
+  findings (drawn feet slide at most .40 m/s and go at most 3 cm into the floor).
+- Unity compile check (`tools/check_unity_compile.py`, 6000.3.24f1, no download): all four assemblies PASS. `git diff --check`: clean.
+- The Editor compiled the head and played the four approved intros through their own shots (hold 2).
+
+**Captures (local, never committed; `F:/Chip Arena Development/scratch/intro-generic/clips/`):**
+- Hold 1 on `a7c8cdec` (31.8 min, over its 25-minute slot): all five at High and Low with side and three-quarter review views:
+  `<Name>-high-b1.mp4` and `sheets/<Name>-b1-*.png`, with `sheets/Flashbulb-strut-before-after-side.png` and
+  `sheets/Kneels-before-after.png`.
+- Hold 2 on `92b1c960` (16.8 min, over the 12 asked): Cloudbreak, Whiteout, Threshold and Flashbulb at High through their own shots
+  every 1/30 s, trimmed to the intro (no loading card, no match frame): `<Name>-high-b2.mp4` (7.4-8.0 s, 0.87-1.30 MB) and
+  `sheets/<Name>-b2-*.png`. The integrator reviewed them and sent them to the owner; Threshold's sweep is modest at its final shot's
+  size (approved as is); the pale name card on the snow and the sunlit floor is the framework's (I0d is on it).
+- Slipstream is not filmed on the final head: it gets its own short hold once its run comes from the pack.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation; the registered Duration
+and NameAt are unchanged).
+
+**Voxel dependency:** none added (the keyed rig is authored through `NativeEntranceKeys` as before). A Classic (voxel) body draws the
+keyed rig, whose planted feet now creep forward through a walk (the model is drawn by default).
+
+**Risks and next step:**
+- The conversion's constants are the measured skeleton's (leg ratio 1.702, hip offsets); a model with other leg proportions would
+  slide by the difference (a few percent of the walking speed).
+- The set bank is local and was rebuilt for the taller tunnel (v9, 7,724,139 bytes; master in
+  `F:/Chip Arena Development/scratch/intro-generic/bank/`, the old v8 in `bank-v8-old`). Pack v9 into the Drive zip: with v8 the
+  helmet reaches into the old ceiling.
+- The `introeyeseq` review camera fell back to the intro's own shot on a few frames inside speed ramps and blends (a local tool quirk).
+- Next: Slipstream's run from the owner's Runner Action pack (five clips picked: the dash start and loop, the jump, the fall and the
+  slide; no wall run, no root motion) once I0d's intro motion bank lands (Core cannot sample the bank's humanoid muscles; no pack data
+  is committed), then its own short hold; the integrator merges the branch and packs the bank.
+
 ## 2026-11-20 — Claude (I2): five new generic intros, Cloudbreak the new default (owner: "5 new intros"; presentation only)
 
 **Branch and base:** `claude/intro-generic` from shared `8d56f015`, with I0's `claude/intro-framework` merged in as it moved
