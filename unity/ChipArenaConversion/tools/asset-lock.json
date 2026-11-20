@@ -837,8 +837,8 @@
     },
     {
       "path": "Assets/ChipArena/Resources/Audio/music/architect-obey.wav",
-      "bytes": 3024044,
-      "gitBlob": "0c03f6f9919105ca22489c562d76fb554af0a1b1",
+      "bytes": 3024208,
+      "gitBlob": "6e404cf6b18e9911313ee3a8e5c986cde1656167",
       "source": "Owner-supplied song Obey (Suno), trimmed for the DEV Architect of Reality intro on claude/intro-dev-architect"
     },
     {

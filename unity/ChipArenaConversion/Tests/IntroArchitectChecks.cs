@@ -56,6 +56,24 @@ namespace ChipArena.UnityConversion
             for(int b=0;b<22;b++)h+=s.Solid(t,b);
             return h+sink.Hash;
         }
+        // The song is heard to the end (integrator, 2026-11-20): the first trim faded it out in the song's own time, so it fell
+        // silent at 10.5 s and the riser, the drop and the name played to nothing. 16-bit PCM WAV: as long as the intro, no half
+        // second quieter than -40 dB before the fade, and the drop's half second louder than the half second before the riser.
+        private static void Song(string path)
+        {
+            var b=System.IO.File.ReadAllBytes(path);int at=12,channels=0,rate=0,bits=0,data=-1,size=0;
+            while(at+8<=b.Length){string id=System.Text.Encoding.ASCII.GetString(b,at,4);int n=BitConverter.ToInt32(b,at+4);
+                if(id=="fmt "){channels=BitConverter.ToInt16(b,at+10);rate=BitConverter.ToInt32(b,at+12);bits=BitConverter.ToInt16(b,at+22);}
+                if(id=="data"){data=at+8;size=Math.Min(n,b.Length-data);break;}at+=8+n+(n&1);}
+            Check(data>0&&channels>0&&rate>0&&bits==16,"the song is 16-bit PCM WAV");
+            int frames=size/(2*channels);double seconds=frames/(double)rate;
+            Check(Math.Abs(seconds-NativeIntroArchitect.Total)<.1,"the song lasts the intro ("+seconds.ToString("0.00")+" s)");
+            double Db(double from,double to){int f0=(int)(from*rate),f1=Math.Min(frames,(int)(to*rate));double s=0;int n=0;
+                for(int f=f0;f<f1;f++)for(int c=0;c<channels;c++){double v=BitConverter.ToInt16(b,data+(f*channels+c)*2)/32768.0;s+=v*v;n++;}
+                return n==0?-999:10*Math.Log10(s/n+1e-12);}
+            for(double w=0;w+.5<=NativeIntroArchitect.FadeFrom;w+=.5)Check(Db(w,w+.5)>-40,"the song is heard at "+w.ToString("0.0")+" s ("+Db(w,w+.5).ToString("0.0")+" dB)");
+            Check(Db(NativeIntroArchitect.Drop,NativeIntroArchitect.Drop+.5)>Db(NativeIntroArchitect.Gather-.5,NativeIntroArchitect.Gather)+3,"the drop is louder than the bar before the riser");
+        }
         public static void Run(string root)
         {
             count=0;var pose=new CapturedRig.Pose();var lights=new NativeEntranceLights();
@@ -65,6 +83,7 @@ namespace ChipArena.UnityConversion
             Check(entry.Duration==NativeIntroArchitect.Total&&entry.NameAt==NativeIntroArchitect.CardAt&&Math.Abs(NativeIntroRules.Duration("dev-architect")-15.7)<1e-4&&Math.Abs(NativeIntroRules.NameAt("dev-architect")-12.63)<1e-4,"15.7 s, the name at the drop (12.63 s)");
             var a=Make(false,false,"Sheldon");Check(a.Ready&&a.Length==NativeIntroArchitect.Total&&a.IntroNameAt==NativeIntroArchitect.CardAt&&a.Music==NativeIntroArchitect.SongId&&a.SetBank=="ChipArenaIntroDev","ready, its song and its bank");
             Check(System.IO.File.Exists(System.IO.Path.Combine(root,"Assets/ChipArena/Resources/Audio/"+NativeIntroArchitect.SongId+".wav")),"the song ships (Resources/Audio/music/architect-obey.wav)");
+            Song(System.IO.Path.Combine(root,"Assets/ChipArena/Resources/Audio/"+NativeIntroArchitect.SongId+".wav"));
             // the beats in the song's order, the stutters inside the riser, the drop on the name, the fade at the end
             float[] beats={NativeIntroArchitect.Strike,NativeIntroArchitect.Break,NativeIntroArchitect.Tear,NativeIntroArchitect.Presence,NativeIntroArchitect.PulseA,NativeIntroArchitect.PulseB,NativeIntroArchitect.Draft,NativeIntroArchitect.Condense,NativeIntroArchitect.Body,NativeIntroArchitect.Still,NativeIntroArchitect.Gather,NativeIntroArchitect.Stutters[0],NativeIntroArchitect.Stutters[4],NativeIntroArchitect.Inhale,NativeIntroArchitect.DipA,NativeIntroArchitect.DipB,NativeIntroArchitect.Drop,NativeIntroArchitect.FadeFrom,NativeIntroArchitect.Total};
             for(int i=1;i<beats.Length;i++)Check(beats[i]>beats[i-1],"the beats in order ("+i+")");
