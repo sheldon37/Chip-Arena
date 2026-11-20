@@ -28,15 +28,19 @@ namespace ChipArena.UnityConversion
             var ko=b.In.KeepOut;if(ko==null)return false;var lo=new V3(p.x-r,p.y-.2f,p.z-r);var hi=new V3(p.x+r,p.y+h,p.z+r);
             foreach(var k in ko)if(k.Hits(lo,hi))return true;return false;
         }
+        // A lot's walls: brick or render by its style and seed, and the finish its plain wall is drawn in.
+        private static bool LotBrick(char style,uint lotSeed)=>style=='w'||style=='h'||style=='t'||(style=='r'?Unit(lotSeed)<.35f:style=='s'?Unit(lotSeed)<.5f:style=='m'?Unit(lotSeed)<.3f:false);
+        private static int LotWallFin(char style,bool brick)=>style=='c'?NativeMeridianSurfaces.StoneCivic:style=='w'||style=='h'?NativeMeridianSurfaces.BrickBuff:brick?NativeMeridianSurfaces.BrickStock:NativeMeridianSurfaces.Render;
+        private static int LotWallFin(Builder b,int bi){var id=b.Blocks[bi].id;char style=b.Lots[id][0];return LotWallFin(style,LotBrick(style,Mix(b.Seed,Hash(id))));}
         private static void DressLot(Builder b,int bi)
         {
             var blk=b.Blocks[bi];int o=bi*6;var B=b.S.B;float bottom=B[o+2],top=B[o+3];
             string sheet=b.Lots[blk.id];char style=sheet[0];uint lotSeed=Mix(b.Seed,Hash(blk.id));
             int storeys=0;while(StoreyFloor(bottom,storeys)<top-.01f)storeys++;
-            bool brick=style=='w'||style=='h'||style=='t'||(style=='r'?Unit(lotSeed)<.35f:style=='s'?Unit(lotSeed)<.5f:style=='m'?Unit(lotSeed)<.3f:false);
+            bool brick=LotBrick(style,lotSeed);
             string wallVar=brick?"0":"1";
             string trade=Trades[Mix(lotSeed,7)%(uint)Trades.Length],trade2=Trades[Mix(lotSeed,11)%(uint)Trades.Length];
-            int wallFin=style=='c'?NativeMeridianSurfaces.StoneCivic:style=='w'||style=='h'?NativeMeridianSurfaces.BrickBuff:brick?NativeMeridianSurfaces.BrickStock:NativeMeridianSurfaces.Render;
+            int wallFin=LotWallFin(style,brick);
             string topKey=style=='t'?"t.ten":style=='w'||style=='h'?"t.ware":style=='c'?"t.civic":brick?"t.brick":"t.render";
             // the longest face is the lot's front; a row's short ends are its gables
             float sx=B[o+1]-B[o],sz=B[o+5]-B[o+4];

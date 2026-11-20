@@ -205,12 +205,20 @@ namespace ChipArena.UnityConversion
         private struct Slot{public V3 Foot,Normal,Along;public float Top,Metres,Share,Rise;public int Block,Side;public NativeCityBleed.Bands Band;public bool Sloped=>Rise>.005f;}
 
         /// <summary>A box nothing of the dress may enter (a cache, its roof kerb and the 2 m in front of each cache).</summary>
-        public struct KeepOut{public V3 Lo,Hi;public KeepOut(V3 lo,V3 hi){Lo=lo;Hi=hi;}
+        public struct KeepOut{public V3 Lo,Hi;public bool Core;public KeepOut(V3 lo,V3 hi,bool core=false){Lo=lo;Hi=hi;Core=core;}
             public bool Hits(V3 lo,V3 hi)=>hi.x>Lo.x&&lo.x<Hi.x&&hi.y>Lo.y&&lo.y<Hi.y&&hi.z>Lo.z&&lo.z<Hi.z;}
+        /// <summary>Whether a piece of the bleed must keep out of a keep-out: free-standing pieces, lamps and floor paint keep out of
+        /// every one; flush wall art (6 cm proud or less, no lamp) keeps only off the locker itself (its core), so a wall behind or
+        /// beside a cache is still dressed.</summary>
+        public static bool KeptOut(in Piece p,List<KeepOut> keepOuts)
+        {
+            if(keepOuts==null||keepOuts.Count==0)return false;var k=Kinds[p.Kind];bool flush=k.Mount==Mount.Wall&&!k.Lamp&&k.Max.z<=Flat+1e-4f;
+            Bounds(p,out var lo,out var hi);foreach(var ko in keepOuts)if((!flush||ko.Core)&&ko.Hits(lo,hi))return true;return false;
+        }
         /// <summary>The caches' keep-outs (A2's lockers on the walk, Core NativeExpeditionGeneratedWorld.CacheBlock): each locker's
         /// footprint with 15 cm about it, and 2 m in front of it (its approach, where a pilot opens it), from just under its foot to
-        /// the clear height over it; and the roof cache's kerb. Every Meridian dress keeps out of them (the bleed's, the street
-        /// dress's paint and low lamps).</summary>
+        /// the clear height over it; and the roof cache's kerb. Every Meridian dress keeps its free-standing pieces, low lamps and
+        /// paint out of them; flush wall art keeps only off each locker's own block (a core keep-out, after the zones).</summary>
         public static List<KeepOut> CacheKeepOuts(IEnumerable<ExpeditionWorldAnchor> caches,ContentMap map)
         {
             var list=new List<KeepOut>();
@@ -224,6 +232,8 @@ namespace ChipArena.UnityConversion
             }
             if(map?.blocks!=null)foreach(var b in map.blocks)
                 if(b?.id=="cache-roof-kerb")list.Add(new KeepOut(b.pos-b.size*.5f-new V3(.15f,.1f,.15f),b.pos+b.size*.5f+new V3(.15f,Clear,.15f)));
+            if(caches!=null&&map?.blocks!=null)foreach(var a in caches)foreach(var b in map.blocks)
+                if(b?.id==a.id+"-block")list.Add(new KeepOut(b.pos-b.size*.5f-new V3(.02f,.02f,.02f),b.pos+b.size*.5f+new V3(.02f,.02f,.02f),true));
             return list;
         }
         [ThreadStatic] private static List<KeepOut> keepOut;
@@ -372,7 +382,7 @@ namespace ChipArena.UnityConversion
         {
             int k=KindOf(key);if(k<0)throw new InvalidOperationException("No bleed kind "+key);
             var piece=new Piece{Kind=k,At=at,Yaw=yaw,Scale=scale,Door=(byte)d,Band=band,Lamp=lamp,Light=light==0?Kinds[k].Light:light,Seed=NativeCityBleed.Hash(rs^(uint)i*2246822519u^(uint)k*3266489917u)};
-            if(keepOut!=null&&keepOut.Count>0){Bounds(piece,out var klo,out var khi);foreach(var ko in keepOut)if(ko.Hits(klo,khi))return false;}
+            if(KeptOut(piece,keepOut))return false;
             if(Kinds[k].Mount==Mount.Floor)
             {
                 // paint never lies on paint: two decals in one plane would fight (the 2 m grid parts the tiles; this parts the

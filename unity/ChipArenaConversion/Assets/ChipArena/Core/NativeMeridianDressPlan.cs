@@ -23,6 +23,8 @@ namespace ChipArena.UnityConversion
             public Input In;public Plan P;public Solids S;public ContentBlock[] Blocks;public Func<string,bool> Has;public Dictionary<string,string> Lots;
             public string[] Roles;public bool[] Left;public Dictionary<string,MapRamp> TreadRamp=new Dictionary<string,MapRamp>(StringComparer.Ordinal);
             public uint Seed;public readonly List<Mount> Mounts=new List<Mount>();
+            /// <summary>A fire escape's host lot (by the escape's id, fire-escape-N), or -1.</summary>
+            public readonly Dictionary<string,int> EscapeHost=new Dictionary<string,int>(StringComparer.Ordinal);
             public bool IsDressed(int i)=>Dressed(Roles[i])&&Roles[i]!=RLot;
             // (a lot's roof is a generated surface too: a top two blocks share is drawn by the first, lot or not)
             // (a block the dress leaves, the greybox's or the landmarks', draws its own faces: a face of the dress in its plane is not drawn)
@@ -177,6 +179,27 @@ namespace ChipArena.UnityConversion
         // ------------------------------------------------------------------------------------------------------------------
         // Every role but the lots: its faces in its finishes (NativeMeridianSurfaces), and the modules that fill it
         // ------------------------------------------------------------------------------------------------------------------
+        /// <summary>The iron stringer's depth along the top of a fire escape's step (m).</summary>
+        public const float Stringer=.3f;
+        /// <summary>The lot a fire escape stands against: the lot most of its blocks touch (within 0.6 m), or -1.</summary>
+        private static int EscapeHost(Builder b,string id)
+        {
+            int dash=id.IndexOf('-',12);string key=dash<0?id:id.Substring(0,dash);
+            if(b.EscapeHost.TryGetValue(key,out int host))return host;
+            var votes=new Dictionary<int,int>();var B=b.S.B;
+            for(int i=0;i<b.Blocks.Length;i++)
+            {
+                var bid=b.Blocks[i].id;if(bid==null||!bid.StartsWith(key,StringComparison.Ordinal)||bid.Length>key.Length&&bid[key.Length]!='-')continue;int o=i*6;
+                foreach(int j in b.S.Near(B[o]-.6f,B[o+1]+.6f,B[o+4]-.6f,B[o+5]+.6f))
+                {
+                    if(j==i||b.Roles[j]!=RLot)continue;int q=j*6;
+                    float gx=Math.Max(0,Math.Max(B[q]-B[o+1],B[o]-B[q+1])),gz=Math.Max(0,Math.Max(B[q+4]-B[o+5],B[o+4]-B[q+5]));
+                    if(Math.Max(gx,gz)<=.6f&&B[q+2]<B[o+3]&&B[q+3]>B[o+2]){votes.TryGetValue(j,out int v);votes[j]=v+1;}
+                }
+            }
+            host=-1;int most=0;foreach(var kv in votes)if(kv.Value>most||kv.Value==most&&kv.Key<host){most=kv.Value;host=kv.Key;}
+            b.EscapeHost[key]=host;return host;
+        }
         private static void DressBox(Builder b,int bi,string role)
         {
             var id=b.Blocks[bi].id;int o=bi*6;float[] B=b.S.B;float h=B[o+3]-B[o+2];
@@ -190,8 +213,17 @@ namespace ChipArena.UnityConversion
                 {
                     b.TreadRamp.TryGetValue(id,out var r);bool fire=id.StartsWith("fire-escape-",StringComparison.Ordinal);bool stair=r==null||r.kind=="stair";
                     if(!stair){for(int f=0;f<6;f++)if(f!=2&&f!=3&&!Facing(r,f))Surface(b,bi,f,NativeMeridianSurfaces.BrickBlue,0,1.5f,NativeMeridianSurfaces.Coping,.3f);break;}
-                    int treadFin=fire?NativeMeridianSurfaces.IronGrate:NativeMeridianSurfaces.Granite,sideFin=fire?NativeMeridianSurfaces.IronBlack:NativeMeridianSurfaces.Stone;
-                    for(int f=0;f<6;f++)Surface(b,bi,f,f==2?treadFin:r!=null&&Facing(r,f)?treadFin:sideFin,0,f==2?1f:1.5f);
+                    int treadFin=fire?NativeMeridianSurfaces.IronGrate:NativeMeridianSurfaces.Granite,sideFin=NativeMeridianSurfaces.Stone;
+                    // a fire escape's treads stand on solid steps down to the floor (the greybox's stair): their sides are its host
+                    // lot's wall, the stair built into the building, under a black iron stringer stepping up with the treads (in iron
+                    // the whole height they read as a black slab, worst at night)
+                    if(fire){int host=EscapeHost(b,id);sideFin=host>=0?LotWallFin(b,host):NativeMeridianSurfaces.BrickStock;}
+                    for(int f=0;f<6;f++)
+                    {
+                        if(f==2||r!=null&&Facing(r,f))Surface(b,bi,f,treadFin,0,f==2?1f:1.5f);
+                        else if(fire)Surface(b,bi,f,sideFin,0,1.5f,NativeMeridianSurfaces.IronBlack,Stringer);
+                        else Surface(b,bi,f,sideFin,0,1.5f);
+                    }
                     break;
                 }
                 case RLanding:for(int f=0;f<6;f++)Surface(b,bi,f,f==2?NativeMeridianSurfaces.IronGrate:NativeMeridianSurfaces.IronBlack,0,1.5f);break;

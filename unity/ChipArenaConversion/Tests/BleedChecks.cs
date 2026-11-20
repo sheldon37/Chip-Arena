@@ -78,16 +78,16 @@ internal static class BleedChecks
     // and A2's caches kept clear by all three.
     private static void Combined()
     {
-        int themed=0,skipped=0,lampsWith=0,lampsWithout=0,caches=0,partial=0;
+        int themed=0,skipped=0,lampsWith=0,lampsWithout=0,caches=0,partial=0,walls=0;
         for(int layout=0;layout<NativeCityLayout.Plans.Count;layout++)
         {
             var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);var deal=Deals[layout%Deals.Length];
             uint seed=NativeCityBleedDress.DealSeedFor((uint)(77+layout),deal);var slots=NativeCityLayout.DealHalls(seed,deal);
             var bleed=NativeCityBleed.ForWalk(walk,slots);var plan=NativeCityBleedDress.ForWalk(walk,bleed,seed);
             var keep=NativeCityBleedDress.CacheKeepOuts(walk.Caches,walk.Map);caches+=walk.Caches.Length;
-            if(walk.Caches.Length==0||keep.Count!=walk.Caches.Length+1)throw new Exception(walk.Map.name+": the caches' keep-outs ("+keep.Count+" for "+walk.Caches.Length+" caches and the kerb)");
+            if(walk.Caches.Length==0||keep.Count!=walk.Caches.Length*2+1||keep.Count(k=>k.Core)!=walk.Caches.Length)throw new Exception(walk.Map.name+": the caches' keep-outs ("+keep.Count+" for "+walk.Caches.Length+" caches, their blocks and the kerb)");
             // the bleed keeps off the caches and the 2 m before them
-            foreach(var p in plan.Pieces){NativeCityBleedDress.Bounds(p,out var lo,out var hi);foreach(var k in keep)if(k.Hits(lo,hi))throw new Exception(walk.Map.name+": "+NativeCityBleedDress.Kinds[p.Kind].Key+" at "+Show(p.At)+" over a cache");}
+            foreach(var p in plan.Pieces){if(NativeCityBleedDress.KeptOut(p,keep))throw new Exception(walk.Map.name+": "+NativeCityBleedDress.Kinds[p.Kind].Key+" at "+Show(p.At)+" over a cache");}
             NativeMeridianDress.Input Input()=>new NativeMeridianDress.Input{Map=walk.Map,Layout=info.Seed,Run=seed,Slots=slots,Hatches=walk.RoofHatches.ToArray(),KeepOut=keep,
                 Routes=walk.Routes.Select(r=>new NativeMeridianDress.Route{Name=r.Name,Points=r.Points,Widths=r.Widths,Kinds=r.Kinds}).ToArray()};
             var plain=NativeMeridianDress.Build(Input());lampsWithout+=plain.Lamps.Count;
@@ -121,10 +121,58 @@ internal static class BleedChecks
                 if(dressed.Covers.Contains(id)||land.Covers.Contains(id))throw new Exception(walk.Map.name+": a dress hides the cache "+id);
             }
             if(dressed.Covers.Contains("cache-roof-kerb")||land.Covers.Contains("cache-roof-kerb"))throw new Exception(walk.Map.name+": a dress hides the roof cache's kerb");
+            walls+=CacheWalls(walk,dressed,land);
         }
         if(themed==0)throw new Exception("The street dress took no theme from the bleed");
         if(lampsWith>lampsWithout)throw new Exception("The bleed's lamps added street lamps");
-        Console.WriteLine("PASS bleed with the street dress and the landmarks: "+themed+" themed modules, "+skipped+" bays given to the bleed's skins (none left wholly under them, "+partial+" partly), "+(lampsWithout-lampsWith)+" street lamps left to the bleed's own, "+caches+" caches and their kerbs clear of every dress");
+        Console.WriteLine("PASS bleed with the street dress and the landmarks: "+themed+" themed modules, "+skipped+" bays given to the bleed's skins (none left wholly under them, "+partial+" partly), "+(lampsWithout-lampsWith)+" street lamps left to the bleed's own, "+caches+" caches and their kerbs clear of every dress, the "+walls+" walls behind and beside them dressed and none black");
+    }
+
+    /// <summary>The walls behind and beside each cache (the first block within 0.9 m of the locker's back or sides) are dressed as
+    /// their neighbours are: by the landmarks, by a whole-block module, or on the face by a facade module or a surface that is not
+    /// black. Returns how many walls it looked at.</summary>
+    private static int CacheWalls(NativeLayeredCityWalk walk,NativeMeridianDress.Plan dress,NativeMeridianLandmarks.Layout land)
+    {
+        var map=walk.Map;int walls=0;
+        int BlockAt(V3 q,string skip){for(int i=0;i<map.blocks.Length;i++){var bk=map.blocks[i];if(bk.id==skip)continue;var lo=bk.pos-bk.size*.5f;var hi=bk.pos+bk.size*.5f;
+            if(q.x>=lo.x&&q.x<=hi.x&&q.y>=lo.y&&q.y<=hi.y&&q.z>=lo.z&&q.z<=hi.z)return i;}return -1;}
+        static float Luma(int rgb)=>.2126f*(rgb>>16&255)+.7152f*(rgb>>8&255)+.0722f*(rgb&255);
+        foreach(var c in walk.Caches)
+        {
+            double r=c.yaw*Math.PI/180;var f=new V3((float)Math.Sin(r),0,(float)Math.Cos(r));var side=new V3(f.z,0,-f.x);var at=new V3(c.x,c.y,c.z);
+            foreach(var (name,dir,lat,reach) in new[]{("back",f*-1f,side,.29f+.9f),("left",side,f,.46f+.9f),("right",side*-1f,f,.46f+.9f)})
+            {
+                int bi=-1;float d0=0;
+                for(float d=.2f;d<=reach&&bi<0;d+=.01f){bi=BlockAt(at+dir*d+new V3(0,1.5f,0),c.id+"-block");d0=d;}
+                if(bi<0)continue;walls++;var blk=map.blocks[bi];
+                if(land.Covers.Contains(blk.id)||dress.Left.Contains(blk.id))continue;
+                if(!dress.Covers.Contains(blk.id))throw new Exception(map.name+": the cache "+c.id+"'s "+name+" wall "+blk.id+" is left undressed");
+                if(dress.Placements.Any(x=>x.Block==bi&&x.Face<0))continue;
+                foreach(float h in new[]{.5f,1.5f,2.5f})foreach(float u in new[]{-.4f,0,.4f})
+                {
+                    var p=at+dir*d0+lat*u+new V3(0,h,0);if(BlockAt(p+dir*.03f,c.id+"-block")!=bi)continue;
+                    bool module=dress.Placements.Any(x=>
+                    {
+                        if(x.Block!=bi||x.Paint)return false;var a=new V3(x.M[3],x.M[7],x.M[11]);var al=new V3(x.M[0],x.M[4],x.M[8]);var n=new V3(x.M[2],x.M[6],x.M[10]);
+                        float la=al.Length,ln=n.Length;if(la<1e-4f||ln<1e-4f)return false;var dp=p-a;
+                        return Math.Abs(V3.Dot(dp,al)/la)<=la*NativeMeridianDress.Bay*.5f+.05f&&p.y>=x.V0-.05f&&p.y<=x.V1+.05f&&Math.Abs(V3.Dot(dp,n)/ln)<.5f;
+                    });
+                    if(module)continue;
+                    int fin=-1;
+                    foreach(var q in dress.Quads)
+                    {
+                        if(q.Block!=bi)continue;var dp=p-q.O;float lu=V3.Dot(q.U,q.U),lv=V3.Dot(q.V,q.V);if(lu<1e-6f||lv<1e-6f)continue;
+                        float nl=q.N.Length;if(nl<1e-4f||Math.Abs(V3.Dot(dp,q.N)/nl)>.06f)continue;
+                        float su=V3.Dot(dp,q.U)/lu,sv=V3.Dot(dp,q.V)/lv;if(su<-.01f||su>1.01f||sv<-.01f||sv>1.01f)continue;fin=q.Fin;break;
+                    }
+                    if(fin<0)throw new Exception(map.name+": the cache "+c.id+"'s "+name+" wall "+blk.id+" is bare at "+Show(p));
+                    // (a fire escape's iron stringer along a step's top is no wall)
+                    if(fin==NativeMeridianSurfaces.IronBlack&&p.y>blk.pos.y+blk.size.y*.5f-NativeMeridianDress.Stringer-.05f)continue;
+                    if(Luma(NativeMeridianSurfaces.Fins[fin].Rgb)<56)throw new Exception(map.name+": the cache "+c.id+"'s "+name+" wall "+blk.id+" is black ("+fin+") at "+Show(p));
+                }
+            }
+        }
+        return walls;
     }
 
     private static void Curve()
@@ -329,6 +377,50 @@ internal static class BleedChecks
     }
     private static int Draws(NativeCityBleedDress.Plan plan)=>plan.Pieces.GroupBy(p=>p.Kind).Sum(g=>2*((g.Count()+499)/500));
     private static string Show(V3 v)=>v.x.ToString("0.###",CultureInfo.InvariantCulture)+","+v.y.ToString("0.###",CultureInfo.InvariantCulture)+","+v.z.ToString("0.###",CultureInfo.InvariantCulture);
+
+    /// <summary>`--bleed-cachewall LAYOUT EAST,SOUTH,WEST SEED`: for each cache, the wall behind it and what each dress draws there (a
+    /// diagnostic).</summary>
+    public static void CacheWall(int layout,string deal,uint seed)
+    {
+        var names=deal.Split(',');var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);uint s=NativeCityBleedDress.DealSeedFor(seed,names);
+        var slots=NativeCityLayout.DealHalls(s,names);var bleed=NativeCityBleed.ForWalk(walk,slots);var plan=NativeCityBleedDress.ForWalk(walk,bleed,s);
+        var keep=NativeCityBleedDress.CacheKeepOuts(walk.Caches,walk.Map);var map=walk.Map;
+        NativeMeridianDress.Input In(){return new NativeMeridianDress.Input{Map=map,Layout=info.Seed,Run=s,Slots=slots,Hatches=walk.RoofHatches.ToArray(),KeepOut=keep,
+            Routes=walk.Routes.Select(r=>new NativeMeridianDress.Route{Name=r.Name,Points=r.Points,Widths=r.Widths,Kinds=r.Kinds}).ToArray()};}
+        NativeMeridianDress.ThemeAt=p=>bleed.ThemeAt(p);NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(plan,p,14);NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(plan,p,n);
+        NativeMeridianDress.Plan dress;
+        try{dress=NativeMeridianDress.Build(In(),k=>!k.Contains("@")||k.StartsWith("g.",StringComparison.Ordinal)||k.StartsWith("u.",StringComparison.Ordinal)||k.StartsWith("t.",StringComparison.Ordinal));}
+        finally{NativeMeridianDress.ThemeAt=null;NativeMeridianDress.LampsReplaced=null;NativeMeridianDress.FacadeCovered=null;}
+        var plainKo=In();plainKo.KeepOut=null;var noKo=NativeMeridianDress.Build(plainKo);
+        var land=NativeMeridianLandmarks.Place(info.Seed,map,walk.Routes.Select(r=>r.Destination).ToList(),slots);
+        Console.WriteLine(map.name+" ("+map.id+"): "+walk.Caches.Length+" caches");
+        foreach(var c in walk.Caches)
+        {
+            double r=c.yaw*Math.PI/180;var f=new V3((float)Math.Sin(r),0,(float)Math.Cos(r));var at=new V3(c.x,c.y,c.z);
+            Console.WriteLine("  "+c.id+" at "+Show(at)+" yaw "+c.yaw+" ("+c.area+", "+c.kind+", "+c.building+")");
+            foreach(var dir in new[]{("back",f*-1f),("left",new V3(f.z,0,-f.x)),("right",new V3(-f.z,0,f.x))})
+            {
+                string hit=null;int bi=-1;float dist=0;
+                for(float d=.2f;d<3f&&hit==null;d+=.05f)foreach(float y in new[]{1.5f,3f})
+                {
+                    var q=at+dir.Item2*d+new V3(0,y,0);
+                    for(int i=0;i<map.blocks.Length;i++){var bk=map.blocks[i];if(bk.id==c.id+"-block")continue;var lo=bk.pos-bk.size*.5f;var hi=bk.pos+bk.size*.5f;
+                        if(q.x>=lo.x&&q.x<=hi.x&&q.y>=lo.y&&q.y<=hi.y&&q.z>=lo.z&&q.z<=hi.z){hit=bk.id;bi=i;dist=d;break;}}
+                    if(hit!=null)break;
+                }
+                if(hit==null){Console.WriteLine("    "+dir.Item1+": open to 3 m");continue;}
+                var blk=map.blocks[bi];
+                int Mods(NativeMeridianDress.Plan P)=>P.Placements.Count(x=>x.Block==bi&&Flat(new V3(x.M[3],x.M[7],x.M[11])-at)<4f);
+                int Qs(NativeMeridianDress.Plan P)=>P.Quads.Count(x=>x.Block==bi&&Flat(x.O+x.U*.5f-at)<5f);
+                var keys=dress.Placements.Where(x=>x.Block==bi&&Flat(new V3(x.M[3],x.M[7],x.M[11])-at)<4f).Select(x=>x.Key).Distinct().Take(6);
+                var bl=plan.Pieces.Where(x=>Flat(x.At-at)<4f).Select(x=>NativeCityBleedDress.Kinds[x.Kind].Key).Distinct().Take(5);
+                Console.WriteLine("    "+dir.Item1+" "+dist.ToString("0.00")+" m: "+hit+" (size "+Show(blk.size)+", top "+(blk.pos.y+blk.size.y*.5f).ToString("0.0")+") dress covers "+dress.Covers.Contains(hit)+
+                    ", left to landmarks "+dress.Left.Contains(hit)+", landmarks cover "+land.Covers.Contains(hit)+"; dress modules within 4 m "+Mods(dress)+" (without keep-outs "+Mods(noKo)+"), quads "+Qs(dress)+
+                    " ("+Qs(noKo)+") ["+string.Join(" ",keys)+"]; bleed ["+string.Join(" ",bl)+"]");
+            }
+        }
+    }
+    private static float Flat(V3 v)=>(float)Math.Sqrt(v.x*v.x+v.z*v.z);
 
     /// <summary>`--bleed-zfight LAYOUT EAST,SOUTH,WEST SEED OUTDIR` (CHIPARENA_MERIDIAN_BANK and CHIPARENA_BLEED_BANK set): the
     /// whole look for zfight: the bleed's scene (maps.json, rest.json), the street dress planned with the bleed's contracts and its
