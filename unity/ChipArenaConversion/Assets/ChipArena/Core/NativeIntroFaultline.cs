@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(0,V(-2.6f,.42f,5.4f),V(-1.55f,.55f,3.55f),V(0,.85f,0),V(0,1.12f,0),44,40).Ease(NativeIntroEase.Out).Handheld(.3f)
                .Dolly(LeapAt-.15f,V(3.4f,.38f,1.7f),V(3.55f,.42f,1.95f),V(0,1.6f,0),V(0,1.2f,.1f),52,52)
                .Crane(SlamAt-.06f,V(-2.4f,1.0f,3.1f),V(-1.5f,1.5f,3.4f),5.2f,V(0,.35f,0),V(0,.1f,-.2f),50,60).Ease(NativeIntroEase.InOut)
-               .Dolly(SpreadAt+1.0f,V(.9f,9.6f,3.4f),V(.4f,9.1f,1.9f),V(0,0,-.8f),V(0,0,-.4f),58,54);
+               .Dolly(SlamAt+1.15f,V(.9f,9.6f,3.4f),V(.4f,9.1f,1.9f),V(0,0,-.8f),V(0,0,-.4f),58,54);// (on the blow's clock: the cracks' later start must not crowd it into the hero)
             HeroFull(RiseAt+.3f,1,4.8f,33,.4f,0);// (a cut: from high over the ring a blend would plunge 8 m)
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(SlamAt-.2f,.25f,.3f,.9f);

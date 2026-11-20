@@ -100,8 +100,8 @@ namespace ChipArena.UnityConversion
                 NativeEntranceFx.Shaft(fx,t,ShaftTop,CutPoint,1.05f,.8f,Dawn*.5f,lvl,low?6:11,low?10:24,37500,q);
                 float slide=.08f+.55f*NativeEntranceMath.EaseIn(NativeEntranceMath.Clamp01(after/1.4f)),fade=1-NativeEntranceMath.Ramp(after,.15f,1.3f);
                 if(fade>.01f)NativeEntranceFx.Shaft(fx,t,CutPoint+Fall*slide,ShaftFoot+Fall*slide+new Vector3(0,-.4f*slide,0),.8f,.72f,Dawn*.5f,fade,low?4:6,low?6:12,37540,q);
-                // The cut's hairline across the shaft, bright, gone in half a second.
-                float hair=1-NativeEntranceMath.Ramp(after,.08f,.55f);if(hair>.01f){var a=CutAcross*1.3f;Line(fx,CutPoint+a,a*2,(White*2.4f+Gold)*hair,.008f,.9f,0,37560);Line(fx,CutPoint+a,a*2,Gold*(.9f*hair),.03f,.9f,0,37561);}
+                // The cut's hairline across the shaft (its width, no further: wider it read as a wire across the hall), bright, gone in half a second.
+                float hair=1-NativeEntranceMath.Ramp(after,.08f,.55f);if(hair>.01f){var a=CutAcross*.5f;Line(fx,CutPoint+a,a*2,(White*2.4f+Gold)*hair,.01f,.9f,0,37560);Line(fx,CutPoint+a,a*2,Gold*(.9f*hair),.035f,.9f,0,37561);}
                 // The severed light breaking into flakes that fall and turn, drawn into the backhand's ribbon when it comes.
                 int m=low?20:46;
                 for(int i=0;i<m;i++)
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             // Dust turning in the hall's dark.
             for(int i=0,n=low?6:14;i<n;i++){var p=new Vector3(NativeEntranceMath.Signed(37701,i)*4,.4f+3.5f*NativeEntranceMath.Rand(37703,i),NativeEntranceMath.Signed(37705,i)*5)+new Vector3((float)Math.Sin(t*.2f+i)*.2f,(float)Math.Sin(t*.15f+i*2)*.1f,0);fx.Glow(p,Dawn*.04f,0,.025f,0,0,37710+i);}
             // The cut: the blade's sweep, a white-teal arc along the tip's path, too fast to see but for its trail.
-            if(after>-.05f&&after<.35f)BladeSweep(fx,t,0,CutAt-.12f,.22f,White*1.6f+Teal,Gold,.016f,.45f,37800,low,FollowEnd);
+            if(after>-.05f&&after<.35f)BladeSweep(fx,t,0,CutAt-.12f,.22f,White*1.6f+Teal,Gold,.022f,.45f,37800,low,FollowEnd);
             if(after>=0&&after<.25f){var tip=DrawnTip(t,0);float g=Flash(t,CutAt,.01f,.08f);fx.Glow(tip,(White*2+Gold)*(1.4f*g),0,.25f,1,0,37850);}
             // The blade holds the light: a glow running up its edge, a ribbon of gold behind the backhand.
             float blade=BladeLight(t);
