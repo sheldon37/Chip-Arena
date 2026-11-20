@@ -309,7 +309,9 @@ def fire_set(T):
     sides = (28, 18, 12)[T.i]
     sk.lathe(near, [(1.12, -.3), (1.12, FLOOR - .005), (1.02, FLOOR + .07), (.88, FLOOR + .1), (.78, FLOOR + .05), (.72, -.25), (.64, -.9)],
              (vx, 0, vz), F['crust'], sides)
-    sk.lathe(near, [(.64, -.9), (.52, -1.7)], (vx, 0, vz), F['lava-hot'], sides, cap1=True)
+    throat = Geo()
+    sk.lathe(throat, [(.64, -.9), (.52, -1.7)], (vx, 0, vz), F['lava-hot'], sides, cap1=True)
+    rigs['vent'] = throat
     # ---- the caldera floor: the tops of basalt columns, lava in the cracks between them ----
     for region, (rad0, rad1, s, seed) in enumerate(((0, 12.5, 1.0, 23), (12.0, 24.5, 1.9, 29))):
         for i, ((cx, cz), poly) in enumerate(hex_cells(rad1 + s, s, seed, jitter=.36)):
@@ -471,15 +473,28 @@ def fire_set(T):
     surf(far, P, F['rim'], wrap_i=True, inside=(0, -200, 0), flat=True, pick=lambda nn, cc: F['rim-high'] if cc[1] > 10 else F['rim'])
     falls = Geo()
     for a in (FIRE_RIVERS[0] + .05, FIRE_RIVERS[1] + .03):
-        k = (16, 10, 6)[T.i]
-        for j in range(k):
-            pts = []
-            for u, w in ((j / k, -.7), (j / k, .7), ((j + 1) / k, .7), ((j + 1) / k, -.7)):
-                y = FIRE_FLOOR_Y + 15 * (1 - u)
-                r = 24.6 + 3.4 * (1 - u) ** 1.4 - .6
-                aa = a + w * (.55 + .5 * u) / r
-                pts.append((math.cos(aa) * r, y, math.sin(aa) * r))
-            falls.face(pts, F['lava'], normal=(-math.cos(a), .3, -math.sin(a)))
+        i = int(round((a % (2 * math.pi)) / (2 * math.pi) * m)) % m
+        inward = (-math.cos(a), 0.0, -math.sin(a))
+        side = (-math.sin(a), 0.0, math.cos(a))
+        # down the rim's face from its crest row to its foot, a little proud of it
+        path = [P[i, j] for j in (5, 4, 3, 2, 1)]
+        pts = []
+        for j in range(len(path) - 1):
+            for k in range(4):
+                u = k / 4
+                pts.append(tuple(path[j][c] + (path[j + 1][c] - path[j][c]) * u for c in range(3)))
+        pts.append(tuple(path[-1]))
+        n = len(pts) - 1
+        for j in range(n):
+            u0, u1 = j / n, (j + 1) / n
+            w0, w1 = .22 + .7 * u0, .22 + .7 * u1
+            m0 = .25 * math.sin(u0 * 7 + a)
+            m1 = .25 * math.sin(u1 * 7 + a)
+            q0 = [pts[j][c] + inward[c] * .35 + side[c] * m0 for c in range(3)]
+            q1 = [pts[j + 1][c] + inward[c] * .35 + side[c] * m1 for c in range(3)]
+            quad = [tuple(q0[c] - side[c] * w0 for c in range(3)), tuple(q0[c] + side[c] * w0 for c in range(3)),
+                    tuple(q1[c] + side[c] * w1 for c in range(3)), tuple(q1[c] - side[c] * w1 for c in range(3))]
+            falls.face(quad, F['lava'] if (j % 3) else F['lava-deep'], normal=(inward[0], .25, inward[2]))
     rigs['falls'] = falls
     return {'near': near, 'mid': mid, 'far': far}, rigs
 
@@ -540,18 +555,19 @@ def water_finishes():
     F = {}
     F['stone'] = sk.fin('water-stone', 0x4a5458, sk.DETAIL_ASHLAR, smooth=.3, dirt=1.0, moss=.6, wear=.3)
     F['stone-dark'] = sk.fin('water-stone-dark', 0x2c3538, sk.DETAIL_ASHLAR, smooth=.35, dirt=1.0, moss=.8)
-    F['marble'] = sk.fin('water-marble', 0x7f8a8c, sk.DETAIL_MARBLE, smooth=.55, dirt=.8, moss=.4, wear=.4)
-    F['tile'] = sk.fin('water-tile', 0x3c4a4c, sk.DETAIL_TILE, smooth=.6, dirt=.9, moss=.5, param=.6)
+    F['marble'] = sk.fin('water-marble', 0x7f8a8c, sk.DETAIL_MARBLE, smooth=.35, dirt=.8, moss=.4, wear=.4)
+    F['tile'] = sk.fin('water-tile', 0x3c4a4c, sk.DETAIL_TILE, smooth=.35, dirt=.9, moss=.5, param=.6)
     F['vault'] = sk.fin('water-vault', 0x353d40, sk.DETAIL_ASHLAR, smooth=.2, dirt=1.0, moss=.3)
     F['rib'] = sk.fin('water-rib', 0x59625f, sk.DETAIL_CARVED, smooth=.3, dirt=1.0, wear=.4)
-    F['water'] = sk.fin('water-surface', 0x0b2a33, sk.DETAIL_NONE, smooth=.97, dirt=0.0)
-    F['wave'] = sk.fin('water-wave', 0x16627e, sk.DETAIL_NONE, smooth=.95, dirt=0.0)
-    F['wave-deep'] = sk.fin('water-wave-deep', 0x0c3a52, sk.DETAIL_NONE, smooth=.95, dirt=0.0)
-    F['foam'] = sk.fin('water-foam', 0xdff6ff, sk.DETAIL_NONE, smooth=.4, dirt=0.0)
-    F['ice'] = sk.fin('water-ice', 0x9fd8ec, sk.DETAIL_NONE, smooth=.92, dirt=0.0)
-    F['ice-deep'] = sk.fin('water-ice-deep', 0x5aa9cc, sk.DETAIL_NONE, smooth=.9, dirt=0.0)
+    F['water'] = sk.fin('water-surface', 0x10384a, sk.DETAIL_NONE, smooth=.32, dirt=0.0)
+    F['wave'] = sk.fin('water-wave', 0x1d7fa3, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
+    F['wave-deep'] = sk.fin('water-wave-deep', 0x0e4664, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
+    F['wave-light'] = sk.fin('water-wave-light', 0x3fb6e2, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
+    F['foam'] = sk.fin('water-foam', 0xdff6ff, sk.DETAIL_NONE, smooth=.2, dirt=0.0)
+    F['ice'] = sk.fin('water-ice', 0x9fd8ec, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
+    F['ice-deep'] = sk.fin('water-ice-deep', 0x5aa9cc, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
     F['ice-glow'] = sk.fin('water-ice-glow', 0x7fe6ff, sk.DETAIL_GLOW, glow=1.6)
-    F['frost'] = sk.fin('water-frost', 0xd8f2fa, sk.DETAIL_PLASTER, smooth=.5, dirt=0.0)
+    F['frost'] = sk.fin('water-frost', 0xd8f2fa, sk.DETAIL_PLASTER, smooth=.25, dirt=0.0)
     F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
     F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
     F['lead'] = sk.fin('water-lead', 0x1c2224, sk.DETAIL_IRON, smooth=.4, metal=.6, dirt=.6)
@@ -669,15 +685,21 @@ def water_hall(T):
         q = qmul(sk.quat_axis(0, 1, 0, a), sk.quat_axis(1, 0, 0, math.pi / 2))
         hall.extend(t.transformed(sk.affine(q, (x, FLOOR + .3, z))))
     for s in WATER_SKYLIGHTS:
+        if s > -3:
+            continue
         for k in range((7, 4, 2)[T.i]):
             r = .2 + .35 * H(int(s), k, 3)
-            rock(hall, (S(int(s), k, 1) * 1.6, FLOOR + r * .3, s + S(int(s), k, 2) * 1.4), r, F['stone'], T, 900 + int(s) * 7 + k, squash=.6)
+            x = (2.6 + 1.6 * H(int(s), k, 1)) * (1 if k % 2 else -1)
+            rock(hall, (x, FLOOR + r * .3, s + S(int(s), k, 2) * 1.4), r, F['stone'], T, 900 + int(s) * 7 + k, squash=.6)
     return hall, vault, far
 
 
 def wave_env(u):
-    """A half's height along its length (0 at both ends, full over most of it)."""
-    return max(0.0, math.sin(math.pi * min(1.0, max(0.0, u * 1.06 - .03)))) ** .45
+    """A half's height along its length: near full at the parting end (u 0, where the two halves meet as one wall), tapering
+    into the water at the outer end."""
+    inner = .82 + .18 * min(1.0, u / .15)
+    outer = max(0.0, math.sin(math.pi / 2 * min(1.0, (1.0 - u) / .32))) ** .6
+    return inner * outer
 
 
 def water_half(T, frozen):
@@ -720,7 +742,7 @@ def water_half(T, frozen):
             vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(1, -.6, 0))
         g.extend(vein)
     else:
-        pick = lambda nn, cc: F['foam'] if cc[1] > 4.35 else (F['wave'] if nn[0] > -.3 else F['wave-deep'])
+        pick = lambda nn, cc: F['foam'] if cc[1] > 4.4 else (F['wave-light'] if cc[1] > 2.9 or (nn[0] > .3 and cc[1] > 2.0) else (F['wave'] if cc[1] > 1.2 else F['wave-deep']))
         grid(g, P, F['wave'], inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
     return g
 
@@ -778,13 +800,13 @@ def spire_at(i, y=0.0):
 
 def storm_finishes():
     F = {}
-    F['slate'] = sk.fin('storm-slate', 0x3a4048, sk.DETAIL_FLAG, smooth=.35, dirt=.8, moss=.2, wear=.35)
-    F['slate-top'] = sk.fin('storm-slate-top', 0x4a515a, sk.DETAIL_FLAG, smooth=.55, dirt=.6, wear=.2)
+    F['slate'] = sk.fin('storm-slate', 0x2c3238, sk.DETAIL_FLAG, smooth=.35, dirt=.8, moss=.2, wear=.35)
+    F['slate-top'] = sk.fin('storm-slate-top', 0x363d46, sk.DETAIL_FLAG, smooth=.55, dirt=.6, wear=.2)
     F['rock'] = sk.fin('storm-rock', 0x2c3138, sk.DETAIL_CARVED, smooth=.2, dirt=1.0, moss=.3)
     F['obelisk'] = sk.fin('storm-obelisk', 0x2e3036, sk.DETAIL_CARVED, smooth=.3, dirt=.8, wear=.5)
     F['copper'] = sk.fin('storm-copper', 0x4f8a78, sk.DETAIL_BRASS, smooth=.5, metal=.7, dirt=.6, wear=.6)
     F['iron'] = sk.fin('storm-iron', 0x2a2c30, sk.DETAIL_IRON, smooth=.55, metal=.85, dirt=.5, wear=.4)
-    F['glass'] = sk.fin('storm-fulgurite', 0x18221f, sk.DETAIL_NONE, smooth=.92, dirt=.2)
+    F['glass'] = sk.fin('storm-fulgurite', 0x0f1614, sk.DETAIL_NONE, smooth=.35, dirt=.2)
     F['scorch'] = sk.fin('storm-scorch', 0x1a1b1f, sk.DETAIL_FLAG, smooth=.3, dirt=.8)
     F['cloud'] = sk.fin('storm-cloud', 0x5a6478, sk.DETAIL_NONE, smooth=0.0, dirt=0.0)
     F['peak'] = sk.fin('storm-peak', 0x3a4250, sk.DETAIL_CARVED, smooth=.1, dirt=.6)
@@ -938,8 +960,8 @@ DARK_RING, DARK_GATE_Z, DARK_MOON_R = 11.5, -14.0, 5.4
 
 def dark_finishes():
     F = {}
-    F['obsidian'] = sk.fin('dark-obsidian', 0x0e0c14, sk.DETAIL_NONE, smooth=.92, dirt=.15, wear=.5)
-    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x1c1828, sk.DETAIL_NONE, smooth=.8, dirt=.3)
+    F['obsidian'] = sk.fin('dark-obsidian', 0x0e0c14, sk.DETAIL_NONE, smooth=.35, dirt=.15, wear=.5)
+    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x1c1828, sk.DETAIL_NONE, smooth=.3, dirt=.3)
     F['ash'] = sk.fin('dark-ash', 0x5d5866, sk.DETAIL_PLASTER, smooth=.05, dirt=.4)
     F['ash-dark'] = sk.fin('dark-ash-dark', 0x3a3642, sk.DETAIL_PLASTER, smooth=.05, dirt=.5)
     F['basalt'] = sk.fin('dark-basalt', 0x1f1c26, sk.DETAIL_CARVED, smooth=.35, dirt=.7, wear=.55)

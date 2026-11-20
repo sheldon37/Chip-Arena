@@ -61,11 +61,12 @@ namespace ChipArena.UnityConversion
                 // streaks on their camera plane, within budget, at every 1/30 s
                 foreach(bool reduced in new[]{false,true})foreach(bool low in new[]{false,true})
                 {
-                    s.Context=new NativeIntroContext{Reduced=reduced,Low=low,Quality=low?.6f:1,Name="Pilot"};var fx=new Fx();int peak=0;
+                    s.Context=new NativeIntroContext{Reduced=reduced,Low=low,Quality=low?.6f:1,Name="Pilot"};var fx=new Fx();int peak=0;float peakAt=0;
                     for(float age=0;age<=s.IntroTotal;age+=1/30f)
                     {
-                        float t=s.Clock(age);s.Camera(age,out fx.View);fx.Calls=0;s.Effects(t,fx,s.Context.Quality);peak=Math.Max(peak,fx.Calls);
+                        float t=s.Clock(age);s.Camera(age,out fx.View);fx.Calls=0;s.Effects(t,fx,s.Context.Quality);if(fx.Calls>peak){peak=fx.Calls;peakAt=t;}
                     }
+                    Console.WriteLine("  "+s.Style+(reduced?" reduced":"")+(low?" low":"")+": peak at t "+peakAt.ToString("0.00",CultureInfo.InvariantCulture));
                     Check(fx.Worst<.035f,s.Style+" long streaks off their head's plane by "+fx.Worst.ToString("0.000",CultureInfo.InvariantCulture));
                     Check(peak<=(low?300:600),s.Style+" FX calls at peak "+peak+(low?" (low)":""));
                     Console.WriteLine("  "+s.Style+(reduced?" reduced":"")+(low?" low":"")+": peak "+peak+" FX calls, "+fx.Long+" long streaks");
