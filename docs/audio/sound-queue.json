@@ -357,7 +357,7 @@
       "maxSeconds": 18.7
     },
     {
-      "id": "intros-v2-2026-11-20-v1b",
+      "id": "intros-v2-2026-11-20-v1d",
       "approved": true,
       "manifest": "docs/audio/sound-requests-intros.json",
       "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
@@ -374,11 +374,9 @@
         "intro2.architect.form",
         "intro2.architect.blueprint",
         "intro2.architect.gather",
-        "intro2.architect.snap",
         "intro2.architect.inhale",
         "intro2.architect.lock",
         "intro2.architect.forge",
-        "intro2.architect.settle",
         "intro2.cloudbreak.boom",
         "intro2.cloudbreak.fall",
         "intro2.cloudbreak.ignite",
@@ -409,8 +407,8 @@
         1,
         2
       ],
-      "maxRequests": 84,
-      "maxSeconds": 133.8
+      "maxRequests": 80,
+      "maxSeconds": 128.8
     },
     {
       "id": "intros-v2-2026-11-20-v1c",

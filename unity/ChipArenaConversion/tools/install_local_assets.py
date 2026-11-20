@@ -42,6 +42,7 @@ import private_addons
 
 ROOT = Path(__file__).resolve().parents[1]
 BANK_SOURCE = ROOT / 'Assets/ChipArena/Core/NativeSoundBank.cs'
+INTRO_SOURCE = ROOT / 'Assets/ChipArena/Core/NativeIntroSoundKeys.cs'  # intros v2's generated keys (NativeSoundKeys.Find reads them too)
 FIELDS = {'clips', 'gain', 'rate', 'jitter', 'priority', 'space', 'maxLength', 'cooldown', 'note'}
 TOP_FIELDS = {'schema', 'events', 'generated', 'note'}
 SPACES = {'P': '3d', 'F': '2d', 'O': 'loop'}
@@ -69,6 +70,11 @@ def contract(source=BANK_SOURCE):
     """The key contract (key -> (space, cap)), schema, clip limit and byte budget from NativeSoundBank.cs."""
     text = source.read_text(encoding='utf-8')
     keys = {m[1]: (SPACES[m[2]], float(m[3])) for m in re.finditer(r'K\("([a-z0-9.-]+)",([PFO]),([0-9.]+)f,[HNL]\)', text)}
+    # Intros v2 keep their generated keys in their own contract file (flat sounds, one cap each), which the game's
+    # NativeSoundKeys.Find also reads; without it the importer refused every intro2.* take (2026-11-20).
+    if INTRO_SOURCE.is_file() and source == BANK_SOURCE:
+        for m in re.finditer(r'K\("(intro2\.[a-z0-9.-]+)",([0-9.]+)f(?:,[^)]*)?\)', INTRO_SOURCE.read_text(encoding='utf-8')):
+            keys.setdefault(m[1], (SPACES['F'], float(m[2])))
     schema = int(re.search(r'Schema=(\d+)', text)[1])
     clips = int(re.search(r'MaxClips=(\d+)', text)[1])
     budget = int(re.search(r'BudgetBytes=(\d+)', text)[1])
