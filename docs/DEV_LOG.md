@@ -45,6 +45,104 @@ normally a constraint)".
 - **Next:** the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-dev/clips/`), merges after the framework,
   packs the bank, and compiles the intros' sound manifest (`tools/intros/compile_sound_requests.py`) for a builder run.
 
+## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
+
+Owner: "I need to redo essentially all of them (except top dog and Bombardier ones ...) ... "archive" them, so theyre no longer visible in the customization screen ... great animations and effects, non-block based background and designs ... great camera work". I0, the framework for the five intro authors (I1 dev, I2 generic, I3 melee, I4 ranged, I5 elemental).
+
+**Branch and status:** `claude/intro-framework` from shared `8d56f015`. Pushed, not merged.
+
+**The contract:** `docs/INTROS-V2.md`, pushed first (`927620bb`, 02:36).
+- **Registry:** one line per intro in `Core/NativeIntroCatalog.cs`, on its own slot. The kinds are Weapon (`intro2-weapon-<spec>`), Generic (`intro2-<slug>`), Default (`intro2-default`) and Dev (`dev-<slug>`, live DEV access only).
+- **Interface:** `INativeIntroV2` / `NativeIntroV2Script`: context, set, card, lens, music, cues. Optional: `INativeIntroBody` (a model clip), `INativeIntroHands` (the wrists as drawn, and a gun's muzzle) and `INativeIntroBow`.
+
+**What changed:**
+- **The archive:** every older intro except the Top Dog's and the Bombadier's (`NativeIntroCatalog.Archived`).
+  - Hidden from the Locker (`LockerIntrosV2`, after the pinned list line).
+  - A saved, profile or replicated pick of one migrates to no pick (`Migrate`, `PickableIntro`, `Style`), so it plays the weapon's intro.
+  - The code and data stay, and they still stage when replicated by an older host.
+  - The weapon signature moves to a weapon's v2 intro once that is registered; until then the old one plays.
+  - The archived DEV classes (Emperor, Ansatsuken, L33T, Cyber Lord) take the new default once it is registered. The DEV Greatsword and DEV Katana take their base weapon's.
+  - The Siren keeps its boss entrance.
+- **The camera rig** (`Core/NativeIntroCamera.cs`):
+  - shots: hold, dolly, crane, Catmull-Rom spline, orbit, and the hero framing;
+  - follow with lead, roll, eases, and cut/blend/whip transitions (C2 at both ends);
+  - focus pull, handheld (dropped in Reduced effects), letterbox and black keys;
+  - speed ramps (`NativeIntroTime`) that repay the time, so later beats keep their age.
+- **The name card** (`Runtime/NativeIntroCardScreen.cs`):
+  - the live display name (the seat's name, the account profile's);
+  - five reveal styles: Rise, Slam, Type, Assemble, Wipe;
+  - the kicker (the weapon) and the line (the intro text), the lens bars, black and the focus vignette;
+  - a bespoke-effect hook for the dev intro (`NativeIntroCardEffects`, one line).
+- **Sets** (`Runtime/NativeIntroV2Presentation.cs`):
+  - local banks `ChipArenaIntro*.bytes`, drawn with the stage art's material, with instanced batches for small pieces;
+  - the dark lit void as the fallback (`Core/NativeIntroVoid.cs`), never the block arena.
+- **Sound** (`Runtime/NativeIntroAudio.cs`):
+  - a cue timeline per intro on the presentation clock: the generated key, else an existing bank key, else a built-in clip;
+  - each cue heard once (the entrance cue clock);
+  - the intro's bed through the sting path; while the bed plays, the intro is drawn on it, except under a fixed-step capture;
+  - the `intro2.*` key contract (`Core/NativeIntroSoundKeys.cs`) and `tools/intros/compile_sound_requests.py`; the guide is `docs/audio/intros/README.md`.
+- **Generation:** the builder queue is live on this PC (its DPAPI setup, receipts, and a status of `complete` at 06:25 UTC). It generates only inside a builder run. No author rows existed when the framework shipped, so no job is queued.
+- **The showcase:** `dev-intro2-showcase` (DEV only, throwaway): a crane, a speed ramp, an orbit, the hero frame, the Rise card and cues. Its set comes from a small procedural bank, `ChipArenaIntroShowcase` (22,610 bytes, original, built by `F:/Chip Arena Development/scratch/intro-framework/tools/showcase-bank`). Without the bank it draws the void.
+- **Author requests answered** in the notes folder (`intro-framework-requests.md`):
+  - done: model clips, hands with a gun's muzzle, the bow drawn as the match draws it, batches;
+  - the far plane stays 200 m (domes inside 190 m); the glow takes the fog;
+  - the dev intro may run to 16 s, with 180/90 pieces and 1000/450 effect calls (the coordinator's call for the owner's song);
+  - not tonight: upper-body layers, melee grip and line virtuals, the saya on other scripts, clip-posed ghosts.
+- **The local tools** (git-ignored, not committed):
+  - BoZo options `introcap=<id>` and `introq=high|low` (`F:/Chip Arena Development/scratch/intro-framework/tools/toolpatch.py`, idempotent; the tool is at Version 3137 or later);
+  - `editor_relaunch.sh` (owner-approved for overnight only; never kills anything). It wasn't needed: the Editor stayed up.
+
+**Systems touched:**
+- Core: `NativeIntroRules`, `NativeEntranceDirector` (`Clock` and `Camera` made virtual; `Script` reads the registry), `NativeLocker` (v2 text), `NativeSoundBank` (`Find` reads the intro keys), new `NativeIntro*`.
+- Runtime:
+  - `NativeIntros` (context, set, hands, body, bed clock, the v2 bow);
+  - `NativeProfileUI` (`PickableIntro`, `Label`);
+  - `NativeLockerUI` (one line plus the signature);
+  - `NativeMatchOverlays`, `NativeAudio` and `NativeVisualBodyPresentation` (one line each);
+  - `NativeBowPresentation` (`BowIntroDraw`, shared with Arrowfall);
+  - new `NativeIntro*`.
+- Tests: new `IntroV2Checks`, which checks every registered intro automatically (`--intros-v2`). The intro checks in IntroPresentation, Sheldon, Glaive, VisualRig, CyberLord and NativeSystems now follow the registry and the archive.
+
+**Checks:**
+- `--intros-v2`: 668 checks pass.
+- The full CoreTests the relgen5 way (a throwaway LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the released 14): exit 0 with 1,080 PASS lines at `42e2687e`, the last code commit (after it, docs only). Earlier runs: exit 0 at `ef62729a`, `c51a1394` and `8e777266`. At `a934e23d` the voxel ratchet stopped the run (the first hands read the rig); fixed in `c51a1394`.
+- `check_unity_compile.py`: all four assemblies pass.
+- `git diff --check`: clean.
+- pins.py: one flag, `NativeCosmeticRules.Intros` in `NativeProfileUI`. It is a false positive: LockerChecks counts that string only in `NativeLockerUI`.
+
+**Editor holds** (lock taken and released each time; the Editor back on `9319026b` and compiled; stage and motion banks unchanged each time):
+- Hold 1 (03:06–03:18): the showcase at High (1/30 s) and Low (0.5 s), and the Locker.
+- Hold 2 (03:22–03:25): the Locker with DEV access again. Hold 1's shot had opened without `dmhold` and missed the panel.
+- Hold 3 (the showcase with its set bank): queued behind other agents' holds from 03:26, then stopped at 04:06 without taking the lock. Its whole process tree was stopped, and nothing in the Editor checkout was touched. The bank path is shown working in the Editor by I5's own hold (its set bank drawn, ~04:00) and is driven by the managed checks' fake bank. The showcase bank (`F:/Chip Arena Development/scratch/intro-framework/ChipArenaIntroShowcase.bytes`) was not filmed.
+
+**Clips** (`F:/Chip Arena Development/scratch/intro-framework/clips/`):
+- `showcase-high-realtime.mp4` (8 s, 492 KB);
+- `showcase-low-strip.jpg`;
+- `locker-entrance-guest.png` (the archive applied: only the weapon signature);
+- `locker-entrance-dev.png` (Last Warning, Order Up!, Pipeline Proof);
+
+**Not run:** a two-client match with a v2 pick; a Windows player; the bed clock against a real song on a guest.
+
+**Animation impact:**
+- No hit timing, hitbox, damage, cooldown or movement change.
+- The match reads each intro's registered `Duration` and `NameAt`, as for every entrance. A v2 intro's length is the intro phase's length.
+- Networking: the replicated style string only. New ids are new strings; older clients stage the pilot's signature for an id they don't know.
+
+**Voxel dependency:**
+- None added (the voxel ratchet passes).
+- The hands are the drawn model's joints (VisualJointFrame), else the keyed anchors. A gun's muzzle reads the frame the model's weapon is drawn on after the hand fit (`introHand`, as the match's muzzle flash does).
+
+**For Astra:**
+- The account service stores unknown native intro ids as `neon-drop` (`src/relay/accounts.ts` `NATIVE_INTROS`). The client keeps a v2 pick locally (`NativePendingEffect`), but it doesn't follow the player to another PC until the service learns the `intro2-*` ids and `dev-architect` (developer only, like `sheldon-intro`).
+- `shared/intros.ts` needs nothing for the native client.
+
+**Risks:**
+- The match intro phase gets longer for v2 intros (6–16 s against 4.8 s).
+- A pick of an archived DEV intro (Emperor, Siren, …) now plays the weapon's intro even for the owner.
+- The DEV grants panel still offers the archived dev intros as grants (harmless: they aren't listed).
+
+**Next:** the authors register their intros; the integrator compiles the sound rows and queues the approved job before a builder push.
+
 ## 2026-11-20 — Claude: release 2 of the expedition overhaul: the caches on A2, the LEGENDARY beam, the Meridian look (integrator)
 Owner: "Release them" (the caches) and "Looks good" (the Meridian look at night). Shared `c181c819`, the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`, 376.6 MiB).
 - **Merged:** `claude/cache-openings` (`eba02d3a`: the presentation on Astra's A2, its adapter reading `tier`, the locker standing on A2's block with the block's box undrawn, the LEGENDARY beam laid on its head's camera plane), `claude/meridian-bleed` (`8befbda3`: D1, D2 and D3), `claude/cache-locker-column` (`c181c819`: the beacon's tube stands down where the steel locker stands, board 3).
