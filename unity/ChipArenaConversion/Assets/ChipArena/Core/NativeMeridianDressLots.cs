@@ -21,6 +21,12 @@ namespace ChipArena.UnityConversion
             foreach(float u in new[]{-.42f,0,.42f})foreach(float v in new[]{.12f,.5f,.88f})if(!c(at+along*(u*w)+new V3(0,v*h,0),n))return false;
             return true;
         }
+        // A bay wholly under the bleed's skins is theirs: no module of the street dress, only the lot's own plain wall, which the skins
+        // hang on. Ward Zero's warp growth has no wall of its own and its quarantine sheeting hangs off one; the Ironworks' plates leave
+        // seams. An empty bay was a hole through the lot to the next street, the growth floating in it (owner 2026-11-20: "Weird
+        // building bug found near ward zero"; BleedSkinChecks).
+        private static void BleedBay(Builder b,int bi,V3 fo,V3 uh,float ua,float w,float fy,float fh,int wallFin,float floor)=>
+            b.Quad(fo+uh*ua+new V3(0,fy-fo.y,0),uh*w,new V3(0,fh,0),wallFin,0,bi,floor);
         // The bleed's lamps stand here (D3), or a cache keeps the place clear.
         private static bool LampLeft(Builder b,V3 p)=>LampsReplaced?.Invoke(p)==true||KeptOut(b,p,1.2f,3f);
         private static bool KeptOut(Builder b,V3 p,float r,float h)
@@ -94,7 +100,8 @@ namespace ChipArena.UnityConversion
                                 case 'm':key=Unit(Mix(baySeed,3))<.15f?"g.shutter":"g.shop."+MarketTrades[Mix(lotSeed,(uint)(i/3))%(uint)MarketTrades.Length];break;
                                 default:key=door==1?V("g.door."+wallVar,3,baySeed):V("g.window."+wallVar,3,baySeed);break;
                             }
-                            if(!BayCovered(at,uh,N,w,fh))b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true,false,false,0);
+                            if(BayCovered(at,uh,N,w,fh))BleedBay(b,bi,fo,uh,ua,w,fy,fh,wallFin,floorFront);
+                            else b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true,false,false,0);
                             continue;
                         }
                         if(blind)key=Unit(Mix(baySeed,(uint)k))<.45f?V("u.blind",2,Mix(baySeed,(uint)k)):"u.plain";
@@ -106,7 +113,8 @@ namespace ChipArena.UnityConversion
                             default:key=oriel&&fy-.8f>=floorFront+Hug&&k<=2?"u.oriel":V("u.win."+wallVar,3,Mix(baySeed,(uint)k));break;
                         }
                         if(hug&&key!="u.oriel")key+=".h";
-                        if(!BayCovered(at,uh,N,w,fh))b.Add(key,at,uh,N,w/Bay,fh/Storey,bi,f,ua,ub,fy,fy+fh,floorFront,hug,false,false,UpperLayers);
+                        if(BayCovered(at,uh,N,w,fh))BleedBay(b,bi,fo,uh,ua,w,fy,fh,wallFin,floorFront);
+                        else b.Add(key,at,uh,N,w/Bay,fh/Storey,bi,f,ua,ub,fy,fy+fh,floorFront,hug,false,false,UpperLayers);
                     }
                     // the cornice under the roof line (overhead: only where it hangs 3.1 m or more over the floor in front)
                     // (and not where a block stands against the face at the roof line, a landing or a neighbour's roof: the cornice would
