@@ -30,8 +30,66 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroSeveredDawn():base(NativeIntroCatalog.WeaponPrefix+"sword",Total,CardAt,CutAt,0xb6fff0)
         {
+            // ---- the body (bespoke keys, owner 2026-11-20: no match clips) ----
+            // Feet: the left foot a little ahead; the cut steps it forward and out, the stance draws it back under the salute.
+            Start=Stance(.15f,.1f,.1f,-.19f,-.14f,-.45f);
+            Steps=new[]{Step(true,WindAt+.06f,CutAt+.04f,.27f,.4f,.2f,.07f),Step(true,StanceAt-.2f,StanceAt+.15f,.16f,.12f,.1f,.05f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1);k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1);Keys=k;
+            // Still at the light's edge, the sword low at the right side, the head a little bowed.
+            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.04f).J(B,.04f).J(C,.02f,-.08f,0).J(Hd,.16f,.04f,0).J(LL,-.08f,0,.1f).J(LK,.12f).J(RL,.08f,0,-.12f).J(RK,.14f)
+             .J(RA,-.35f,0,-.25f).J(RE,-.5f).J(LA,-.1f,0,.16f).J(LE,-.3f);
+            k.Key(GripAt-.1f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(B,.05f).J(C,.02f,-.1f,0).J(Hd,.12f,.02f,0).J(LL,-.08f,0,.1f).J(LK,.14f).J(RL,.08f,0,-.12f).J(RK,.16f)
+             .J(RA,-.35f,0,-.25f).J(RE,-.5f).J(LA,-.1f,0,.16f).J(LE,-.3f);
+            // The grip tightens: the shoulders set, the weight comes onto the balls of the feet.
+            k.Key(GripAt+.2f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.08f).J(B,.08f).J(C,.04f,-.12f,0).J(Hd,.1f,0,0).J(LL,-.12f,0,.1f).J(LK,.2f).J(RL,.1f,0,-.12f).J(RK,.22f)
+             .J(RA,-.4f,0,-.28f).J(RE,-.6f).J(LA,-.15f,0,.2f).J(LE,-.4f);
+            // The light reaches the visor: the chin comes up into it.
+            k.Key(VisorAt,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.09f).J(B,.06f).J(C,-.02f,-.12f,0).J(Hd,-.12f,0,0).J(LL,-.12f,0,.1f).J(LK,.22f).J(RL,.1f,0,-.12f).J(RK,.24f)
+             .J(RA,-.4f,0,-.28f).J(RE,-.6f).J(LA,-.15f,0,.2f).J(LE,-.4f);
+            // The wind: coiled to the right, the blade chambered over the right shoulder, the weight on the back leg.
+            k.Key(WindAt+.1f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.14f).J(B,-.02f).J(Sp,0,-.15f,0).J(C,-.05f,-.42f,0).J(Hd,-.08f,.3f,0).J(LL,-.2f,0,.1f).J(LK,.3f).J(RL,-.05f,0,-.12f).J(RK,.45f)
+             .J(RA,-2.0f,0,-.6f).J(RE,-1.4f).J(LA,-.6f,0,.5f).J(LE,-.6f);
+            // The cut: uncoiling forward and to the left onto the stepping foot, the blade through the light and down past the left hip.
+            k.Key(CutAt,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.2f).J(B,.22f).J(Sp,0,.15f,0).J(C,.08f,.35f,0).J(Hd,.02f,-.2f,0).J(LL,-.55f,0,.14f).J(LK,.75f).J(RL,.2f,0,-.14f).J(RK,.3f)
+             .J(RA,-1.0f,0,-.2f).J(RE,-.3f).J(LA,-.4f,0,.9f).J(LE,-.5f).ImpactKey();
+            k.Key(CutAt+.3f,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.22f).J(B,.25f).J(Sp,0,.18f,0).J(C,.1f,.42f,0).J(Hd,.04f,-.24f,0).J(LL,-.58f,0,.14f).J(LK,.8f).J(RL,.22f,0,-.14f).J(RK,.32f)
+             .J(RA,-.8f,0,-.1f).J(RE,-.25f).J(LA,-.35f,0,.95f).J(LE,-.45f);
+            // Held there while the light falls, the head turning up to it; then back to a middle guard.
+            k.Key(FollowEnd,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.2f).J(B,.2f).J(Sp,0,.15f,0).J(C,.06f,.38f,0).J(Hd,-.15f,-.3f,0).J(LL,-.55f,0,.14f).J(LK,.76f).J(RL,.2f,0,-.14f).J(RK,.3f)
+             .J(RA,-.8f,0,-.1f).J(RE,-.25f).J(LA,-.35f,0,.9f).J(LE,-.45f);
+            k.Key(RibbonAt-.25f,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.12f).J(B,.08f).J(C,.02f,.15f,0).J(Hd,.0f,.05f,0).J(LL,-.4f,0,.14f).J(LK,.5f).J(RL,.15f,0,-.14f).J(RK,.25f)
+             .J(RA,-1.1f,0,-.25f).J(RE,-1.0f).J(LA,-.3f,0,.4f).J(LE,-.6f);
+            // The backhand: chambered left, then drawn slowly across the front to the right, the hips leading.
+            k.Key(RibbonAt,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.14f).J(B,.08f).J(Sp,0,.12f,0).J(C,.02f,.38f,0).J(Hd,0,-.1f,0).J(LL,-.42f,0,.14f).J(LK,.55f).J(RL,.15f,0,-.14f).J(RK,.28f)
+             .J(RA,-1.2f,0,.3f).J(RE,-1.3f).J(LA,-.3f,0,.4f).J(LE,-.6f);
+            k.Key(RibbonHit,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.16f).J(B,.1f).J(Sp,0,-.05f,0).J(C,0,-.15f,0).J(Hd,-.04f,.1f,0).J(LL,-.4f,0,.14f).J(LK,.5f).J(RL,.12f,0,-.14f).J(RK,.35f)
+             .J(RA,-1.45f,0,-.4f).J(RE,-.4f).J(LA,-.4f,0,.6f).J(LE,-.5f).PassKey();
+            k.Key(RibbonHit+.3f,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.15f).J(B,.08f).J(Sp,0,-.12f,0).J(C,0,-.35f,0).J(Hd,-.04f,.2f,0).J(LL,-.36f,0,.14f).J(LK,.45f).J(RL,.1f,0,-.14f).J(RK,.38f)
+             .J(RA,-1.3f,0,-.9f).J(RE,-.3f).J(LA,-.45f,0,.7f).J(LE,-.5f);
+            // The stance under the name: tall, the blade raised before the face in salute, the left arm loose.
+            k.Key(StanceAt+.25f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.03f).J(B,-.02f).J(C,-.06f,-.08f,0).J(Hd,-.06f,0,0).J(LL,-.1f,0,.1f).J(LK,.1f).J(RL,.08f,0,-.12f).J(RK,.12f)
+             .J(RA,-.9f,0,-.2f).J(RE,-1.6f).J(LA,-.08f,0,.2f).J(LE,-.35f).PassKey();
+            k.Key(StanceAt+.6f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.03f).J(B,-.03f).J(C,-.08f,-.06f,0).J(Hd,-.08f,0,0).J(LL,-.1f,0,.1f).J(LK,.1f).J(RL,.08f,0,-.12f).J(RK,.12f)
+             .J(RA,-.9f,0,-.2f).J(RE,-1.65f).J(LA,-.08f,0,.2f).J(LE,-.35f);
+            k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.03f).J(B,-.03f).J(C,-.08f,-.06f,0).J(Hd,-.08f,0,0).J(LL,-.1f,0,.1f).J(LK,.1f).J(RL,.08f,0,-.12f).J(RK,.12f)
+             .J(RA,-.9f,0,-.2f).J(RE,-1.65f).J(LA,-.08f,0,.2f).J(LE,-.35f);Keys=k;
+            // ---- the sword's way (the right hand's grip and the blade, in the pilot's frame) ----
+            Sword.Key(0,V(-.27f,.8f,.2f),V(-.15f,-.45f,.88f))
+                 .Key(GripAt-.1f,V(-.27f,.8f,.21f),V(-.15f,-.44f,.88f))
+                 .Key(GripAt+.2f,V(-.26f,.83f,.25f),V(-.12f,-.3f,.95f))
+                 .Key(VisorAt,V(-.26f,.84f,.25f),V(-.12f,-.28f,.95f))
+                 .Key(WindAt+.1f,V(-.3f,1.38f,-.02f),V(.25f,.55f,-.8f))
+                 .Key(CutAt-.05f,V(-.12f,1.28f,.42f),V(.25f,.3f,.92f)).Pass()
+                 .Key(CutAt,V(.12f,.95f,.42f),V(.55f,-.5f,.67f)).Pass()
+                 .Key(CutAt+.12f,V(.3f,.76f,.22f),V(.5f,-.7f,-.5f)).Impact()
+                 .Key(FollowEnd,V(.29f,.78f,.22f),V(.5f,-.68f,-.53f))
+                 .Key(RibbonAt-.25f,V(.05f,1.04f,.38f),V(.3f,.25f,.92f))
+                 .Key(RibbonAt,V(.26f,1.12f,.28f),V(.88f,.15f,.45f))
+                 .Key(RibbonHit,V(-.04f,1.14f,.5f),V(-.05f,.1f,1)).Pass()
+                 .Key(RibbonHit+.3f,V(-.36f,1.1f,.24f),V(-.9f,.12f,-.4f))
+                 .Key(StanceAt+.25f,V(-.1f,1.18f,.3f),V(.05f,.98f,-.12f)).Pass()
+                 .Key(StanceAt+.6f,V(-.08f,1.2f,.3f),V(.05f,.98f,-.15f))
+                 .Key(Total,V(-.08f,1.2f,.3f),V(.05f,.98f,-.15f));
             // The camera: down the shaft from the vault; close on the hand at the grip; the visor as the light reaches it; the cut seen wide
             // from the side (begun and ended, nothing between), slowed; round the severed light; the backhand from the front; the hero.
             Rig.Crane(0,V(.5f,7.6f,3.2f),V(.95f,1.5f,3.65f),0,V(0,4.2f,.6f),V(0,1.15f,.2f),46,40).Ease(NativeIntroEase.InOut)
@@ -46,22 +104,9 @@ namespace ChipArena.UnityConversion
         }
         public override string SetBank=>Bank;
 
-        // ---- the body: the sword set's clips on the model, the game's captures of them on the keyed rig ----
-        private const int Idle=0,CutA=3,CutC=5;
-        private static void Moves(float t,out int capture,out string clip,out float time)
-        {
-            if(t<WindAt){capture=Idle;clip="Armed-Idle";time=t;return;}
-            if(t<FollowEnd){capture=CutA;clip="Sword-Attack-R1";time=t<CutAt?CutHit*NativeEntranceMath.Clamp01((t-WindAt)/(CutAt-WindAt)):CutHit+(CutLength-CutHit)*NativeEntranceMath.Clamp01((t-CutAt)/(FollowEnd-CutAt));return;}
-            if(t<RibbonAt){capture=Idle;clip="Armed-Idle";time=.5f+(t-FollowEnd);return;}
-            if(t<StanceAt){capture=CutC;clip="Sword-Attack-R6";time=RibbonLength*NativeEntranceMath.Clamp01((t-RibbonAt)/(StanceAt-RibbonAt));return;}
-            capture=Idle;clip="Armed-Idle";time=1.2f+(t-StanceAt);
-        }
-        public override bool Clip(float t,out string clip,out float time){Moves(t,out _,out clip,out time);return true;}
-        public override float Fade(float t)=>t>=WindAt-.02f&&t<WindAt+.1f?.05f:t>=FollowEnd-.02f&&t<FollowEnd+.4f?.35f:t>=StanceAt-.02f&&t<StanceAt+.45f?.4f:.12f;
-        public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
-        {
-            base.Pose(t,pose,out root,out rotation);Moves(t,out int capture,out _,out float time);Captured(0,capture,time,pose);
-        }
+        // ---- the body: keyed (no match clips), the right arm solved onto the sword's way ----
+        private readonly NativeIntroWield Sword=new NativeIntroWield();
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)=>Wield(Sword,t,pose,root,rotation,false);
 
         /// <summary>The visor shot frames the visor as drawn: the model's crouch carries its head lower than the capture's keyed head the shot
         /// is authored on (the first captures framed the helmet's crown), so the shot moves by the gap between the two.</summary>

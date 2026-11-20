@@ -52,8 +52,65 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroHoldTheLine():base(NativeIntroCatalog.WeaponPrefix+"shield",Total,CardAt,Hits[0],0x8cceff)
         {
+            // ---- the body (bespoke keys, owner 2026-11-20: no match clips) ----
+            // Feet: the left foot steps into the gap with the plant; the bash drives in with another; the right foot follows into the stance.
+            Start=Stance(.15f,.12f,.1f,-.2f,-.16f,-.45f);
+            Steps=new[]{Step(true,PlantAt-.28f,PlantAt+.02f,.2f,.45f,.15f,.09f),Step(true,BashAt+.02f,BashAt+.24f,.22f,.78f,.15f,.08f),Step(false,StanceAt-.25f,StanceAt+.1f,-.18f,.1f,-.4f,.07f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1);k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1);Keys=k;
+            // The shield carried at the right side; it gathers itself.
+            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(B,.04f).J(C,0,.08f,0).J(Hd,.04f,0,0).J(LL,-.1f,0,.12f).J(LK,.15f).J(RL,.1f,0,-.12f).J(RK,.15f)
+             .J(RA,-.2f,0,-.3f).J(RE,-.6f).J(LA,-.1f,0,.16f).J(LE,-.3f);
+            k.Key(PlantAt-.3f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.1f).J(B,.12f).J(C,0,.18f,0).J(Hd,.02f,0,0).J(LL,-.3f,0,.12f).J(LK,.4f).J(RL,.12f,0,-.12f).J(RK,.3f)
+             .J(RA,-.7f,0,-.35f).J(RE,-1.1f).J(LA,-.3f,0,.3f).J(LE,-.6f);
+            // The plant: down into the gap behind the shield, set low in front, braced on the stepping leg.
+            k.Key(PlantAt,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.33f).J(B,.3f).J(Sp,.1f).J(C,.1f,.08f,0).J(Hd,.04f,0,0).J(LL,-.85f,0,.14f).J(LK,1.25f).J(RL,.28f,0,-.14f).J(RK,.72f)
+             .J(RA,-1.0f,0,-.3f).J(RE,-1.2f).J(LA,-.7f,0,.45f).J(LE,-1.0f).ImpactKey();
+            k.Key(PlantAt+.45f,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.3f).J(B,.26f).J(Sp,.08f).J(C,.08f,.08f,0).J(Hd,-.04f,0,0).J(LL,-.82f,0,.14f).J(LK,1.2f).J(RL,.26f,0,-.14f).J(RK,.7f)
+             .J(RA,-1.0f,0,-.3f).J(RE,-1.2f).J(LA,-.7f,0,.45f).J(LE,-1.0f);
+            // The ridge launches: the head comes up over the rim.
+            k.Key(LaunchAt+.1f,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.28f).J(B,.18f).J(Sp,.04f).J(C,-.04f,.08f,0).J(Hd,-.32f,0,0).J(LL,-.78f,0,.14f).J(LK,1.12f).J(RL,.24f,0,-.14f).J(RK,.66f)
+             .J(RA,-1.0f,0,-.3f).J(RE,-1.2f).J(LA,-.7f,0,.45f).J(LE,-1.0f);
+            // The guard: the shield up over the face, the body tucked behind it, the left hand braced at its back.
+            float[] Guard(float drop,float lean,float head)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.BodyY]=drop;NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Sp,.08f,0,0);
+                NativeEntranceKeys.Set(v,C,.12f,.15f,0);NativeEntranceKeys.Set(v,Hd,head,0,0);NativeEntranceKeys.Set(v,LL,-.72f,0,.14f);NativeEntranceKeys.Set(v,LK,1.05f,0,0);NativeEntranceKeys.Set(v,RL,.22f,0,-.14f);NativeEntranceKeys.Set(v,RK,.72f,0,0);
+                NativeEntranceKeys.Set(v,RA,-1.35f,0,-.45f);NativeEntranceKeys.Set(v,RE,-1.6f,0,0);NativeEntranceKeys.Set(v,LA,-1.0f,0,.6f);NativeEntranceKeys.Set(v,LE,-1.7f,0,0);});
+            k.Key(GuardAt,Guard(-.2f,.2f,.12f)).Root(0,.88f,.06f,Facing).Planted(1);
+            // Each hit rocks it back on its heels behind the shield, the head flinching; it comes forward into the guard again.
+            for(int i=0;i<Hits.Length;i++)
+            {
+                k.Key(Hits[i]-.03f,Guard(-.2f,.2f,.1f)).Root(0,.88f,.06f,Facing).Planted(1);
+                k.Key(Hits[i]+.06f,Guard(-.22f,.06f,.24f)).Root(0,.88f,.06f,Facing).Planted(1).ImpactKey();
+                k.Key(Hits[i]+.28f,Guard(-.2f,.18f,.12f)).Root(0,.88f,.06f,Facing).Planted(1);
+            }
+            // Silence: still behind the shield, peering over the rim.
+            k.Key(SilenceAt+.2f,Guard(-.2f,.16f,-.08f)).Root(0,.88f,.06f,Facing).Planted(1);
+            // The bash: wound back, then driven forward off the back leg, the shield punched out.
+            k.Key(BashAt,stand).Root(0,.88f,.06f,Facing).Planted(1).Drop(-.3f).J(B,.1f).J(C,0,.38f,0).J(Hd,.0f,-.1f,0).J(LL,-.7f,0,.14f).J(LK,1.0f).J(RL,.25f,0,-.14f).J(RK,.85f)
+             .J(RA,-.8f,0,-.6f).J(RE,-1.5f).J(LA,-.6f,0,.6f).J(LE,-1.2f);
+            k.Key(BashAt+.25f,stand).Root(0,.88f,.26f,Facing).Planted(1).Drop(-.22f).J(B,.36f).J(Sp,.08f).J(C,.06f,-.22f,0).J(Hd,.06f,.1f,0).J(LL,-.95f,0,.14f).J(LK,1.05f).J(RL,.38f,0,-.14f).J(RK,.35f)
+             .J(RA,-1.5f,0,-.2f).J(RE,-.6f).J(LA,-.4f,0,.7f).J(LE,-.5f).ImpactKey();
+            k.Key(BashAt+.55f,stand).Root(0,.88f,.26f,Facing).Planted(1).Drop(-.2f).J(B,.3f).J(Sp,.06f).J(C,.05f,-.18f,0).J(Hd,.02f,.08f,0).J(LL,-.9f,0,.14f).J(LK,1.0f).J(RL,.35f,0,-.14f).J(RK,.38f)
+             .J(RA,-1.45f,0,-.2f).J(RE,-.65f).J(LA,-.4f,0,.65f).J(LE,-.5f);
+            // The stance under the name: up, the right foot brought in, the shield on the arm before the body, chin up.
+            k.Key(StanceAt+.1f,stand).Root(0,.88f,.26f,Facing).Planted(1).Drop(-.05f).J(B,0).J(C,-.05f,.1f,0).J(Hd,-.06f,0,0).J(LL,-.12f,0,.12f).J(LK,.14f).J(RL,.08f,0,-.12f).J(RK,.14f)
+             .J(RA,-.65f,0,-.3f).J(RE,-1.25f).J(LA,-.12f,0,.18f).J(LE,-.35f).PassKey();
+            k.Key(Total,stand).Root(0,.88f,.26f,Facing).Planted(1).Drop(-.05f).J(B,-.01f).J(C,-.06f,.1f,0).J(Hd,-.08f,0,0).J(LL,-.12f,0,.12f).J(LK,.14f).J(RL,.08f,0,-.12f).J(RK,.14f)
+             .J(RA,-.65f,0,-.3f).J(RE,-1.25f).J(LA,-.12f,0,.18f).J(LE,-.35f);Keys=k;
+            // ---- the shield's way (the right fist and the way the shield faces, in the pilot's frame) ----
+            Shield.Key(0,V(-.3f,.8f,.1f),V(-.6f,0,.8f))
+                  .Key(PlantAt-.3f,V(-.25f,1.0f,.3f),V(-.2f,.2f,.95f))
+                  .Key(PlantAt,V(-.08f,.66f,.56f),V(0,-.12f,1)).Impact()
+                  .Key(PlantAt+.45f,V(-.08f,.68f,.55f),V(0,-.1f,1))
+                  .Key(LaunchAt+.1f,V(-.08f,.7f,.54f),V(0,0,1))
+                  .Key(GuardAt,V(-.05f,1.18f,.4f),V(0,.08f,1));
+            for(int i=0;i<Hits.Length;i++)
+                Shield.Key(Hits[i]-.03f,V(-.05f,1.18f,.4f),V(0,.08f,1)).Key(Hits[i]+.06f,V(-.05f,1.15f,.28f),V(0,.28f,.96f)).Impact().Key(Hits[i]+.28f,V(-.05f,1.18f,.39f),V(0,.1f,1));
+            Shield.Key(SilenceAt+.2f,V(-.05f,1.1f,.4f),V(0,0,1))
+                  .Key(BashAt,V(-.22f,1.05f,.14f),V(-.3f,0,.95f))
+                  .Key(BashAt+.25f,V(-.03f,1.1f,.62f),V(0,0,1)).Impact()
+                  .Key(BashAt+.55f,V(-.03f,1.08f,.58f),V(0,0,1))
+                  .Key(StanceAt+.1f,V(-.22f,.96f,.38f),V(-.25f,0,.97f))
+                  .Key(Total,V(-.22f,.96f,.38f),V(-.25f,0,.97f));
             // The camera: wide and low from the field; the plant, low and close; over the shoulder through the breach as the ridge launches;
             // low in front with bolts streaking past the lens; from the side; the silence, pushing in; the bash, wide; the hero.
             Rig.Dolly(0,V(-2.4f,.72f,7.5f),V(-1.9f,.82f,6.2f),V(0,1.6f,-1),V(0,1.5f,-1),40,38)
@@ -69,29 +126,9 @@ namespace ChipArena.UnityConversion
         }
         public override string SetBank=>Bank;
 
-        // ---- the body: the shield set's clips (mirrored) on the model, the game's captures on the keyed rig ----
-        private const int Idle=0,BashCap=4,Block=5,BlockHitCap=6;
-        private static void Moves(float t,out int capture,out string clip,out float time)
-        {
-            if(t<PlantAt){capture=Idle;clip="Armed-Shield-Idle~mirror";time=t;return;}
-            if(t<GuardAt){capture=Idle;clip="Armed-Shield-Activate";time=Math.Min(.99f,t-PlantAt);return;}
-            if(t<SilenceAt+.3f)
-            {
-                // Each hit's recoil (the first .34 s of the block's hit, the shove and most of the return), the guard between: the hits come
-                // .35-.4 s apart, so a recoil never runs into the next one's start.
-                for(int i=Hits.Length-1;i>=0;i--){float s=t-(Hits[i]-.04f);if(s>=0&&s<HitWindow){capture=BlockHitCap;clip="Armed-Shield-Block-GetHit1~mirror";time=s;return;}}
-                capture=Block;clip="Armed-Shield-Block~mirror";time=t-GuardAt;return;
-            }
-            if(t<BashAt){capture=Idle;clip="Armed-Shield-Idle~mirror";time=.4f+(t-SilenceAt);return;}
-            if(t<StanceAt){capture=BashCap;clip="Armed-Shield-Attack1~mirror";time=BashLength*NativeEntranceMath.Clamp01((t-BashAt)/(StanceAt-BashAt));return;}
-            capture=Idle;clip="Armed-Shield-Idle~mirror";time=1.0f+(t-StanceAt);
-        }
-        public override bool Clip(float t,out string clip,out float time){Moves(t,out _,out clip,out time);return true;}
-        public override float Fade(float t)=>t>=GuardAt-.02f&&t<GuardAt+.3f?.25f:t>=StanceAt-.02f&&t<StanceAt+.4f?.4f:.1f;
-        public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
-        {
-            base.Pose(t,pose,out root,out rotation);Moves(t,out int capture,out _,out float time);Captured(3,capture,time,pose);
-        }
+        // ---- the body: keyed (no match clips), the right arm solved onto the shield's way ----
+        private readonly NativeIntroWield Shield=new NativeIntroWield();
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)=>Wield(Shield,t,pose,root,rotation,false);
 
         // ---- the barrage ----
         /// <summary>Bolt `i`'s head at `t` (false: not in flight): launched Flight s before its hit, on an arc from the ridge to the shield.</summary>

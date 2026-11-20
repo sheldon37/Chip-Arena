@@ -64,6 +64,32 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
+    /// A keyed weapon path (owner 2026-11-20: bespoke animation, no match clips): where the hand holds the hilt and which way the blade
+    /// points through the intro's beats, keyed in the pilot's frame (x its left, y up from the floor, z ahead; the keyed root's travel and
+    /// lift carry it) and sampled with the keys' own curve (pass keys flow through, impact keys arrive travelling and ring out). The arm is
+    /// solved onto it (NativeIntroMeleeBlade.Wield): the wrist at the grip, the blade along the hand's +z (the match's grip on the drawn
+    /// hand follows the keyed wrist), the hand rolled toward the shoulder so the wrist stays natural. Presentation only; built once.
+    /// </summary>
+    public sealed class NativeIntroWield
+    {
+        private const int Stride=7;// grip xyz, blade xyz, weight
+        private float[] times=Array.Empty<float>(),values=Array.Empty<float>();private uint pass,impact;private int count;
+        public NativeIntroWield Key(float t,Vector3 grip,Vector3 blade,float weight=1)
+        {
+            Array.Resize(ref times,count+1);Array.Resize(ref values,(count+1)*Stride);times[count]=t;blade=Vector3.Normalize(blade);int o=count*Stride;
+            values[o]=grip.X;values[o+1]=grip.Y;values[o+2]=grip.Z;values[o+3]=blade.X;values[o+4]=blade.Y;values[o+5]=blade.Z;values[o+6]=weight;count++;return this;
+        }
+        public NativeIntroWield Pass(){pass|=1u<<(count-1);return this;}
+        public NativeIntroWield Impact(){impact|=1u<<(count-1);return this;}
+        private float C(int c,float t)=>NativeEntranceMath.Curve(times,values,c,Stride,t,pass,impact);
+        public void At(float t,out Vector3 grip,out Vector3 blade,out float weight)
+        {
+            if(count==0){grip=blade=Vector3.Zero;weight=0;return;}
+            grip=new Vector3(C(0,t),C(1,t),C(2,t));blade=new Vector3(C(3,t),C(4,t),C(5,t));blade=blade.LengthSquared()>1e-8f?Vector3.Normalize(blade):Vector3.UnitZ;weight=NativeEntranceMath.Clamp01(C(6,t));
+        }
+    }
+
+    /// <summary>
     /// The base of the melee intros whose model plays the pack's clips through the blade entrances' path (Core NativeBladeIntro: the
     /// runtime lays Clip on the model, holds the blades as the match does (NativeBladeGrip) and hands them in each frame; the Katana's saya
     /// by Sheathed), with the v2 contract on top: the camera rig and its speed ramps, the set from the bank with the void as its fallback,
@@ -228,6 +254,27 @@ namespace ChipArena.UnityConversion
         }
         private readonly Vector3[] sweepTip=new Vector3[16],sweepRoot=new Vector3[16];private readonly float[] sweepAge=new float[16];
         private static Vector3 CatmullRom(Vector3 p0,Vector3 p1,Vector3 p2,Vector3 p3,float u){float u2=u*u,u3=u2*u;return .5f*(2*p1+(p2-p0)*u+(2*p0-5*p1+4*p2-p3)*u2+(3*p1-p0-3*p2+p3)*u3);}
+
+        // ---- the keyed weapon (no match clips: the model follows the keyed rig, the arms solved onto the intro's wield paths) ----
+        /// <summary>No motion-bank clip (owner 2026-11-20: "we dont need the matches own annimation system"): the model follows the keyed rig.</summary>
+        public override bool Clip(float t,out string clip,out float time){clip=null;time=0;return false;}
+        /// <summary>
+        /// Solves arm `left` onto `path` at `t`: the wrist at its grip (the pilot's frame from the keyed root: its floor spot, its yaw and its
+        /// lift off the floor), the blade along the hand's +z, the hand rolled toward the shoulder (the forearm's way) so the wrist stays
+        /// natural. `offset` slides the hand along the blade (a second hand lower on a two-handed grip).
+        /// </summary>
+        protected static void Wield(NativeIntroWield path,float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float offset=0)
+        {
+            path.At(t,out var grip,out var blade,out float weight);if(weight<=.001f)return;
+            var f=Vector3.Transform(Vector3.UnitZ,rotation);float yaw=(float)Math.Atan2(f.X,f.Z);
+            var origin=new Vector3(root.X,root.Y-.88f+NativeEntranceStage.FloorY,root.Z);
+            var z=NativeEntranceMath.RotateY(blade,yaw);var at=origin+NativeEntranceMath.RotateY(grip,yaw)+z*offset;
+            pose.World();var shoulder=NativeEntrancePose.Point(pose,root,rotation,left?CapturedRig.LArm:CapturedRig.RArm,Vector3.Zero);
+            var y=shoulder-at;y-=z*Vector3.Dot(y,z);
+            if(y.LengthSquared()<1e-4f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-4f)y=Vector3.UnitZ;}
+            y=Vector3.Normalize(y);var x=Vector3.Cross(y,z);
+            NativeEntrancePose.Reach(pose,root,rotation,left,at,CapturedRig.Basis(x,y,z),weight);
+        }
 
         // ---- the game rig in the game's own capture of a pack clip ----
         private readonly float[] captureRow=new float[CapturedClip.Channels];
