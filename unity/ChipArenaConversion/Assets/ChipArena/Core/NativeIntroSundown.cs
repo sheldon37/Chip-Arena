@@ -25,8 +25,9 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 BelfryU=new Vector3(-2.4f,0,10.8f);private const float HangY=6.32f,BellH=1.1f,PlinthY=.9f;
         /// <summary>The bell's hang point and where it comes to rest (source frame).</summary>
         public static readonly Vector3 Hang=S(BelfryU.X,HangY,BelfryU.Z),RestAt=L(1.15f,.0f,.95f);
-        /// <summary>The blow: the drawn pistol's muzzle above the wrist when held upright (m, from the Editor captures).</summary>
-        private const float BlowReach=.3f;
+        /// <summary>The blow, in the keyed rig's space: the muzzle target above the keyed head joint, and the wrist below the muzzle along an
+        /// upright barrel (m; measured on the drawn model in the Editor captures).</summary>
+        private const float KeyedMouth=.06f,BlowReach=.3f;
         private static readonly Vector3 Sun=Vector3.Normalize(SDir(0,.05f,1)),Gold=NativeEntranceFx.Hex(0xffc070),Ember=NativeEntranceFx.Hex(0xff8a3c),Dust=NativeEntranceFx.Hex(0xb08a62),Rose=NativeEntranceFx.Hex(0xff6a88);
         private static readonly Vector3 WindmillHub=S(-18.5f,9.2f+.28f,22.0f+.42f),Saloon=S(-(10f-.14f)+.04f,.42f,-7.1f+.56f);
         private const int Shingles=26,Planks=8,Splinters=18;
@@ -112,11 +113,12 @@ namespace ChipArena.UnityConversion
         {
             float w=NativeEntranceMath.Ramp(t,BlowFrom,BlowFrom+.3f)*(1-NativeEntranceMath.Ramp(t,BlowTo,Rest));if(w<=.001f)return;
             var fwd=Vector3.Transform(Vector3.UnitZ,rotation);var left=Vector3.Cross(Vector3.UnitY,fwd);pose.World();
-            // The head joint is the skull's pivot, ModelHeadLift below the eyes: the muzzle goes in front of the mouth's height, just right of
-            // the visor (the barrel upright beside it, never across it). The wrist sits Reach below it: the drawn pistol's muzzle rides about
-            // 0.3 m above the wrist when held upright (measured in the Editor captures; a deeper target folded the arm and turned the gun down).
+            // In the keyed rig's own space (Arms runs while the keyed pose is built, before the model is drawn, so no anchors here; the model
+            // copies the keyed arm turn for turn): the muzzle target sits KeyedMouth above the keyed head joint, just right of the visor
+            // (the barrel upright beside it, never across it), and the wrist BlowReach below it along the barrel. Both were measured on the
+            // drawn model in the Editor (holds 3 and 4): the drawn muzzle then stands at the drawn mouth's height beside the visor.
             var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);var barrel=Vector3.Normalize(Vector3.UnitY+fwd*.1f);
-            var muzzle=head+new Vector3(0,ModelHeadLift-.1f,0)+fwd*.28f-left*.15f;var at=muzzle-barrel*BlowReach;
+            var muzzle=head+new Vector3(0,KeyedMouth,0)+fwd*.28f-left*.15f;var at=muzzle-barrel*BlowReach;
             NativeEntrancePose.Reach(pose,root,rotation,false,at,Look(barrel,-fwd),w);
         }
 
@@ -228,6 +230,8 @@ namespace ChipArena.UnityConversion
         {
             l.Clear();var haze=NativeEntranceFx.Hex(0xc98a62);l.Background=haze;l.Fog=haze;l.FogNear=18;l.FogFar=520;l.DriveProbe=true;
             l.Sky=NativeEntranceFx.Hex(0x8a7090,.55f);l.Ground=NativeEntranceFx.Hex(0x7a5236,.45f);
+            // the intro owns its light (docs/INTROS-V2.md 3a): the gloss mirrors the sunset's warm horizon
+            l.ReflectSky=NativeEntranceFx.Hex(0x8a7090,.6f);l.ReflectHorizon=NativeEntranceFx.Hex(0xffa860,.9f);l.ReflectGround=NativeEntranceFx.Hex(0x7a5236,.4f);
             l.Directional(Sun+new Vector3(0,.12f,0),NativeEntranceFx.Hex(0xffa860,2.3f));
             l.Directional(-Sun+new Vector3(0,.8f,0),NativeEntranceFx.Hex(0x6a78b8,.32f));
             var chest=Anchor(NativeEntranceAnchor.Chest,t);

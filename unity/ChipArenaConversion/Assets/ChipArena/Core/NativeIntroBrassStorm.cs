@@ -96,10 +96,11 @@ namespace ChipArena.UnityConversion
         private Vector3 MuzzleAt(float t)=>Drawn(t,out var m,out _)?m:Wrist(t)+Bore(t)*.78f;
 
         // ---- the brass: each round's case kicked out to the right, falling round the boots ----
-        private static bool Case(int i,float t,out Vector3 p,out Quaternion q)
+        private bool Case(int i,float t,out Vector3 p,out Quaternion q)
         {
             float born=Fired(i)+.02f,a=t-born;p=default;q=Quaternion.Identity;if(a<0)return false;
-            var bore=Vector3.Normalize(Strike(i)-Grip);var right=Vector3.Normalize(Vector3.Cross(bore,Vector3.UnitY));var port=Grip+bore*.12f+right*.06f+new Vector3(0,.04f,0);
+            // from the drawn gun's ejection port as the round left it (model-aware anchors: the weapon frame and its bore at that moment)
+            var bore=WeaponBore(false,born);var right=Vector3.Normalize(Vector3.Cross(bore,Vector3.UnitY));var port=Anchor(NativeEntranceAnchor.RightGrip,born)+bore*.12f+right*.06f+new Vector3(0,.04f,0);
             var v=right*(.9f+.45f*NativeEntranceMath.Rand(5200,i))+new Vector3(0,1.0f+.7f*NativeEntranceMath.Rand(5201,i),0)-bore*.25f;
             float land=(v.Y+(float)Math.Sqrt(v.Y*v.Y+2*9.8f*(port.Y-Floor)))/9.8f;
             if(a<land){p=Ballistic(port,v,a);q=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(NativeEntranceMath.Signed(5202,i),1,.3f)),a*(25+15*NativeEntranceMath.Rand(5203,i)));return true;}
@@ -168,8 +169,13 @@ namespace ChipArena.UnityConversion
         {
             l.Clear();var far=NativeEntranceFx.Hex(0x140e0a);l.Background=far;l.Fog=far;l.FogNear=12;l.FogFar=240;l.DriveProbe=true;
             float lit=(Flood(0,t)+Flood(1,t)+Flood(2,t))/3;
-            l.Sky=NativeEntranceFx.Hex(0x4a3a30,.1f+.25f*lit);l.Ground=NativeEntranceFx.Hex(0x1a1410,.08f+.2f*lit);
+            // The intro owns its light (docs/INTROS-V2.md 3a): the bank's set takes only the directionals and the ambient, so the floods'
+            // sodium is the set's key from above the yard (rising with each flood) and the ambient warms with them; the point lights below
+            // (the floods, the muzzle, the work light) light the pilot. The wet concrete mirrors the sodium at the horizon.
+            l.Sky=NativeEntranceFx.Hex(0x5a4430,.14f+.5f*lit);l.Ground=NativeEntranceFx.Hex(0x2a1e14,.1f+.38f*lit);
+            if(lit>.01f)l.Directional(SDir(0,1.2f,.35f),Sodium*(1.15f*lit));
             l.Directional(SDir(.4f,1.4f,-.8f),NativeEntranceFx.Hex(0x6a7aa0,.16f));
+            l.ReflectSky=NativeEntranceFx.Hex(0x0e0a08);l.ReflectHorizon=Sodium*(.12f+.55f*lit);l.ReflectGround=NativeEntranceFx.Hex(0x1a1410,.3f);
             for(int i=0;i<3;i++){float on=Flood(i,t);if(on<=.01f)continue;var p=S(Floods[i*4],Floods[i*4+1],Floods[i*4+2]);l.Add(p+(S(0,0,6)-p)*.08f,Sodium*(9*on),18);}
             // the muzzle: strobing with each round (steady in Reduced), the hot barrel after
             if(t>=FireFrom&&t<FireTo+.06f)
@@ -200,7 +206,7 @@ namespace ChipArena.UnityConversion
             int first=Math.Max(0,(int)((t-FireFrom-.6f)/Rate)),last=Math.Min(Rounds-1,(int)((t-FireFrom)/Rate));
             for(int i=first;i<=last;i++)
             {
-                float fired=Fired(i);if(t<fired)continue;var strike=Strike(i);var from=Grip+Vector3.Normalize(strike-Grip)*.78f;var d=strike-from;float len=d.Length();var dir=d/len;float a=t-fired,travel=len/TracerSpeed;
+                float fired=Fired(i);if(t<fired)continue;var strike=Strike(i);var from=Anchor(NativeEntranceAnchor.RightMuzzle,fired);var d=strike-from;float len=d.Length();var dir=d/len;float a=t-fired,travel=len/TracerSpeed;
                 if(i%3==0&&a<travel)
                 {
                     float u=a/travel;var head=from+d*u;Line(fx,eye,fwd,head,head-dir*Math.Min(2.6f,len*u),NativeEntranceFx.Hex(0xffb050,2.6f),.022f,.85f,0,6200+i);

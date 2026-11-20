@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         // the volley: where each arrow lands (source frame), its fall direction and when (presentation)
         private readonly Vector3[] spot=new Vector3[Volley],fall=new Vector3[Volley];private readonly float[] land=new float[Volley];private readonly int[] lights=new int[6];
         private readonly Vector3[] at=new Vector3[40];private readonly Quaternion[] turn=new Quaternion[40];
-        private Vector3 releaseNock,releaseDir;private bool planned;
+        private Vector3 releaseNock,releaseDir;
 
         public NativeIntroLightfall():base(Id,Total,CardAt,Release,0xffd88a)
         {
@@ -106,11 +106,13 @@ namespace ChipArena.UnityConversion
         }
         private void Planned()
         {
-            // the arrow's line at the release, from the anchors (the keyed rig's draw hand to its bow hand)
-            if(planned)return;releaseNock=Anchor(NativeEntranceAnchor.RightHand,Release-.01f);releaseDir=Vector3.Normalize(Anchor(NativeEntranceAnchor.LeftHand,Release-.01f)-releaseNock);planned=true;
+            // the arrow's line at the release: the drawn draw hand (the nock) to the drawn bow's arrow rest (model-aware anchors, docs/INTROS-V2.md
+            // 2a), read each time (cheap, no state), so the bolt leaves the bow the model draws
+            releaseNock=Anchor(NativeEntranceAnchor.RightHand,Release-.01f);var rest=Anchor(NativeEntranceAnchor.LeftMuzzle,Release-.01f)-releaseNock;
+            releaseDir=rest.LengthSquared()>1e-6f?Vector3.Normalize(rest):Vector3.UnitY;
         }
         /// <summary>The nocked arrowhead (world) at `t` while drawn.</summary>
-        private Vector3 Head(float t,out Vector3 dir){var nock=Anchor(NativeEntranceAnchor.RightHand,t);var bow=Anchor(NativeEntranceAnchor.LeftHand,t);var d=bow-nock;dir=d.LengthSquared()>1e-6f?Vector3.Normalize(d):Vector3.UnitY;return nock+dir*NativeBow.ArrowLength;}
+        private Vector3 Head(float t,out Vector3 dir){var nock=Anchor(NativeEntranceAnchor.RightHand,t);var bow=Anchor(NativeEntranceAnchor.LeftMuzzle,t);var d=bow-nock;dir=d.LengthSquared()>1e-6f?Vector3.Normalize(d):Vector3.UnitY;return nock+dir*NativeBow.ArrowLength;}
         private Vector3 SkyArrow(float t){Planned();return releaseNock+releaseDir*(SkySpeed*Math.Max(0,Math.Min(t,Bloom)-Release));}
         private Vector3 BloomAt{get{Planned();return releaseNock+releaseDir*(SkySpeed*(Bloom-Release));}}
         /// <summary>Volley arrow `i`'s head at `t` while it flies (false before the bloom or once it has landed).</summary>
@@ -161,7 +163,11 @@ namespace ChipArena.UnityConversion
             l.Clear();var far=NativeEntranceFx.Hex(0x0c1424);l.Background=far;l.Fog=far;l.FogNear=10;l.FogFar=420;l.DriveProbe=true;
             float bloom=Flash(t,Bloom,.03f,.6f);
             l.Sky=NativeEntranceFx.Hex(0x3a4a7a,.32f+.6f*bloom);l.Ground=NativeEntranceFx.Hex(0x1a2418,.22f);
-            l.Directional(Moon,Moonlight*(.85f));l.Directional(SDir(.3f,.6f,1),NativeEntranceFx.Hex(0x4a6aa0,.14f));
+            // The intro owns its light (docs/INTROS-V2.md 3a): the grove takes the moon and the ambient; the bloom's gold reaches it as a
+            // flash from above (its point light lights the pilot), the moonlit sky in the gloss.
+            l.Directional(Moon,Moonlight*(.85f));
+            if(bloom>.05f)l.Directional(Vector3.UnitY,Gold*(1.4f*bloom));else l.Directional(SDir(.3f,.6f,1),NativeEntranceFx.Hex(0x4a6aa0,.14f));
+            l.ReflectSky=NativeEntranceFx.Hex(0x3a4a7a,.55f);l.ReflectHorizon=NativeEntranceFx.Hex(0x1a2440,.5f);l.ReflectGround=NativeEntranceFx.Hex(0x0e140e,.3f);
             var chest=Anchor(NativeEntranceAnchor.Chest,t);
             if(t>DrawFrom&&t<Release){float pull=NativeBow.PullOf(NativeEntranceMath.Clamp01((t-DrawFrom)/(Full-DrawFrom)));l.Add(Head(t,out _),Gold*(3.5f*pull*pull),3);}
             float rel=Flash(t,Release,.01f,.2f);if(rel>.01f){Planned();l.Add(releaseNock+new Vector3(0,.3f,0),NativeEntranceFx.Hex(0xfff0c8,16*rel),6);}

@@ -10,12 +10,9 @@ namespace ChipArena.UnityConversion
     /// camera as the effects need it (the streak rule: every streak over a metre laid on its head's camera plane), and a few effects.
     /// Presentation only: pure functions of the presentation clock, no allocation per frame.
     /// </summary>
-    public abstract class NativeRangedIntro:NativeIntroV2Script,INativeIntroHands
+    public abstract class NativeRangedIntro:NativeIntroV2Script
     {
         public const string Bank="ChipArenaIntroRanged";
-        /// <summary>The model's eyes above the head anchor (NativeEntranceAnchor.Head and the keyed head joint are the skull's pivot at
-        /// its base; I5 measured it in captures, integrator 2026-11-20): anything at the eyes or the mouth lifts by this along the head's up.</summary>
-        protected const float ModelHeadLift=.16f;
         public override string SetBank=>Bank;
         protected NativeRangedIntro(string id,float total,float cardAt,float hit,int accent):base(id,total,cardAt,hit,accent){}
 
@@ -33,22 +30,11 @@ namespace ChipArena.UnityConversion
         public static Vector3 L(float x,float y,float z)=>Local(x,y,z);
         protected static readonly float Floor=NativeEntranceStage.FloorY;
 
-        // ---- the hands (Runtime IntroV2Hands; a checker never hands them in, so every effect also works from the keyed rig) ----
-        private NativeIntroHand right,left;private float handsAt=-1;
-        public void Hands(float t,in NativeIntroHand r,in NativeIntroHand l){right=r;left=l;handsAt=t;}
-        /// <summary>The drawn gun's muzzle and bore at `t` (Runtime: the frame the model's weapon is drawn on, as the match's muzzle
-        /// flash reads it); false when the runtime has not handed one in for `t` (a checker, the Classic body, a bow).</summary>
-        protected bool Drawn(float t,out Vector3 muzzle,out Vector3 bore)
-        {
-            if(Math.Abs(handsAt-t)<1e-4f&&right.HasMuzzle&&right.Bore.LengthSquared()>.5f){muzzle=right.Muzzle;bore=Vector3.Normalize(right.Bore);return true;}
-            muzzle=bore=default;return false;
-        }
-        /// <summary>The drawn right (or left) wrist at `t`: the runtime's when it handed them in for `t`, else the keyed rig's.</summary>
-        protected Vector3 Wrist(float t,bool leftHand=false)
-        {
-            if(Math.Abs(handsAt-t)<1e-4f)return leftHand?left.At:right.At;
-            return Anchor(leftHand?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);
-        }
+        // ---- the drawn gun (model-aware anchors, docs/INTROS-V2.md 2a: the model's weapon while it is drawn; the keyed rig otherwise) ----
+        /// <summary>The drawn gun's muzzle (where the match's flash leaves it) and bore (its grip to its muzzle) at `t`.</summary>
+        protected bool Drawn(float t,out Vector3 muzzle,out Vector3 bore){muzzle=Anchor(NativeEntranceAnchor.RightMuzzle,t);bore=WeaponBore(false,t);return true;}
+        /// <summary>The drawn right (or left) wrist at `t`.</summary>
+        protected Vector3 Wrist(float t,bool leftHand=false)=>Anchor(leftHand?NativeEntranceAnchor.LeftWrist:NativeEntranceAnchor.RightWrist,t);
 
         // ---- the camera, as the effects need it ----
         /// <summary>The eye and its forward at presentation time `t` (what Camera shows; held from SettleAt).</summary>

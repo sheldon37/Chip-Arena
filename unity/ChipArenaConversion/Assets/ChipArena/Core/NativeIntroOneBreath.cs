@@ -143,7 +143,7 @@ namespace ChipArena.UnityConversion
         }
         private void Case(float t,out Vector3 p,out Quaternion q)
         {
-            var port=AimWrist+AimDir*.16f+Right*.04f+Up*.05f;var v=Right*1.4f+Up*1.9f-AimDir*.4f;float a=t-ShotAt;float land=CaseLands-ShotAt;
+            var port=Anchor(NativeEntranceAnchor.RightGrip,ShotAt)+WeaponBore(false,ShotAt)*.16f+Right*.04f+Up*.05f;var v=Right*1.4f+Up*1.9f-AimDir*.4f;float a=t-ShotAt;float land=CaseLands-ShotAt;
             var end=L(-.32f,1.035f,1.32f);
             if(a<land){float u=a/land;p=Vector3.Lerp(port,end,u)+new Vector3(0,(1.3f)*4*u*(1-u),0);q=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.3f,1,.2f)),a*22)*Look(AimDir,Vector3.UnitY);return;}
             float r=Math.Min(1,(t-CaseLands)/.6f);float roll=1-(1-r)*(1-r);p=end+Facing0*(-.12f*roll)+Right*(.03f*roll)+new Vector3(0,.004f+.03f*NativeEntranceMath.Pulse(t,CaseLands,.01f,.06f),0);
@@ -155,7 +155,10 @@ namespace ChipArena.UnityConversion
         public override void Lights(float t,NativeEntranceLights l)
         {
             l.Clear();float bolt=Flash(t,Lightning,.02f,.22f);var far=NativeEntranceFx.Hex(0x1a2234);l.Background=far;l.Fog=far;l.FogNear=14;l.FogFar=420;l.DriveProbe=true;
-            l.Sky=NativeEntranceFx.Hex(0x4a5a7a,.42f+.9f*bolt);l.Ground=NativeEntranceFx.Hex(0x2a2a38,.32f);
+            // The intro owns its light (docs/INTROS-V2.md 3a): the roof takes the directionals and the ambient; the wet deck mirrors the
+            // city's neon haze at the horizon.
+            l.Sky=NativeEntranceFx.Hex(0x4a5a7a,.5f+.9f*bolt);l.Ground=NativeEntranceFx.Hex(0x2a2a38,.38f);
+            l.ReflectSky=NativeEntranceFx.Hex(0x1a2234,.8f);l.ReflectHorizon=NativeEntranceFx.Hex(0x6a4a8a,.7f+.8f*bolt);l.ReflectGround=NativeEntranceFx.Hex(0x101018);
             l.Directional(SDir(-.4f,1.2f,-.6f),NativeEntranceFx.Hex(0x8aa2d8,.38f+2.2f*bolt));
             l.Directional(SDir(.2f,.25f,1),NativeEntranceFx.Hex(0xff9a60,.16f));
             var chest=Anchor(NativeEntranceAnchor.Chest,t);
@@ -196,8 +199,8 @@ namespace ChipArena.UnityConversion
             float lens=NativeEntranceMath.Bump(t,LensAt-.05f,2.0f);
             if(lens>.01f){fx.Glow(scope+bore*.12f,Red*(1.1f*lens),0,.025f,1,0,8600);for(int i=0;i<(q<.5f?3:6);i++){var p=scope+bore*.125f+Right*(NativeEntranceMath.Signed(8610,i)*.018f)+Up*(NativeEntranceMath.Signed(8611,i)*.018f-.02f*((t*.6f+i*.3f)%1f));fx.Glow(p,Ice*(.6f*lens),0,.006f,0,0,8610+i);}}
             float glint=Flash(t,GlintAt,.03f,.28f);if(glint>.02f)Star(fx,eye,fwd,scope+bore*.13f,NativeEntranceFx.Hex(0xe8f6ff,3.4f*glint),(t>2.0f&&t<BreathFrom?.75f:.25f)*glint+.05f,.6f,8650);
-            // the breath: a faint plume from the visor's mouth (the head anchor is the skull's pivot: lifted) as the hold breaks after the shot
-            {var head=Anchor(NativeEntranceAnchor.Head,t);float b=NativeEntranceMath.Bump(t,ShotAt+.25f,ShotAt+1.1f);if(b>.02f)for(int i=0;i<3;i++){float u=(t*.8f+i/3f)%1f;fx.Smoke(head+new Vector3(0,ModelHeadLift-.1f+.06f*u,0)+bore*(.16f+.2f*u),new Vector3(.75f,.8f,.88f),.12f*b*(1-u),.06f+.12f*u,u,8700+i,floor);}}
+            // the breath: a faint plume from the drawn visor's mouth (just under the eyes, in front of the glass) as the hold breaks after the shot
+            {var head=Anchor(NativeEntranceAnchor.Eyes,t);float b=NativeEntranceMath.Bump(t,ShotAt+.25f,ShotAt+1.1f);if(b>.02f)for(int i=0;i<3;i++){float u=(t*.8f+i/3f)%1f;fx.Smoke(head+new Vector3(0,-.07f+.06f*u,0)+bore*(.12f+.2f*u),new Vector3(.75f,.8f,.88f),.12f*b*(1-u),.06f+.12f*u,u,8700+i,floor);}}
             // the shot: the flash, the brake's side jets, the round and its vapour line across the avenue, the casing's steam
             if(t>=ShotAt-.01f&&t<ShotAt+.12f)Muzzle(fx,t,ShotAt,muzzle,bore,.24f,NativeEntranceFx.Hex(0xffd8a0),8800,q,.1f);
             for(int s=-1;s<=1;s+=2)NativeEntranceFx.Jet(fx,t,ShotAt,ShotAt+.08f,muzzle,Right*s+bore*.15f,90,2.4f,1.2f,.22f,NativeEntranceFx.Hex(0xa8b0c0),.4f,8820+s*10,q,floor,.15f,.2f);
