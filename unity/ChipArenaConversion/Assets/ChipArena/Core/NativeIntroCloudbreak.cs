@@ -71,8 +71,8 @@ namespace ChipArena.UnityConversion
             k.Key(RiseAt+.55f,stand).Root(0,.88f,Risen,Facing).Planted(1).Drop(Sink(-.04f)).J(B,.03f).J(C,-.08f).J(Hd,-.14f,.18f,0).J(LA,-.12f,0,.14f).J(LE,-.32f).J(RA,-.12f,0,-.14f).J(RE,-.32f).PassKey();
             k.Key(SunAt+.15f,stand).Root(0,.88f,Risen,Facing+.08f).Planted(1).Drop(Sink(-.03f)).J(C,-.12f,.1f,0).J(Hd,-.22f,.42f,0).J(LA,-.1f,0,.14f).J(LE,-.32f).J(RA,-.1f,0,-.14f).J(RE,-.32f);
             // The hero: square to the lens, chest out, chin up, arms a little away.
-            k.Key(CardAt-.2f,NativeEntranceKeys.Hero()).Root(0,.88f,Risen,Facing).Planted(1).J(C,-.12f,-.1f,0).J(Hd,-.1f,.1f,0).J(LA,-.1f,0,.12f).J(LE,-.32f).J(RA,-.1f,0,-.12f).J(RE,-.32f);
-            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Risen,Facing).Planted(1).J(C,-.12f,-.18f,0).J(Hd,-.12f,.14f,0).J(LA,-.08f,0,.13f).J(LE,-.3f).J(RA,-.08f,0,-.13f).J(RE,-.3f);Keys=k;
+            k.Key(CardAt-.2f,NativeEntranceKeys.Hero()).Root(0,.88f,Risen,Facing).Planted(1).J(P,0,0,.04f).J(C,-.12f,-.1f,-.03f).J(Hd,-.1f,.1f,0).J(LA,-.14f,0,.03f).J(LE,-.42f).J(RA,-.2f,0,-.02f).J(RE,-.46f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Risen,Facing).Planted(1).J(P,0,0,.04f).J(C,-.13f,-.18f,-.03f).J(Hd,-.12f,.14f,0).J(LA,-.12f,0,.04f).J(LE,-.4f).J(RA,-.18f,0,-.03f).J(RE,-.44f);Keys=k;
             RootPath=(t,r)=>t<TouchAt?Fall(t):r;
             // The camera, vertical: up past the mast at the dawn sky, the long-lens fall-follow, falling alongside, the touchdown low
             // and slowed, a low orbit through the rise, the hero frame.
@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             Rig.Crane(0,e0,new Vector3(-.25f,.5f,3.1f),.15f,e0+Dir(.24f,-.97f,.44f)*30,new Vector3(-.25f,.5f,3.1f)+Dir(.18f,-.98f,.76f)*30,58,54).Ease(NativeIntroEase.InOut)
                .Dolly(DiveAt,new Vector3(5.4f,1.0f,6.2f),new Vector3(5.1f,.95f,5.7f),Vector3.Zero,Vector3.Zero,14,21).Follow(NativeEntranceAnchor.Chest,.05f).Ease(NativeIntroEase.Linear)
                .Spline(2.2f,Alongside(2.2f,2.95f),Vector3.Zero,new Vector3(0,-.1f,0),44,50).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear)
-               .Dolly(2.95f,new Vector3(-3.7f,.42f,4.5f),new Vector3(-3.35f,.5f,4.05f),new Vector3(0,1.7f,0),new Vector3(0,.75f,0),46,42).Ease(NativeIntroEase.Out)
+               .Dolly(2.95f,new Vector3(-2.75f,.36f,3.25f),new Vector3(-2.5f,.42f,2.9f),new Vector3(0,1.5f,0),new Vector3(0,.62f,.1f),44,40).Ease(NativeIntroEase.Out)
                .Orbit(RiseAt-.05f,Vector3.Zero,-52,8,3.7f,3.2f,.42f,.8f,new Vector3(0,-.1f,0),new Vector3(0,.12f,0),40,36).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.4f).Handheld(.4f);
             Closing(CardAt-.5f,1,5.4f,.5f,.78f,36,.5f);
             Rig.Bars(0,.85f).Bars(CardAt-.6f,.4f).Black(0,1).Black(.06f,0);

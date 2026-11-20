@@ -69,9 +69,9 @@ namespace ChipArena.UnityConversion
                 .J(LA,-.08f,0,.1f).J(LE,-.32f).J(RA,.04f,0,-.1f).J(RE,-.3f).ImpactKey();
             // The hero under the card: tall, chest open, chin up, the hands loose and a little away; a last slow lift of the head and a
             // roll of the shoulders back.
-            k.Key(CardAt+.05f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,.04f,0).J(C,-.07f,-.08f,0).J(LA,-.1f,0,.1f).J(LE,-.3f).J(RA,-.1f,0,-.1f).J(RE,-.3f);
-            k.Key(CardAt+.75f,NativeEntranceKeys.Hero()).Planted(1).Drop(Sink(.008f)).J(Hd,-.17f,.06f,0).J(C,-.11f,-.1f,0).J(LA,-.06f,0,.13f).J(LE,-.28f).J(RA,-.06f,0,-.13f).J(RE,-.28f);
-            k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.15f,.08f,0).J(C,-.09f,-.1f,0).J(LA,-.08f,0,.12f).J(LE,-.3f).J(RA,-.08f,0,-.12f).J(RE,-.3f);Keys=k;
+            k.Key(CardAt+.05f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,.04f,0).J(C,-.07f,-.08f,0).J(LA,-.12f,0,.06f).J(LE,-.34f).J(RA,-.12f,0,-.06f).J(RE,-.34f);
+            k.Key(CardAt+.75f,NativeEntranceKeys.Hero()).Planted(1).Drop(Sink(.008f)).J(Hd,-.17f,.06f,0).J(C,-.11f,-.1f,0).J(LA,-.08f,0,.08f).J(LE,-.32f).J(RA,-.08f,0,-.08f).J(RE,-.32f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.15f,.08f,0).J(C,-.09f,-.1f,0).J(LA,-.1f,0,.07f).J(LE,-.33f).J(RA,-.1f,0,-.07f).J(RE,-.33f);Keys=k;
             RootPath=(t,r)=>new Vector3(0,r.Y,Path.At(t));
             // The camera: centred and formal, pushing in on the cleft; an arc in front as it steps out; low and centred as it comes
             // down the plaza with the stones grinding shut behind it; the closing, wide and centred under the stones.

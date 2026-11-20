@@ -97,12 +97,13 @@ namespace ChipArena.UnityConversion
             // the floor behind, the right arm out for balance, eyes on the lens; it turns to the lens as it slows.
             k.Key(LandAt,stand).Root(0,.88f,0,side+.2f).Planted(1).Drop(Sink(-.56f)).J(B,.04f).J(Sp,-.02f,0,-.36f).J(C,-.04f,0,-.3f).J(Hd,-.1f,-.2f,.3f).J(LA,-.08f,.5f,.53f).J(LE,-.05f).J(RA,-.95f,0,-.7f).J(RE,-.55f).ImpactKey();
             k.Key(LandAt+.5f,stand).Root(0,.88f,0,.9f).Planted(1).Drop(Sink(-.56f)).J(B,.04f).J(Sp,-.02f,0,-.36f).J(C,-.04f,0,-.3f).J(Hd,-.1f,-.18f,.3f).J(LA,-.08f,.5f,.53f).J(LE,-.05f).J(RA,-.9f,0,-.65f).J(RE,-.55f);
+            k.Key(StopAt-.25f,stand).Root(0,.88f,0,(.9f+ys)*.5f).Planted(1).Drop(Sink(-.55f)).J(B,.06f).J(Sp,-.02f,0,-.33f).J(C,-.04f,0,-.27f).J(Hd,-.08f,-.14f,.26f).J(LA,-.08f,.5f,.53f).J(LE,-.05f).J(RA,-.85f,0,-.6f).J(RE,-.6f);
             k.Key(StopAt,stand).Root(0,.88f,0,ys).Planted(1).Drop(Sink(-.5f)).J(B,.14f).J(Sp,.04f).J(Hd,-.05f,-.1f,0).J(LA,.3f,0,.45f).J(LE,-.3f).J(RA,-.5f,0,-.45f).J(RE,-.7f).ImpactKey();
             // Up from the slide; a glance after the train; back to the lens.
             k.Key(StopAt+.45f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.05f)).J(B,.04f).J(Hd,-.05f,-.15f,0).J(LA,-.15f,0,.12f).J(LE,-.35f).J(RA,-.15f,0,-.12f).J(RE,-.35f);
             k.Key(GlanceAt+.35f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.04f)).J(C,0,.25f,0).J(Hd,-.05f,.75f,0).J(LA,-.12f,0,.1f).J(LE,-.35f).J(RA,-.12f,0,-.1f).J(RE,-.35f);
-            k.Key(CardAt-.25f,NativeEntranceKeys.Hero()).Root(0,.88f,Mark,Facing).Planted(1).J(Hd,-.06f,.04f,0).J(LA,-.1f,0,.1f).J(LE,-.33f).J(RA,-.1f,0,-.1f).J(RE,-.33f);
-            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Mark,Facing).Planted(1).J(C,-.05f,-.14f,0).J(Hd,-.08f,.1f,0).J(LA,-.08f,0,.12f).J(LE,-.3f).J(RA,-.08f,0,-.12f).J(RE,-.3f);Keys=k;
+            k.Key(CardAt-.25f,NativeEntranceKeys.Hero()).Root(0,.88f,Mark,Facing).Planted(1).J(P,0,0,-.04f).J(C,0,0,.03f).J(Hd,-.06f,.04f,.03f).J(LA,-.14f,0,.03f).J(LE,-.42f).J(RA,-.12f,0,-.03f).J(RE,-.38f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Mark,Facing).Planted(1).J(P,0,0,-.04f).J(C,-.05f,-.14f,.03f).J(Hd,-.08f,.1f,.03f).J(LA,-.12f,0,.04f).J(LE,-.4f).J(RA,-.1f,0,-.04f).J(RE,-.36f);Keys=k;
             RootPath=(t,r)=>t<StopAt?Ride(t):new Vector3(0,r.Y,Mark*NativeEntranceMath.Smooth((t-StopAt)/.5f));
             // The camera: low on the roof behind it in the tunnel, beside the train keeping pace into the hall, a whip to the platform
             // for the leap (slowed), low on the platform as it slides in, the glance, the hero frame.
@@ -139,6 +140,13 @@ namespace ChipArena.UnityConversion
             float reach=Reach(t);feet[4]=r.X+sy*reach-cy*.12f;feet[5]=r.Z+cy*reach+sy*.12f;feet[6]=yaw-.2f;feet[7]=0;
         }
         protected override float Ground(float t)=>t<LeapAt?RoofY:NativeEntranceStage.FloorY;
+        /// <summary>The dragging left hand's fingertips (on from the palm, away from the wrist) and how far they touch the floor (1 within
+        /// 3 cm of it, none 15 cm up).</summary>
+        private Vector3 Fingertips(float t,out float touch)
+        {
+            var palm=Anchor(NativeEntranceAnchor.LeftHand,t);var d=palm-Anchor(NativeEntranceAnchor.LeftWrist,t);var tips=palm+d*1.6f;
+            touch=1-NativeEntranceMath.Clamp01((tips.Y-NativeEntranceStage.FloorY-.03f)/.12f);return tips;
+        }
         public override bool Sliding(float t)=>t>LandAt-.1f&&t<StopAt+.08f;
         /// <summary>How far out in front the right foot slides (m): drawn in as the slide slows.</summary>
         private static float Reach(float t)=>.5f-.2f*NativeEntranceMath.Smooth((t-(StopAt-.35f))/.35f);
@@ -198,7 +206,7 @@ namespace ChipArena.UnityConversion
             l.Add(new Vector3(x-Car-9f,.8f,TrackZ),Tail*2.2f,5);
             // The slide's sparks lighting the pilot from below.
             float slide=NativeEntranceMath.Ramp(t,LandAt,LandAt+.05f)*(1-NativeEntranceMath.Ramp(t,StopAt-.25f,StopAt+.05f));
-            if(slide>.01f)l.Add(Anchor(NativeEntranceAnchor.LeftHand,t)+new Vector3(0,.2f,0),Spark*(3.5f*slide),3.5f);
+            if(slide>.01f)l.Add(Anchor(NativeEntranceAnchor.LeftKnee,t)+new Vector3(0,.25f,0),Spark*(3.5f*slide),3.5f);
             if(t>=CardAt-.3f){float c=NativeEntranceMath.Ramp(t,CardAt-.3f,CardAt+.2f);l.Add(chest+new Vector3(1.4f,.9f,1.8f),Teal*(1.4f*c),6);}
         }
         private static float Lerp(float a,float b,float t)=>a+(b-a)*t;
@@ -235,19 +243,20 @@ namespace ChipArena.UnityConversion
             float slide=NativeEntranceMath.Ramp(t,LandAt-.01f,LandAt+.03f)*(1-NativeEntranceMath.Ramp(t,StopAt-.3f,StopAt));
             if(t>=LandAt-.01f&&t<StopAt+.9f)
             {
-                var hand=Anchor(NativeEntranceAnchor.LeftHand,t);var footR=Anchor(NativeEntranceAnchor.LeftKnee,t);
-                if(slide>.01f){fx.Glow(new Vector3(hand.X,floor+.03f,hand.Z),SparkHot*(2.2f*slide),0,.22f,1,0,23300);fx.Glow(new Vector3(footR.X,floor+.03f,footR.Z),SparkHot*(1.8f*slide),0,.18f,1,0,23301);}
+                var tips=Fingertips(t,out float touch);var knee=Anchor(NativeEntranceAnchor.LeftKnee,t);
+                if(slide*touch>.01f)fx.Glow(new Vector3(tips.X,floor+.03f,tips.Z),SparkHot*(2.2f*slide*touch),0,.2f,1,0,23300);
+                if(slide>.01f)fx.Glow(new Vector3(knee.X,floor+.03f,knee.Z),SparkHot*(1.8f*slide),0,.18f,1,0,23301);
                 int bursts=low?4:8;
                 for(int b=0;b<bursts;b++)
                 {
                     float born=LandAt+((float)Math.Floor((t-LandAt)/.06f)-b)*.06f;if(born<LandAt||born>StopAt-.2f)continue;
-                    float level=1-NativeEntranceMath.Ramp(born,StopAt-.6f,StopAt-.2f);var src=b%2==0?Anchor(NativeEntranceAnchor.LeftHand,born):Anchor(NativeEntranceAnchor.LeftKnee,born);
+                    float level=1-NativeEntranceMath.Ramp(born,StopAt-.6f,StopAt-.2f),then=1;var src=b%2==0?Fingertips(born,out then):Anchor(NativeEntranceAnchor.LeftKnee,born);if(then<.3f)continue;
                     var back=Ride(born)-Ride(born+.02f);back=back.LengthSquared()>1e-6f?Vector3.Normalize(back):-Vector3.UnitX;
                     NativeEntranceFx.Sparks(fx,t,born,new Vector3(src.X,floor+.03f,src.Z),back*.8f+new Vector3(0,.45f,0),.7f,low?3:6,4.5f*level+1,.45f,9.8f,.6f,SparkHot*2.4f,Spark,.012f,23310+b*13,q,floor);
                 }
                 // The scorch: glowing streaks left on the floor along the slide, cooling.
                 int n=low?6:14;
-                for(int i=0;i<n;i++){float at=LandAt+i*(StopAt-LandAt-.15f)/n;if(at>t)break;float cool=1-NativeEntranceMath.Clamp01((t-at)/1.1f);if(cool<=0)continue;var p=Slide(at);var p2=Slide(at+.06f);fx.Streak(new Vector3(p2.X+.3f,floor+.006f,p2.Z+.15f),(p2-p)/.06f,Spark*(1.1f*cool*cool),.02f,.05f,.06f,.2f,1-cool,23400+i);}
+                for(int i=0;i<n;i++){float at=LandAt+i*(StopAt-LandAt-.15f)/n;if(at>t)break;float cool=1-NativeEntranceMath.Clamp01((t-at)/1.1f);if(cool<=0)continue;var p=Anchor(NativeEntranceAnchor.LeftKnee,at);var p2=Anchor(NativeEntranceAnchor.LeftKnee,at+.06f);p.Y=p2.Y=floor+.006f;Line(fx,p2,p2-p,Spark*(1.1f*cool*cool),.02f,.2f,1-cool,23400+i);}
             }
             // The train's wake on the platform: dust swirling along the edge as it pulls away; its tail lights shrinking into the tunnel.
             {

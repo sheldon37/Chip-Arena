@@ -63,8 +63,8 @@ namespace ChipArena.UnityConversion
             k.Key(PulseAt-.12f,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.12f)).J(B,.08f).J(C,.04f).J(Hd,.18f).J(RA,.18f,.14f,-.58f).J(RE,-2.62f).J(LA,.18f,-.14f,.58f).J(LE,-2.62f);
             k.Key(PulseAt+.06f,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.24f)).J(B,.04f).J(C,-.18f).J(Hd,-.16f).J(RA,.25f,0,-1.0f).J(RE,-.12f).J(LA,.25f,0,1.0f).J(LE,-.12f).ImpactKey();
             k.Key(PartAt,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.04f)).J(C,-.1f).J(Hd,-.28f,.12f,0).J(RA,.08f,0,-.4f).J(RE,-.3f).J(LA,.08f,0,.4f).J(LE,-.3f);
-            k.Key(CardAt-.3f,NativeEntranceKeys.Hero()).Root(0,.88f,Stood,Facing).Planted(1).J(Hd,-.12f,.06f,0).J(C,-.1f,-.1f,0).J(LA,-.1f,0,.1f).J(LE,-.35f).J(RA,-.1f,0,-.1f).J(RE,-.35f);
-            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Stood,Facing).Planted(1).J(C,-.1f,-.14f,0).J(Hd,-.14f,.1f,0).J(LA,-.08f,0,.12f).J(LE,-.33f).J(RA,-.08f,0,-.12f).J(RE,-.33f);Keys=k;
+            k.Key(CardAt-.3f,NativeEntranceKeys.Hero()).Root(0,.88f,Stood,Facing).Planted(1).J(Hd,-.12f,.06f,0).J(C,-.1f,-.1f,0).J(LA,-.14f,0,.03f).J(LE,-.42f).J(RA,-.14f,0,-.03f).J(RE,-.42f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Stood,Facing).Planted(1).J(C,-.1f,-.14f,0).J(Hd,-.14f,.1f,0).J(LA,-.12f,0,.04f).J(LE,-.4f).J(RA,-.12f,0,-.04f).J(RE,-.4f);Keys=k;
             // The camera: telephoto into the storm, a close insert on the frost, a tilt up with the rise, the pulse low and wide, the
             // reveal pulling out as the storm parts, the hero.
             Rig.Dolly(0,new Vector3(1.3f,.62f,13.5f),new Vector3(.75f,.72f,7.4f),new Vector3(0,.72f,.1f),new Vector3(0,.8f,.1f),17,19).Ease(NativeIntroEase.InOut).Focus(0,0,.6f).Handheld(.35f)
