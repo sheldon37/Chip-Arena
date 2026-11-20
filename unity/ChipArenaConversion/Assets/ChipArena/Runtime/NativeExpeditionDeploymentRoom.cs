@@ -150,7 +150,7 @@ namespace ChipArena.UnityConversion
         private void ResetDeploymentRoom()
         {
             deploymentWork.Reset();deploymentRequested=null;deploymentPendingState=null;deploymentPendingDeploy=-1;deploymentBuildError=null;deploymentTravelAt=-1;
-            LeaveLiveDeployment();deploymentRoom=null;deploymentReceiver=null;deploymentLayout=null;deploymentBundle=null;deploymentLaunch=deploymentLocked=false;expeditionLayoutRead=false;expeditionLayout=null;
+            LeaveLiveDeployment();liveCradle.Clear();loadCradle.Clear();deploymentRoom=null;deploymentReceiver=null;deploymentLayout=null;deploymentBundle=null;deploymentLaunch=deploymentLocked=false;expeditionLayoutRead=false;expeditionLayout=null;
             if(deploymentBaseContent!=null){content=deploymentBaseContent;deploymentBaseContent=null;if(prefs.map==NativeExpeditionGeneratedWorld.MapId)prefs.map=content.maps.First(NativeMapRules.ArenaSelectable).id;}
         }
     }

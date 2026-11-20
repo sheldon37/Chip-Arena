@@ -107,6 +107,7 @@ namespace ChipArena.UnityConversion
     {
         private ExpeditionDeploymentTicket ticket;
         private ExpeditionDeploymentState state;
+        public bool HasState=>state!=null;
         public ExpeditionDeploymentState Snapshot=>state?.Copy();
         public bool Accept(ExpeditionDeploymentTicket incoming,ExpeditionLayout layout,ConversionContent content)
         {

@@ -22,10 +22,17 @@ namespace ChipArena.UnityConversion
             var stage=presentation?.DeployStage;liveCradle.FromParty(liveDeployParty.Names,liveDeployParty.Count,stage?.Mine??0);CradleSpots(liveCradle);return liveCradle;
         }
         // Each member's landing spot on the card's map: the generated hub's slots in seat order (the pods' spots).
-        private void CradleSpots(NativeCradleCard card)
+        private void CradleSpots(NativeCradleCard card,NativePartyLoadModel roster=null)
         {
-            var slots=deploymentBundle?.World?.Area?.slots;
-            for(int i=0;i<card.Count;i++)card.Spots[i]=slots!=null&&i<slots.Length&&slots[i]!=null?new System.Numerics.Vector2(slots[i].x,slots[i].z):new System.Numerics.Vector2(float.NaN,float.NaN);
+            card.World=deploymentBundle?.World;
+            var slots=card.World?.Area?.slots;
+            for(int i=0;i<card.Count;i++)
+            {
+                // The roster puts the local guest first. Slots follow the deployment seat order.
+                int index=roster==null?i:System.Array.IndexOf(liveDeploySeats,roster.Rows[i].Seat,0,liveDeployParty.Count);
+                if(index>=0&&slots!=null&&index<slots.Length&&slots[index]!=null)
+                    card.Spots[i]=new System.Numerics.Vector2(slots[index].x,slots[index].z);
+            }
         }
         private readonly NativeCradleLatch cradleLatch=new NativeCradleLatch();
         /// <summary>This load is a pod run's first: the one that left the station after this client saw its eject (latched by its
@@ -38,12 +45,13 @@ namespace ChipArena.UnityConversion
         /// the console's), fading and lifting away on the reveal.</summary>
         private void CradleGui(float shown)
         {
+            if(Event.current.type!=EventType.Repaint)return;
             var roster=PartyLoadingRoster();
             if(roster!=null)loadCradle.FromRoster(roster,shown);else{loadCradle.FromParty(null,0,0);loadCradle.Load=shown;}
-            CradleSpots(loadCradle);
+            CradleSpots(loadCradle,roster);
             bool reveal=stageLoad.Phase==StageLoadPhase.Reveal;float r=reveal?stageLoad.RevealProgress:0;
             string step=PodCradleHold&&stageReadiness.Ready?CradleHolding:stagePlan.Label;
-            NativeCradleHud.Draw(loadCradle,DeploymentState,stageView.Title,step,U.W,U.H,1-r*r,r,Time.unscaledTime,prefs.reducedEffects);
+            NativeCradleHud.Draw(loadCradle,deploymentBundle.World.Blueprint,stageView.Title,step,U.W,U.H,1-r*r,r,Time.unscaledTime,prefs.reducedEffects);
         }
     }
 }
