@@ -15,7 +15,13 @@ import math
 
 import stagekit as sk
 from stagekit import Geo, _add, _sub, _norm
-from generic_kit import (PI, TAU, V, mul, M, place, lerp, disc, flipped, Piece)
+import numpy as np
+from generic_kit import (PI, TAU, V, mul, M, place, lerp, disc, flipped, Piece, mix_hex)
+
+ST_ADS = (-22.0, -9.0, -4.6, 4.6, 9.0, 22.0)   # the ad panels' centres (x) on the far wall
+# each ad's two colours (a wordless poster: a gradient, a bright product disc, two headline bars, a logo block)
+ST_AD_PAL = ((0xff7a4a, 0xffc36a), (0x5ac8ff, 0x8a6bff), (0xffd45a, 0xff7aa8), (0xff7a4a, 0x6affc8), (0xffd45a, 0x5ac8ff),
+             (0x5ac8ff, 0xc8f0ff))
 
 ST_TRACK_Z = -2.95     # the guideway's centre line
 ST_EDGE_Z = -1.25      # the platform's edge
@@ -194,7 +200,13 @@ def build(T):
     for k, x in enumerate((-22, -9, -4.6, 4.6, 9, 22)):
         sk.box(g, x - 1.55, x + 1.55, .45, 2.05, -6.4, -6.3, F['frame'], None, .01, cell=0)
         f = (F['ad1'], F['ad2'], F['ad3'], F['ad1'], F['ad3'], F['ad2'])[k]
-        lights.face((V(x - 1.45, .55, -6.29), V(x + 1.45, .55, -6.29), V(x + 1.45, 1.95, -6.29), V(x - 1.45, 1.95, -6.29)), f, normal=(0, 0, 1))
+        # the poster in a grid, so its colour can carry its design (ad_fn)
+        nu, nv = (24, 12) if fine else (6, 3)
+        for i in range(nu):
+            for j in range(nv):
+                a0, a1 = x - 1.45 + 2.9 * i / nu, x - 1.45 + 2.9 * (i + 1) / nu
+                b0, b1 = .55 + 1.4 * j / nv, .55 + 1.4 * (j + 1) / nv
+                lights.face((V(a0, b0, -6.29), V(a1, b0, -6.29), V(a1, b1, -6.29), V(a0, b1, -6.29)), f, normal=(0, 0, 1))
     board = Geo()
     sk.box(g, -2.6, 2.6, 2.95, 4.25, -6.4, -6.22, F['frame'], None, .02, cell=0)
     for r in range(4):
@@ -298,9 +310,30 @@ def build(T):
     # ---- the cars ----
     car = build_car(T, F, False)
     nose = build_car(T, F, True)
+    def ad_fn(P):
+        """A wordless poster on each ad panel: its two colours in a diagonal gradient, a bright product disc on the right, two
+        headline bars and a logo block on the left (soft-edged, in the panel's grid)."""
+        x, y = P[:, 0], P[:, 1]
+        k = np.argmin(np.abs(x[:, None] - np.array(ST_ADS)[None, :]), axis=1)
+        cx = np.array(ST_ADS)[k]
+        u = np.clip((x - cx + 1.45) / 2.9, 0, 1)
+        v = np.clip((y - .55) / 1.4, 0, 1)
+        c0 = np.array([mix_hex(ST_AD_PAL[i][0], ST_AD_PAL[i][0], 0.0) for i in range(len(ST_ADS))])[k]
+        c1 = np.array([mix_hex(ST_AD_PAL[i][1], ST_AD_PAL[i][1], 0.0) for i in range(len(ST_ADS))])[k]
+        t = np.clip(u * .6 + v * .4, 0, 1)[:, None]
+        col = (c0 * (1 - t) + c1 * t) * .62
+        disc_ = np.clip(1 - np.hypot((u - .7) * 2.9, (v - .48) * 1.4) / .5, 0, 1)
+        col = col * (1 - np.clip(disc_ * 3, 0, 1))[:, None] + (np.clip(disc_ * 3, 0, 1) * (.75 + .25 * disc_))[:, None] * (c1 * .5 + .5)
+        bar1 = ((v > .7) & (v < .84) & (u > .07) & (u < .5)).astype(np.float64)
+        bar2 = ((v > .55) & (v < .63) & (u > .07) & (u < .38)).astype(np.float64)
+        logo = ((v > .1) & (v < .24) & (u > .07) & (u < .17)).astype(np.float64)
+        col = col * (1 - bar1 * .9)[:, None] + bar1[:, None] * .95
+        col = col * (1 - bar2 * .8)[:, None] + bar2[:, None] * .8
+        col = col * (1 - logo * .85)[:, None] + logo[:, None] * np.array([.08, .09, .12])
+        return np.clip(col, 0, 1)
     return [
         Piece('slipstream/hall', g, True, (0.0, -1.55), seed=5),
-        Piece('slipstream/lights', lights, False),
+        Piece('slipstream/lights', lights, False, recolour=({F['ad1'], F['ad2'], F['ad3']}, ad_fn)),
         Piece('slipstream/edge', edge, False),
         Piece('slipstream/board', board, False),
         Piece('slipstream/tunnel', tun, False, (-1.55,), seed=6),
