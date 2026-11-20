@@ -33,11 +33,18 @@ namespace ChipArena.UnityConversion
             int i=0;while(i<FallT.Length-2&&t>FallT[i+1])i++;float d=FallT[i+1]-FallT[i],u=(t-FallT[i])/d,u2=u*u,u3=u2*u;
             return (2*u3-3*u2+1)*FallP[i]+(u3-2*u2+u)*d*FallV[i]+(-2*u3+3*u2)*FallP[i+1]+(u3-u2)*d*FallV[i+1];
         }
+        /// <summary>Where the hips stand after the rise (the root's z), over the landing's front foot.</summary>
+        public const float Risen=.16f;
+        public override bool Sliding(float t)=>Math.Abs(t-TouchAt)<.1f;
+        private const int LC=CapturedRig.LClav,RC=CapturedRig.RClav;
+        /// <summary>The right knee down on the pad from the touchdown until it drives up off it.</summary>
+        protected override float Kneel(float t,bool left)=>left?0:NativeEntranceMath.Smooth((t-(TouchAt-.06f))/.06f)*(1-NativeEntranceMath.Smooth((t-(RiseAt+.04f))/.1f));
         public NativeIntroCloudbreak():base(NativeIntroCatalog.DefaultId,Total,CardAt,TouchAt,0x7fd4ff)
         {
-            // (The landing's stance: the left foot forward, the right knee down behind it; the rise brings the right foot up beside it.)
-            Start=Stance(.2f,.45f,.15f,-.2f,-.4f,-.4f);
-            Steps=new[]{Step(false,RiseAt+.25f,RiseAt+.55f,-.17f,-.06f,-.38f,.06f),Step(true,RiseAt+.45f,RiseAt+.75f,.17f,.07f,.12f,.05f)};
+            // (The model's feet: the landing's left foot planted out in front, the right knee down under the hips (Kneel); the rise brings
+            // the right foot up beside the left as the hips come forward over them.)
+            Start=Stance(.16f,.3f,.15f,-.09f,-.26f,-.3f);
+            Steps=new[]{Step(false,RiseAt+.12f,RiseAt+.5f,-.15f,-.08f,-.3f,.14f,Facing,0,Risen)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The dive: head first, body pitched over, arms swept back along the sides, legs together, looking down the drop.
             k.Key(0,stand).Root(0,.88f,0,Facing).Spin(2.3f,0).Planted(0).J(Hd,-.55f).J(C,-.12f).J(LA,.55f,0,.3f).J(LE,-.08f).J(RA,.55f,0,-.3f).J(RE,-.08f).J(LL,.05f,0,.04f).J(LK,.08f).J(RL,.05f,0,-.04f).J(RK,.08f);
@@ -47,25 +54,25 @@ namespace ChipArena.UnityConversion
             k.Key(FlipAt+.06f,stand).Root(0,.88f,0,Facing).Spin(1.45f,0).Planted(0).J(Hd,-.35f).J(C,-.1f).J(LA,-.35f,0,1.35f).J(LE,-.2f).J(RA,-.35f,0,-1.35f).J(RE,-.2f).J(LL,-.4f,0,.12f).J(LK,.9f).J(RL,-.4f,0,-.12f).J(RK,.9f).PassKey();
             // The tuck, swinging the feet under.
             k.Key(FlipAt+.24f,stand).Root(0,.88f,0,Facing).Spin(.62f,0).Planted(0).J(B,.15f).J(Hd,.25f).J(LA,-1.1f,0,.55f).J(LE,-.7f).J(RA,-1.1f,0,-.55f).J(RE,-.7f).J(LL,-1.35f,0,.12f).J(LK,2.0f).J(RL,-1.3f,0,-.12f).J(RK,1.95f).PassKey();
-            // Feet first under the burn: legs reaching down, arms out for balance, head down on the pad.
-            k.Key(FlipAt+.42f,stand).Root(0,.88f,0,Facing).Spin(.08f,0).Planted(0).J(Hd,.38f).J(LA,-.45f,0,1.05f).J(LE,-.25f).J(RA,-.45f,0,-1.05f).J(RE,-.25f).J(LL,-.3f,0,.1f).J(LK,.45f).J(RL,-.18f,0,-.1f).J(RK,.3f);
-            k.Key(TouchAt-.1f,stand).Root(0,.88f,0,Facing).Spin(0,0).Planted(.4f,0).Drop(-.04f).J(Hd,.32f).J(LA,-.5f,0,1.15f).J(LE,-.25f).J(RA,-.5f,0,-1.15f).J(RE,-.25f).J(LL,-.42f,0,.12f).J(LK,.7f).J(RL,-.38f,0,-.12f).J(RK,.65f);
-            // Touchdown: the superhero landing, down on the right knee with the left foot planted out in front, the right hand slammed
-            // flat on the pad, the left arm swept back and out, head down (the impact key rings out); it holds, then the head comes up to
-            // the lens before it rises. (The right leg is keyed, kneeling, as Whiteout's is; the left is planted.)
-            k.Key(TouchAt,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.5f).J(B,.32f).J(Sp,.14f).J(Hd,.3f).J(LA,.7f,0,.85f).J(LE,-.2f).J(RA,-.75f,0,-.15f).J(RE,-.12f)
-                .J(RL,.3f,0,-.08f).J(RK,1.75f).ImpactKey();
-            k.Key(TouchAt+.3f,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.52f).J(B,.34f).J(Sp,.15f).J(Hd,.26f).J(LA,.6f,0,.75f).J(LE,-.25f).J(RA,-.78f,0,-.15f).J(RE,-.15f)
-                .J(RL,.3f,0,-.08f).J(RK,1.75f);
-            k.Key(RiseAt-.45f,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.52f).J(B,.32f).J(Sp,.14f).J(Hd,.24f).J(LA,.55f,0,.7f).J(LE,-.28f).J(RA,-.78f,0,-.15f).J(RE,-.18f)
-                .J(RL,.3f,0,-.08f).J(RK,1.75f);
-            k.Key(RiseAt-.15f,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.5f).J(B,.28f).J(Sp,.1f).J(Hd,-.2f).J(LA,.3f,0,.6f).J(LE,-.35f).J(RA,-.55f,0,-.3f).J(RE,-.3f)
-                .J(RL,.3f,0,-.08f).J(RK,1.75f);
-            // The rise: up through the knees, chest open, chin up; it looks to the sun as it breaks.
-            k.Key(RiseAt+.55f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(B,.02f).J(C,-.06f).J(Hd,-.12f,.18f,0).J(LA,-.12f,0,.22f).J(LE,-.3f).J(RA,-.12f,0,-.22f).J(RE,-.3f).PassKey();
-            k.Key(SunAt+.15f,stand).Root(0,.88f,0,Facing+.08f).Planted(1).Drop(-.02f).J(C,-.1f,.1f,0).J(Hd,-.2f,.42f,0).J(LA,-.1f,0,.2f).J(LE,-.32f).J(RA,-.1f,0,-.2f).J(RE,-.32f);
-            k.Key(CardAt-.2f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.08f,.1f,0);
-            k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(C,-.04f,-.16f,0).J(Hd,-.1f,.14f,0);Keys=k;
+            // Feet first under the burn: the left leg reaching down for the pad, the right knee coming under, arms out for balance,
+            // head down on the pad.
+            k.Key(FlipAt+.42f,stand).Root(0,.88f,0,Facing).Spin(.08f,0).Planted(0).J(B,.1f).J(Hd,.38f).J(LA,-.45f,0,1.05f).J(LE,-.25f).J(RA,-.45f,0,-1.05f).J(RE,-.25f).J(LL,-.55f,0,.1f).J(LK,.6f).J(RL,-.05f,0,-.1f).J(RK,.9f);
+            k.Key(TouchAt-.08f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.1f)).J(B,.18f).J(Hd,.32f).J(LA,-.3f,0,1.1f).J(LE,-.25f).J(RA,-.6f,0,-.9f).J(RE,-.25f).J(LL,-.6f,0,.12f).J(LK,.85f).J(RL,.05f,0,-.12f).J(RK,1.1f);
+            // Touchdown: the superhero landing, down on the right knee with the left foot planted out in front, the right fist slammed
+            // onto the pad, the left arm swept back and out, the torso over the front knee, head down (the impact key rings out); it
+            // holds, breathing, then the head comes up to the lens before it rises.
+            k.Key(TouchAt,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.62f)).J(B,.45f).J(Sp,.48f).J(C,.35f).J(RC,0,.1f,.28f).J(Hd,.3f).J(LA,.75f,0,.95f).J(LE,-.15f).J(RA,-1.45f,-.09f,-.26f).J(RE,-.05f).ImpactKey();
+            k.Key(TouchAt+.35f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.6f)).J(B,.45f).J(Sp,.47f).J(C,.34f).J(RC,0,.1f,.28f).J(Hd,.26f).J(LA,.62f,0,.82f).J(LE,-.22f).J(RA,-1.45f,-.09f,-.26f).J(RE,-.05f);
+            k.Key(RiseAt-.45f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.6f)).J(B,.45f).J(Sp,.46f).J(C,.33f).J(RC,0,.1f,.27f).J(Hd,.22f).J(LA,.55f,0,.75f).J(LE,-.28f).J(RA,-1.45f,-.09f,-.26f).J(RE,-.05f);
+            k.Key(RiseAt-.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.59f)).J(B,.42f).J(Sp,.4f).J(C,.18f).J(RC,0,.08f,.22f).J(Hd,-.35f).J(LA,.35f,0,.6f).J(LE,-.4f).J(RA,-1.38f,-.09f,-.26f).J(RE,-.12f);
+            // The rise: it pushes off the pad and drives up over the front foot, the right foot stepping up beside it, the chest
+            // opening, chin up; it looks to the sun as it breaks.
+            k.Key(RiseAt+.22f,stand).Root(0,.88f,Risen*.5f,Facing).Planted(1).Drop(Sink(-.3f)).J(B,.28f).J(Sp,.05f).J(Hd,-.06f).J(LA,-.3f,0,.25f).J(LE,-.7f).J(RA,.25f,0,-.2f).J(RE,-.4f).PassKey();
+            k.Key(RiseAt+.55f,stand).Root(0,.88f,Risen,Facing).Planted(1).Drop(Sink(-.04f)).J(B,.03f).J(C,-.08f).J(Hd,-.14f,.18f,0).J(LA,-.12f,0,.14f).J(LE,-.32f).J(RA,-.12f,0,-.14f).J(RE,-.32f).PassKey();
+            k.Key(SunAt+.15f,stand).Root(0,.88f,Risen,Facing+.08f).Planted(1).Drop(Sink(-.03f)).J(C,-.12f,.1f,0).J(Hd,-.22f,.42f,0).J(LA,-.1f,0,.14f).J(LE,-.32f).J(RA,-.1f,0,-.14f).J(RE,-.32f);
+            // The hero: square to the lens, chest out, chin up, arms a little away.
+            k.Key(CardAt-.2f,NativeEntranceKeys.Hero()).Root(0,.88f,Risen,Facing).Planted(1).J(C,-.12f,-.1f,0).J(Hd,-.1f,.1f,0).J(LA,-.1f,0,.12f).J(LE,-.32f).J(RA,-.1f,0,-.12f).J(RE,-.32f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Risen,Facing).Planted(1).J(C,-.12f,-.18f,0).J(Hd,-.12f,.14f,0).J(LA,-.08f,0,.13f).J(LE,-.3f).J(RA,-.08f,0,-.13f).J(RE,-.3f);Keys=k;
             RootPath=(t,r)=>t<TouchAt?Fall(t):r;
             // The camera, vertical: up past the mast at the dawn sky, the long-lens fall-follow, falling alongside, the touchdown low
             // and slowed, a low orbit through the rise, the hero frame.

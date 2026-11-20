@@ -30,11 +30,27 @@ the story, the set, the camera's language, the beats, the motion, the effects an
   the shoulder read as a head turned aside (the framework measured the mapping exact).
 - **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
 - **Body:** the intro's own keyed animation (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are; owner:
-  "think like the top dog and Bombardier ones"), drawn on the model; no motion-bank clips. Walks and runs key two poses a step
-  (the passing and the contact: the body's rise and settle, the hips turning with the leg in front, the shoulders countering, the
-  arms swinging opposite the legs). Their stances and steps are in the world's frame (`Stance`/`Step` with facing 0: the helpers
-  otherwise turn x and z by the hero facing about the mark, which far up a walk put the feet a metre or more to the side), and
-  their strides are about half a metre (the keyed legs reach about .3 m either side of the hips).
+  "think like the top dog and Bombardier ones"), drawn on the model; no motion-bank clips.
+- **Feet on the model** (`NativeIntroGenericScript`, 2026-11-20 second pass). The model takes the keyed legs' turns bone for bone
+  (docs/INTROS-V2.md 2b) on legs 1.7 times as long (hip to ankle .851 m against the rig's .5), hung from hips set closer in, under hips
+  that move 1.7 times as far from rest as the keyed ones, on the shared root, with its feet unplanted. So a keyed foot held still while
+  the root travels slid the drawn foot back at 0.7 times the walking speed (the walks moonwalked about a quarter of a metre a step:
+  measured 1 m/s), a keyed stride drew 1.7 times as long, and a keyed drop sank the drawn hips 1.7 times as deep (the kneels sat the
+  hips on the floor with a knee 30 cm through it). Now:
+  - every stance and step is written where the **model's** ankle goes, and each frame the keyed foot is put where the drawn one lands
+    there (`OnModel`, from the keyed hips of a first pass); drops are written in the model's metres (`Sink`);
+  - a walking foot rolls: the heel rises onto the ball before it leaves (the ball held still, the ankle coming forward over it), the toe
+    trails, and the heel strikes with the toe up, flattening as the weight comes on;
+  - a kneeling leg (`Kneel`) puts the model's knee on the floor under the hips with the shin along the floor behind and the toes
+    tucked, whatever the hips do;
+  - walks are a `Track` (the hips' speed rising, steady and falling) with each step landing where the hips will be half way through
+    its stance (`Walk`): the foot lands ahead of the hips and leaves behind them, and the strides are the model's (about .7 m);
+  - arms that must meet the body (a hand on the hip, two fingers to the brow, a fist on the pad, a hand on the knee) were solved on the
+    measured skeleton for where the model's hand lands, then keyed.
+
+  `CoreTests --intro-generic` holds it: on the model, a foot flat on the floor stays put (under .45 m/s) except where the intro slides
+  it (`Sliding`), and no knee, ankle or ball goes 4 cm into the floor. (A Classic body draws the keyed rig, whose planted feet now creep
+  forward through a walk; the model is what is drawn by default.)
 - **Sets:** each modelled in Blender 5.2.3 (headless) by its own script (`tools/intros/generic_<set>.py`, run by
   `tools/intros/generic_sets.py`, shapes from `generic_kit.py` on stagekit), two tiers (Fine, `/low`), into the local bank
   `ChipArenaIntroGeneric.bytes` (7.7 MB; never committed). Nothing in them is a placeholder shape: the sun has a limb, the pad is
@@ -57,6 +73,7 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 | Sets | `tools/intros/generic_sets.py` and its modules; the bank's master copy in `F:/Chip Arena Development/scratch/intro-generic/bank/` |
 | Sound | `docs/audio/intros/I2.json`, `Core/NativeIntroSoundKeys.cs` (the I2 slot) |
 | Framing preview | `tools/intros/generic_preview.py` (Blender Workbench, no Editor): renders each intro's camera, set pieces, a mannequin on the keyed anchors and its effects marked, from the views `CoreTests --intro-generic` writes with `INTRO_GENERIC_VIEWS` set |
+| The body as drawn | `CoreTests --intro-generic` with `INTRO_GENERIC_MODEL` set to a folder writes each intro's model skeleton (bound on the measured skeleton), keyed anchors and camera every 1/30 s as JSON, for stick-figure reviews from any side |
 | Checks | `Tests/IntroGenericChecks.cs` (`CoreTests --intro-generic`), and the framework's `Tests/IntroV2Checks.cs` (`--intros-v2`) |
 
 To rebuild the bank: `blender --background --factory-startup --python unity/ChipArenaConversion/tools/intros/generic_sets.py --
@@ -86,15 +103,17 @@ the dawn sky and the sun (its face white-hot at the core, darkening to gold at t
 | 2.20 | The summit rushing up | falling alongside it |
 | 2.45 | The flare (belly to the pad, arms wide), the tuck, feet first; the thrusters ignite | (follows) |
 | 2.95 | The braking burn bites: slow motion (0.35x for 0.6 s) | wide and low at the pad's edge |
-| 3.12 | Touchdown in a deep crouch, arms out low; grit and snow blown out over the pad, the windsocks snap out | (holds, slowing) |
+| 3.12 | Touchdown in a superhero landing (right knee and fist on the pad, left foot out front, left arm swept back); grit and snow blown out over the pad, the windsocks snap out | (holds, slowing) |
 | 4.40 | It rises; the thrusters sputter three times and cool | a low orbit round it |
 | 5.05 | The sun breaks the cloud line: gold floods the pad; it looks to the sun | (orbit ends) |
 | 5.70 | **The name** (a wipe). The hero, chin up | the closing: the whole figure from a low three-quarter, the sun beside it, the name on the pad |
 | 6.45 | One last puff of the thrusters | (holds) |
 
 **Motion:** keyed: the dive (root pitched over, arms back), the flare, the tuck and the feet-first brake (the root on a Hermite path
-from the sky to the pad), the crouch landing on planted feet, the rise and the look to the sun, the hero hold. Cyan afterimages
-through the flip.
+from the sky to the pad, the arms flung wide as it brakes), then a superhero landing: the left foot planted out in front, the right knee
+down on the pad, the torso folded over the front knee, the right fist on the pad and the left arm swept back; a held breath, the head
+up to the lens, then it pushes off the pad and drives up over the front foot, the right foot stepping up beside it, chest open, chin
+up, a look to the sun, and a square hero. Cyan afterimages through the flip.
 
 ## Whiteout (8.0 s, the name at 6.2 s)
 Night, a blizzard, a polar outpost lost in it. The frame is a wall of snow backlit by the outpost's floodlights (the fog itself is
@@ -119,8 +138,11 @@ is melted ground: dark and wet at the heart, grey slush, a low rim of packed sno
 | 5.00 | The storm parts: the fog draws back, the outpost, the masts, the aurora | pulling out and up |
 | 6.20 | **The name** (assembled from shards). The hero in the thawed ground, steam curling | the closing from its right: the hut behind it, the radio mast beside it |
 
-**Motion:** keyed: the kneel (the left foot planted forward, the right knee down, the head bowed), the shudder, the rise through the
-knees with a step, the fist drawn in and the arms thrown open for the pulse, the hero hold. The frost coat is a pale ghost of the
+**Motion:** keyed: frozen in a kneel, huddled over the front knee (the left foot planted, the right knee in the snow, the left forearm
+across the knee, the right forearm on the thigh, head bowed); the visor wakes and the head stirs; the shoulders draw up and shiver as the
+heat builds; the frost cracks (the head snaps up, the chest opens, the right arm flings out); the weight goes forward over the front
+foot, the hand pressing on the knee, and it drives up, the right foot stepping up beside the left; the fists drawn in to the chest and a
+dip, then the pulse (a deep sink, the arms thrown down and wide); it looks up as the storm parts; the hero hold. The frost coat is a pale ghost of the
 body until the crack. The visor is the model's own, lit by its accent; its light rides the model's head as drawn.
 
 ## Slipstream (7.4 s, the name at 5.6 s)
@@ -140,14 +162,16 @@ middle car the pilot rides, a nose at the tail), its windows lit.
 | 1.55 | It stands; the train bursts into the hall (1.66) | (rising out of the tunnel with it) |
 | 1.78 | It sprints along the roof: leaning in, knees driving, arms pumping | (keeps pace) |
 | 2.70 | The leap: it hangs at the take-off (0.3x) and snaps back to speed | a cut to the platform, wide, the train behind |
-| 3.30 | It lands in a slide: sparks off the boots and the dragging hand, a scorch on the floor, the train's wake | low on the platform as it slides at the lens |
+| 3.30 | It lands in a knee slide: sparks off the knee and the dragging hand, a scorch on the floor, the train's wake | low on the platform as it slides at the lens |
 | 4.30 | It stops on the mark and stands; a glance after the train (4.45); the tail lights fade into the tunnel | a low orbit |
 | 5.00 | The station chime | (holds) |
 | 5.60 | **The name** (typed). The departure board clatters over | the closing from its right, the hall receding behind it |
 
-**Motion:** keyed: the crouch on the moving roof (the feet planted in the car's frame), the sprint (two keys a stride, the steps
-lifted high for the knee drive), a loaded gather before the launch, the leap and its tuck, the legs reaching forward into the slide
-(the feet moving with it), the glance and the hero hold.
+**Motion:** keyed: a surfer's crouch on the moving roof (the feet planted in the car's frame on its roof), up and away into a sprint
+(accelerating, two keys a stride: the forward lean, the hips and shoulders countering, the arms pumping, the heels kicking up and the
+knees driving), a loaded take-off off the left foot, a split leap, and a knee slide: the right foot out in front and the left knee down
+on the platform (sparks off the knee and the dragging left hand, the body leaning toward it, the right arm out), turning to the lens as
+it slows; it rises forward over the right foot onto the mark, glances after the train, and holds.
 
 ## Threshold (8.2 s, the name at 6.4 s)
 Dusk in a canyon. At the end of a ruined plaza two leaning standing stones meet in a cleft. A crack of light runs up the seam between
@@ -167,14 +191,16 @@ canyon's banded cliff walls with a saddle worn into the far one; the dusk sky.
 | 0.60 | A crack of light runs a third of the way up the seam, dust shaken off (and at 1.20, 1.75) | (the push) |
 | 2.40 | The seam brightens, the runes wake | (the push) |
 | 3.00 | The stones grind apart: light floods out of the slit, dust bursts along the ground, rays fan out | (the push) |
-| 3.40 | The pilot steps out of the light | an arc in front, from its left round to its front |
+| 3.40 | The pilot steps out of the light on its first footfall (it set off unseen at 3.0) | an arc in front, from its left round to its front |
 | 3.50 | It walks down the plaza toward the lens | (the arc) |
 | 4.90 | The stones grind shut behind it, dust squeezed out, a last flare up the seam | low and centred, the stones towering |
 | 5.85 | It reaches the mark | (holds) |
 | 6.40 | **The name** (rising). Small and centred under the stones | the closing: wide, low and centred |
 
-**Motion:** keyed: upright in the light, the walk out (planned steps, the arms swinging), the arrival, the hero hold. Warm
-afterimages as it steps out.
+**Motion:** keyed: the walk out of the slit, measured and upright (strides of about .7 m every .49 s, the hips lowest at each
+footfall and turned with the leg landing, the shoulders countering, the arms swinging opposite with the forward elbow bent, the chin
+rising step by step); it steps into sight on its first footfall, glances back over its shoulder as the stones grind shut, settles onto
+the mark with its weight, and holds tall under the stones. Warm afterimages as it steps out.
 
 ## Flashbulb (7.8 s, the name at 6.0 s)
 A premiere at night. A red carpet runs from a theatre's doors between velvet ropes; the marquee's bulbs chase round it and two
@@ -191,7 +217,7 @@ blade sign with neon stars and stripes; two lit poster cases; four lamp posts; t
 | --- | --- | --- |
 | 0.00 | The dark street; the marquee's bulbs chase on, the searchlights sweep up | wide from the street |
 | 0.50 | The doors swing open, light spills down the carpet; a silhouette in the doorway | (holds) |
-| 0.80 | It strides down the carpet, flashes popping from both sides | a cut to it halfway down the carpet, low, dollying back ahead of it |
+| 0.80 | It struts down the carpet, flashes popping from both sides | a cut to it halfway down the carpet, low, dollying back ahead of it |
 | 3.32 | On the mark: pose one, a look back over the shoulder, held; a flash floods the lens | photograph one, from its left |
 | 3.95 | Pose two, a hand on the hip, chin up, held | photograph two, from its right |
 | 4.58 | Pose three, two fingers to the brow, then flicked out | photograph three, centred and low |
@@ -199,8 +225,11 @@ blade sign with neon stars and stripes; two lit poster cases; four lamp posts; t
 | 5.65 | (the storm goes on) | a cut to the cover: low, straight down the carpet |
 | 6.00 | **The name** (slammed) on the carpet: the cover shot | (a slow push in) |
 
-**Motion:** keyed: the doorway, the stride (planned steps down the carpet, the arms swinging), the three poses and the cover's
-stance.
+**Motion:** keyed: a silhouette in the doorway, weight on one hip, rolling its shoulders back as the doors open; after the cut a
+catwalk strut (the feet crossing onto one line, the hips turning well round and dropping hard over the stance leg and swinging out over
+it, shoulders back, chin up, loose arms); the three poses, each snapped in on its flash (one: turned away, weight back, the head over
+the shoulder to the lens and a hand on the hip behind; two: square to the lens, a hand on the hip, the hip popped; three: two fingers
+to the brow, flicked out); arms thrown up into a V in the storm; the cover in a power pose, both hands on the hips.
 
 ## The default
 Cloudbreak is the new default (the intro any pilot without an equipped intro gets, and the fallback where an archived pick has no

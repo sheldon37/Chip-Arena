@@ -23,11 +23,14 @@ internal static class IntroGenericChecks
         // (A review aid, not a check: with INTRO_GENERIC_VIEWS set to a folder, each intro's camera, anchors and set pieces every
         // 0.1 s are written there as JSON for an offline Blender preview of the framing; tools/intros/generic_preview.py.)
         var views=Environment.GetEnvironmentVariable("INTRO_GENERIC_VIEWS");if(!string.IsNullOrEmpty(views))foreach(var s in Make())Dump(s,views);
-        count=0;var names=new HashSet<string>();var ids=new HashSet<string>();
+        // (Likewise INTRO_GENERIC_MODEL: the body as the model draws it, bound bone for bone on the measured skeleton every 1/30 s, in
+        // the source frame, for the stick-figure reviews of the walks, contacts and silhouettes: tools/intros/generic_sticks.py.)
+        var model=Environment.GetEnvironmentVariable("INTRO_GENERIC_MODEL");if(!string.IsNullOrEmpty(model))foreach(var s in Make())DumpModel(s,model);
+        count=0;var names=new HashSet<string>();var ids=new HashSet<string>();var rig=ModelPoseChecks.Measured();
         foreach(var s in Make())
         {
             string n=s.Title;Check(names.Add(n)&&ids.Add(s.Style),n+" has its own name and id");
-            Registry(s);Timeline(s,root);Determinism(s);Budgets(s);Reduced(s);Streaks(s);Closing(s);
+            Registry(s);Timeline(s,root);Determinism(s);Budgets(s);Reduced(s);Streaks(s);Closing(s);Feet(s,rig);
         }
         Check(NativeIntroCatalog.Find(NativeIntroCatalog.DefaultId)?.Make() is NativeIntroCloudbreak,"the new default is Cloudbreak");
         Console.WriteLine("PASS generic intros ("+count+" checks)");
@@ -65,6 +68,64 @@ internal static class IntroGenericChecks
             sb.Append("],\"pieces\":["+rec.Out+"],\"fx\":["+rfx.Out+"]}");
         }
         sb.Append("]}");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,s.Title.ToLowerInvariant()+".json"),sb.ToString());
+    }
+    /// <summary>The model's skeleton as drawn (Runtime VisualIntroPose binds a v2 intro's keyed pose bone for bone, its arms as keyed,
+    /// the feet unplanted, on the rig's root), with the keyed anchors and the camera, every 1/30 s.</summary>
+    private static readonly string[] ModelBones={"pelvis","spine_03","spine_05","neck_01","head","upperarm_l","lowerarm_l","hand_l","middle_01_l","upperarm_r","lowerarm_r","hand_r","middle_01_r","thigh_l","calf_l","foot_l","ball_l","thigh_r","calf_r","foot_r","ball_r"};
+    private static void DumpModel(NativeIntroGenericScript s,string folder)
+    {
+        string F(float x)=>x.ToString("0.####",System.Globalization.CultureInfo.InvariantCulture);string P(Vector3 v)=>"["+F(v.X)+","+F(v.Y)+","+F(v.Z)+"]";
+        var rig=ModelPoseChecks.Measured();var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();var at=new int[ModelBones.Length];
+        for(int b=0;b<ModelBones.Length;b++)at[b]=Array.IndexOf(rig.Names,ModelBones[b]);
+        var anchors=new[]{NativeEntranceAnchor.Head,NativeEntranceAnchor.Chest,NativeEntranceAnchor.Pelvis,NativeEntranceAnchor.LeftShoulder,NativeEntranceAnchor.LeftElbow,NativeEntranceAnchor.LeftHand,NativeEntranceAnchor.RightShoulder,NativeEntranceAnchor.RightElbow,NativeEntranceAnchor.RightHand,NativeEntranceAnchor.LeftKnee,NativeEntranceAnchor.LeftFoot,NativeEntranceAnchor.RightKnee,NativeEntranceAnchor.RightFoot,NativeEntranceAnchor.LeftToe,NativeEntranceAnchor.RightToe};
+        var sb=new System.Text.StringBuilder();sb.Append("{\"title\":\""+s.Title+"\",\"length\":"+F(s.Length)+",\"nameAt\":"+F(s.IntroNameAt)+",\"floor\":"+F(NativeEntranceStage.FloorY)+",\"bones\":[\""+string.Join("\",\"",ModelBones)+"\"],\"frames\":[");
+        s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};
+        for(int i=0;i<=(int)(s.Length*30);i++)
+        {
+            float age=i/30f,t=s.Clock(age);s.Camera(age,out var v);s.Pose(t,pose,out var root,out var rot);pose.World();
+            float relax=Math.Clamp(s.ArmsRelax(t),0,1);NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax},false,false);
+            var head=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Head]));var chest=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Chest]));
+            var pelvis=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Pelvis]));
+            sb.Append(i>0?",":"").Append("{\"age\":"+F(age)+",\"t\":"+F(t)+",\"solid\":"+F(s.Solid(t,0))+",\"root\":"+P(root)+",\"eye\":"+P(v.Eye)+",\"look\":"+P(v.Look)+",\"fov\":"+F(v.Fov)+",\"headFwd\":"+P(head)+",\"chestFwd\":"+P(chest)+",\"pelvisFwd\":"+P(pelvis)+",\"model\":[");
+            for(int b=0;b<at.Length;b++)sb.Append(b>0?",":"").Append(P(at[b]<0?Vector3.Zero:root+Vector3.Transform(st.Position[at[b]],rot)));
+            sb.Append("],\"keyed\":[");for(int k=0;k<anchors.Length;k++)sb.Append(k>0?",":"").Append(P(s.KeyedAnchor(anchors[k],t)));sb.Append("]}");
+        }
+        sb.Append("]}");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,s.Title.ToLowerInvariant()+"-model.json"),sb.ToString());
+    }
+
+    // ---- the feet on the model ----
+    /// <summary>
+    /// The body as the model draws it (the keyed pose bound bone for bone on the measured skeleton, the feet unplanted, as Runtime
+    /// VisualIntroPose binds it), every 1/30 s while it is shown: a foot flat on the floor (its ball within 1.2 cm of it, its ankle
+    /// within 13 cm) stays put (its ball under .45 m/s; the walks used to slide a planted foot back at 1 m/s, the model's legs being
+    /// 1.7 times the keyed rig's on a shared root) except where the intro slides it (Sliding); and no knee, ankle or ball goes more
+    /// than 4 cm into the floor (the kneels sat the hips on the floor with a knee 30 cm through it).
+    /// </summary>
+    private static void Feet(NativeIntroGenericScript s,NativeVisualRig.Rig rig)
+    {
+        string n=s.Title;var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();float floor=NativeEntranceStage.FloorY;
+        string[] names={"ball_l","ball_r","foot_l","foot_r","calf_l","calf_r"};float[] under={0,0,.05f,.05f,.055f,.055f};var at=new int[names.Length];
+        for(int b=0;b<names.Length;b++){at[b]=Array.IndexOf(rig.Names,names[b]);Check(at[b]>=0,"the measured skeleton has "+names[b]);}
+        int frames=(int)(s.Length*30);var p=new Vector3[frames+1,names.Length];var t=new float[frames+1];
+        for(int i=0;i<=frames;i++)
+        {
+            t[i]=s.Clock(i/30f);s.Pose(t[i],pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=Math.Clamp(s.ArmsRelax(t[i]),0,1)},false,false);
+            for(int b=0;b<names.Length;b++)p[i,b]=root+Vector3.Transform(st.Position[at[b]],rot);
+        }
+        float worst=0,deepest=0;
+        for(int i=1;i<frames;i++)
+        {
+            if(s.Solid(t[i],0)<.5f)continue;
+            for(int b=0;b<names.Length;b++){float d=floor+under[b]-p[i,b].Y;deepest=Math.Max(deepest,d);Check(d<.04f,n+": the model's "+names[b]+" is "+(d*100).ToString("0")+" cm into the floor at "+t[i].ToString("0.00")+" s");}
+            if(s.Sliding(t[i]))continue;
+            for(int side=0;side<2;side++)
+            {
+                var ball=p[i,side];if(ball.Y-floor>.012f||p[i,2+side].Y-floor>.13f)continue;
+                var d=p[i+1,side]-p[i-1,side];d.Y=0;float v=d.Length()*15;worst=Math.Max(worst,v);
+                Check(v<.45f,n+": the model's planted "+(side==0?"left":"right")+" foot slides at "+v.ToString("0.00")+" m/s at "+t[i].ToString("0.00")+" s");
+            }
+        }
+        Check(true,n+"'s planted feet on the model: at most "+worst.ToString("0.00")+" m/s; at most "+(deepest*100).ToString("0")+" cm into the floor");
     }
 
     // ---- the registry and the timeline ----

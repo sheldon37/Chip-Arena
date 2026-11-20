@@ -22,41 +22,49 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 FloodAt=U(5.6f,8.9f,-7.4f),BeaconAt=U(-15.5f,17.1f,-21f),HutDoor=U(-7.2f+3.5f*(float)Math.Sin(.46f),2.1f,-10.4f+3.5f*(float)Math.Cos(.46f));
         /// <summary>The wind: from the pilot's left and behind, low over the snow (source frame, unit), and its speed (m/s).</summary>
         private static readonly Vector3 Wind=Vector3.Normalize(new Vector3(-1,-.06f,.32f));private const float Gust=13;
+        /// <summary>Where the hips are kneeling and stood (the root's z): it rises onto the mark over its front foot.</summary>
+        public const float Knelt=.12f,Stood=.36f;
+        private const int LC=CapturedRig.LClav,RC=CapturedRig.RClav;
+        /// <summary>The right knee in the snow until it drives up off it.</summary>
+        protected override float Kneel(float t,bool left)=>left?0:1-NativeEntranceMath.Smooth((t-(RiseAt+.04f))/.1f);
         public NativeIntroWhiteout():base(Id,Total,CardAt,PulseAt,0x7fe8ff)
         {
-            // Kneeling: the left foot forward, the right knee in the snow; then standing on the mark.
-            Start=Stance(.2f,.5f,.12f,-.2f,-.35f,-.45f);
-            Steps=new[]{Step(false,RiseAt+.35f,RiseAt+.8f,-.19f,.18f,-.42f,.1f),Step(true,UpAt+.05f,UpAt+.35f,.18f,.24f,.1f,.05f)};
+            // Kneeling (the model's feet): the left foot planted forward on the mark's left spot, the right knee in the snow under the hips
+            // (Kneel); it rises onto the mark, the right foot stepping up beside the left.
+            Start=Stance(.15f,.06f,.12f,-.1f,-.56f,-.3f,Facing,0,Stood);
+            Steps=new[]{Step(false,RiseAt+.1f,RiseAt+.52f,-.15f,-.06f,-.3f,.14f,Facing,0,Stood)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            float[] kneel(float head,float lean)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=.88f;v[NativeEntranceKeys.RootZ]=.12f;v[NativeEntranceKeys.Yaw]=Facing;v[NativeEntranceKeys.BodyY]=-.5f;
-                v[NativeEntranceKeys.PlantL]=1;v[NativeEntranceKeys.PlantR]=0;
-                NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Sp,.1f,0,0);NativeEntranceKeys.Set(v,C,.06f,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);
-                NativeEntranceKeys.Set(v,LL,-1.35f,0,.15f);NativeEntranceKeys.Set(v,LK,1.65f,0,0);NativeEntranceKeys.Set(v,RL,.3f,0,-.08f);NativeEntranceKeys.Set(v,RK,1.75f,0,0);
-                NativeEntranceKeys.Set(v,LA,-.75f,0,.25f);NativeEntranceKeys.Set(v,LE,-1.15f,0,0);NativeEntranceKeys.Set(v,RA,-.15f,0,-.12f);NativeEntranceKeys.Set(v,RE,-.35f,0,0);});
-            // Frozen still under the frost; the visor lights: the first sign of life, the head stirring.
-            k.Key(0,kneel(.24f,.34f));
-            k.Key(VisorAt,kneel(.24f,.34f));
-            k.Key(VisorAt+.3f,kneel(.19f,.33f)).J(Hd,.19f,.06f,0);
+            float[] kneel(float head,float lean,float sink)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=.88f;v[NativeEntranceKeys.RootZ]=Knelt;v[NativeEntranceKeys.Yaw]=Facing;v[NativeEntranceKeys.BodyY]=Sink(sink);
+                NativeEntranceKeys.Set(v,B,.12f,0,0);NativeEntranceKeys.Set(v,Sp,.06f+lean*.5f,0,0);NativeEntranceKeys.Set(v,C,.04f+lean*.45f,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);
+                NativeEntranceKeys.Set(v,LA,-.92f,-.47f,.09f);NativeEntranceKeys.Set(v,LE,-.59f,0,0);NativeEntranceKeys.Set(v,RA,-.25f,.67f,-.3f);NativeEntranceKeys.Set(v,RE,-.95f,0,0);});
+            // Frozen still under the frost, huddled over the front knee, its forearm across it, head bowed; the visor lights: the first
+            // sign of life, the head stirring.
+            k.Key(0,kneel(.34f,.3f,-.5f));
+            k.Key(VisorAt,kneel(.34f,.3f,-.5f));
+            k.Key(VisorAt+.3f,kneel(.26f,.29f,-.5f)).J(Hd,.26f,.07f,0);
             // The heat builds: the shoulders draw up and the body strains against the ice in a shiver, curling tighter before it breaks.
-            k.Key(HeatAt,kneel(.2f,.33f)).J(Hd,.2f,.05f,0);
-            k.Key(HeatAt+.25f,kneel(.22f,.35f)).J(Sp,.13f).J(C,-.02f,0,.035f).J(RE,-.55f);
-            k.Key(HeatAt+.42f,kneel(.23f,.35f)).J(Sp,.13f).J(C,-.01f,0,-.035f).J(RE,-.6f);
-            k.Key(HeatAt+.58f,kneel(.23f,.36f)).J(Sp,.14f).J(C,0,0,.03f).J(RE,-.65f);
-            k.Key(CrackAt-.04f,kneel(.24f,.38f)).J(Sp,.15f).J(C,.04f).J(RA,-.05f,0,-.08f).J(RE,-.7f);
-            // The frost breaks: the head snaps up, the chest opens and the free arm flings out to the side (the impact key rings out).
-            k.Key(CrackAt+.08f,kneel(-.04f,.22f)).J(Sp,0).J(C,-.12f).J(LA,-.6f,0,.32f).J(LE,-1.05f).J(RA,-.2f,0,-.8f).J(RE,-.3f).ImpactKey();
+            k.Key(HeatAt,kneel(.26f,.3f,-.5f)).J(Hd,.26f,.05f,0);
+            k.Key(HeatAt+.25f,kneel(.28f,.32f,-.5f)).J(C,.2f,0,.035f).J(LC,0,0,.1f).J(RC,0,0,-.1f).J(RE,-1.05f);
+            k.Key(HeatAt+.42f,kneel(.29f,.33f,-.5f)).J(C,.21f,0,-.035f).J(LC,0,0,.12f).J(RC,0,0,-.12f).J(RE,-1.1f);
+            k.Key(HeatAt+.58f,kneel(.3f,.34f,-.5f)).J(C,.22f,0,.03f).J(LC,0,0,.13f).J(RC,0,0,-.13f).J(RE,-1.15f);
+            k.Key(CrackAt-.04f,kneel(.33f,.37f,-.5f)).J(Sp,.26f).J(C,.24f).J(LC,0,0,.14f).J(RC,0,0,-.14f).J(RE,-1.2f);
+            // The frost breaks: the head snaps up, the chest opens and the right arm flings out to the side (the impact key rings out).
+            k.Key(CrackAt+.08f,kneel(-.12f,.14f,-.5f)).J(Sp,.02f).J(C,-.12f).J(RA,-.35f,0,-1.15f).J(RE,-.2f).ImpactKey();
+            k.Key(CrackAt+.3f,kneel(-.06f,.18f,-.5f)).J(Sp,.06f).J(C,-.06f).J(RA,-.2f,0,-.85f).J(RE,-.35f);
             // The gather for the rise: the weight forward over the front foot, the left hand pressing on its knee, the right arm back.
-            k.Key(RiseAt,kneel(.02f,.38f)).J(C,-.04f).J(LA,-.85f,0,.3f).J(LE,-1.2f).J(RA,.35f,0,-.22f).J(RE,-.45f);
-            // The rise: it drives up off the knee, the right arm swinging through, the trailing leg coming under.
-            k.Key(RiseAt+.55f,stand).Root(0,.88f,.18f,Facing).Planted(1,.6f).Drop(-.3f).J(B,.3f).J(Sp,.08f).J(Hd,-.05f).J(LA,-.5f,0,.35f).J(LE,-.85f).J(RA,-.65f,0,-.3f).J(RE,-.9f).PassKey();
-            k.Key(UpAt,stand).Root(0,.88f,.22f,Facing).Planted(1).Drop(-.02f).J(B,.02f).J(C,-.06f).J(Hd,-.1f).J(LA,-.15f,0,.25f).J(LE,-.35f).J(RA,-.2f,0,-.25f).J(RE,-.5f);
+            k.Key(RiseAt,kneel(.04f,.45f,-.5f)).J(C,-.02f).J(RA,.45f,0,-.15f).J(RE,-.3f);
+            // The rise: it drives up off the knee onto the front foot, the right arm swinging through, the right foot stepping up beside
+            // the left; it straightens on the mark.
+            k.Key(RiseAt+.3f,stand).Root(0,.88f,(Knelt+Stood)*.5f,Facing).Planted(1).Drop(Sink(-.3f)).J(B,.3f).J(Sp,.06f).J(Hd,-.04f).J(LA,-.6f,0,.15f).J(LE,-1.0f).J(RA,-.55f,0,-.12f).J(RE,-.75f).PassKey();
+            k.Key(RiseAt+.62f,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.07f)).J(B,.07f).J(C,-.04f).J(Hd,-.06f).J(LA,-.18f,0,.1f).J(LE,-.45f).J(RA,-.2f,0,-.1f).J(RE,-.55f).PassKey();
+            k.Key(UpAt,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.02f)).J(C,-.06f).J(Hd,-.08f).J(LA,-.1f,0,.08f).J(LE,-.4f).J(RA,-.12f,0,-.08f).J(RE,-.45f);
             // The fists drawn in to the chest, head down, a dip; the pulse: a deep sink, the arms thrown down and wide, palms out, the
             // chest arching and the head going back (the impact key rings out); then up out of it, looking up as the storm parts.
-            k.Key(PulseAt-.12f,stand).Root(0,.88f,.22f,Facing).Planted(1).Drop(-.08f).J(B,.06f).J(C,-.02f).J(Hd,.14f).J(RA,-.55f,0,-.45f).J(RE,-1.8f).J(LA,-.45f,0,.38f).J(LE,-1.3f);
-            k.Key(PulseAt+.06f,stand).Root(0,.88f,.22f,Facing).Planted(1).Drop(-.17f).J(B,.06f).J(C,-.16f).J(Hd,-.14f).J(RA,.3f,0,-.95f).J(RE,-.15f).J(LA,.3f,0,.95f).J(LE,-.15f).ImpactKey();
-            k.Key(PartAt,stand).Root(0,.88f,.22f,Facing).Planted(1).Drop(-.04f).J(C,-.08f).J(Hd,-.25f,.12f,0).J(RA,.08f,0,-.45f).J(RE,-.3f).J(LA,.08f,0,.45f).J(LE,-.3f);
-            k.Key(CardAt-.3f,NativeEntranceKeys.Hero()).Root(0,.88f,.22f,Facing).Planted(1).J(Hd,-.1f,.06f,0);
-            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,.22f,Facing).Planted(1).J(C,-.02f,-.12f,0).J(Hd,-.12f,.1f,0);Keys=k;
+            k.Key(PulseAt-.12f,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.12f)).J(B,.08f).J(C,.04f).J(Hd,.18f).J(RA,.18f,.14f,-.58f).J(RE,-2.62f).J(LA,.18f,-.14f,.58f).J(LE,-2.62f);
+            k.Key(PulseAt+.06f,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.24f)).J(B,.04f).J(C,-.18f).J(Hd,-.16f).J(RA,.25f,0,-1.0f).J(RE,-.12f).J(LA,.25f,0,1.0f).J(LE,-.12f).ImpactKey();
+            k.Key(PartAt,stand).Root(0,.88f,Stood,Facing).Planted(1).Drop(Sink(-.04f)).J(C,-.1f).J(Hd,-.28f,.12f,0).J(RA,.08f,0,-.4f).J(RE,-.3f).J(LA,.08f,0,.4f).J(LE,-.3f);
+            k.Key(CardAt-.3f,NativeEntranceKeys.Hero()).Root(0,.88f,Stood,Facing).Planted(1).J(Hd,-.12f,.06f,0).J(C,-.1f,-.1f,0).J(LA,-.1f,0,.1f).J(LE,-.35f).J(RA,-.1f,0,-.1f).J(RE,-.35f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Stood,Facing).Planted(1).J(C,-.1f,-.14f,0).J(Hd,-.14f,.1f,0).J(LA,-.08f,0,.12f).J(LE,-.33f).J(RA,-.08f,0,-.12f).J(RE,-.33f);Keys=k;
             // The camera: telephoto into the storm, a close insert on the frost, a tilt up with the rise, the pulse low and wide, the
             // reveal pulling out as the storm parts, the hero.
             Rig.Dolly(0,new Vector3(1.3f,.62f,13.5f),new Vector3(.75f,.72f,7.4f),new Vector3(0,.72f,.1f),new Vector3(0,.8f,.1f),17,19).Ease(NativeIntroEase.InOut).Focus(0,0,.6f).Handheld(.35f)
