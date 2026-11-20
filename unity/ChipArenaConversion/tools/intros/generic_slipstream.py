@@ -191,9 +191,9 @@ def build(T):
     # ---- the far wall: tiles, a coloured band, ad panels, the station's signs ----
     g.face((V(-H, -1.55, -6.4), V(H, -1.55, -6.4), V(H, ST_SPRING, -6.4), V(-H, ST_SPRING, -6.4)), F['wall'], normal=(0, 0, 1))
     sk.box(g, -H, H, 2.3, 2.62, -6.4, -6.34, F['band'], None, 0, cell=0)
-    for k, x in enumerate((-22, -9, 9, 22)):
+    for k, x in enumerate((-22, -9, -4.6, 4.6, 9, 22)):
         sk.box(g, x - 1.55, x + 1.55, .45, 2.05, -6.4, -6.3, F['frame'], None, .01, cell=0)
-        f = (F['ad1'], F['ad2'], F['ad3'], F['ad2'])[k]
+        f = (F['ad1'], F['ad2'], F['ad3'], F['ad1'], F['ad3'], F['ad2'])[k]
         lights.face((V(x - 1.45, .55, -6.29), V(x + 1.45, .55, -6.29), V(x + 1.45, 1.95, -6.29), V(x - 1.45, 1.95, -6.29)), f, normal=(0, 0, 1))
     board = Geo()
     sk.box(g, -2.6, 2.6, 2.95, 4.25, -6.4, -6.22, F['frame'], None, .02, cell=0)
