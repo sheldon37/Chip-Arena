@@ -102,8 +102,12 @@ namespace ChipArena.UnityConversion
             // Up from the slide; a glance after the train; back to the lens.
             k.Key(StopAt+.45f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.05f)).J(B,.04f).J(Hd,-.05f,-.15f,0).J(LA,-.15f,0,.12f).J(LE,-.35f).J(RA,-.15f,0,-.12f).J(RE,-.35f);
             k.Key(GlanceAt+.35f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.04f)).J(C,0,.25f,0).J(Hd,-.05f,.75f,0).J(LA,-.12f,0,.1f).J(LE,-.35f).J(RA,-.12f,0,-.1f).J(RE,-.35f);
-            k.Key(CardAt-.25f,NativeEntranceKeys.Hero()).Root(0,.88f,Mark,Facing).Planted(1).J(P,0,0,-.04f).J(C,0,0,.03f).J(Hd,-.06f,.04f,.03f).J(LA,-.14f,0,.03f).J(LE,-.42f).J(RA,-.12f,0,-.03f).J(RE,-.38f);
-            k.Key(Total,NativeEntranceKeys.Hero()).Root(0,.88f,Mark,Facing).Planted(1).J(P,0,0,-.04f).J(C,-.05f,-.14f,.03f).J(Hd,-.08f,.1f,.03f).J(LA,-.12f,0,.04f).J(LE,-.4f).J(RA,-.1f,0,-.04f).J(RE,-.36f);Keys=k;
+            // The hero: it turns back easy, brushes the slide's dust off its left shoulder with the right hand, and settles loose and
+            // cocked, the weight on its left leg, the shoulders tilted, the head tilting to the lens on the name.
+            k.Key(CardAt-.5f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.03f)).J(P,0,-.03f,-.03f).J(C,0,.1f,.03f).J(Hd,-.04f,.2f,0).J(RA,RBrushX,RBrushY,RBrushZ).J(RE,RBrushE).J(LA,-.1f,0,.06f).J(LE,-.38f).PassKey();
+            k.Key(CardAt-.28f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.03f)).J(P,0,-.04f,-.04f).J(C,0,.06f,.04f).J(Hd,-.04f,.14f,.02f).J(RA,RBrushX+.25f,RBrushY,RBrushZ-.15f).J(RE,RBrushE+.45f).J(LA,-.1f,0,.06f).J(LE,-.38f).PassKey();
+            k.Key(CardAt+.1f,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.035f)).J(P,0,-.05f,-.06f).J(Sp,0,0,.03f).J(C,-.05f,-.08f,.06f).J(Hd,-.04f,.06f,.1f).J(RA,-.08f,0,-.05f).J(RE,-.36f).J(LA,-.12f,0,.04f).J(LE,-.42f);
+            k.Key(Total,stand).Root(0,.88f,Mark,Facing).Planted(1).Drop(Sink(-.035f)).J(P,0,-.05f,-.06f).J(Sp,0,0,.03f).J(C,-.06f,-.1f,.06f).J(Hd,-.05f,.08f,.11f).J(RA,-.08f,0,-.05f).J(RE,-.36f).J(LA,-.12f,0,.04f).J(LE,-.42f);Keys=k;
             RootPath=(t,r)=>t<StopAt?Ride(t):new Vector3(0,r.Y,Mark*NativeEntranceMath.Smooth((t-StopAt)/.5f));
             // The camera: low on the roof behind it in the tunnel, beside the train keeping pace into the hall, a whip to the platform
             // for the leap (slowed), low on the platform as it slides in, the glance, the hero frame.
@@ -152,6 +156,8 @@ namespace ChipArena.UnityConversion
         private static float Reach(float t)=>.5f-.2f*NativeEntranceMath.Smooth((t-(StopAt-.35f))/.35f);
         /// <summary>The mark: the hips rise forward over the right foot from where the slide stops (the root's z).</summary>
         public const float Mark=.38f;
+        /// <summary>The right hand brushing the left shoulder (keyed so the model's hand lands there: solved on the measured skeleton).</summary>
+        private const float RBrushX=-2.12f,RBrushY=.99f,RBrushZ=1.28f,RBrushE=-1.37f;
         /// <summary>The left knee down through the slide.</summary>
         protected override float Kneel(float t,bool left)=>left?NativeEntranceMath.Smooth((t-(LandAt-.05f))/.06f)*(1-NativeEntranceMath.Smooth((t-(StopAt+.06f))/.1f)):0;
         // The sprint, the leap and the slide are all keyed on the intro rig (no motion-bank clip: the owner wants these intros' own

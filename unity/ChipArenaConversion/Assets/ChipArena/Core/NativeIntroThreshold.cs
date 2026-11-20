@@ -69,9 +69,12 @@ namespace ChipArena.UnityConversion
                 .J(LA,-.08f,0,.1f).J(LE,-.32f).J(RA,.04f,0,-.1f).J(RE,-.3f).ImpactKey();
             // The hero under the card: tall, chest open, chin up, the hands loose and a little away; a last slow lift of the head and a
             // roll of the shoulders back.
-            k.Key(CardAt+.05f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,.04f,0).J(C,-.07f,-.08f,0).J(LA,-.12f,0,.06f).J(LE,-.34f).J(RA,-.12f,0,-.06f).J(RE,-.34f);
-            k.Key(CardAt+.75f,NativeEntranceKeys.Hero()).Planted(1).Drop(Sink(.008f)).J(Hd,-.17f,.06f,0).J(C,-.11f,-.1f,0).J(LA,-.08f,0,.08f).J(LE,-.32f).J(RA,-.08f,0,-.08f).J(RE,-.32f);
-            k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.15f,.08f,0).J(C,-.09f,-.1f,0).J(LA,-.1f,0,.07f).J(LE,-.33f).J(RA,-.1f,0,-.07f).J(RE,-.33f);Keys=k;
+            // The hero: the right arm sweeps up across and out aside, the hand open, presenting the gate it came through; it settles a
+            // little lower and holds, the chest up, chin up, the head turned to the lens.
+            k.Key(CardAt-.2f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.05f)).J(C,-.08f,.06f,0).J(Hd,-.1f,.06f,0).J(RA,-.75f,0,-.25f).J(RE,-.7f).J(LA,-.1f,0,.06f).J(LE,-.34f).PassKey();
+            k.Key(CardAt+.15f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.02f)).J(C,-.12f,-.08f,0).J(Hd,-.16f,.08f,0).J(RA,-.15f,0,-1.05f).J(RE,-.12f).J(LA,-.1f,0,.06f).J(LE,-.34f).ImpactKey();
+            k.Key(CardAt+.8f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.02f)).J(C,-.12f,-.1f,0).J(Hd,-.17f,.1f,0).J(RA,-.08f,0,-.82f).J(RE,-.16f).J(LA,-.1f,0,.07f).J(LE,-.33f);
+            k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1).Drop(Sink(-.02f)).J(C,-.11f,-.1f,0).J(Hd,-.16f,.12f,0).J(RA,-.06f,0,-.78f).J(RE,-.18f).J(LA,-.1f,0,.07f).J(LE,-.33f);Keys=k;
             RootPath=(t,r)=>new Vector3(0,r.Y,Path.At(t));
             // The camera: centred and formal, pushing in on the cleft; an arc in front as it steps out; low and centred as it comes
             // down the plaza with the stones grinding shut behind it; the closing, wide and centred under the stones.

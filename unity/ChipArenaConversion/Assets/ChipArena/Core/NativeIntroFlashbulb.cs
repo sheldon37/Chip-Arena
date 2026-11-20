@@ -140,6 +140,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The strut down the carpet (the hips' z): in the doorway, then from the cut to the mark.</summary>
         public static float Walk(float t)=>t<CutAt?-6.4f:Path.At(t);
+        /// <summary>The cover's photograph: a flash from the lens as the name slams (none in Reduced effects).</summary>
+        private float CoverFlash(float t)=>Context.Reduced?0:Flash(t,CardAt,.015f,.22f);
         public override bool Sliding(float t)=>Math.Abs(t-CutAt)<.06f;
         /// <summary>The strut's hips swinging out over the stance foot (m, its left +x): 4 cm a side, easing in at the cut and out onto the mark.</summary>
         private static float Sway(float t)=>-.04f*(float)Math.Sin(Math.PI*(t-Footfall(0))/Cadence)*NativeEntranceMath.Smooth((t-CutAt)/.2f)*(1-NativeEntranceMath.Smooth((t-(MarkAt-.25f))/.3f));
@@ -205,6 +207,7 @@ namespace ChipArena.UnityConversion
             l.Directional(new Vector3(0,.55f,-1),Warm*(.18f+.3f*bulbs+.28f*open));if(open>.01f)l.Add(Foyer+new Vector3(0,0,1.4f),Warm*(4.2f*open),8);
             // The photographs' own flashes, from the lens; the photographers' along the barriers (the brightest two this frame).
             Look(t);for(int i=0;i<Photos.Length;i++){float f=Flash(t,Photos[i],.015f,.16f);if(f>.01f)l.Add(Eye+new Vector3(0,.3f,0),Flashc*(26*f),9);}
+            float cover=CoverFlash(t);if(cover>.01f)l.Add(Eye+new Vector3(0,.3f,0),Flashc*(30*cover),10);
             int a=-1,b=-1;float la=0,lb=0;
             for(int i=0;i<FlashT.Length;i++){if(FlashT[i]>t+.02f)break;if(t-FlashT[i]>.5f)continue;float lv=FlashLevel(i,t);if(lv>la){b=a;lb=la;a=i;la=lv;}else if(lv>lb){b=i;lb=lv;}}
             if(a>=0&&la>.01f)l.Add(FlashP[a],Flashc*(14*la),7);if(b>=0&&lb>.01f)l.Add(FlashP[b],Flashc*(14*lb),7);
@@ -244,6 +247,7 @@ namespace ChipArena.UnityConversion
                 if(!low){var fw=Vector3.Normalize(LookAt-Eye);var right=Vector3.Normalize(Vector3.Cross(fw,Vector3.UnitY));var up=Vector3.Cross(right,fw);NativeEntranceFx.Glint(fx,FlashP[i],Flashc*(1.5f*lv),.32f*lv+.08f,right,up,25520+i%60);}
             }
             // Each photograph's flash: the lens itself floods white for an instant (softened in Reduced effects).
+            {float cover=CoverFlash(t);if(cover>.01f){var f3=Vector3.Normalize(LookAt-Eye);fx.Glow(Eye+f3*.6f,Flashc*(1.8f*cover),0,1.8f,1,0,25605);}}
             for(int i=0;i<Photos.Length;i++){float f=Flash(t,Photos[i],.015f,.12f,Context.Reduced?.5f:1);if(f>.01f){var f3=Vector3.Normalize(LookAt-Eye);fx.Glow(Eye+f3*.6f,Flashc*(1.6f*f),0,1.6f,1,0,25600+i);}}
             // The storm: confetti blown out over the carpet from both ends of the front, fluttering down.
             {
@@ -284,6 +288,7 @@ namespace ChipArena.UnityConversion
                 new NativeIntroCue(StormAt,"intro2.flashbulb.burst","gun.dryfire","reload-end",.7f),
                 new NativeIntroCue(StormAt+.05f,"intro2.flashbulb.confetti","death.style.confetti","win",.5f),
                 new NativeIntroCue(CardAt,"intro2.flashbulb.name","chip.critical","install",.75f),
+                new NativeIntroCue(CardAt,"intro2.flashbulb.photo","gun.dryfire","reload-end",.85f,.92f),
             };
             // A shutter for every third photographer's flash through the walk (the rest are the crowd's bed).
             for(int i=0;i<FlashT.Length;i+=FlashT[i]<StormAt?3:2)l.Add(new NativeIntroCue(FlashT[i],"intro2.flashbulb.shutter","gun.dryfire","reload-end",.35f,.9f+.2f*NativeEntranceMath.Rand(25950,i)));

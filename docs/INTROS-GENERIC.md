@@ -113,7 +113,8 @@ the dawn sky and the sun (its face white-hot at the core, darkening to gold at t
 from the sky to the pad, the arms flung wide as it brakes), then a superhero landing: the left foot planted out in front, the right knee
 down on the pad, the torso folded over the front knee, the right fist on the pad and the left arm swept back; a held breath, the head
 up to the lens, then it pushes off the pad and drives up over the front foot, the right foot stepping up beside it, chest open, chin
-up, a look to the sun, and a square hero. Cyan afterimages through the flip.
+up; it turns to the sunrise, rolls its right shoulder back and sets its left fist on its hip, and on the name its head comes round to
+the lens, chin up, its weight on the back leg. Cyan afterimages through the flip.
 
 ## Whiteout (8.0 s, the name at 6.2 s)
 Night, a blizzard, a polar outpost lost in it. The frame is a wall of snow backlit by the outpost's floodlights (the fog itself is
@@ -142,7 +143,8 @@ is melted ground: dark and wet at the heart, grey slush, a low rim of packed sno
 across the knee, the right forearm on the thigh, head bowed); the visor wakes and the head stirs; the shoulders draw up and shiver as the
 heat builds; the frost cracks (the head snaps up, the chest opens, the right arm flings out); the weight goes forward over the front
 foot, the hand pressing on the knee, and it drives up, the right foot stepping up beside the left; the fists drawn in to the chest and a
-dip, then the pulse (a deep sink, the arms thrown down and wide); it looks up as the storm parts; the hero hold. The frost coat is a pale ghost of the
+dip, then the pulse (a deep sink, the arms thrown down and wide); it looks up at the aurora on a long breath as the storm parts, then
+its head comes down to the lens and its right hand comes to rest over its heart, where the heat came from. The frost coat is a pale ghost of the
 body until the crack. The visor is the model's own, lit by its accent; its light rides the model's head as drawn.
 
 ## Slipstream (7.4 s, the name at 5.6 s)
@@ -171,7 +173,8 @@ middle car the pilot rides, a nose at the tail), its windows lit.
 (accelerating, two keys a stride: the forward lean, the hips and shoulders countering, the arms pumping, the heels kicking up and the
 knees driving), a loaded take-off off the left foot, a split leap, and a knee slide: the right foot out in front and the left knee down
 on the platform (sparks off the knee and the dragging left hand, the body leaning toward it, the right arm out), turning to the lens as
-it slows; it rises forward over the right foot onto the mark, glances after the train, and holds.
+it slows; it rises forward over the right foot onto the mark, glances after the train, brushes the slide's dust off its left
+shoulder and settles loose and cocked (the weight on one leg, the shoulders tilted), the head tilting to the lens on the name.
 
 ## Threshold (8.2 s, the name at 6.4 s)
 Dusk in a canyon. At the end of a ruined plaza two leaning standing stones meet in a cleft. A crack of light runs up the seam between
@@ -200,7 +203,8 @@ canyon's banded cliff walls with a saddle worn into the far one; the dusk sky.
 **Motion:** keyed: the walk out of the slit, measured and upright (strides of about .7 m every .49 s, the hips lowest at each
 footfall and turned with the leg landing, the shoulders countering, the arms swinging opposite with the forward elbow bent, the chin
 rising step by step); it steps into sight on its first footfall, glances back over its shoulder as the stones grind shut, settles onto
-the mark with its weight, and holds tall under the stones. Warm afterimages as it steps out.
+the mark with its weight, and sweeps its right arm up and out aside, the hand open, presenting the gate it came through, then holds
+tall under the stones, chin up. Warm afterimages as it steps out.
 
 ## Flashbulb (7.8 s, the name at 6.0 s)
 A premiere at night. A red carpet runs from a theatre's doors between velvet ropes; the marquee's bulbs chase round it and two
@@ -229,7 +233,8 @@ blade sign with neon stars and stripes; two lit poster cases; four lamp posts; t
 catwalk strut (the feet crossing onto one line, the hips turning well round and dropping hard over the stance leg and swinging out over
 it, shoulders back, chin up, loose arms); the three poses, each snapped in on its flash (one: turned away, weight back, the head over
 the shoulder to the lens and a hand on the hip behind; two: square to the lens, a hand on the hip, the hip popped; three: two fingers
-to the brow, flicked out); arms thrown up into a V in the storm; the cover in a power pose, both hands on the hips.
+to the brow, flicked out); arms thrown up into a V in the storm; the cover in a power pose, both hands on the hips, photographed by
+one last flash from the lens as the name slams (none in Reduced effects).
 
 ## The default
 Cloudbreak is the new default (the intro any pilot without an equipped intro gets, and the fallback where an archived pick has no
