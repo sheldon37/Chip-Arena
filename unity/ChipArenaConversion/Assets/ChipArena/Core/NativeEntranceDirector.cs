@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         public virtual string AccentAt(float t)=>null;
         protected NativeEntranceScript(string style,float hit,int accent){Style=style;Hit=hit;Accent=NativeEntranceFx.Hex(accent);}
         /// <summary>The presentation clock at match age `age`: the age, slowed through the beat and caught up before the name card.</summary>
-        public float Clock(float age){if(!(age>0))return 0;return NativeEntranceMath.Warp(Math.Min(age,Length+1),Hit,SlowRate,SlowHold,SlowRecover,SlowCatchUp);}
+        public virtual float Clock(float age){if(!(age>0))return 0;return NativeEntranceMath.Warp(Math.Min(age,Length+1),Hit,SlowRate,SlowHold,SlowRecover,SlowCatchUp);}
         /// <summary>Binds the baked clip (weapon signatures; the procedural entrances ignore it).</summary>
         public virtual void Bind(NativeEntranceClip clip){}
         public virtual bool Ready=>true;
@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
         }
         private readonly Vector4[] boxes=new Vector4[64];private Func<float,Vector3> subject;private Func<float,float> heading;private Func<int,float,Vector3> follow;
         /// <summary>The camera at match age `age` (shots on the presentation clock), guarded out of the floor, the pilot and the set.</summary>
-        public void Camera(float age,out NativeEntranceView view)
+        public virtual void Camera(float age,out NativeEntranceView view)
         {
             float t=Clock(Math.Min(age,SettleAt));subject??=Subject;heading??=Heading;follow??=Smoothed;
             NativeEntranceCamera.Evaluate(Shots,t,Clock(SettleAt),subject,heading,out view,follow);
@@ -277,11 +277,12 @@ namespace ChipArena.UnityConversion
             {NativeDevMotions.GreatswordEntrance,()=>new NativeDevGreatswordIntro()},{NativeDevMotions.KatanaEntrance,()=>new NativeDevKatanaIntro()},
         };
         /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
-        public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);
+        public static bool Directed(string style)=>style!=null&&(makers.ContainsKey(style)||NativeIntroCatalog.Registered(style));
         /// <summary>The style's script (made once and kept: its anchors are built on first use).</summary>
         public static NativeEntranceScript Script(string style)
         {
-            if(style==null||!makers.TryGetValue(style,out var make))return null;if(!scripts.TryGetValue(style,out var s)){s=make();scripts.Add(style,s);}return s;
+            if(style==null)return null;if(!makers.TryGetValue(style,out var make)){make=NativeIntroCatalog.Maker(style);if(make==null)return null;}// Intros v2: the registry (Core NativeIntroCatalog)
+            if(!scripts.TryGetValue(style,out var s)){s=make();scripts.Add(style,s);}return s;
         }
         public static IEnumerable<string> Styles=>makers.Keys;
         /// <summary>
