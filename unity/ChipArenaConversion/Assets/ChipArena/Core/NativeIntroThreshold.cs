@@ -36,25 +36,41 @@ namespace ChipArena.UnityConversion
             steps.Add(Step(false,ArriveAt+.2f,ArriveAt+.44f,-.18f,-.1f,-.42f,.06f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            // In the light: upright, arms loose, chin a little down; then the walk out, arms swinging, chin coming up.
-            k.Key(0,stand).Root(0,.88f,From,Facing+.22f).Planted(1).J(Hd,.1f).J(LA,-.12f,0,.18f).J(LE,-.3f).J(RA,-.12f,0,-.18f).J(RE,-.3f);
-            k.Key(WalkAt,stand).Root(0,.88f,From,Facing+.22f).Planted(1).Drop(-.02f).J(Hd,.06f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
-            // The walk out, measured and upright, two keys a step (the feet are the planned steps above): riding a little higher at the
-            // swing's passing, the arms crossing; settling at the heel's contact, the hips turning gently with the leg in front, the
-            // shoulders countering and the arm opposite that leg swinging forward. The chin rises step by step out of the light.
+            // In the cleft (hidden but for the cracks): head bowed, arms hanging, the chest a little curled; the head lifting at the last.
+            k.Key(0,stand).Root(0,.88f,From,Facing+.22f).Planted(1).J(C,.08f).J(Hd,.34f).J(LA,-.06f,0,.15f).J(LE,-.25f).J(RA,-.06f,0,-.15f).J(RE,-.25f);
+            k.Key(ChargeAt,stand).Root(0,.88f,From,Facing+.22f).Planted(1).J(C,.06f).J(Hd,.24f).J(LA,-.06f,0,.17f).J(LE,-.3f).J(RA,-.06f,0,-.17f).J(RE,-.3f);
+            // The charge: it gathers like a spring as the light swells (knees giving, the chest curling over, elbows drawn back, fists tight)...
+            k.Key(OpenAt-.1f,stand).Root(0,.88f,From,Facing+.22f).Planted(1).Drop(-.09f).J(B,.1f).J(Sp,.06f).J(C,.16f).J(Hd,.3f)
+                .J(LA,.3f,0,.38f).J(LE,-1.05f).J(RA,.3f,0,-.38f).J(RE,-1.05f);
+            // ...and on the boom throws its arms wide and high and arches back into the blaze as the stones grind apart (the impact key
+            // rings out: the arms overshoot and settle), holding it while they part.
+            k.Key(OpenAt,stand).Root(0,.88f,From,Facing+.22f).Planted(1).Drop(.02f).J(B,-.06f).J(Sp,-.08f).J(C,-.2f).J(Hd,-.26f)
+                .J(LA,-.35f,0,2.0f).J(LE,-.12f).J(RA,-.35f,0,-2.0f).J(RE,-.12f).ImpactKey();
+            k.Key(ThroughAt-.06f,stand).Root(0,.88f,From,Facing+.22f).Planted(1).Drop(.01f).J(B,-.04f).J(Sp,-.06f).J(C,-.16f).J(Hd,-.2f)
+                .J(LA,-.32f,0,2.1f).J(LE,-.15f).J(RA,-.32f,0,-2.1f).J(RE,-.15f);
+            // Then the arms sweep down, the elbows trailing, into its first stride out.
+            k.Key(WalkAt+.1f,stand).Root(0,.88f,From,Facing+.22f).Planted(1).Drop(-.02f).J(C,-.08f).J(Hd,-.06f)
+                .J(LA,-.15f,0,.85f).J(LE,-.55f).J(RA,-.15f,0,-.85f).J(RE,-.55f).PassKey();
+            // The walk out, chest up and unhurried, two keys a step (the feet are the planned steps above): riding a little higher at the
+            // swing's passing, the arms crossing; settling at the heel's contact, the hips turning with the leg in front, the shoulders
+            // countering and the arm opposite that leg swinging well forward, its elbow bent (the arm behind straighter). The chin rises
+            // step by step; as the stones grind shut behind it, it glances back over its shoulder (head and chest, Glance), then ahead.
             // (s: +1 when the left foot swings; the source frame's left is +x.)
             for(int i=0;i<Paces;i++)
             {
-                float lift=WalkAt+.02f+i*Cadence;float s=i%2==1?1:-1,chin=.04f-.025f*i;
-                k.Key(lift+.18f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.015f)
-                    .J(P,0,0,-s*.03f).J(C,-.02f,0,0).J(Hd,chin,0,0).J(LA,s*.03f,0,.14f).J(LE,-.3f).J(RA,-s*.03f,0,-.14f).J(RE,-.3f).PassKey();
-                k.Key(lift+Cadence-.03f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.045f)
-                    .J(P,0,-s*.08f,0).J(Sp,0,s*.04f,0).J(C,0,s*.08f,0).J(Hd,chin+.02f,-s*.03f,0)
-                    .J(LA,s*.26f,0,.15f).J(LE,s>0?-.2f:-.45f).J(RA,-s*.28f,0,-.15f).J(RE,s>0?-.45f:-.2f).PassKey();
+                float lift=WalkAt+.02f+i*Cadence,a=lift+.18f,b=lift+Cadence-.03f;float s=i%2==1?1:-1,chin=-.02f*i;
+                k.Key(a,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.012f)
+                    .J(P,0,0,-s*.035f).J(C,-.06f,Glance(a)*.24f,0).J(Hd,chin,Glance(a)*.9f,0).J(LA,s*.04f,0,.16f).J(LE,-.35f).J(RA,-s*.04f,0,-.16f).J(RE,-.35f).PassKey();
+                k.Key(b,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.05f)
+                    .J(P,0,-s*.1f,0).J(Sp,0,s*.05f,0).J(C,-.05f,s*.1f+Glance(b)*.24f,0).J(Hd,chin+.02f,-s*.04f+Glance(b)*.9f,0)
+                    .J(LA,s*.38f,0,.16f).J(LE,s>0?-.22f:-.6f).J(RA,-s*.4f,0,-.16f).J(RE,s>0?-.6f:-.22f).PassKey();
             }
-            k.Key(ArriveAt+.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(C,-.04f).J(Hd,-.08f).J(LA,-.12f,0,.3f).J(LE,-.32f).J(RA,-.12f,0,-.3f).J(RE,-.32f).ImpactKey();
+            // The stop on the mark: the left foot lands with its weight (a settle that rings out), the right brought up beside it.
+            k.Key(ArriveAt+.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.06f).J(C,-.04f).J(Hd,-.08f).J(LA,-.1f,0,.3f).J(LE,-.35f).J(RA,-.1f,0,-.3f).J(RE,-.35f).ImpactKey();
+            // The hero under the card, chin up; a last slow lift of the head and a roll of the shoulders back.
             k.Key(CardAt+.05f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,0,0).J(C,-.06f,0,0);
-            k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.14f,.06f,0).J(C,-.06f,-.08f,0);Keys=k;
+            k.Key(CardAt+.75f,NativeEntranceKeys.Hero()).Planted(1).Drop(.01f).J(Hd,-.17f,.04f,0).J(C,-.1f,-.06f,0).J(LA,-.08f,0,.2f).J(RA,-.08f,0,-.2f);
+            k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.15f,.07f,0).J(C,-.08f,-.08f,0);Keys=k;
             RootPath=(t,r)=>t<ArriveAt+.1f?new Vector3(0,r.Y,Walk(t)):new Vector3(0,r.Y,0);
             // The camera: centred and formal, pushing in on the cleft; an arc in front as it steps out; low and centred as it comes
             // down the plaza with the stones grinding shut behind it; the closing, wide and centred under the stones.
@@ -72,8 +88,13 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<p.Length;i++){float u=i/(p.Length-1f),deg=78-66*u,r=5.6f-1.0f*u,h=2.4f-.9f*u;double a=deg*Math.PI/180+Facing;p[i]=pivot+new Vector3((float)Math.Sin(a)*r,h,(float)Math.Cos(a)*r);}
             return p;
         }
+        /// <summary>The glance back over its shoulder as the stones grind shut behind it (0..1).</summary>
+        private static float Glance(float t)=>NativeEntranceMath.Smooth((t-(CloseAt-.05f))/.35f)*(1-NativeEntranceMath.Smooth((t-(CloseAt+.6f))/.35f));
         /// <summary>The walk out of the slit to the mark (z, source frame).</summary>
-        public static float Walk(float t)=>From-From*(NativeEntranceMath.Clamp01((t-WalkAt)/(ArriveAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(ArriveAt-WalkAt)));
+        public static float Walk(float t)=>From-From*(NativeEntranceMath.Clamp01((t-WalkAt)/(ArriveAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(ArriveAt-WalkAt)))-Lag(t);
+        /// <summary>The body's lag behind the steps' line through the walk (m): each foot lands half a stride ahead of the hips and
+        /// leaves half a stride behind (as Flashbulb's walk); easing in on the first step and out onto the mark.</summary>
+        private static float Lag(float t)=>.21f*NativeEntranceMath.Smooth((t-WalkAt)/.3f)*(1-NativeEntranceMath.Smooth((t-(ArriveAt-.1f))/.2f));
         /// <summary>How far up the seam the crack of light has run (0..1): three jolts, each running up a third.</summary>
         public static float Reach(float t)
         {

@@ -58,9 +58,11 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*Cadence;bool l=i%2==1;steps.Add(Step(l,lift,lift+Cadence-.03f,l?.12f:-.12f,OnCarpet+Stride*(i+1),l?.1f:-.1f,.1f,0));}
             // Onto the mark and through the three poses, the feet stepping and pivoting with the body each time (the hips never twist
             // over planted feet): turned to its left for the look back, square with the weight on one hip, then the hero stance.
-            steps.Add(Step(true,MarkAt+.06f,MarkAt+.26f,.17f,.06f,.55f,.05f));steps.Add(Step(false,MarkAt+.18f,MarkAt+.38f,-.14f,-.2f,.3f,.05f));
-            steps.Add(Step(true,Photos[1]-.3f,Photos[1]-.1f,.2f,.1f,-.15f,.05f));steps.Add(Step(false,Photos[1]-.22f,Photos[1]-.02f,-.18f,-.05f,-.6f,.05f));
-            steps.Add(Step(true,Photos[2]-.3f,Photos[2]-.1f,.17f,.06f,.12f,.05f));steps.Add(Step(false,Photos[2]-.22f,Photos[2]-.02f,-.18f,-.1f,-.42f,.05f));
+            // (Never both feet off the floor: onto the mark the front foot pivots on the floor while the back one steps up; between the
+            // poses one foot steps, then the other.)
+            steps.Add(Step(true,MarkAt,MarkAt+.15f,.17f,.06f,.55f,0));steps.Add(Step(false,MarkAt,MarkAt+.2f,-.14f,-.2f,.3f,.06f));
+            steps.Add(Step(true,Photos[1]-.3f,Photos[1]-.16f,.2f,.1f,-.15f,.04f));steps.Add(Step(false,Photos[1]-.17f,Photos[1]-.02f,-.18f,-.05f,-.6f,.04f));
+            steps.Add(Step(true,Photos[2]-.3f,Photos[2]-.16f,.17f,.06f,.12f,.04f));steps.Add(Step(false,Photos[2]-.17f,Photos[2]-.02f,-.18f,-.1f,-.42f,.04f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The silhouette in the doorway, then the stride: arms swinging, chin up, a little swagger in the shoulders.
@@ -81,18 +83,22 @@ namespace ChipArena.UnityConversion
                     .J(P,0,-s*.11f,0).J(Sp,0,s*.06f,0).J(C,0,s*.13f,0).J(Hd,-.1f,-s*.05f,0)
                     .J(LA,s*.34f,0,.17f).J(LE,s>0?-.16f:-.52f).J(RA,-s*.36f,0,-.17f).J(RE,s>0?-.52f:-.16f).PassKey();
             }
+            // Each pose is hit on its flash (an impact key: it snaps in and rings out) after a little sink and unwind out of the last.
             // Pose one: turned away, looking back over the shoulder.
-            k.Key(Photos[0]-.12f,stand).Root(0,.88f,0,Facing+.85f).Planted(1).Drop(-.02f).J(C,0,-.3f,0).J(Hd,-.12f,-.78f,0).J(LA,.2f,0,.72f).J(LE,-1.35f).J(RA,-.1f,0,-.25f).J(RE,-.35f);
+            k.Key(Photos[0]-.12f,stand).Root(0,.88f,0,Facing+.85f).Planted(1).Drop(-.02f).J(C,0,-.3f,0).J(Hd,-.12f,-.78f,0).J(LA,.2f,0,.72f).J(LE,-1.35f).J(RA,-.1f,0,-.25f).J(RE,-.35f).ImpactKey();
             k.Key(Photos[0]+Hold,stand).Root(0,.88f,0,Facing+.85f).Planted(1).Drop(-.02f).J(C,0,-.32f,0).J(Hd,-.12f,-.8f,0).J(LA,.2f,0,.72f).J(LE,-1.35f).J(RA,-.1f,0,-.25f).J(RE,-.35f);
-            // Pose two: square to the lens, a hand on the hip, chin up, the weight on one leg.
-            k.Key(Photos[1]-.12f,stand).Root(0,.88f,0,Facing-.32f).Planted(1).Drop(-.03f).J(P,0,0,.07f).J(C,-.06f,.1f,-.04f).J(Hd,-.2f,.1f,.05f).J(RA,.22f,0,-.75f).J(RE,-1.4f).J(LA,-.12f,0,.2f).J(LE,-.3f);
-            k.Key(Photos[1]+Hold,stand).Root(0,.88f,0,Facing-.32f).Planted(1).Drop(-.03f).J(P,0,0,.07f).J(C,-.06f,.1f,-.04f).J(Hd,-.21f,.12f,.05f).J(RA,.22f,0,-.75f).J(RE,-1.4f).J(LA,-.12f,0,.2f).J(LE,-.3f);
+            k.Key((Photos[0]+Hold+Photos[1]-.12f)/2,stand).Root(0,.88f,0,Facing+.25f).Planted(1).Drop(-.06f).J(C,-.02f,-.1f,0).J(Hd,-.06f,-.3f,0).J(LA,0,0,.4f).J(LE,-.8f).J(RA,0,0,-.35f).J(RE,-.6f).PassKey();
+            // Pose two: square to the lens, a hand on the hip, chin up, the weight on one leg (the hip popped, the shoulders tilting back).
+            k.Key(Photos[1]-.12f,stand).Root(0,.88f,0,Facing-.32f).Planted(1).Drop(-.03f).J(P,0,0,.11f).J(C,-.06f,.1f,-.07f).J(Hd,-.2f,.1f,.06f).J(RA,.22f,0,-.75f).J(RE,-1.4f).J(LA,-.12f,0,.2f).J(LE,-.3f).ImpactKey();
+            k.Key(Photos[1]+Hold,stand).Root(0,.88f,0,Facing-.32f).Planted(1).Drop(-.03f).J(P,0,0,.11f).J(C,-.06f,.1f,-.07f).J(Hd,-.21f,.12f,.06f).J(RA,.22f,0,-.75f).J(RE,-1.4f).J(LA,-.12f,0,.2f).J(LE,-.3f);
+            k.Key((Photos[1]+Hold+Photos[2]-.12f)/2,stand).Root(0,.88f,0,Facing-.12f).Planted(1).Drop(-.06f).J(P,0,0,.04f).J(C,-.02f,.04f,0).J(Hd,-.08f,.08f,0).J(RA,-.7f,-.15f,-.5f).J(RE,-1.1f).J(LA,-.1f,0,.22f).J(LE,-.32f).PassKey();
             // Pose three: two fingers to the brow, then flicked out.
-            k.Key(Photos[2]-.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(C,-.04f).J(Hd,-.1f,.06f,0).J(RA,-1.3f,-.3f,-.55f).J(RE,-1.62f).J(LA,-.1f,0,.22f).J(LE,-.32f);
+            k.Key(Photos[2]-.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(C,-.04f).J(Hd,-.1f,.06f,0).J(RA,-1.3f,-.3f,-.55f).J(RE,-1.62f).J(LA,-.1f,0,.22f).J(LE,-.32f).ImpactKey();
             k.Key(Photos[2]+Hold-.06f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(C,-.04f).J(Hd,-.1f,.06f,0).J(RA,-1.32f,-.3f,-.55f).J(RE,-1.64f).J(LA,-.1f,0,.22f).J(LE,-.32f);
             k.Key(Photos[2]+Hold+.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.03f).J(C,-.05f).J(Hd,-.12f,.04f,0).J(RA,-1.45f,0,-1.15f).J(RE,-.45f).J(LA,-.1f,0,.22f).J(LE,-.32f).ImpactKey();
-            // The storm: arms open to it, then the cover's stance.
-            k.Key(StormAt+.1f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(C,-.08f).J(Hd,-.16f).J(RA,-.3f,0,-.7f).J(RE,-.4f).J(LA,-.3f,0,.7f).J(LE,-.4f);
+            // The storm: it throws both arms up and wide into it, chest up, chin up, basking; they come down for the cover's stance.
+            k.Key(StormAt+.1f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.01f).J(C,-.14f).J(Hd,-.24f).J(RA,-.55f,0,-1.35f).J(RE,-.25f).J(LA,-.55f,0,1.35f).J(LE,-.25f).ImpactKey();
+            k.Key(StormAt+.45f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.03f).J(C,-.1f).J(Hd,-.18f).J(RA,-.3f,0,-.6f).J(RE,-.4f).J(LA,-.3f,0,.6f).J(LE,-.4f).PassKey();
             k.Key(CardAt-.2f,NativeEntranceKeys.Hero()).Planted(1).J(P,0,0,.05f).J(Hd,-.14f,.06f,0);
             k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(P,0,0,.05f).J(C,-.04f,-.12f,0).J(Hd,-.15f,.08f,0);Keys=k;
             RootPath=(t,r)=>t<MarkAt+.15f?new Vector3(0,r.Y,Walk(t)):new Vector3(0,r.Y,0);
@@ -107,7 +113,12 @@ namespace ChipArena.UnityConversion
                .Bars(0,.8f).Bars(CardAt-.5f,.35f).Black(0,1).Black(.05f,0);
         }
         /// <summary>The stride down the carpet (the root's z): out of the doors, to the mark.</summary>
-        public static float Walk(float t)=>t<CutAt?-6.4f:OnCarpet-OnCarpet*(NativeEntranceMath.Clamp01((t-WalkAt)/(MarkAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(MarkAt-WalkAt)));
+        public static float Walk(float t)=>t<CutAt?-6.4f:OnCarpet-OnCarpet*(NativeEntranceMath.Clamp01((t-WalkAt)/(MarkAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(MarkAt-WalkAt)))-Lag(t);
+        /// <summary>The body's lag behind the steps' line through the walk (m): each foot lands half a stride ahead of the hips and
+        /// leaves half a stride behind them (without it the feet landed under the hips and the whole stance trailed behind, the legs
+        /// slanting back like a glide: the side review camera, 2026-11-20); it eases in on the first step and out as it settles onto
+        /// the mark.</summary>
+        private static float Lag(float t)=>.22f*NativeEntranceMath.Smooth((t-WalkAt)/.3f)*(1-NativeEntranceMath.Smooth((t-(MarkAt-.05f))/.2f));
         /// <summary>The doors' swing (radians open).</summary>
         public static float Doors(float t)=>1.35f*NativeEntranceMath.EaseOut((t-DoorsAt)/.5f)*(t>DoorsAt?1:0)-.08f*(float)(Math.Exp(-6*Math.Max(0,t-DoorsAt-.5f))*Math.Sin(Math.Max(0,t-DoorsAt-.5f)*14))*(t>DoorsAt+.5f?1:0);
         // The stride is the keyed rig's own (planned steps on the carpet): the motion bank's Armed-Walk is the sword's guarded combat

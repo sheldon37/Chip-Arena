@@ -76,7 +76,8 @@ namespace ChipArena.UnityConversion
             k.Key(LeapAt-.07f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.26f).J(B,.45f).J(Sp,.1f).J(Hd,-.3f).J(LA,.75f,0,.25f).J(LE,-.45f).J(RA,.7f,0,-.25f).J(RE,-.45f).J(LK,.6f).J(RK,.5f);
             // The leap: thrown out over the platform, arms up and back, legs gathering.
             k.Key(LeapAt,stand).Root(0,.88f,0,side).Planted(0).Drop(-.05f).J(B,.25f).J(Hd,-.15f).J(LA,-1.9f,0,.6f).J(LE,-.4f).J(RA,-1.7f,0,-.7f).J(RE,-.4f).J(LL,-.9f,0,.1f).J(LK,1.1f).J(RL,.2f,0,-.1f).J(RK,.9f);
-            k.Key(LeapAt+.3f,stand).Root(0,.88f,0,side+.15f).Planted(0).Spin(-.12f,.08f).J(B,.1f).J(Hd,-.05f).J(LA,-1.2f,0,1.1f).J(LE,-.3f).J(RA,-.9f,0,-1.2f).J(RE,-.3f).J(LL,-1.1f,0,.15f).J(LK,1.6f).J(RL,-.6f,0,-.1f).J(RK,1.5f).PassKey();
+            // Its top: a running leap split wide (the left leg reaching forward, the right trailing behind), arms in opposition.
+            k.Key(LeapAt+.3f,stand).Root(0,.88f,0,side+.15f).Planted(0).Spin(-.12f,.08f).J(B,.14f).J(Hd,-.08f).J(LA,.45f,0,.95f).J(LE,-.35f).J(RA,-1.45f,0,-.45f).J(RE,-.35f).J(LL,-1.25f,0,.12f).J(LK,.45f).J(RL,.55f,0,-.1f).J(RK,1.0f).PassKey();
             k.Key(LandAt-.07f,stand).Root(0,.88f,0,side+.2f).Planted(0).Spin(-.05f,.05f).Drop(-.2f).J(B,.2f).J(Hd,-.15f).J(LA,.45f,0,.95f).J(LE,-.25f).J(RA,-.3f,0,-.9f).J(RE,-.4f)
                 .J(LL,-1.35f,0,.15f).J(LK,.55f).J(RL,-.15f,0,-.1f).J(RK,1.35f).PassKey();
             // The landing into the slide: low, the left leg out front, the right knee near the floor, the left hand dragging behind.
