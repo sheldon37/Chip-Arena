@@ -8,8 +8,10 @@ namespace ChipArena.UnityConversion
     {
         public float At,Radius,Size;public NativeBlastStyle Style;public Vector3 Position;public NativeBlastTint? Tint;public bool Impact;public int ImpactColor;
     }
-    /// <summary>An afterimage of the pilot: the entrance's own pose `Lag` s earlier on its clock, a flat see-through silhouette.</summary>
-    public struct NativeEntranceGhost{public float Lag,Opacity;public Vector3 Color,Offset;}
+    /// <summary>An afterimage of the pilot: the entrance's own pose `Lag` s earlier on its clock, a flat see-through silhouette. A v2 intro's
+    /// ghost on the model wears the pilot's head gear (its helmet or mask and its hat) in the ghost's look unless `Bare` (an intro that
+    /// draws its own over it: docs/INTROS-V2.md "Ghosts").</summary>
+    public struct NativeEntranceGhost{public float Lag,Opacity;public Vector3 Color,Offset;public bool Bare;}
     /// <summary>Points the effects follow (sampled once per entrance, NativeEntranceScript.Anchor). Root to Focus are the first set; Eyes to
     /// RightMuzzle came with the model-aware anchors (docs/INTROS-V2.md "Anchors"): the eyes' midpoint and the visor's front, each foot's
     /// toe (its ball), each wrist, and each hand's weapon grip and muzzle (a gun's crown, a staff's head, a blade's tip).</summary>

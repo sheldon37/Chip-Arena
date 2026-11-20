@@ -150,6 +150,45 @@ namespace ChipArena.UnityConversion
             if(!visualLiveGhosts.TryGetValue(key,out var g)||g.Body?.Root==null||introModel==null||introModelFrame!=Time.frameCount||!visualBodies.TryGetValue(introModel,out var live)||live.Root==null)return;
             g.Body.Helm=live.Helm;VisualHatHair(g.Body,entranceGhostActor?.Hat);
         }
+        /// <summary>
+        /// A v2 intro's entrance ghost is the whole dressed pilot (owner, 2026-11-20: "the 'hologram' appearance, shows the model without the
+        /// cosmetics (Like it shows a blank model without armor)"): its body wears the pilot's outfit already (VisualLiveGhostDraw), and here
+        /// the pieces the live body draws on top of it come too, through the entrance ghost's shader in the ghost's tint and scanlines: the
+        /// robot armour's plates (VisualSuit), the helmet or half mask and the concept's mask and visor (VisualFaceGear), the hat
+        /// (VisualHatFit), the chest core, the back emblem and the wrist device (VisualGear). A ghost marked Bare draws none of them (an intro
+        /// that draws its own over it).
+        /// </summary>
+        private Matrix4x4 introGhostGear;private Func<int,Matrix4x4> introGhostGearBone;
+        private void IntroV2GhostGear(long key,Color tint,Color scan,float opacity)
+        {
+            if(sourceModels==null||!visualLiveGhosts.TryGetValue(key,out var g)||g.Body?.Root==null)return;var gb=g.Body;var head=VisualHeadOf(gb);
+            int id=introActor;bool dog=NativeHotDog.Worn(VisualOutfitOf(id));introGhostGearBone??=_=>introGhostGear;
+            void Part(string model,Matrix4x4 at){if(model==null)return;var ghost=sourceModels.EntranceGhost(model);if(ghost==null)return;introGhostGear=at;sourceModels.Queue(ghost,at,introGhostGearBone,null,0,null,tint,scan,opacity);}
+            // the armour's plates on the ghost's own suit bones
+            int shown=SuitShown(id);var suit=shown!=0&&sourceModels.Has(NativeSourceModels.Suit)?sourceModels.EntranceGhost(NativeSourceModels.Suit):null;var rig=suit!=null?SuitRigOf(gb.Root):null;
+            if(rig!=null&&(shown&=rig.Found)!=0)
+            {
+                for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
+                suitBone??=i=>suitMatrices[i];suitShown=shown;suitVisible??=b=>(suitShown>>b&1)!=0;sourceModels.Queue(suit,Matrix4x4.identity,suitBone,suitVisible,0,null,tint,scan,opacity);
+            }
+            // the face gear and the hat on the ghost's head
+            int gear=dog?NativeWeaponSkins.FaceNone:FaceGearOf(id);
+            if(head!=null&&gear!=NativeWeaponSkins.FaceNone&&sourceModels.PilotFace())
+            {
+                bool helm=gear==NativeWeaponSkins.FaceHelm;
+                if(helm||gear==NativeWeaponSkins.FaceHalf)Part(helm?NativeSourceModels.Helm:NativeSourceModels.HalfMask,head.localToWorldMatrix);
+                else{if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceMask)Part(NativeSourceModels.GearMask,head.localToWorldMatrix);if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceVisor)Part(NativeSourceModels.GearVisor,head.localToWorldMatrix);}
+            }
+            string hat=entranceGhostActor?.Hat;
+            if(head!=null&&!string.IsNullOrEmpty(hat)&&hat!="none"&&hat!=NativeSheldonHead.Hat)Part(VisualHatModel(hat,entranceGhostActor.HatColor),VisualHatFit(head,hat,gear==NativeWeaponSkins.FaceHelm));
+            // the pilot gear: the chest core, the back emblem, the wrist device
+            if(sourceModels.PilotGear(gb.GearRadius>.01f?gb.GearRadius:.04f))
+            {
+                if(gb.GearCore!=null&&!dog)Part(NativeSourceModels.GearCore,gb.GearCore.localToWorldMatrix);
+                if(!WearsArmour(id)&&!dog){var of=gb.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<gb.Binding.Bones.Length?gb.Binding.Bones[cv]:null;if(chest!=null)Part(NativeSourceModels.GearEmblem,chest.localToWorldMatrix*gb.Emblem);}
+                if(gb.GearDevice!=null)Part(sourceModels.GearDeviceFor(gb.GearRadius),gb.GearDevice.localToWorldMatrix);
+            }
+        }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet
         {

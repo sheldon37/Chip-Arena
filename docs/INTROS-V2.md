@@ -73,7 +73,7 @@ scrub must draw the same frame. Never allocate per frame.
 | `Props(t, props, quality)` | Primitive set pieces through the source models. The base draws no pylon arena. |
 | `Set(t, set)` | Your modelled set: override `Scene(t, set)` (section 3). |
 | `Effects(t, fx, quality)` | Effects through `INativeEntranceFx`, which reaches `NativeVfxDraw`: `Glow`, `Streak`, `Smoke`, `Fire`, plus the helpers in `NativeEntranceFx` (Sparks, GroundDust, Embers, Shaft, Ribbon). |
-| `Ghosts` / `Holo` / `Solid` / `Blasts` | As for every directed entrance (see `NativeEntranceDirector.cs`). |
+| `Ghosts` / `Holo` / `Solid` / `Blasts` | As for every directed entrance (see `NativeEntranceDirector.cs`). A ghost on the model (an afterimage, the hologram, a coat like Whiteout's frost, a light draft) is the whole dressed pilot in the ghost's look: its outfit, the robot armour's plates, its helmet or mask, its hat, the chest core, the back emblem and the wrist device, its hair hidden under the helmet as the live body's is. Set `NativeEntranceGhost.Bare` (the hologram: override `HoloBare`) where you draw your own gear over a ghost. |
 | `Card(t, ref card)` | The name card state (section 5). |
 | `Lens(t, out lens)` | Letterbox, fade to black, focus. It comes from `Rig` by default. |
 | `Music` | A bed played from the start (any `Resources/Audio/<id>` clip: `"audio/intros/<sting>"` or `"music/<track>"`) on the music channel, or null for cues only. While the bed plays, the intro is drawn on the bed's playback time, as the Siren's song locks its cell, so beats land on the picture on a guest and after a loading delay. Muted, it runs on the age. |
