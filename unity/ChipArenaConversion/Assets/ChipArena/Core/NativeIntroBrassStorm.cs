@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
             var q=Look(dir,up);NativeEntrancePose.Reach(pose,root,rotation,false,grip,q,1);
             NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*(.46f-.3f*rack)-up*.04f+Vector3.Normalize(Vector3.Cross(up,dir))*(.02f*rack),q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),1);
         }
-        private Vector3 MuzzleAt(float t)=>Wrist(t)+Bore(t)*.78f;
+        private Vector3 MuzzleAt(float t)=>Drawn(t,out var m,out _)?m:Wrist(t)+Bore(t)*.78f;
         private static Vector3 Port(Vector3 wrist,Vector3 bore)=>wrist+bore*.12f+Vector3.Normalize(Vector3.Cross(bore,Vector3.UnitY))*-.06f+new Vector3(0,.04f,0);
 
         // ---- the brass: each round's case kicked out to the right, falling round the boots ----
@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<3;i++){float on=Flood(i,t);if(on<=.01f)continue;var p=S(Floods[i*4],Floods[i*4+1],Floods[i*4+2]);fx.Glow(p,Sodium*(2.2f*on),0,.9f,1,0,6000+i);fx.Glow(p,Sodium*(.5f*on),0,3.2f,0,0,6010+i);
                 NativeEntranceFx.Shaft(fx,t,p,Vector3.Lerp(p,S(0,0,6),.75f)+new Vector3(0,-p.Y*.6f,0),.3f,2.6f,Sodium*.06f,on,q<.5f?4:6,q<.5f?4:10,6020+i*20,q);}
             // the burst: each round's flash (one at a time; a steady flame in Reduced), tracer, strike, case
-            var wrist=Wrist(t);var bore=Bore(t);var muzzle=MuzzleAt(t);
+            var wrist=Wrist(t);var bore=Bore(t);var muzzle=MuzzleAt(t);if(Drawn(t,out _,out var drawnBore))bore=drawnBore;
             if(t>=FireFrom&&t<FireTo+.06f)
             {
                 if(reduced){fx.Glow(muzzle+bore*.12f,Hot*1.6f,0,.35f,1,0,6100);fx.Glow(muzzle+bore*.2f,Sodium*1.1f,0,.8f,0,0,6101);}

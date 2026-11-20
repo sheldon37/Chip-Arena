@@ -236,8 +236,9 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++){float l=1.4f+.8f*NativeEntranceMath.Rand(7300,i);if(a>l)continue;float u=a/l;var d=NativeEntranceMath.Direction(7300,i);var p=S(BelfryU.X,6.8f,BelfryU.Z)+d*(1.6f*(1-(float)Math.Exp(-2.5f*a)))+new Vector3(0,-.6f*a,0);fx.Smoke(p,Dust,.35f*(1-u)*NativeEntranceMath.Smooth(u*6),.6f+1.4f*u,u,7300+i,floor);}
             }
             // the shot: the muzzle flash, the bullet's hot head and its fading line, the smoke
-            var muzzle=Wrist(t)+Vector3.Normalize(BellAt(HitAt)-Wrist(t))*.26f;
-            if(t>=ShotAt-.01f&&t<ShotAt+.12f){var m0=Wrist(ShotAt)+Vector3.Normalize(BellAt(HitAt)-Wrist(ShotAt))*.26f;Muzzle(fx,t,ShotAt,m0,Vector3.Normalize(BellAt(HitAt)-m0),.16f,Gold,7400,q,.09f);}
+            var muzzle=Wrist(t)+Vector3.Normalize(BellAt(HitAt)-Wrist(t))*.26f;var flashDir=Vector3.Normalize(BellAt(HitAt)-muzzle);
+            if(Drawn(t,out var drawn,out var drawnBore)){muzzle=drawn;flashDir=drawnBore;}
+            if(t>=ShotAt-.01f&&t<ShotAt+.12f)Muzzle(fx,t,ShotAt,muzzle,flashDir,.16f,Gold,7400,q,.09f);
             if(t>=ShotAt&&t<HitAt+.05f)
             {
                 var m0=Wrist(ShotAt)+Vector3.Normalize(BellAt(HitAt)-Wrist(ShotAt))*.26f;var target=BellAt(HitAt)+SDir(0,-.45f,-.3f);var d=target-m0;float len=d.Length();var dir=d/len;

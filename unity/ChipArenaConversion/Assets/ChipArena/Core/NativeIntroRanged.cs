@@ -33,6 +33,13 @@ namespace ChipArena.UnityConversion
         // ---- the hands (Runtime IntroV2Hands; a checker never hands them in, so every effect also works from the keyed rig) ----
         private NativeIntroHand right,left;private float handsAt=-1;
         public void Hands(float t,in NativeIntroHand r,in NativeIntroHand l){right=r;left=l;handsAt=t;}
+        /// <summary>The drawn gun's muzzle and bore at `t` (Runtime: the frame the model's weapon is drawn on, as the match's muzzle
+        /// flash reads it); false when the runtime has not handed one in for `t` (a checker, the Classic body, a bow).</summary>
+        protected bool Drawn(float t,out Vector3 muzzle,out Vector3 bore)
+        {
+            if(Math.Abs(handsAt-t)<1e-4f&&right.HasMuzzle&&right.Bore.LengthSquared()>.5f){muzzle=right.Muzzle;bore=Vector3.Normalize(right.Bore);return true;}
+            muzzle=bore=default;return false;
+        }
         /// <summary>The drawn right (or left) wrist at `t`: the runtime's when it handed them in for `t`, else the keyed rig's.</summary>
         protected Vector3 Wrist(float t,bool leftHand=false)
         {

@@ -1,0 +1,836 @@
+{
+ "author": "I4",
+ "intros": [
+  "intro2-weapon-pistol",
+  "intro2-weapon-rifle",
+  "intro2-weapon-machinegun",
+  "intro2-weapon-bow"
+ ],
+ "sounds": [
+  {
+   "key": "intro2.sundown.wind",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 4,
+   "targetSeconds": {
+    "min": 2.4,
+    "max": 3.6
+   },
+   "levelDb": -10,
+   "fadeOutMs": 120,
+   "prompt": "A dry desert wind gusting down an empty frontier street at dusk, a low hollow whistle and fine grit blowing, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.step",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.2,
+    "max": 0.45
+   },
+   "levelDb": -8,
+   "fadeOutMs": 40,
+   "prompt": "A single slow cowboy boot step on packed dusty dirt, a soft crunch with a faint jingle of a spur, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.toll",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 4,
+   "targetSeconds": {
+    "min": 2.2,
+    "max": 3.6
+   },
+   "levelDb": -2,
+   "fadeOutMs": 120,
+   "prompt": "One deep toll of a large old bronze church bell, struck once, a heavy resonant clang with a long humming decay, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.crack",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.9
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A thick old timber beam cracking under strain, a sharp splintering crack with a creak, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.collapse",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.2
+   },
+   "levelDb": -2,
+   "fadeOutMs": 120,
+   "prompt": "An old wooden bell tower giving way, timbers snapping and groaning, shingles and boards clattering down, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.draw",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.25,
+    "max": 0.6
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A revolver drawn fast from a leather holster, a quick leather slide and the click of the hammer cocked, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.shot",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.2,
+   "targetSeconds": {
+    "min": 1.2,
+    "max": 2.0
+   },
+   "levelDb": 0,
+   "fadeOutMs": 120,
+   "prompt": "A single revolver gunshot in an open desert town, a sharp crack followed by a long rolling echo off the canyon walls, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.whiz",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.8
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A slow-motion bullet whizzing past, a low warped whoosh with a thin whistle, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.ring",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.4
+   },
+   "levelDb": 0,
+   "fadeOutMs": 120,
+   "prompt": "A bullet striking a huge bronze bell, a bright metallic ping that blooms into a deep ringing tone, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.bell",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 3,
+   "targetSeconds": {
+    "min": 1.6,
+    "max": 2.6
+   },
+   "levelDb": -1,
+   "fadeOutMs": 120,
+   "prompt": "A heavy bronze bell crashing onto a stone plinth, a loud clanging impact with a wobbling ringing tail, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.thud",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 1.0
+   },
+   "levelDb": -2,
+   "fadeOutMs": 40,
+   "prompt": "A heavy metal bell landing in deep dust, a dull thump with a muffled ring, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.roll",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2,
+   "targetSeconds": {
+    "min": 1.0,
+    "max": 1.6
+   },
+   "levelDb": -6,
+   "fadeOutMs": 120,
+   "prompt": "A heavy bell rolling over packed dirt and pebbles, a rumbling grind with soft uneven ringing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.blow",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.8
+   },
+   "levelDb": -10,
+   "fadeOutMs": 40,
+   "prompt": "A single soft short breath blowing out, like blowing smoke off a gun barrel, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.sundown.ting",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2,
+   "targetSeconds": {
+    "min": 1.0,
+    "max": 1.8
+   },
+   "levelDb": -8,
+   "fadeOutMs": 120,
+   "prompt": "A large bell settling, one soft fading ring as it rocks to rest, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.rain",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 6,
+   "targetSeconds": {
+    "min": 4.0,
+    "max": 6.0
+   },
+   "levelDb": -8,
+   "fadeOutMs": 120,
+   "prompt": "Steady rain on a flat city rooftop at night, water running off metal, the distant hum of traffic far below, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.thunder",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 4,
+   "targetSeconds": {
+    "min": 2.0,
+    "max": 3.5
+   },
+   "levelDb": -6,
+   "fadeOutMs": 120,
+   "prompt": "A distant roll of thunder over a city, low and long, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.drone",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.2
+   },
+   "levelDb": -8,
+   "fadeOutMs": 120,
+   "prompt": "A hovering surveillance drone, a steady electric rotor whine with servo whirrs as its camera turns, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.glint",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.25,
+    "max": 0.6
+   },
+   "levelDb": -10,
+   "fadeOutMs": 40,
+   "prompt": "A tiny glassy shimmer, a bright crystalline sparkle, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.lock",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.25,
+    "max": 0.6
+   },
+   "levelDb": -8,
+   "fadeOutMs": 40,
+   "prompt": "A sharp electronic targeting lock tone, two quick high beeps, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.inhale",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.3
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A slow controlled breath drawn in through a mask and held, calm and close, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.heart",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.25,
+    "max": 0.55
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A single deep heartbeat, a muffled low thump, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.shot",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.4
+   },
+   "levelDb": 0,
+   "fadeOutMs": 120,
+   "prompt": "A heavy sniper rifle shot from a rooftop, a hard sharp crack with a deep boom echoing between skyscrapers, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.crack",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.8
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A supersonic bullet tearing through rain, a sharp snap and a rushing whoosh, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.hit",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.2
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A lens of glass and a metal drone shell burst by a bullet, glass shattering and an electric pop, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.fall",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.2
+   },
+   "levelDb": -6,
+   "fadeOutMs": 120,
+   "prompt": "A damaged drone falling, its rotors sputtering and whining down, sparking, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.case",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.25,
+    "max": 0.6
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A single brass rifle casing landing on wet stone, a bright tink and a short bounce, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.hiss",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.2
+   },
+   "levelDb": -10,
+   "fadeOutMs": 40,
+   "prompt": "Raindrops hissing on a hot piece of metal, a soft sizzle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.crash",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.2,
+    "max": 2.2
+   },
+   "levelDb": -8,
+   "fadeOutMs": 120,
+   "prompt": "A distant crash far below in a city street, a muffled metal impact and a small explosion, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.onebreath.rise",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.8
+   },
+   "levelDb": -8,
+   "fadeOutMs": 40,
+   "prompt": "A soldier standing up in wet gear with a rifle, cloth rustle and a soft metal clink, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.belt",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 1.0
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "An ammunition belt laid into a machine gun's feed tray and the heavy feed cover slammed shut, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.flood",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.2
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A big industrial floodlight switching on, a heavy relay clunk and a rising electrical hum, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.hum",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 3,
+   "targetSeconds": {
+    "min": 2.0,
+    "max": 3.0
+   },
+   "levelDb": -12,
+   "fadeOutMs": 120,
+   "prompt": "The low steady electrical buzz of sodium floodlights in a quiet industrial yard at night, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.boot",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.25,
+    "max": 0.5
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A heavy combat boot planted on a sandbag, a dull thud of sand, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.rack",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.8
+   },
+   "levelDb": -2,
+   "fadeOutMs": 40,
+   "prompt": "A heavy machine gun's charging handle racked hard, a loud metallic clack-clack, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.round",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.12,
+    "max": 0.35
+   },
+   "levelDb": -2,
+   "fadeOutMs": 40,
+   "prompt": "A single heavy machine gun shot, one punchy deep bang, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.impacts",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.2
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "Bullets punching through a corrugated steel shutter, rapid sharp metallic impacts and pings, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.casings",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.4
+   },
+   "levelDb": -8,
+   "fadeOutMs": 120,
+   "prompt": "A cascade of brass shell casings falling and tinkling onto concrete, many small metallic clinks, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.drum",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 1.0
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A steel oil drum knocked over by bullets, a hollow clang and a rolling rattle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.crate",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 1.0
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A wooden crate blasted apart, splintering planks bursting, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.dry",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.15,
+    "max": 0.45
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A machine gun running empty, one dry metallic click, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.hiss",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.4
+   },
+   "levelDb": -10,
+   "fadeOutMs": 120,
+   "prompt": "An overheated gun barrel ticking and hissing as it cools in the night air, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.tink",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.2,
+    "max": 0.6
+   },
+   "levelDb": -8,
+   "fadeOutMs": 40,
+   "prompt": "A single brass casing rolling off a sandbag and tinking on concrete, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.brass.name",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.4
+   },
+   "levelDb": -4,
+   "fadeOutMs": 40,
+   "prompt": "A deep heavy metallic boom, like a steel door slammed shut far off, short and weighty, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.grove",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 6,
+   "targetSeconds": {
+    "min": 4.0,
+    "max": 6.0
+   },
+   "levelDb": -10,
+   "fadeOutMs": 120,
+   "prompt": "A quiet forest clearing at night, crickets, a soft breeze in the leaves and a distant owl, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.nock",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.8
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "An arrow drawn from a leather quiver and nocked on a bowstring, a soft slide and a click, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.seat",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.15,
+    "max": 0.4
+   },
+   "levelDb": -10,
+   "fadeOutMs": 40,
+   "prompt": "A tiny click of an arrow's nock seating on a string, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.draw",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.3
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "A longbow drawn slowly to full, the wooden limbs creaking and the string tightening, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.gather",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2,
+   "targetSeconds": {
+    "min": 1.2,
+    "max": 1.8
+   },
+   "levelDb": -8,
+   "fadeOutMs": 120,
+   "prompt": "A rising airy shimmer of light gathering, soft glassy chimes swelling, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.full",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.8
+   },
+   "levelDb": -10,
+   "fadeOutMs": 40,
+   "prompt": "A single pure high crystalline tone, like a fingertip on a wine glass, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.release",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.4
+   },
+   "levelDb": -2,
+   "fadeOutMs": 40,
+   "prompt": "A bowstring released with a deep thrum, an arrow of light streaking upward with a bright rushing whoosh, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.bloom",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.4
+   },
+   "levelDb": -2,
+   "fadeOutMs": 120,
+   "prompt": "A burst of light high in the sky, a bright bell-like chord opening with a sparkling shimmer, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.rain",
+   "category": "boss",
+   "priority": 2,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.6
+   },
+   "levelDb": -6,
+   "fadeOutMs": 120,
+   "prompt": "Many arrows of light whistling down from the sky, soft bright rushing streaks, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.land",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 1.0
+   },
+   "levelDb": -6,
+   "fadeOutMs": 40,
+   "prompt": "An arrow of light striking soft earth, a gentle glassy thud with a sparkle, isolated, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.lantern",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 1,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.8
+   },
+   "levelDb": -8,
+   "fadeOutMs": 40,
+   "prompt": "A small flame catching in a stone lantern, a soft whoomph and crackle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "intro2.lightfall.name",
+   "category": "boss",
+   "priority": 1,
+   "count": 2,
+   "space": "2d",
+   "generateSeconds": 2,
+   "targetSeconds": {
+    "min": 1.0,
+    "max": 1.8
+   },
+   "levelDb": -6,
+   "fadeOutMs": 120,
+   "prompt": "A warm soft magical chime with a gentle swell of light, calm and resolved, isolated, no reverb, no music, no background noise"
+  }
+ ]
+}

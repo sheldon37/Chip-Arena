@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Weapon("machinegun","Brass Storm",NativeIntroBrassStorm.Total,NativeIntroBrassStorm.CardAt,()=>new NativeIntroBrassStorm(),"I4","A depot yard at night: the belt runs dry and the light pours through the holes."),
             //
-            // bow
+            NativeIntroEntry.Weapon("bow","Lightfall",NativeIntroLightfall.Total,NativeIntroLightfall.CardAt,()=>new NativeIntroLightfall(),"I4","A moonlit shrine: one arrow of light climbs, blooms and rains down."),
             //
             // fire
             //

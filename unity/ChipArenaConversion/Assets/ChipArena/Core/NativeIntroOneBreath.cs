@@ -82,7 +82,12 @@ namespace ChipArena.UnityConversion
             NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*.5f-Up*.035f,q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),w);
         }
         /// <summary>The rifle's line at `t`: the drawn right wrist (or the keyed aim) and the bore.</summary>
-        private void Rifle(float t,out Vector3 wrist,out Vector3 dir){wrist=Wrist(t);dir=AimDir;if(t>RiseFrom+.2f){dir=Vector3.Normalize(Facing0+new Vector3(0,-.75f,0));}}
+        private void Rifle(float t,out Vector3 wrist,out Vector3 dir)
+        {
+            // the drawn rifle when the runtime hands it in (its muzzle back along its bore to where the keyed wrist would be), else the keyed aim
+            if(Drawn(t,out var m,out var b)){dir=b;wrist=m-b*MuzzleAt;return;}
+            wrist=Wrist(t);dir=AimDir;if(t>RiseFrom+.2f){dir=Vector3.Normalize(Facing0+new Vector3(0,-.75f,0));}
+        }
         private static readonly Vector3 Facing0=Local(0,0,1);
 
         // ---- the drone: hovering, turning its eye to the glint, struck, falling burning between the towers ----

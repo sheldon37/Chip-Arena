@@ -1,5 +1,5 @@
 """Lightfall's set (the bow's intro, docs/INTROS-RANGED.md): an old shrine in a forest clearing under a full moon. The pilot stands at the
-origin on a mossy octagonal stone terrace facing +z, toward a stone gate and the moon over the trees; six stone lanterns stand round
+origin on a mossy octagonal stone terrace facing +z, toward a stone gate, the full moon behind over the trees; six stone lanterns stand round
 the terrace on the forest floor, ancient trees ring the clearing, ferns and roots and mossy boulders between them, stars over it all.
 The arrow of light, the volley and the lanterns' fires are the intro's.
 
@@ -24,7 +24,7 @@ LANTERN_R = 4.5
 LANTERN_DEG = (35.0, 90.0, 145.0, 215.0, 270.0, 325.0)   # bearings from the pilot's front (+z), + toward +x
 LANTERN_FIRE_Y = FLOOR_Y + 1.42                          # the fire box's centre above the floor
 GATE_Z = 6.6
-MOON = (0.0, math.sin(math.radians(26)), math.cos(math.radians(26)))
+MOON = (-.296, .5, -.814)   # behind the pilot, up to the left (the hero frame looks back at it)
 
 
 def lantern_at(i):
