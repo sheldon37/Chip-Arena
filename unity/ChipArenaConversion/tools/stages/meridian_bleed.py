@@ -128,9 +128,9 @@ def finishes():
     a('glass-brown', 0x2E2418, N, .90, 0, .2, 0, 0)
     a('kickplate', 0xB9BEC2, N, .65, .85, .4, 0, .25)
     a('alu', 0xB4BAC0, N, .55, .8, .4, 0, .10)
-    a('carpet', 0x8C7A44, CL, .05, 0, .9, .10, 0)
-    a('carpet-b', 0x7E6E3C, CL, .05, 0, .9, .10, 0)
-    a('carpet-damp', 0x5E5030, CL, .10, 0, .9, .20, 0)
+    a('carpet', 0x7E7048, CL, .05, 0, .9, .10, 0)
+    a('carpet-b', 0x786A44, CL, .05, 0, .9, .10, 0)
+    a('carpet-damp', 0x625638, CL, .10, 0, .9, .20, 0)
     a('wallpaper', 0xC8B25A, P, .12, 0, .5, .05, 0)
     a('wallpaper-stripe', 0xB09A48, N, .12, 0, .5, .05, 0)
     a('skirting', 0xE6E0CC, W, .45, 0, .6, .05, .25)
@@ -272,7 +272,7 @@ PIX = {
     'K': '#...#,#..#.,#.#..,##...,#.#..,#..#.,#...#', 'L': '#....,#....,#....,#....,#....,#....,#####',
     'M': '#...#,##.##,#.#.#,#.#.#,#...#,#...#,#...#', 'N': '#...#,##..#,#.#.#,#..##,#...#,#...#,#...#',
     'O': '.###.,#...#,#...#,#...#,#...#,#...#,.###.', 'P': '####.,#...#,#...#,####.,#....,#....,#....',
-    'R': '####.,#...#,#...#,####.,#.#..,#..#.,#...#', 'S': '.####,#....,#....,.###.,....#,....#,####.',
+    'Q': '.###.,#...#,#...#,#...#,#.#.#,#..#.,.##.#', 'R': '####.,#...#,#...#,####.,#.#..,#..#.,#...#', 'S': '.####,#....,#....,.###.,....#,....#,####.',
     'T': '#####,..#..,..#..,..#..,..#..,..#..,..#..', 'U': '#...#,#...#,#...#,#...#,#...#,#...#,.###.',
     'V': '#...#,#...#,#...#,#...#,.#.#.,.#.#.,..#..', 'W': '#...#,#...#,#...#,#.#.#,#.#.#,##.##,#...#',
     'X': '#...#,.#.#.,..#..,..#..,..#..,.#.#.,#...#', 'Y': '#...#,#...#,.#.#.,..#..,..#..,..#..,..#..',
@@ -374,16 +374,13 @@ def floor_carpet(g, T):
         for j in range(4):
             x0, z0 = -1 + i * .5, -1 + j * .5
             k = h01('carpet', i, j)
-            damp = h01('damp', i // 2, j // 2) < .45 or k < .18
-            f = F['carpet-damp'] if damp else (F['carpet-b'] if (i + j) % 2 else c)
+            damp = k < .22
+            f = F['carpet-damp'] if damp else (F['carpet-b'] if h01('lot', i, j) < .3 else c)
             slab(g, T, x0 + .004, x0 + .496, z0 + .004, z0 + .496, 0, .03 + .005 * k, f, cell=0)
 
 
 def floor_pool_tile(g, T):
     slab(g, T, -1, 1, -1, 1, 0, .025, F['tile-pool'], cell=1.0 if T.lod == 0 else 0)
-    if T.detail:
-        # the lane mark's mosaic stripe
-        slab(g, T, -.12, .12, -1, 1, .025, .028, F['mosaic-blue'], cell=0)
 
 
 def floor_flood(g, T):
@@ -458,8 +455,6 @@ def floor_rails(g, T):
 
 def floor_platform(g, T):
     slab(g, T, -1, 1, -1, 1, 0, .02, F['tile-cream'], cell=1.0 if T.lod == 0 else 0)
-    if T.detail:
-        slab(g, T, -1, 1, .7, .82, .02, .024, F['tile-green'], cell=0)
 
 
 def floor_ash(g, T):
@@ -564,10 +559,10 @@ def wall_pool(g, T, upper=False):
 
 def wall_growth(g, T):
     # Ward Zero's containment growth climbing the wall: violet blooms, flat below the clear height, with low nodules
-    n = 9 if T.lod == 0 else 4
+    n = 7 if T.lod == 0 else 3
     for i in range(n):
-        cx, cy = -1.0 + 2.0 * h01('gx', i), .2 + 2.6 * h01('gy', i) ** .8
-        r = .25 + .35 * h01('gr', i)
+        cx, cy = -1.0 + 2.0 * h01('gx', i), .15 + 2.2 * h01('gy', i) ** 1.6
+        r = .16 + .26 * h01('gr', i)
         m = 12 if T.lod == 0 else 6
         pts = []
         for k in range(m):
@@ -621,7 +616,6 @@ def upper_sheet(g, T):
     if T.detail:
         for y in (.9, 2.1):
             bx(g, T, -HB, HB, y, y + .05, -.3, -.27, F['strap'], bevel=0)
-        plate(g, T, 'QUARANTINE', 0, 1.25, 1.8, .45, F['sheet'], F['stencil-black'], depth=.29, px=.04)
 
 
 def wall_bluebrick(g, T):

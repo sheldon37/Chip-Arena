@@ -350,8 +350,9 @@ namespace ChipArena.UnityConversion
                     // the carpet starts creeping in through the drift's inner half
                     case "level0":if(patch||drift&&clump*.7f+r*.3f<1.4f*(c.share-.35f))Add(plan,"level0.carpet",c.at,yaw,One,d,c.band,rs,i);break;
                     case "poolrooms":
-                        if(thresh)Add(plan,r<.5f?"poolrooms.flood":"poolrooms.tile",c.at,yaw,One,d,c.band,rs,i);
-                        else if(patch)Add(plan,"poolrooms.tile",c.at,yaw,One,d,c.band,rs,i);
+                        // the flood lies in pools across the threshold's tile (clumps, never a checkerboard)
+                        if(thresh)Add(plan,clump<.45f?"poolrooms.flood":"poolrooms.tile",c.at,0,One,d,c.band,rs,i);
+                        else if(patch)Add(plan,"poolrooms.tile",c.at,0,One,d,c.band,rs,i);
                         else if(drift&&r<.05f)Add(plan,"poolrooms.drain",c.at,YawOf(c.along),One,d,c.band,rs,i);
                         if(warp&&!patch&&r>.94f)Add(plan,"poolrooms.ring",c.at+new V3(0,.001f,0),yaw,One,d,c.band,rs,i+100000);
                         break;
@@ -360,7 +361,7 @@ namespace ChipArena.UnityConversion
                         else if(drift&&clump<.18f+.5f*(c.share-NativeCityBleed.DriftAt))Add(plan,"wardzero.litter",c.at,yaw,One,d,c.band,rs,i);
                         break;
                     case "station":
-                        if(thresh)Add(plan,"station.platform",c.at,yaw,One,d,c.band,rs,i);
+                        if(thresh)Add(plan,"station.platform",c.at,0,One,d,c.band,rs,i);
                         break;
                     case "ironworks":
                         if(thresh)Add(plan,"ironworks.plates",c.at,yaw,One,d,c.band,rs,i);
