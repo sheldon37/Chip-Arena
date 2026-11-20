@@ -23,6 +23,14 @@ internal static class BlindChoiceChecks
         Check(labels.Length==20-NativeBlindChoices.Min+1&&labels[0]=="2 choices"&&labels[1]=="3 choices (default)","the count select: 2 up to the pool, the default marked");
         Check(NativeBlindChoices.CountLabels(4).Length==3,"the count select stops at the pool");
 
+        foreach(var saved in new[]{null,"unknown","weapon","chair","sleep","crossed",NativeLobbyPoses.SheldonKey})
+        {
+            string pose=NativeLobbyPoses.UnarmedPortraitPose(saved);
+            string expected=saved=="chair"||saved=="sleep"?saved:"crossed";
+            NativeLobbyPoses.Sample(new MeleeRig(),"pistol",NativeLobbyPoses.Index(pose),0,out var held,out var offhand);
+            Check(pose==expected&&!held.Visible&&!offhand.Visible,"blind room portrait hides both weapons for pose "+saved);
+        }
+
         // ---- the hook ----
         var offers=new[]{"pistol","sword","fire"};
         var view=NativeBlindChoiceView.From("s",(int)OpeningStep.Weapon,offers,"sword",1,4,12);

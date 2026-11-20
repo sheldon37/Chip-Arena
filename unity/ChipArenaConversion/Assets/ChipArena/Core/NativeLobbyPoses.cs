@@ -44,6 +44,11 @@ namespace ChipArena.UnityConversion
         // lobbyPose(): a known key (or the Sheldon Idle), else 'weapon'.
         public static int Index(string value){if(value==SheldonKey)return SheldonIdle;for(int i=0;i<Keys.Length;i++)if(value==Keys[i])return i;return Weapon;}
         public static string Normalize(string value)=>Key(Index(value));
+        public static string UnarmedPortraitPose(string savedPose)
+        {
+            int pose=Index(savedPose);
+            return Key(pose==Weapon||pose==SheldonIdle?Crossed:pose);
+        }
         // menu-portraits.ts render(): the Siren always stands.
         public static int Effective(string spec,string pose)=>spec=="siren"?Weapon:Index(pose);
         public static bool Fighter(string spec)=>spec=="emperor"||spec=="ansatsuken";

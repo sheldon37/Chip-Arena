@@ -85,7 +85,14 @@ namespace ChipArena.UnityConversion
         {
             if(Event.current.type!=EventType.Repaint)return;
             string icon=weapon!=null?NativeIcons.Spec(weapon.id):"shuffle";Color tone=weapon!=null?U.Hex((int)weapon.color):style;int ticks=ring<56?20:28;
-            if(weapon==null||!CardLook(p,index,result,out int key,out var look,out string back,out int backColor)){PilotEmblem(centre,ring,p.accent,p.body,icon,tone,a,t,index*1.7f,ticks);return;}
+            bool hiddenLoadout=!result&&RoomBlind&&p.weapon==null;
+            if((weapon==null&&!hiddenLoadout)||!CardLook(p,index,result,out int key,out var look,out string back,out int backColor)){PilotEmblem(centre,ring,p.accent,p.body,icon,tone,a,t,index*1.7f,ticks);return;}
+            if(hiddenLoadout)
+            {
+                // Use the standard pilot rig without showing a weapon or a class-specific idle.
+                look.Spec="pistol";
+                look.Pose=NativeLobbyPoses.UnarmedPortraitPose(look.Pose);
+            }
             PortraitStage(stage,key,look,back,backColor,p.accent,p.body,icon,tone,a,t,index*1.7f,centre,ring,ticks,!result,result?p.tag=="YOU":p.you);
         }
         // The portrait over its frame: the backdrop `back` (by default the emblem's accent glow, turning tick ring and orbiting

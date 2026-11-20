@@ -1,3 +1,7 @@
+## 2026-11-19 · Astra · Online Blind Pick lobby portraits
+
+On `codex/blind-lobby-portraits` from shared `eba02d3a`, occupied Blind Pick and Blind Pick All cards use the pilot’s cosmetics and an unarmed portrait while the roster masks weapon and abilities. Armed idles use arms crossed. Seated, sleeping and crossed poses keep their framing. The targeted suite passed 5,598 checks and all pinned Unity assembly compile gates passed. A live Windows host/guest visual check is pending. No combat or wire changes.
+
 ## 2026-11-19 — Claude: the Civil Defence caches: the CD-647 locker, the opening by rarity, R9's words, the F prompt, the J panel fix and a DEV preview (owner request; presentation only)
 
 Branch `claude/cache-openings` from shared `8790610c`. Owner: "an effect when opening the cache (rarity based effect) would be nice as well"; on the approved board 3: "1) a glow with particles based on the rarity  2) only the lid opening  3) That will be fine for now"; then "Yes, start caches". The design is board 3's one opening (`scratch/meridian/board3/work/fx/cache-openings.md`, copied to `F:/Chip Arena Development/scratch/cache-openings/design/`) with those decisions applied: STANDARD opens with a glow and particles in its colour and no column; Reduced effects shows only the lid; chip-machine purchases open by the chip's rarity. W6 (Claude's M2 and M3 parts) and R9; Astra's A2 is the rules half.
