@@ -56,6 +56,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--bleed-table"){BleedTable.Run();return 0;}
             if(args.Length==3&&args[0]=="--bleed-probe"){BleedProbe.Run(int.Parse(args[1]),int.Parse(args[2]));return 0;}
             if(args.Length==5&&args[0]=="--bleed-scene"){BleedChecks.Scene(int.Parse(args[1]),args[2],uint.Parse(args[3]),args[4]);return 0;}
+            if(args.Length==5&&args[0]=="--bleed-zfight"){BleedChecks.ZCombined(int.Parse(args[1]),args[2],uint.Parse(args[3]),args[4]);return 0;}
             if(args.Length==2&&args[0]=="--meridian-landmarks-dump"){LandmarkReadChecks.Dump(args[1]);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--landmark-reads")LandmarkReadChecks.Run();
             if(args.Length==1&&args[0]=="--landmark-reads")return 0;

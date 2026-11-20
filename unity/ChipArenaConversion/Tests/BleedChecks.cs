@@ -330,6 +330,49 @@ internal static class BleedChecks
     private static int Draws(NativeCityBleedDress.Plan plan)=>plan.Pieces.GroupBy(p=>p.Kind).Sum(g=>2*((g.Count()+499)/500));
     private static string Show(V3 v)=>v.x.ToString("0.###",CultureInfo.InvariantCulture)+","+v.y.ToString("0.###",CultureInfo.InvariantCulture)+","+v.z.ToString("0.###",CultureInfo.InvariantCulture);
 
+    /// <summary>`--bleed-zfight LAYOUT EAST,SOUTH,WEST SEED OUTDIR` (CHIPARENA_MERIDIAN_BANK and CHIPARENA_BLEED_BANK set): the
+    /// whole look for zfight: the bleed's scene (maps.json, rest.json), the street dress planned with the bleed's contracts and its
+    /// themed variants, combined in chunks as its drawer combines them (dress.bytes: static/&lt;chunk&gt;/&lt;tier&gt; and its covers), and the
+    /// landmarks' pieces and covers (landmarks.json).</summary>
+    public static void ZCombined(int layout,string deal,uint seed,string dir)
+    {
+        Scene(layout,deal,seed,dir);
+        var names=deal.Split(',');var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);uint s=NativeCityBleedDress.DealSeedFor(seed,names);
+        var slots=NativeCityLayout.DealHalls(s,names);var bleed=NativeCityBleed.ForWalk(walk,slots);var plan=NativeCityBleedDress.ForWalk(walk,bleed,s);
+        var city=NativePackBank.Read(File.ReadAllBytes(Environment.GetEnvironmentVariable("CHIPARENA_MERIDIAN_BANK")));
+        var bank=NativeMeridianDress.WithVariants(city,NativePackBank.Read(File.ReadAllBytes(Environment.GetEnvironmentVariable("CHIPARENA_BLEED_BANK"))));var modules=NativeMeridianDress.Modules(bank);
+        var input=new NativeMeridianDress.Input{Map=walk.Map,Layout=info.Seed,Run=s,Slots=slots,Hatches=walk.RoofHatches.ToArray(),KeepOut=NativeCityBleedDress.CacheKeepOuts(walk.Caches,walk.Map),
+            Routes=walk.Routes.Select(r=>new NativeMeridianDress.Route{Name=r.Name,Points=r.Points,Widths=r.Widths,Kinds=r.Kinds}).ToArray()};
+        NativeMeridianDress.ThemeAt=p=>bleed.ThemeAt(p);NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(plan,p,14);NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(plan,p,n);
+        NativeMeridianDress.Plan dress;try{dress=NativeMeridianDress.Build(input,modules.ContainsKey);}finally{NativeMeridianDress.ThemeAt=null;NativeMeridianDress.LampsReplaced=null;NativeMeridianDress.FacadeCovered=null;}
+        var units=NativeMeridianDress.DrawChunks(dress,bank,modules);var mesh=new NativeMeridianMesh();var inv=CultureInfo.InvariantCulture;
+        using(var w=new BinaryWriter(File.Create(Path.Combine(dir,"dress.bytes"))))
+        {
+            void S(string t){var bt=Encoding.UTF8.GetBytes(t);w.Write(bt.Length);w.Write(bt);}
+            var meshes=new List<(string name,int n,float[] p,int[] solid,int[] glow,float[] uv1,float[] lo,float[] hi)>();
+            for(int c=0;c<units.Count;c++)foreach(int tier in new[]{0,2})
+            {
+                NativeMeridianDress.Combine(dress,0,tier,bank,modules,units[c].Placements,units[c].Quads,mesh);if(mesh.Vertices==0)continue;int n=mesh.Vertices;
+                meshes.Add(("static/"+c+"/"+tier,n,mesh.P.Take(n*3).ToArray(),mesh.Solid.ToArray(),mesh.Glow.ToArray(),mesh.Uv1.Take(n*2).ToArray(),new[]{mesh.MinX,mesh.MinY,mesh.MinZ},new[]{mesh.MaxX,mesh.MaxY,mesh.MaxZ}));
+            }
+            w.Write(Encoding.ASCII.GetBytes("CAPB"));w.Write(1);w.Write(0);w.Write(0);w.Write(meshes.Count);
+            foreach(var m in meshes)
+            {
+                S(m.name);foreach(var f in m.lo)w.Write(f);foreach(var f in m.hi)w.Write(f);w.Write(m.n);w.Write((byte)NativePackBank.AttrUv1);foreach(var f in m.p)w.Write(f);foreach(var f in m.uv1)w.Write(f);
+                var subs=m.glow.Length>0?new[]{m.solid,m.glow}:new[]{m.solid};w.Write(subs.Length);
+                for(int k=0;k<subs.Length;k++){w.Write(k);w.Write(subs[k].Length);foreach(int ix in subs[k])if(m.n>65535)w.Write(ix);else w.Write((ushort)ix);}
+            }
+            var covers=dress.Covers.OrderBy(x=>x,StringComparer.Ordinal).ToList();w.Write(meshes.Count+covers.Count);
+            for(int i=0;i<meshes.Count;i++){S(meshes[i].name);S("static");foreach(var f in meshes[i].lo)w.Write(f);foreach(var f in meshes[i].hi)w.Write(f);w.Write(1);w.Write(i);foreach(var f in new float[]{1,0,0,0,0,1,0,0,0,0,1,0})w.Write(f);}
+            foreach(var id in covers){S("cover/"+id);S("cover");for(int k=0;k<6;k++)w.Write(0f);w.Write(0);}
+        }
+        var land=NativeMeridianLandmarks.Place(info.Seed,walk.Map,walk.Routes.Select(r=>r.Destination).ToList(),slots);
+        var lj=new StringBuilder("{\"covers\":["+string.Join(",",land.Covers.Select(c=>"\""+c+"\""))+"],\"pieces\":[");
+        for(int i=0;i<land.Pieces.Count;i++){var pc=land.Pieces[i];if(i>0)lj.Append(',');lj.Append("{\"key\":\""+pc.Key+"\",\"place\":["+string.Join(",",pc.Place.Select(f=>f.ToString("R",inv)))+"]}");}
+        lj.Append("]}");File.WriteAllText(Path.Combine(dir,"landmarks.json"),lj.ToString());
+        Console.WriteLine(walk.Map.name+": dress "+dress.Placements.Count+" modules ("+dress.Placements.Count(x=>x.Key.Contains("@"))+" themed) in "+units.Count+" chunks, bleed "+plan.Pieces.Count+", landmarks "+land.Pieces.Count);
+    }
+
     /// <summary>`--bleed-scene LAYOUT EAST,SOUTH,WEST SEED OUTDIR`: one walk's map (maps.json) and its bleed pieces as rig places
     /// (rest.json), for tools/stages/zfight.py against the bleed's bank, and a plan listing (pieces.txt).</summary>
     public static void Scene(int layout,string deal,uint seed,string outDir)

@@ -8,8 +8,8 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The bleed's drawer (docs/MERIDIAN-BLEED.md): Core NativeCityBleedDress's plan drawn from the bleed's bank
     /// (Resources/ChipArenaCityBleed, from the Drive zip), with its light and the atmosphere the camera's share calls for.
-    ///  - The pieces: every kind instanced (ChipArena/StageLit, two layers up like the stages' models, so paint on a floor or a
-    ///    wall never fights the box under it), each instance's tier by its distance from the eye (NativeStageArt.TierAt; the
+    ///  - The pieces: every kind instanced (ChipArena/StageLit, nine layers up, over all of the street dress's layers, so paint on a floor or
+    ///    a wall never fights what lies under it), each instance's tier by its distance from the eye (NativeStageArt.TierAt; the
     ///    Low tier on the low graphics tier), culled against the eye's frustum, at most 500 to a draw.
     ///  - The light: lamp heads glow in each lamp's colour; 1 in 5 dead and 1 in 10 flickering as the plan dealt them, Ward
     ///    Zero's beacons turning, Level 0's troffers buzzing on one circuit; under each working lamp a soft pool on the floor,
@@ -41,6 +41,9 @@ namespace ChipArena.UnityConversion
         }
 
         public const string OffArgument="--ca-no-city-bleed";
+        /// <summary>The layers the bleed draws up (ChipArena/StageLit's _StageLift): over every layer the street dress uses (its
+        /// paint and the stacks on its surfaces go up to 8), so a stain or a skin on the dress's surface never fights it.</summary>
+        public const int Lift=9;
         private const int BatchSize=500;
         private sealed class Kind
         {
@@ -78,8 +81,8 @@ namespace ChipArena.UnityConversion
         {
             this.bleed=bleed;this.plan=plan;this.eye=eye;this.low=low;
             var shader=Resources.Load<Shader>("NativeStageLit");if(shader==null||!shader.isSupported)return false;
-            solid=new Material(shader){name="City bleed",enableInstancing=true};solid.SetFloat(GlowFlag,0);solid.SetFloat(LiftId,NativeStageArt.ModelLayers);
-            glow=new Material(shader){name="City bleed glow",enableInstancing=true};glow.SetFloat(GlowFlag,1);glow.SetFloat(LiftId,NativeStageArt.ModelLayers);
+            solid=new Material(shader){name="City bleed",enableInstancing=true};solid.SetFloat(GlowFlag,0);solid.SetFloat(LiftId,Lift);
+            glow=new Material(shader){name="City bleed glow",enableInstancing=true};glow.SetFloat(GlowFlag,1);glow.SetFloat(LiftId,Lift);
             block=new MaterialPropertyBlock();batch=new Batch();
             var K=NativeCityBleedDress.Kinds;kinds=new Kind[K.Length];
             for(int k=0;k<K.Length;k++)
