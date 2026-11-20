@@ -24,26 +24,31 @@ Each is distinct in set, palette and camera:
 | | Set (bank props) | Palette (game colours) | Camera language |
 | --- | --- | --- | --- |
 | Forgeborn | caldera forge: basalt column tops with lava in the cracks (`fire/lava/0..5`, lit in turn), a dais of irregular fitted stones (no ring joints) round the vent (`fire/vent`, its round lava throat under jagged rock lips), four lava rivers (`fire/river/k`) from two falls on the rim (`fire/falls`), organ-pipe column clusters, a half-ruined forge arch with hot joints (`fire/forge-seams`), its firebox (`fire/hearth`: a lining graded from a white-yellow core to a deep red lip, on a bed of coals), a crater rim of crags | basalt black, the fire weapon's orange `#ff6c32`, flame yellow, ember red; smoky red-brown fog | heavy and grounded: a macro along a seam, a crane up and back, low under the eruption, a crane up the column, the walk at the lens, an orbit framing the crown, wide and low for the slam; it ends on a low crane rising from the pilot's right, the forge's mouth glowing at the left |
-| Still Tide | drowned hall: colonnades, pointed arcades, clerestory lancets, a ribbed vault broken over two bays, a rose window, still water (`water/surface`, raised by the tide), the wave's two halves liquid (`water/wave/L,R`: a breaking curl, its barrel and thin lip lit through from teal to white) and frozen (`water/frozen/L,R`: faceted cyan-white ice, a bright rim, frost at its foot and crest), the frost over the water (`water/ice/0..4`: broken, irregular patches, no rings, revealed in turn by the frost front) | the water weapon's cyan `#63e2ff`, foam `#eaffff`, deep `#2b8bd6`, moonlight `#a6d4ff`, ice `#d6faff`; teal-black | gliding: a dolly over the water, a rise with the tide, low under the rearing wave, front and low as it parts, an orbit through the frozen moment, a pull back between the walls; it ends still and centred down the corridor of ice, a slow push in |
+| Still Tide | drowned hall: colonnades, pointed arcades, clerestory lancets, a ribbed vault broken over two bays, a rose window, still water (`water/surface`, raised by the tide), the wave's two halves liquid (`water/wave/L,R`: a breaking curl, its barrel and thin lip lit through from teal to white) and frozen (`water/frozen/L,R`: faceted ice whose faces toward the barrel glow cyan to white, the light through it, so it reads as ice in any arena; a bright rim, frost at its foot and crest), the frost over the water (`water/ice/0..4`: broken, irregular patches, no rings, revealed in turn by the frost front) | the water weapon's cyan `#63e2ff`, foam `#eaffff`, deep `#2b8bd6`, moonlight `#a6d4ff`, ice `#d6faff`; teal-black | gliding: a dolly over the water, a rise with the tide, low under the rearing wave, front and low as it parts, an orbit through the frozen moment, a pull back between the walls; it ends still and centred down the corridor of ice, a slow push in |
 | Strike Point | storm summit: fractured slabs of wet dark rock, rain pools that catch every flash (`lightning/puddles`), a scorch round the strike with cracks cooling from white-hot (`lightning/scorch`), a cliff falling into a cloud sea, six conductor spires with copper bands, a coil and an iron spike (`lightning/spires`, their seams `lightning/seams/k`), a fulgurite crater (`lightning/crater`), peaks through the clouds | the lightning weapon's violet `#c8aaff`, core `#f3ecff`; storm slate-blue, near-black rock | violent and vertical: low and wide, straight up into the turning vortex, down from the cloud, the smash to the strike, a fast orbit, rising with it, low and close under the call with the spires firing; it ends on a Dutch low orbit |
 | Black Sun | eclipse plain: near-black obsidian plates over a dim violet, dark ash dunes, six leaning monoliths with rune staves (`darkness/glyphs/k`), a broken gate framing the sun, far mesas, the moon disc (`darkness/moon`, slid over the sun) | the darkness weapon's `#af6eff`, the void orb's rim `#c04dff` and lens `#d9a6ff`; dim dusk to black, a violet rim | still and symmetrical: centred through the gate, high over the plain as the shadows stream in, low under the black sun, locked off for the void, the eye held close (a slow ramp), low against the eclipse for the wings; it ends pulling back, centred under the black sun |
 
 ## How they are built
 
 - **The base** (`NativeIntroElementalScript` on `NativeIntroV2Script`): the keyed rig (the anchors for the camera and effects,
-  the Classic pose) with the staff placed by arm IK on a keyed grip track (`StaffKey`, `Arms`); the model's own motion from the
-  motion bank over windows of the clock (`Clips`, `INativeIntroBody`); the drawn wrists (`INativeIntroHands`) carry the staff's
-  effects; `Beam` lays every streak over 1 m on its head's camera plane and skips one whose head is behind the lens; `Bolt` draws
+  the Classic pose and the model's pose) with the staff placed by arm IK on a keyed grip track (`StaffKey`, `Arms`) and the right
+  hand riding it for two-handed moves (`Support`); the drawn wrists (`INativeIntroHands`) carry the staff's effects; `Beam` lays every streak over 1 m on its head's camera plane and skips one whose head is behind the lens; `Bolt` draws
   a fractal bolt (a slow wander and a fine jitter on short segments, forks); `Star` is a glint whose rays are laid the same way.
-- **Motion:** only clips already in the motion bank, mirrored for the staff hand (no rebake): `2Hand-Staff-Idle~mirror`, the
-  `2Hand-Staff-Cast-L-Buff1/2`, `-AOE1/2`, `-Summon1/2` and `2Hand-Staff-Cast-Attack1` starts and ends. A model never goes back from
-  a clip to the keys (it would pop): Forgeborn walks out of the fire on keys and plays its casts from the crown on; Still Tide plays
-  clips throughout and holds on its mark; Strike Point's crouch is keyed, its rise and summon are clips; Black Sun walks out of the
-  void on keys and plays its summon and strike. The keyed rig is lowered to the clips' stance so the anchors sit on the model.
+- **Motion: bespoke keyed animation only** (owner, 2026-11-20 morning: "we dont need the matches own annimation system. Think like
+  the top dog and Bombardier ones, they have unique animations"). No motion-bank clip plays (`Clip` is never true). Every beat is
+  keyed (`NativeEntranceKeys`: anticipation, impact keys that ring out, pass keys that flow, planted feet and step plans):
+  - Forgeborn: rises out of the fire, walks out heavily, goes up on its toes for the crown, takes the staff high in both hands
+    and drives it down.
+  - Still Tide: looks back, braces with the staff level overhead, sweeps it across into a lunge, taps the water.
+  - Strike Point: lands kneeling with a hand on the stone; rises, dips and thrusts the staff up for the call, is rocked back by
+    the bolt, plants the staff.
+  - Black Sun: walks low out of the void, hunches, throws the wings open, snaps the staff down.
+  `--intro-elemental` fails on any match clip, a non-finite joint or a head turned more than .62 rad from its chest;
+  `--intro-elemental-pose id t...` dumps the keyed joints (stick-figure sheets: the animation checked without the Editor).
 - **The drawn head** (`INativeIntroHead`): the crown, the eye and the frost breath follow the drawn head joint (`HeadShift`). That
   joint is the game joint's frame, which rides about 20 cm under the model's head bone. Hold 2's frames put the model's visor
-  .15-.18 m above the keyed eye line, so Black Sun's eye and its close-up are raised by `ModelHeadLift` (.16 m). The lift was set
-  after hold 2: its clips show the eye on the collar, and the raised eye has not been captured yet.
+  .15-.18 m above the keyed eye line, so Black Sun's eye and its close-up, and Forgeborn's crown, are raised by `ModelHeadLift`
+  (.16 m); hold 3 showed the eye on the visor.
 - **Sets:** `tools/intros/elemental_set.py` (Blender 5.2.3 headless, the stage kit's geometry, finishes, AO and bank format),
   modelled in the intros' source frame and mirrored into the bank's Unity space at export (so the script and the scripts share
   their numbers; `IntroElementalChecks` reads them from the script). `<prop>` is the Fine tier, `<prop>/low` the Low tier. The bank
