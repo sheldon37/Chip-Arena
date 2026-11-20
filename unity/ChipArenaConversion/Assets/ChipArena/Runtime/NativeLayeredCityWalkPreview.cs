@@ -129,6 +129,7 @@ namespace ChipArena.UnityConversion
                 walkFrames = 0;
                 walkFrameMs = walkSampleTime = 0;
                 MeridianLandmarksOpen(plan, cityWalk, surveySlots);
+                StreetLifeWalkOpen(cityWalk, plan.Seed, seed);
             }
             catch (Exception ex)
             {
@@ -142,6 +143,7 @@ namespace ChipArena.UnityConversion
         {
             CloseCityBleed();
             MeridianLandmarksClose();
+            StreetLifeWalkClose();
             if (walkTriangles.Valid)
             {
                 Debug.Log($"Meridian walk {cityWalk?.Map.name}: peak rendered triangles {walkPeakTriangles}; last sampled frame mean {walkFrameMs:F2} ms");
