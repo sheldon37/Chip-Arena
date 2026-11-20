@@ -25,10 +25,22 @@ namespace ChipArena.UnityConversion
         /// <summary>Write Sky and Ground to the ambient probe too, so that the bodies and the smoke (which read the probe, not the render settings) follow them this frame: for a script that goes truly dark.</summary>
         public bool DriveProbe;
         public Vector3 Sky,Ground;
+        /// <summary>
+        /// A v2 intro's reflection (docs/INTROS-V2.md "Lighting"; Runtime NativeLighting.IntroOwn): what its set's and its pilot's glossy
+        /// faces mirror, a small cubemap made from three linear colours (the sky above, the horizon level, the ground below) at
+        /// ReflectIntensity. A colour left zero takes the intro's own: Sky above, Fog at the horizon, Ground below. The arena's reflection
+        /// probe and sky never reach a v2 intro. (Older entrances ignore it.)
+        /// </summary>
+        public Vector3 ReflectSky,ReflectHorizon,ReflectGround;public float ReflectIntensity=1;
         public int Directionals,Points;
         public readonly Vector3[] DirectionTo=new Vector3[MaxDirectional],DirectionColor=new Vector3[MaxDirectional];
         public readonly NativeStageLight[] Point=new NativeStageLight[NativeStageLighting.Max];
-        public void Clear(){Directionals=0;Points=0;Background=Fog=Sky=Ground=Vector3.Zero;FogNear=9;FogFar=30;DriveProbe=false;}
+        public void Clear(){Directionals=0;Points=0;Background=Fog=Sky=Ground=ReflectSky=ReflectHorizon=ReflectGround=Vector3.Zero;ReflectIntensity=1;FogNear=9;FogFar=30;DriveProbe=false;}
+        /// <summary>The reflection's three colours as a v2 intro sees them (a zero one from its Sky, Fog or Ground).</summary>
+        public void Reflection(out Vector3 sky,out Vector3 horizon,out Vector3 ground)
+        {
+            sky=ReflectSky==Vector3.Zero?Sky:ReflectSky;horizon=ReflectHorizon==Vector3.Zero?Fog:ReflectHorizon;ground=ReflectGround==Vector3.Zero?Ground:ReflectGround;
+        }
         public void Directional(Vector3 toLight,Vector3 color){if(Directionals>=MaxDirectional||color.X+color.Y+color.Z<=0)return;DirectionTo[Directionals]=Vector3.Normalize(toLight);DirectionColor[Directionals]=color;Directionals++;}
         /// <summary>A point light (decay 2, three's default), kept among the eight that reach the stage centre most.</summary>
         public void Add(Vector3 at,Vector3 color,float distance){Points=NativeStageLighting.Add(Point,Points,new NativeStageLight(at.X,at.Y,at.Z,color.X,color.Y,color.Z,distance,2));}

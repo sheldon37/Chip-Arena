@@ -163,7 +163,9 @@ namespace ChipArena.UnityConversion
         public static bool Find(string key,out Def def)
         {
             if(index==null){var map=new Dictionary<string,int>(StringComparer.Ordinal);for(int i=0;i<All.Length;i++)map[All[i].Key]=i;index=map;}
-            if(key!=null&&index.TryGetValue(key,out int at)){def=All[at];return true;}def=default;return false;
+            if(key!=null&&index.TryGetValue(key,out int at)){def=All[at];return true;}
+            // Intros v2: the intros' generated keys (Core NativeIntroSoundKeys, "intro2.*").
+            return NativeIntroSoundKeys.Find(key,out def);
         }
         public static bool Known(string key)=>Find(key,out _);
         public const string IntroPrefix="intro.";

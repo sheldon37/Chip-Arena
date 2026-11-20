@@ -13,14 +13,19 @@ namespace ChipArena.UnityConversion
             var access=seat.access??NativeAccess.Guest;double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();if(seat.spec=="siren"&&(seat.AuthorityBoss||access.Allows("weapon:siren",now)))return "dev-siren";
             // A chosen entrance plays only while it is one this client stages; a retired or unknown pick (an older client's
             // neon-drop, vector-slide, ...) falls through to the pilot's weapon signature instead of a fallback stage.
-            if(seat.overrideIntro&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
+            // Intros v2 (docs/INTROS-V2.md): a registered v2 pick plays for whoever may pick it (DEV ones: live DEV access); an archived
+            // pick (every older intro but the Top Dog's and the Bombadier's) falls through to the pilot's weapon's intro.
+            if(seat.overrideIntro&&NativeIntroCatalog.Registered(seat.intro)&&NativeIntroCatalog.Allowed(seat.intro,access,now))return seat.intro;
+            if(seat.overrideIntro&&!NativeIntroCatalog.Archived(seat.intro)&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
             // A DEV animation class (picked, or spawned as its base) has its own entrance (Core NativeDevIntros).
+            // Intros v2: the weapon's registered intro (a DEV animation class its base weapon's; an archived DEV class the new default once registered).
+            var fresh=NativeIntroCatalog.Signature(NativeDevMotions.Of(seat)??seat.spec);if(fresh!=null)return fresh;
             var devMotion=NativeDevMotions.Of(seat);if(devMotion!=null)return NativeDevMotions.Entrance(devMotion);
             if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";if(seat.spec==CyberLordSpec.Id)return CyberLordSpec.Entrance;if(seat.spec==NativeBombs.Spec)return NativeBombs.Entrance;if(seat.spec==NativeTopDog.Spec)return NativeTopDog.Entrance;if(seat.spec==NativeGlaive.Spec)return NativeGlaiveIntro.Id;if(seat.spec==NativeKatana.Spec)return NativeKatana.Entrance;if(seat.spec==NativeFangs.Spec)return NativeFangs.Entrance;return Signature(seat.spec);
         }
-        public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:style==NativeBombs.Entrance?7.6:style==NativeTopDog.Entrance?NativeTopDogIntro.Total:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.Total:style==NativeKatana.Entrance?NativeKatanaIntro.Total:style==NativeFangs.Entrance?NativeFangsIntro.Total:style==NativeDevMotions.GreatswordEntrance?NativeDevGreatswordIntro.Total:style==NativeDevMotions.KatanaEntrance?NativeDevKatanaIntro.Total:4.8;
+        public static double Duration(string style)=>NativeIntroCatalog.Find(style) is NativeIntroEntry v2?v2.Duration:style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:style==NativeBombs.Entrance?7.6:style==NativeTopDog.Entrance?NativeTopDogIntro.Total:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.Total:style==NativeKatana.Entrance?NativeKatanaIntro.Total:style==NativeFangs.Entrance?NativeFangsIntro.Total:style==NativeDevMotions.GreatswordEntrance?NativeDevGreatswordIntro.Total:style==NativeDevMotions.KatanaEntrance?NativeDevKatanaIntro.Total:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
-        public static double NameAt(string style)=>style=="dev-siren"?6.4261:style=="dev-emperor"?5.95:style=="dev-matrix"?6.25:style=="dev-ansatsuken"?5.45:style==NativeBombs.Entrance?6:style==NativeTopDog.Entrance?NativeTopDogIntro.CardAt:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.CardAt:style==NativeKatana.Entrance?NativeKatanaIntro.CardAt:style==NativeFangs.Entrance?NativeFangsIntro.CardAt:style==NativeDevMotions.GreatswordEntrance?NativeDevGreatswordIntro.CardAt:style==NativeDevMotions.KatanaEntrance?NativeDevKatanaIntro.CardAt:3.2;
+        public static double NameAt(string style)=>NativeIntroCatalog.Find(style) is NativeIntroEntry v2?v2.NameAt:style=="dev-siren"?6.4261:style=="dev-emperor"?5.95:style=="dev-matrix"?6.25:style=="dev-ansatsuken"?5.45:style==NativeBombs.Entrance?6:style==NativeTopDog.Entrance?NativeTopDogIntro.CardAt:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.CardAt:style==NativeKatana.Entrance?NativeKatanaIntro.CardAt:style==NativeFangs.Entrance?NativeFangsIntro.CardAt:style==NativeDevMotions.GreatswordEntrance?NativeDevGreatswordIntro.CardAt:style==NativeDevMotions.KatanaEntrance?NativeDevKatanaIntro.CardAt:3.2;
         // The overlay's own clock length (shared/intros.ts introDuration). The Siren's source intro is 7.2678 s; Duration keeps the
         // native phase length unchanged (9.0678 s for a PvP Siren intro), which is a gameplay-timing difference left for review.
         public static double OverlayDuration(string style)=>style=="dev-siren"?7.2678:Duration(style);
@@ -40,18 +45,20 @@ namespace ChipArena.UnityConversion
         /// <summary>The intro preference held when nothing is picked (overrideIntro false), and the entrance of a pilot whose
         /// weapon has no signature (an ungranted DEV weapon, an unknown spec).</summary>
         public const string Default="hero-landing";
-        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||style==CyberLordSpec.Entrance||style==NativeBombs.Entrance||style==NativeTopDog.Entrance||style==NativeGlaiveIntro.Id||style==NativeKatana.Entrance||style==NativeFangs.Entrance||style==NativeDevMotions.GreatswordEntrance||style==NativeDevMotions.KatanaEntrance||Array.IndexOf(Entrances,style)>=0);
+        public static bool Pickable(string style)=>style!=null&&(NativeIntroCatalog.Registered(style)||style=="sheldon-intro"||style==CyberLordSpec.Entrance||style==NativeBombs.Entrance||style==NativeTopDog.Entrance||style==NativeGlaiveIntro.Id||style==NativeKatana.Entrance||style==NativeFangs.Entrance||style==NativeDevMotions.GreatswordEntrance||style==NativeDevMotions.KatanaEntrance||Array.IndexOf(Entrances,style)>=0);
         /// <summary>The weapon signature of `spec` ("weapon-"+spec), or Default for a weapon without one.</summary>
-        public static string Signature(string spec){string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Default;}
+        public static string Signature(string spec){var fresh=NativeIntroCatalog.WeaponIntro(spec);if(fresh!=null)return fresh;string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Fallback;}
+        /// <summary>Intros v2: what a pilot without a signature stages: the new default once registered (NativeIntroCatalog.DefaultId), else Default.</summary>
+        public static string Fallback=>NativeIntroCatalog.DefaultReady?NativeIntroCatalog.DefaultId:Default;
         /// <summary>A style this client stages; anything else (retired, unknown, null) becomes Default.</summary>
-        public static string Entrance(string style)=>Pickable(style)?style:Default;
+        public static string Entrance(string style)=>Pickable(style)?style:Fallback;
         /// <summary>A style this client stages; anything else becomes the pilot's own weapon signature.</summary>
         public static string Entrance(string style,string spec)=>Pickable(style)?style:Signature(spec);
         /// <summary>
         /// Normalizes a saved or received intro preference: a pick this client cannot stage (a retired generic entrance, an
         /// unknown id) becomes Default with the override off, so the pilot plays its weapon signature.
         /// </summary>
-        public static void Migrate(ref string intro,ref bool overrideIntro){if(!Pickable(intro)){intro=Default;overrideIntro=false;}}
+        public static void Migrate(ref string intro,ref bool overrideIntro){if(!Pickable(intro)||NativeIntroCatalog.Archived(intro)){intro=Default;overrideIntro=false;}}
         /// <summary>
         /// What the shared account service stores for an intro pick: it validates against the Electron client's list
         /// (shared/cosmetics.ts), which knows the weapon, DEV and retired generic ids but not the procedural entrances, and
@@ -64,7 +71,7 @@ namespace ChipArena.UnityConversion
         // Emperor's Oath (buildWeapon(weapon/offWeapon,'emperor'), shown by poseEmperor; weapon-emperor holds both gauntlets).
         // Every other entrance shows empty hands: the poses, the Rain Warrior and the L33T Throne hide r.weapon and the Siren
         // hides it. The L33T Throne's staff is the stage's own prop, grabbed at 4 s.
-        public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style==NativeBombs.Entrance?"weapon-"+NativeBombs.Spec:style==NativeTopDog.Entrance?"weapon-"+NativeTopDog.Spec:style==NativeGlaiveIntro.Id?"weapon-"+NativeGlaive.Spec:style==NativeKatana.Entrance?"weapon-"+NativeKatana.Spec:style==NativeFangs.Entrance?"weapon-"+NativeFangs.Spec:style==NativeDevMotions.GreatswordEntrance?"weapon-"+NativeDevMotions.Greatsword:style==NativeDevMotions.KatanaEntrance?"weapon-"+NativeDevMotions.Katana:style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
+        public static string IntroWeapon(string style)=>NativeIntroCatalog.Find(style) is NativeIntroEntry v2?(v2.Spec!=null?"weapon-"+v2.Spec:null):style=="dev-emperor"?"weapon-emperor":style==NativeBombs.Entrance?"weapon-"+NativeBombs.Spec:style==NativeTopDog.Entrance?"weapon-"+NativeTopDog.Spec:style==NativeGlaiveIntro.Id?"weapon-"+NativeGlaive.Spec:style==NativeKatana.Entrance?"weapon-"+NativeKatana.Spec:style==NativeFangs.Entrance?"weapon-"+NativeFangs.Spec:style==NativeDevMotions.GreatswordEntrance?"weapon-"+NativeDevMotions.Greatsword:style==NativeDevMotions.KatanaEntrance?"weapon-"+NativeDevMotions.Katana:style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
         // character-rig.ts: the hand socket on the wrist joint, where an ungripped weapon sits (source frame, +x the rig's left).
         public static readonly System.Numerics.Vector3 HandSocket=new System.Numerics.Vector3(0,-.065f,.055f);
         /// <summary>
@@ -145,6 +152,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static string IntroSting(string style)
         {
+            if(NativeIntroCatalog.Registered(style))return (NativeEntranceDirector.Script(style) as INativeIntroV2)?.Music;// Intros v2: the intro's own bed, or none (its cues)
             if(style==null||style=="dev-siren"||!Pickable(style))return null;
             // The procedural entrances play the retired generic stings (150 bpm beds with a 3.2 s accent); their beats are on that grid.
             switch(style){case "orbital-drop":case "overclock":return "audio/intros/pulse-wave";case "hero-landing":return "audio/intros/neon-drop";case "skyline-zip":return "audio/intros/vector-slide";
@@ -172,6 +180,7 @@ namespace ChipArena.UnityConversion
         // Display names (shared/intros.ts INTRO_STYLES for the weapon and DEV entrances; the procedural entrances are native).
         public static string StyleName(string style)
         {
+            var v2=NativeIntroCatalog.Find(style);if(v2!=null)return v2.Name;
             switch(style)
             {
                 case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";case CyberLordSpec.Entrance:return "DEV · Hardlight Boot";case NativeBombs.Entrance:return "DEV · Last Warning";case NativeTopDog.Entrance:return "DEV · Order Up!";case NativeGlaiveIntro.Id:return NativeGlaiveIntro.Name;case NativeKatana.Entrance:return NativeKatanaIntro.Name;case NativeFangs.Entrance:return NativeFangsIntro.Name;case NativeDevMotions.GreatswordEntrance:return "DEV · "+NativeDevGreatswordIntro.Name;case NativeDevMotions.KatanaEntrance:return "DEV · "+NativeDevKatanaIntro.Name;
