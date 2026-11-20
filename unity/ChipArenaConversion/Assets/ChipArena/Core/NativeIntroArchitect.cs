@@ -261,7 +261,7 @@ namespace ChipArena.UnityConversion
             {
                 // Locked: a hair of settle, the seams' flash travelling out with the wave of light.
                 float s=t-Drop;at=p.Rest-new Vector3(0,.012f*(float)Math.Exp(-14*s)*(float)Math.Sin(s*30),0);solid=true;
-                float reach=Math.Max(0,(new Vector2(p.Rest.X,p.Rest.Z).Length()-.5f))/22f;flash=Flash(t,Drop+reach,.01f,.3f)*(p.Kind==Crown?.6f:1);
+                float reach=Math.Max(0,(new Vector2(p.Rest.X,p.Rest.Z).Length()-.5f))/22f;flash=Flash(t,Drop+reach,.01f,.3f)*(p.Kind==Crown?.6f:p.Kind==Obelisk||p.Kind==Plinth?.45f:.75f);
                 wire=1.8f*(1-NativeEntranceMath.Smooth(s/(p.Kind==Crown||p.Kind==Tile||p.Kind==Dais?.14f:.38f)));return true;
             }
             float snapFrom=Drop-.045f;
@@ -390,7 +390,7 @@ namespace ChipArena.UnityConversion
             // The gathering's wires lighting the void; the inhale dims everything.
             if(t>=Gather&&t<Drop+.1f){float g=NativeEntranceMath.Ramp(t,Gather,Inhale)*(1-.6f*NativeEntranceMath.Bump(t,Inhale-.05f,DipB+.1f));l.Add(new Vector3(0,3,0),Cyan*(3.2f*g),16);}
             // THE DROP: the flash, then the crown's gold from above, the seams' cyan from below, a white rim and the name's light.
-            float hit=Flash(t,Drop,.004f,.32f);if(hit>.01f)l.Add(new Vector3(0,1.2f,.6f),Ice*(42*hit),18);
+            float hit=Flash(t,Drop,.004f,.18f);if(hit>.01f)l.Add(new Vector3(0,1.2f,.6f),Ice*(30*hit),12);
             if(drop>0)
             {
                 l.Add(new Vector3(0,CrownY-1.5f,0),Gold*(3.2f*drop),24);l.Add(chest+new Vector3(.5f,.35f,1.25f),Ice*(1.5f*drop),3.2f);l.Add(new Vector3(.6f,2.6f,-2.3f),Ice*(4.2f*drop),7);

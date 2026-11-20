@@ -81,7 +81,7 @@ def finishes():
         'window-cool': f('window-cool', 0x5a8cff, D.DETAIL_GLOW, glow=.6),
         'beacon': f('beacon', 0xff2a18, D.DETAIL_GLOW, glow=1.6),
         # the architect's: obsidian, basalt, gold, and light
-        'obsidian': f('obsidian', 0x111318, D.DETAIL_MARBLE, smooth=.72, metal=.08, dirt=.15, wear=.3),
+        'obsidian': f('obsidian', 0x0e1015, D.DETAIL_MARBLE, smooth=.5, metal=.05, dirt=.15, wear=.25),
         'obsidian-dark': f('obsidian-dark', 0x08090c, D.DETAIL_MARBLE, smooth=.6, metal=.05, dirt=.15),
         'basalt': f('basalt', 0x1a1d24, D.DETAIL_CARVED, smooth=.4, metal=.05, dirt=.3, wear=.35),
         'basalt-dark': f('basalt-dark', 0x0d0f14, D.DETAIL_CARVED, smooth=.3, dirt=.2),

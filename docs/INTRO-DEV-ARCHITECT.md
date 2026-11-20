@@ -12,7 +12,8 @@ around 5-6 secs. It drops at about 18 seconds (allow the intro to be slightly lo
 - **Code:** Core `NativeIntroArchitect.cs` (the script and `NativeArchitectFont`, the stroke font the name is written in),
   Runtime `NativeIntroArchitectCard.cs` (the name card's `"architect"` effect), the set's scripted Blender
   `tools/stages/intro_dev_architect.py`, checks `Tests/IntroArchitectChecks.cs` (`--intro-architect`), sounds
-  `docs/audio/intros/dev-architect.md`.
+  `docs/audio/intros/dev-architect.md` (the list) with its request rows `docs/audio/intros/I1.json` and its 17 keys in
+  `Core/NativeIntroSoundKeys.cs` (the bank contract).
 
 ## The music
 `Resources/Audio/music/architect-obey.wav` is the owner's track from 5.17 s to 20.92 s (intro time = song time − 5.17 s),
@@ -57,7 +58,7 @@ Build: `blender -b --factory-startup --python-exit-code 1 --python tools/stages/
 Without the bank the intro draws the dark lit void (`NativeIntroVoid`) under the same effects: never the old blocks.
 
 ## Budgets (the framework's dev limits) and Reduced effects
-Peak effects calls 460 High (at the presence) and 206 Low; set pieces 129 High (round the drop: the new world solid and its
+Peak effects calls 460 High (at the presence) and 205 Low; set pieces 129 High (round the drop: the new world solid and its
 wires fading) and 80 Low (Low keeps wires on the obelisks only); 8 lights. Reduced effects: no camera shake (the handheld is
 dropped), every flash widened and dimmed (`Flash`), the tremble slow and small, the card's letters fade in without cycling.
 
