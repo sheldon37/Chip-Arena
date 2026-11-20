@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The beats (presentation s): the plant, the launch on the ridge, the guard raised, the barrage's hits, the silence, the bash, the stance.</summary>
         public const float PlantAt=1.2f,LaunchAt=2.0f,GuardAt=2.35f,SilenceAt=4.65f,BashAt=5.3f,StanceAt=6.15f;
         public static readonly float[] Hits={2.75f,3.15f,3.5f,3.9f,4.3f};
-        private const float BlockHit=.18f,HitLength=.5f,BashLength=1.067f;
+        private const float HitWindow=.34f,BashLength=1.067f;
         private static readonly Vector3 Fire=NativeEntranceFx.Hex(0xff8a2c),Hot=NativeEntranceFx.Hex(0xffd27a),Dusk=NativeEntranceFx.Hex(0xff9a5c),Steel=NativeEntranceFx.Hex(0x8cceff),
             Smoke=new Vector3(.12f,.1f,.1f),Earth=NativeEntranceFx.Hex(0x4a3a2c),Sky=NativeEntranceFx.Hex(0x2a1c22);
         public override string Spec=>"shield";
@@ -61,7 +61,9 @@ namespace ChipArena.UnityConversion
             if(t<GuardAt){capture=Idle;clip="Armed-Shield-Activate";time=Math.Min(.99f,t-PlantAt);return;}
             if(t<SilenceAt+.3f)
             {
-                for(int i=0;i<Hits.Length;i++){float s=t-(Hits[i]-.04f);if(s>=0&&s<HitLength){capture=BlockHitCap;clip="Armed-Shield-Block-GetHit1~mirror";time=s;return;}}
+                // Each hit's recoil (the first .34 s of the block's hit, the shove and most of the return), the guard between: the hits come
+                // .35-.4 s apart, so a recoil never runs into the next one's start.
+                for(int i=Hits.Length-1;i>=0;i--){float s=t-(Hits[i]-.04f);if(s>=0&&s<HitWindow){capture=BlockHitCap;clip="Armed-Shield-Block-GetHit1~mirror";time=s;return;}}
                 capture=Block;clip="Armed-Shield-Block~mirror";time=t-GuardAt;return;
             }
             if(t<BashAt){capture=Idle;clip="Armed-Shield-Idle~mirror";time=.4f+(t-SilenceAt);return;}
