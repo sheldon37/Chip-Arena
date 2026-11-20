@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             // (Each foot's steps in time order: the sprint on the roof in the car's frame, a jump to where the slide leaves it (the stance
             // is the slide's own from the leap to the stop: Pose), then a step to the mark.)
             var run=new NativeEntrancePose.Step[10];float x0=-23.7f-V0*LeapAt;
-            for(int i=0;i<6;i++){float at=RunAt+.04f+i*.15f;float along=Along(at+.12f);run[i]=new NativeEntrancePose.Step(i%2==0,at,at+.13f,x0+along+.35f,RideZ+(i%2==0?.12f:-.12f),(float)(Math.PI/2),.16f);}
+            for(int i=0;i<6;i++){float at=RunAt+.04f+i*.15f;float along=Along(at+.12f);run[i]=new NativeEntrancePose.Step(i%2==0,at,at+.13f,x0+along+.35f,RideZ+(i%2==0?.12f:-.12f),(float)(Math.PI/2),.3f);}
             run[6]=new NativeEntrancePose.Step(true,LeapAt,LeapAt+.001f,.32f,.14f,Facing+.25f,0);run[7]=new NativeEntrancePose.Step(false,LeapAt,LeapAt+.001f,-.42f,-.12f,Facing+.25f,0);
             run[8]=Step(false,StopAt+.12f,StopAt+.42f,-.19f,-.06f,-.42f,.07f);run[9]=Step(true,StopAt+.3f,StopAt+.6f,.18f,.08f,.12f,.06f);
             Steps=run;
@@ -60,10 +60,25 @@ namespace ChipArena.UnityConversion
             k.Key(StandAt-.2f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.44f).J(B,.42f).J(Sp,.12f).J(Hd,-.32f).J(LA,-.8f,0,.4f).J(LE,-.55f).J(RA,-.45f,0,-1.05f).J(RE,-.3f);
             // Up, and running: arms pumping, leaning into it.
             k.Key(RunAt,stand).Root(0,.88f,0,side).Planted(1).Drop(-.12f).J(B,.2f).J(Hd,-.1f).J(LA,-.5f,0,.2f).J(LE,-1.2f).J(RA,.3f,0,-.2f).J(RE,-1.3f);
-            for(int i=0;i<5;i++){float at=RunAt+.11f+i*.15f;bool l=i%2==0;k.Key(at,stand).Root(0,.88f,0,side).Planted(1).Drop(-.1f).J(B,.25f).J(Hd,-.12f).J(LA,l?.45f:-.75f,0,.18f).J(LE,-1.35f).J(RA,l?-.75f:.45f,0,-.18f).J(RE,-1.35f).PassKey();}
+            // The sprint: leaning into it, two keys a stride (the feet are the planned steps, lifted high for the knee drive): in the
+            // flight between steps the body rides up and the arms cross; on each foot's strike the body sinks, the hips turn with the
+            // leg landing in front, the shoulders counter, and the arms pump hard (the arm opposite that leg driven forward and up, the
+            // other thrown back). (s: +1 when the left foot strikes; the source frame's left is +x.)
+            for(int i=0;i<5;i++)
+            {
+                float lift=RunAt+.04f+i*.15f;float s=i%2==0?1:-1;
+                k.Key(lift+.065f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.05f).J(B,.3f).J(Sp,.06f).J(Hd,-.2f)
+                    .J(LA,-.15f,0,.2f).J(LE,-1.45f).J(RA,-.15f,0,-.2f).J(RE,-1.45f).PassKey();
+                k.Key(lift+.13f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.15f).J(B,.33f).J(Sp,.06f).J(P,0,-s*.14f,0).J(C,0,s*.2f,0).J(Hd,-.22f,-s*.08f,0)
+                    .J(LA,s>0?.8f:-1.05f,0,.22f).J(LE,s>0?-1.1f:-1.65f).J(RA,s>0?-1.05f:.8f,0,-.22f).J(RE,s>0?-1.65f:-1.1f).PassKey();
+            }
+            // The gather: one last strike low and loaded, arms swung back, before the launch.
+            k.Key(LeapAt-.07f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.26f).J(B,.45f).J(Sp,.1f).J(Hd,-.3f).J(LA,.75f,0,.25f).J(LE,-.45f).J(RA,.7f,0,-.25f).J(RE,-.45f).J(LK,.6f).J(RK,.5f);
             // The leap: thrown out over the platform, arms up and back, legs gathering.
             k.Key(LeapAt,stand).Root(0,.88f,0,side).Planted(0).Drop(-.05f).J(B,.25f).J(Hd,-.15f).J(LA,-1.9f,0,.6f).J(LE,-.4f).J(RA,-1.7f,0,-.7f).J(RE,-.4f).J(LL,-.9f,0,.1f).J(LK,1.1f).J(RL,.2f,0,-.1f).J(RK,.9f);
             k.Key(LeapAt+.3f,stand).Root(0,.88f,0,side+.15f).Planted(0).Spin(-.12f,.08f).J(B,.1f).J(Hd,-.05f).J(LA,-1.2f,0,1.1f).J(LE,-.3f).J(RA,-.9f,0,-1.2f).J(RE,-.3f).J(LL,-1.1f,0,.15f).J(LK,1.6f).J(RL,-.6f,0,-.1f).J(RK,1.5f).PassKey();
+            k.Key(LandAt-.07f,stand).Root(0,.88f,0,side+.2f).Planted(0).Spin(-.05f,.05f).Drop(-.2f).J(B,.2f).J(Hd,-.15f).J(LA,.45f,0,.95f).J(LE,-.25f).J(RA,-.3f,0,-.9f).J(RE,-.4f)
+                .J(LL,-1.35f,0,.15f).J(LK,.55f).J(RL,-.15f,0,-.1f).J(RK,1.35f).PassKey();
             // The landing into the slide: low, the left leg out front, the right knee near the floor, the left hand dragging behind.
             float[] slide(float yaw,float drop)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=.88f;v[NativeEntranceKeys.Yaw]=yaw;v[NativeEntranceKeys.BodyY]=drop;v[NativeEntranceKeys.PlantL]=1;v[NativeEntranceKeys.PlantR]=.6f;
                 NativeEntranceKeys.Set(v,B,.38f,0,.1f);NativeEntranceKeys.Set(v,Sp,.1f,0,0);NativeEntranceKeys.Set(v,Hd,-.2f,-.2f,0);
@@ -112,14 +127,8 @@ namespace ChipArena.UnityConversion
             else if(t<StopAt){var s=Slide(Math.Max(t,LandAt));stance[0]=s.X+.32f;stance[1]=s.Z+.14f;stance[4]=s.X-.42f;stance[5]=s.Z-.12f;}
             NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,stance,HeroAt,RootPath);Arms(t,pose,root,rotation);
         }
-        /// <summary>The sprint along the roof on the model: the motion bank's sprint, quickened to the run (about 10 m/s on the roof against
-        /// its 6.9); the keyed rig carries the crouch, the leap, the slide and the hero.</summary>
-        public override bool Clip(float t,out string clip,out float time)
-        {
-            if(t>=RunAt+.06f&&t<LeapAt-.04f){clip="Unarmed-Sprint";time=(t-RunAt)*1.45f;return true;}
-            clip=null;time=0;return false;
-        }
-        public override float Fade(float t)=>.12f;
+        // The sprint, the leap and the slide are all keyed on the intro rig (no motion-bank clip: the owner wants these intros' own
+        // animation, as the Top Dog's and the Bombadier's are).
         public override string AccentAt(float t)=>t<BurstAt?"#3fd8ff":t<LandAt?"#7ff0ff":"#16d6ff";
         protected override Vector3 Focus(float t,Vector3 chest)=>chest;
 

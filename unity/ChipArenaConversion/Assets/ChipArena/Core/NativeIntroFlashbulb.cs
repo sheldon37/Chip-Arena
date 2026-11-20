@@ -48,17 +48,26 @@ namespace ChipArena.UnityConversion
         {
             Start=Stance(.13f,-6.3f,.1f,-.13f,-6.5f,-.35f);
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.13f:-.13f,-6.4f+1.05f*(i+1),l?.1f:-.35f,.1f));}
+            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.12f:-.12f,-6.4f+1.05f*(i+1),l?.06f:-.18f,.12f));}
             steps.Add(Step(true,MarkAt-.05f,MarkAt+.2f,.17f,.06f,.12f,.06f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The silhouette in the doorway, then the stride: arms swinging, chin up, a little swagger in the shoulders.
             k.Key(0,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).J(Hd,-.08f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
             k.Key(WalkAt,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).Drop(-.02f).J(Hd,-.1f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
+            // The strut down the carpet, two keys a step (the feet are the planned steps above): at the swing's passing the body rides
+            // highest, the swinging side's hip dips and the arms cross; at the heel's contact the body settles low, the hips turn with
+            // the leg landing in front, the shoulders counter them and the arm opposite that leg swings forward (the elbow bent, the
+            // other arm long behind). Chin up throughout. (s: +1 when the left foot swings; the source frame's left is +x.)
             for(int i=0;i<6;i++)
             {
-                float at=WalkAt+.2f+i*.39f;bool l=i%2==1;
-                k.Key(at,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.035f).J(C,0,l?.12f:-.12f,0).J(Hd,-.1f,l?-.06f:.06f,0).J(LA,l?-.38f:.3f,0,.2f).J(LE,-.45f).J(RA,l?.3f:-.38f,0,-.2f).J(RE,-.45f).PassKey();
+                float lift=WalkAt+.02f+i*.39f;float s=i%2==1?1:-1;
+                k.Key(lift+.18f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.012f)
+                    .J(P,0,0,-s*.055f).J(Sp,0,0,s*.025f).J(C,-.02f,0,0).J(Hd,-.12f,0,0)
+                    .J(LA,s*.05f,0,.15f).J(LE,-.32f).J(RA,-s*.05f,0,-.15f).J(RE,-.32f).PassKey();
+                k.Key(lift+.36f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.05f)
+                    .J(P,0,-s*.11f,0).J(Sp,0,s*.06f,0).J(C,0,s*.13f,0).J(Hd,-.1f,-s*.05f,0)
+                    .J(LA,s*.34f,0,.17f).J(LE,s>0?-.16f:-.52f).J(RA,-s*.36f,0,-.17f).J(RE,s>0?-.52f:-.16f).PassKey();
             }
             // Pose one: turned away, looking back over the shoulder.
             k.Key(Photos[0]-.12f,stand).Root(0,.88f,0,Facing+.85f).Planted(1).Drop(-.02f).J(C,0,-.3f,0).J(Hd,-.12f,-.78f,0).J(LA,.2f,0,.72f).J(LE,-1.35f).J(RA,-.1f,0,-.25f).J(RE,-.35f);
