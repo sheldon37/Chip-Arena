@@ -212,7 +212,7 @@ namespace ChipArena.UnityConversion
         }
         private static readonly NativeIntroCue[] cues=
         {
-            new NativeIntroCue(0,"intro2.waygate.drone","magic.singularity","darkness",.3f,.8f),
+            new NativeIntroCue(0,"intro2.waygate.drone","structure.rumble","darkness",.3f,.8f),
             new NativeIntroCue(.5f,"intro2.waygate.lock","structure.land.metal","stone",.75f),
             new NativeIntroCue(1.1f,"intro2.waygate.lock","structure.land.metal","stone",.75f,.96f),
             new NativeIntroCue(1.6f,"intro2.waygate.lock","structure.land.metal","stone",.78f,1.02f),

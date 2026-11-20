@@ -209,7 +209,9 @@ namespace ChipArena.UnityConversion
         public override int Ghosts(float t,Span<NativeEntranceGhost> into)
         {
             float w=1-NativeEntranceMath.Ramp(t,CrackAt-.05f,CrackAt+.45f);if(w<.02f||into.Length<1)return 0;
-            into[0]=new NativeEntranceGhost{Lag=0,Opacity=.5f*w,Color=Ice};return 1;
+            // (a hair toward the lens, so the shell lies over the body instead of fighting it for depth)
+            Look(t);var toward=Vector3.Normalize(Eye-LookAt)*.012f;
+            into[0]=new NativeEntranceGhost{Lag=0,Opacity=.5f*w,Color=Ice,Offset=toward};return 1;
         }
 
         // ---- the name card and the sound ----
@@ -223,7 +225,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(VisorAt,"intro2.whiteout.visor","ui.install.surge","install",.5f),
             new NativeIntroCue(HeatAt,"intro2.whiteout.heat","chip.delayed.charge","electric-hook",.5f),
             new NativeIntroCue(CrackAt,"intro2.whiteout.crack","status.frost-shatter","stone",.85f),
-            new NativeIntroCue(CrackAt+.04f,"intro2.whiteout.steam","chip.bomb.fuse-hiss","fire",.45f),
+            new NativeIntroCue(CrackAt+.04f,"intro2.whiteout.steam","turret.overheat","fire",.4f),
             new NativeIntroCue(RiseAt+.05f,"intro2.whiteout.rise","move.step.snow","wood",.55f),
             new NativeIntroCue(PulseAt,"intro2.whiteout.pulse","blast.frost","explosion",.75f),
             new NativeIntroCue(PartAt,"intro2.whiteout.calm","chip.heal","install",.45f),

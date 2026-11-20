@@ -85,12 +85,17 @@ internal static class IntroGenericChecks
         string n=s.Title,slug=n.ToLowerInvariant();var cues=s.Cues;float last=-1;
         Check(cues.Length>=6,n+" has a cue timeline");
         string clips=Path.Combine(root,"Assets/Conversion/Resources/Audio/audio");
-        var keys=new HashSet<string>();foreach(var d in NativeSoundKeys.All)keys.Add(d.Key);
+        var keys=new HashSet<string>();foreach(var d in NativeSoundKeys.All)if(d.Space!=NativeSoundSpace.Loop)keys.Add(d.Key);
+        // A stand-in plays only from a filled one-shot entry: the bank refuses a loop, and a key the installed bank leaves empty (the
+        // audio inventory's "Unpopulated registry key" rows) drops the cue to its built-in clip (I5's finding, 2026-11-20).
+        string inventory=Path.Combine(root,"../../docs/audio/audio-inventory-2026-11-16.csv");
+        if(File.Exists(inventory))foreach(var line in File.ReadLines(inventory))
+            if(line.StartsWith("Unpopulated registry key,")){var f=line.Split(',');if(f.Length>2)keys.Remove(f[2]);}
         foreach(var c in cues)
         {
             Check(c.At>=last&&c.At>=0&&c.At<=s.Length,n+": cue "+c.Key+" is in order inside the intro");last=c.At;
             Check(c.Key!=null&&c.Key.StartsWith("intro2."+slug+"."),n+": cue "+c.Key+" is named for its intro");
-            Check(c.Alt==null||keys.Contains(c.Alt),n+": cue "+c.Key+"'s stand-in "+c.Alt+" is an effects-bank key");
+            Check(c.Alt==null||keys.Contains(c.Alt),n+": cue "+c.Key+"'s stand-in "+c.Alt+" is a filled one-shot effects-bank key");
             Check(c.Clip==null||File.Exists(Path.Combine(clips,c.Clip+".mp3"))||File.Exists(Path.Combine(clips,c.Clip+".wav"))||File.Exists(Path.Combine(clips,c.Clip+".ogg")),n+": cue "+c.Key+"'s built-in clip "+c.Clip+" ships");
             if(c.Alt==null&&c.Clip==null)Check(c.Key=="intro2.flashbulb.cheer",n+": only the crowd's cheer waits silent for its generated take ("+c.Key+")");
             Check(c.Gain>0&&c.Gain<=1.2f&&c.Rate>.4f&&c.Rate<2,n+": cue "+c.Key+" has a sane gain and rate");

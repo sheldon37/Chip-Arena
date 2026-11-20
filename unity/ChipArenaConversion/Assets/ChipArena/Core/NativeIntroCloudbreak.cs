@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(BurnAt+.08f,"intro2.cloudbreak.thrust","magic.flame-lance","fire",.6f,.9f),
             new NativeIntroCue(TouchAt,"intro2.cloudbreak.touch","blast.quake","stone",.85f),
             new NativeIntroCue(TouchAt+.03f,"intro2.cloudbreak.gust","structure.whoosh","dash",.65f),
-            new NativeIntroCue(RiseAt+.1f,"intro2.cloudbreak.cool","chip.bomb.fuse-hiss","fire",.3f),
+            new NativeIntroCue(RiseAt+.1f,"intro2.cloudbreak.cool","turret.overheat","fire",.3f),
             new NativeIntroCue(SunAt,"intro2.cloudbreak.sun","chip.heal","install",.5f),
             new NativeIntroCue(CardAt,"intro2.cloudbreak.name","chip.critical","install",.75f),
             new NativeIntroCue(PuffAt,"intro2.cloudbreak.puff","chip.teleport","dash",.25f),
