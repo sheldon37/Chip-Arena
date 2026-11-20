@@ -66,9 +66,9 @@ namespace ChipArena.UnityConversion
                .Dolly(DiveAt,new Vector3(5.4f,1.0f,6.2f),new Vector3(5.1f,.95f,5.7f),Vector3.Zero,Vector3.Zero,14,21).Follow(NativeEntranceAnchor.Chest,.05f).Ease(NativeIntroEase.Linear)
                .Spline(2.2f,Alongside(2.2f,2.95f),Vector3.Zero,new Vector3(0,-.1f,0),44,50).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear)
                .Dolly(2.95f,new Vector3(-3.7f,.42f,4.5f),new Vector3(-3.35f,.5f,4.05f),new Vector3(0,1.7f,0),new Vector3(0,.75f,0),46,42).Ease(NativeIntroEase.Out)
-               .Orbit(RiseAt-.05f,Vector3.Zero,-52,8,3.7f,3.2f,.42f,.8f,new Vector3(0,-.1f,0),new Vector3(0,.12f,0),40,36).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.4f).Handheld(.4f)
-               .Hero(CardAt-.25f,1,1.12f,3.2f,31).In(NativeIntroCut.Blend,.55f)
-               .Bars(0,.85f).Bars(CardAt-.6f,.4f).Black(0,1).Black(.06f,0);
+               .Orbit(RiseAt-.05f,Vector3.Zero,-52,8,3.7f,3.2f,.42f,.8f,new Vector3(0,-.1f,0),new Vector3(0,.12f,0),40,36).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.4f).Handheld(.4f);
+            Closing(CardAt-.5f,1,5.4f,.5f,.78f,36,.5f);
+            Rig.Bars(0,.85f).Bars(CardAt-.6f,.4f).Black(0,1).Black(.06f,0);
             Ramps.Ramp(2.95f,.35f,.6f,.8f);
         }
         private static Vector3 Dir(float x,float z,float up){var h=Vector2.Normalize(new Vector2(x,z));float c=(float)Math.Cos(up),s=(float)Math.Sin(up);return new Vector3(h.X*c,s,h.Y*c);}
@@ -270,7 +270,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Wipe;card.Glow=Gold*1.4f;card.Ink=new Vector3(1,.97f,.92f);
+            base.Card(t,ref card);card.Y=CardY;card.Style=NativeIntroCardStyle.Wipe;card.Glow=Gold*1.4f;card.Ink=new Vector3(1,.97f,.92f);
         }
         private static readonly NativeIntroCue[] cues=
         {

@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(0,new Vector3(0,1.55f,13.5f),new Vector3(0,2.1f,8.2f),Ring+new Vector3(0,-.4f,0),Ring+new Vector3(0,-.2f,0),40,36).Ease(NativeIntroEase.InOut)
                .Spline(ThroughAt-.05f,Arc(),new Vector3(0,.1f,0),new Vector3(0,.15f,0),38,34).Follow(NativeEntranceAnchor.Chest,.08f).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt+.05f,new Vector3(0,.95f,4.6f),new Vector3(0,.9f,4.25f),new Vector3(0,2.3f,-4.5f),new Vector3(0,2.2f,-4f),46,44).In(NativeIntroCut.Blend,.4f)
-               .Dolly(CardAt-.35f,new Vector3(0,.85f,3.45f),new Vector3(0,.88f,3.05f),new Vector3(0,2.35f,-3),new Vector3(0,2.4f,-3),46,44).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.6f)
+               .Dolly(CardAt-.55f,new Vector3(0,.62f,6.65f),new Vector3(0,.7f,6.2f),new Vector3(0,1.26f,0),new Vector3(0,1.3f,0),54,52).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f)
                .Bars(0,.9f).Bars(CardAt-.5f,.5f).Black(0,1).Black(.08f,0);
         }
         /// <summary>The quarter orbit's eye as it comes through: an arc about a fixed point between the gate and the landing, from its
@@ -208,7 +208,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Rise;card.Ink=new Vector3(1,.96f,.9f);card.Glow=Glyph*1.5f;
+            base.Card(t,ref card);card.Y=CardY;card.Style=NativeIntroCardStyle.Rise;card.Ink=new Vector3(1,.96f,.9f);card.Glow=Glyph*1.5f;
         }
         private static readonly NativeIntroCue[] cues=
         {

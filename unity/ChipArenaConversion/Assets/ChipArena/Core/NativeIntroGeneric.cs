@@ -34,6 +34,27 @@ namespace ChipArena.UnityConversion
         protected static readonly Quaternion Still=Quaternion.Identity;
         protected static readonly Vector3 White=Vector3.One;
 
+        // ---- the closing frame and the head ----
+        /// <summary>The name card's height (a screen share from the top; Runtime/NativeIntroCardScreen.cs centres the name there, its
+        /// kicker and line above and below): a band under the feet. The closing frames show the whole figure above it (the crown near
+        /// .2 of the height, the soles near .72), so the name sits on the floor in front of the pilot, never on its legs.</summary>
+        public const float CardY=.855f;
+        /// <summary>The head anchor is the head joint's pivot at the skull's base: the eyes sit about this far above it (I5's measure).</summary>
+        protected const float HeadLift=.16f;
+        /// <summary>A point `distance` m out from the mark toward the pilot's front, turned side*.42 rad toward its left (the
+        /// framework's hero angle; side .524 is straight down +z), `height` m up.</summary>
+        protected static Vector3 Front(float side,float distance,float height)
+        {
+            float yaw=NativeProceduralEntrance.Facing+side*.42f;return new Vector3((float)Math.Sin(yaw)*distance,height,(float)Math.Cos(yaw)*distance);
+        }
+        /// <summary>The closing push for the name, added as the rig's next shot: from `side` (as Hero's) a slow push in to `distance`,
+        /// the eye `eye` m up, looking at the mark `look` m up, easing out to stillness; it comes in on a blend of `blend` s.</summary>
+        protected void Closing(float at,float side,float distance,float eye,float look,float fov,float blend)
+        {
+            Rig.Dolly(at,Front(side,distance+.45f,eye-.06f),Front(side,distance,eye),new Vector3(0,look-.04f,0),new Vector3(0,look,0),fov+2,fov)
+               .Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,blend);
+        }
+
         // ---- the camera this frame, for streaks laid onto their head's camera plane ----
         private NativeEntranceView view;private bool viewSet;
         /// <summary>Reads this frame's camera (the rig at `t`, as Camera draws it) before effects that lay long streaks.</summary>

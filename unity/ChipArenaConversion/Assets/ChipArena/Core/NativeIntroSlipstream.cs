@@ -84,9 +84,9 @@ namespace ChipArena.UnityConversion
                .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.6f,-.1f,0),new Vector3(1.2f,-.15f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
                .Dolly(LeapAt-.02f,new Vector3(-5.6f,1.35f,4.4f),new Vector3(-5.9f,1.25f,4.0f),new Vector3(-13,2.6f,-1.6f),new Vector3(-9.5f,1.6f,-.6f),50,46)
                .Dolly(LandAt-.03f,new Vector3(2.7f,.32f,1.0f),new Vector3(2.55f,.36f,.95f),new Vector3(-.2f,0,0),new Vector3(0,.15f,0),40,38).Follow(NativeEntranceAnchor.Chest,.06f)
-               .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.35f)
-               .Hero(CardAt-.3f,1,1.12f,3.1f,32).In(NativeIntroCut.Blend,.55f)
-               .Bars(0,1).Bars(CardAt-.5f,.45f).Black(0,1).Black(.04f,0);
+               .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.35f);
+            Closing(CardAt-.5f,1,5.2f,.5f,.78f,37,.5f);
+            Rig.Bars(0,1).Bars(CardAt-.5f,.45f).Black(0,1).Black(.04f,0);
             // The leap hangs at its take-off and apex, then snaps back to speed for the landing.
             Ramps.Ramp(LeapAt-.06f,.3f,.32f,.4f);
         }
@@ -242,7 +242,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Type;card.Glow=Teal*1.6f;
+            base.Card(t,ref card);card.Y=CardY;card.Style=NativeIntroCardStyle.Type;card.Glow=Teal*1.6f;
         }
         private static readonly NativeIntroCue[] cues=
         {

@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
                .Dolly(Photos[1]-.04f,new Vector3(-2.35f,1.3f,2.75f),new Vector3(-2.22f,1.28f,2.6f),new Vector3(0,1.15f,0),new Vector3(0,1.17f,0),30,28)
                .Dolly(Photos[2]-.04f,new Vector3(0,.82f,3.0f),new Vector3(0,.84f,2.82f),new Vector3(0,1.32f,0),new Vector3(0,1.34f,0),32,30)
                .Crane(StormAt-.05f,new Vector3(0,.95f,3.4f),new Vector3(0,1.25f,5.9f),.5f,new Vector3(0,1.6f,-1),new Vector3(0,2.6f,-4.5f),42,46).Ease(NativeIntroEase.InOut)
-               .Dolly(CardAt-.3f,new Vector3(0,.95f,3.9f),new Vector3(0,.98f,3.5f),new Vector3(0,1.55f,0),new Vector3(0,1.6f,0),38,36).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f)
+               .Dolly(CardAt-.35f,new Vector3(0,.49f,5.9f),new Vector3(0,.55f,5.45f),new Vector3(0,.76f,0),new Vector3(0,.8f,0),38,36).Ease(NativeIntroEase.Out)
                .Bars(0,.8f).Bars(CardAt-.5f,.35f).Black(0,1).Black(.05f,0);
         }
         /// <summary>The stride down the carpet (the root's z): out of the doors, to the mark.</summary>
@@ -210,7 +210,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Slam;card.Ink=new Vector3(1,.97f,.95f);card.Glow=Pink*1.5f;
+            base.Card(t,ref card);card.Y=CardY;card.Style=NativeIntroCardStyle.Slam;card.Ink=new Vector3(1,.97f,.95f);card.Glow=Pink*1.5f;
         }
         private static readonly NativeIntroCue[] cues;
         private static NativeIntroCue[] BuildCues()

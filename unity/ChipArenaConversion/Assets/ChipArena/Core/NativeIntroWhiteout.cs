@@ -51,12 +51,12 @@ namespace ChipArena.UnityConversion
             // The camera: telephoto into the storm, a close insert on the frost, a tilt up with the rise, the pulse low and wide, the
             // reveal pulling out as the storm parts, the hero.
             Rig.Dolly(0,new Vector3(1.3f,.62f,13.5f),new Vector3(.75f,.72f,7.4f),new Vector3(0,.72f,.1f),new Vector3(0,.8f,.1f),17,19).Ease(NativeIntroEase.InOut).Focus(0,0,.6f).Handheld(.35f)
-               .Dolly(HeatAt,new Vector3(.85f,1.2f,1.8f),new Vector3(.72f,1.15f,1.58f),new Vector3(0,-.12f,0),new Vector3(0,-.08f,0),28,25).Follow(NativeEntranceAnchor.Head).Focus(0,0,.5f)
+               .Dolly(HeatAt,new Vector3(.85f,1.2f,1.8f),new Vector3(.72f,1.15f,1.58f),new Vector3(0,HeadLift-.12f,0),new Vector3(0,HeadLift-.08f,0),28,25).Follow(NativeEntranceAnchor.Head).Focus(0,0,.5f)
                .Crane(CrackAt+.2f,new Vector3(1.7f,.45f,3.1f),new Vector3(1.45f,.55f,2.7f),.35f,new Vector3(0,.05f,0),new Vector3(0,.15f,0),34,37).Follow(NativeEntranceAnchor.Chest,.06f)
                .Dolly(PulseAt-.25f,new Vector3(-1.85f,.34f,3.05f),new Vector3(-2.05f,.37f,3.35f),new Vector3(0,1.0f,.2f),new Vector3(0,1.05f,.2f),48,50)
-               .Crane(PartAt+.05f,new Vector3(-2.05f,.37f,3.35f),new Vector3(-4.0f,.9f,8.2f),1.1f,new Vector3(0,1.1f,.1f),new Vector3(-.8f,2.6f,-6),54,50).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.45f)
-               .Hero(CardAt-.45f,1,1.12f,3.4f,33).In(NativeIntroCut.Blend,.6f)
-               .Bars(0,.9f).Bars(CardAt-.6f,.45f);
+               .Crane(PartAt+.05f,new Vector3(-2.05f,.37f,3.35f),new Vector3(-4.0f,.9f,8.2f),1.1f,new Vector3(0,1.1f,.1f),new Vector3(-.8f,2.6f,-6),54,50).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.45f);
+            Closing(CardAt-.6f,-1,5.4f,.5f,.78f,36,.55f);
+            Rig.Bars(0,.9f).Bars(CardAt-.6f,.45f);
             Ramps.Ramp(PulseAt-.02f,.42f,.3f,.7f);
         }
         /// <summary>How thick the storm is (1 the whiteout, 0 parted).</summary>
@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
             l.Directional(FloodAt,Flood*(.85f+.4f*clear));
             l.Directional(new Vector3(.4f,.6f,.8f),NativeEntranceFx.Hex(0x9fb4ff,.12f+.3f*clear));
             var head=Anchor(NativeEntranceAnchor.Head,t);var chest=Anchor(NativeEntranceAnchor.Chest,t);
-            float visor=NativeEntranceMath.Ramp(t,VisorAt,VisorAt+.25f);if(visor>.01f)l.Add(head+new Vector3(0,0,.25f),Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.4f*visor),1.8f);
+            float visor=NativeEntranceMath.Ramp(t,VisorAt,VisorAt+.25f);if(visor>.01f)l.Add(head+Vector3.Normalize(head-chest)*HeadLift+new Vector3(0,0,.25f),Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.4f*visor),1.8f);
             if(warm>.01f)l.Add(chest+new Vector3(0,0,.3f),Heat*(3.2f*warm),3.4f);
             float pulse=Flash(t,PulseAt,.04f,.55f);if(pulse>.01f)l.Add(chest,HeatHot*(14*pulse),7);
             l.Add(FloodAt+new Vector3(0,-1,1.5f),Flood*(6+4*clear),18);
@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
             var head=Anchor(NativeEntranceAnchor.Head,t);var chest=Anchor(NativeEntranceAnchor.Chest,t);
             // The visor waking.
             float visor=NativeEntranceMath.Ramp(t,VisorAt,VisorAt+.25f);
-            if(visor>.01f){var f=Vector3.Transform(Vector3.UnitZ,Quaternion.CreateFromAxisAngle(Vector3.UnitY,Heading(t)));fx.Glow(head+f*.13f,Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.1f*visor+.8f*Flash(t,VisorAt,.04f,.3f)),0,.12f,1,0,22400);}
+            if(visor>.01f){var f=Vector3.Transform(Vector3.UnitZ,Quaternion.CreateFromAxisAngle(Vector3.UnitY,Heading(t)));fx.Glow(head+Vector3.Normalize(head-chest)*HeadLift+f*.13f,Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.1f*visor+.8f*Flash(t,VisorAt,.04f,.3f)),0,.12f,1,0,22400);}
             // Heat lines up the limbs, steady in Reduced effects.
             float lines=NativeEntranceMath.Ramp(t,HeatAt,HeatAt+.5f)*(1-.6f*NativeEntranceMath.Ramp(t,PartAt,CardAt));
             if(lines>.01f)
@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Assemble;card.Ink=new Vector3(.94f,.97f,1);card.Glow=HeatHot*1.3f;
+            base.Card(t,ref card);card.Y=CardY;card.Style=NativeIntroCardStyle.Assemble;card.Ink=new Vector3(.94f,.97f,1);card.Glow=HeatHot*1.3f;
         }
         private static readonly NativeIntroCue[] cues=
         {

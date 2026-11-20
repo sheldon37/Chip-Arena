@@ -1,6 +1,6 @@
 """generic_preview.py: an offline framing preview of the generic intros (review aid, Workbench, no game renderer).
 
-  blender --background --factory-startup --python generic_preview.py -- VIEWS_DIR OUT_DIR [SET,...] [STEP] [fx]
+  blender --background --factory-startup --python generic_preview.py -- VIEWS_DIR OUT_DIR [SET,...] [STEP[@FROM]] [fx]
 
 Reads VIEWS_DIR/<set>.json (CoreTests --intro-generic with INTRO_GENERIC_VIEWS set: the camera, the keyed anchors and the set
 pieces every 0.1 s, source frame) and renders every STEP-th frame with the set's Fine pieces placed as the intro places them and a
@@ -26,7 +26,9 @@ import generic_kit as kit  # noqa: E402
 argv = sys.argv[sys.argv.index('--') + 1:]
 views, out = argv[0], argv[1]
 only = argv[2].split(',') if len(argv) > 2 and argv[2] else ['cloudbreak', 'whiteout', 'slipstream', 'waygate', 'flashbulb']
-step = int(argv[3]) if len(argv) > 3 else 4
+step_arg = argv[3] if len(argv) > 3 else '4'
+step = int(step_arg.split('@')[0])
+start = float(step_arg.split('@')[1]) if '@' in step_arg else 0.0   # STEP@FROM: from that age on (the closing frames)
 fx_on = len(argv) > 4 and argv[4] == 'fx'
 
 for ob in list(bpy.data.objects):
@@ -108,7 +110,7 @@ for key in only:
     bones = [(0, 0, .13), (1, 2, .16), (3, 4, .06), (4, 5, .05), (6, 7, .06), (7, 8, .05), (2, 9, .08), (9, 10, .06), (2, 11, .08), (11, 12, .06), (1, 3, .07), (1, 6, .07)]
     os.makedirs(os.path.join(out, key), exist_ok=True)
     for fi, fr in enumerate(data['frames']):
-        if fi % step:
+        if fi % step or fr['age'] < start - 1e-3:
             continue
         used = {}
         for ob in sc.collection.objects:
