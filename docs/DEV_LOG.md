@@ -1,3 +1,91 @@
+## 2026-11-20 — Claude (I0d): intros v2: pack clips as keys from the intros' own motion bank (Slipstream's run), and the name card on bright sets (owner request; presentation only)
+
+Owner (2026-11-20, on Slipstream): "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I
+have". The coordinator also reported, from I2b's takes, that the name card was hard to read on bright sets: Whiteout's snow and
+Threshold's sunlit floor.
+
+**Branch and status:** `claude/intro-framework`, after `f0e6e052`:
+- `de6c5207`: the card;
+- `aa51e228`, `90f0b1a2` and `df0fa510`: the pack clips (a Kept segment's travel; a comment that named the adapter);
+- the docs commit that carries this entry.
+
+Pushed, not merged.
+
+**The name card on bright sets (`de6c5207`):**
+- **Backing:** the card's lines stand on a soft dark ellipse (Core `NativeIntroCardInk`). It is 38% black at the middle and fades to
+  nothing at the edge, with no ring. It eases in with the name and follows the card's alpha, so nothing flashes in Reduced effects.
+- **Outline:** every glyph has a thin black outline that scales with the text (`NativeUi.Text`'s new optional `outline`).
+- **Dark sets:** both are dark on dark there. The backing darkens a dark set by 0.027.
+- **Too-dark small lines:** one too dark to read is lifted toward white. None is lifted today.
+- **`Tests/IntroCardChecks`:** against white snow and a mid-tan floor, every registered intro's name must reach 4.5:1 against what
+  is behind its glyphs. The kicker, the eight team colours and the intro line must reach 3:1. The worst name is 8.4:1, and the worst
+  small line is the red team at 3.0.
+
+**Pack clips as keys (`aa51e228`; docs/INTROS-V2.md 9d):**
+- **The bank:** a pack's humanoid clips are baked into the intros' own bank, `Resources/ChipArenaIntroMotion.bytes`. It is local,
+  never committed, and never the match's motion bank.
+  - The bake is the local tool's new `bozo-intromotion.request`, from the scratch patch
+    `scratch/intro-framework/i0d/motion/intromotion_patch.py`.
+  - It samples each clip as the motion bank does (a manual graph, root motion off, foot IK on), at 60 Hz. It records bone rotations
+    and the body's rest skeleton rather than muscles.
+- **The conversion (Core `NativeIntroPack`):** each frame runs the model binding backwards on the bank's skeleton, so the keys
+  drawn on the model are the clip on the model. The arms' spread and the wrist's ease are undone.
+- **`NativeEntranceKeys.FromPack`:**
+  - It plays a segment over the keys. The joints in its mask ease in from the keys, and the keyed body follows the clip's pelvis.
+  - The planting lets go while the clip's legs play, and a foot that is down is held where it landed against the intro's root.
+  - The root follows the intro's path, or the clip's own travel (`Kept`).
+  - For authors who plan the feet themselves: `Sample`, `Euler`, `Foot`, `OnFloor` and `Speed`.
+  - There is no match animation system in an intro: no Clip(), and no aim, turn or foot-lock layer.
+- **`NativeVisualRig.Grasp.Exact`:** a pack clip's arms are drawn as keyed. The voxel-body corrections, Inside and Clear, are let
+  go; without that, the slide's left arm was drawn 18° off. The match never sets it. The runtime sets it from
+  `NativeProceduralEntrance.PackWeight` and reads the bank once.
+
+**The bank (local; I2b's picks for Slipstream):** `scratch/intro-framework/ChipArenaIntroMotion.bytes`, 131,257 bytes, sha
+`df9bdad1`. It holds nine clips at 60 Hz on the body's 180-bone skeleton:
+- the run: `Mvm_PowerDash_Front`, `Mvm_Dash` and `Mvm_Boost`;
+- the jump: `Jmp_FrontAir_A_Start` and `Jump_Down_A_Loop`;
+- the slide: `Esc_Slide_All`, `Esc_Slide_Start`, `Esc_Slide_Loop` and `Esc_Slide_End`.
+
+Their FBX, and `ClazyRunner.FBX` (their avatar source), are installed under the Editor's git-ignored
+`Assets/LocalAssets/CLazyRunnerActionAnimPack`, GUIDs kept.
+- **Fidelity:** every clip's limbs are within 0.1° of the clip on the model, and the ankles within a millimetre. The turns are within
+  4.7°; the worst is `Esc_Slide_Start`'s right hand, a wrist bent past what the eased wrist reaches.
+- **Speed:** the Dash runs at 9.12 m/s, and its feet hold on its own travel (they slide 0.00 m/s). The PowerDash runs at 7.95 m/s.
+- **Boost:** it barely touches the floor on this body, with its stance ankle about 5 cm high.
+- **The slides:** a leg goes up to 6 cm into the floor; lift the root while sliding.
+
+**Checks (actual):**
+- `de6c5207` on its own: `--intros-v2` exits 0, and the Unity compile check passes all four assemblies.
+- `df0fa510` (the pack clips):
+  - `--intro-pack` exits 0, 113 checks. The binding's round trip on the measured skeleton is exact (0.00°, 0.0 mm). The Euler round
+    trip holds, and sampling allocates nothing. A Kept segment never carries the root back. The local bank's clips pass as above.
+  - `--intros-v2` and `--intro-limits` (with the bank loaded) exit 0.
+  - The Unity compile check passes all four assemblies.
+  - Full CoreTests the relgen5 way (a throwaway LF worktree with `expedition_path.patch`, the released stage banks, no local intro
+    bank): exit 0, 1084 PASS lines in 977 s. The voxel ratchet passes. The same suite on `aa51e228` failed one wiring check (a comment
+    there named the model's adapter); `df0fa510` fixes it.
+- The local tool's patch compiled in the Editor (tool v3396) and baked the bank (the hold below).
+
+**Editor:** one hold, 13:59:27–14:01:51 (142 s), without moving the checkout from `9319026b`. It installed the ten FBX, patched the
+tool and baked. The stage banks and the match's motion bank (6136627 bytes, 37ec44d2) checked as released before and after. Out dirs
+were on C:.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Intros are presentation, and the
+match's binding is unchanged (`Grasp.Exact` defaults to 0, and `NativeUi.Text`'s outline to none).
+
+**Voxel dependency:** the keyed rig stays the intro's pose; the pack path turns the model's own clips into it. No voxel body,
+model or debris. The new Core files have no counted tokens.
+
+**Risks and next step:**
+- **Shipping the bank:** players see pack clips only once the bank ships as a local asset, as the motion bank does (the Drive zip,
+  LocalAssets Resources). Until then, an intro plays the keys under its segments.
+- **Re-applying the patch:** the local tool's patch is in scratch, so re-apply it if the tool is regenerated.
+- **Keyed limits:** `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits;
+  the keyed wrist is the weapon frame, which the binding eases. `IntroPackChecks` lists those keyed findings per clip.
+- **Next:** I2b puts Slipstream on the pack clips (`FromPack`, or `Sample`/`Foot`/`Speed` in its base) and films. Batch 2 can
+  use the same path for locomotion.
+- **Card:** not yet seen in the Editor on the bright sets; the coordinator checks it in the integration capture.
+
 ## 2026-11-20 — Claude (I0c, I0d): intros v2 framework: the keyed pose on the model, model-aware anchors, the intro's own light, the weapon grip IK, the feet on the model and the pose-craft guide (owner report; presentation only)
 
 Owner (2026-11-20): "weird orientation things ... (notice flash bulbs legs when they walk through?)"; "The effects dont line up with
