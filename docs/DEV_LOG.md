@@ -1,3 +1,148 @@
+## 2026-11-20 — Claude: Belvedere Camp part 1: the hub's light and life on the fence and overhead, the W5 DEV preview, the A1 hand-off (owner report; presentation only)
+
+The owner: "the hub still seems really empty? I thought we were bringing more life to this and things." The integrator explained that W5 (the camp) was never built and needs Astra's structures. The owner then chose: "Yes, start the camp".
+
+**Branch:** `claude/camp`, from shared `a85e5b93`, with shared `af249db9` (#437) and `5d54766c` (H1's hub z-fight fix) merged before filming, and `405eaf92` (intros v2 batch 1) merged after. Implementation head `e3ea9ff5`, pushed; this entry's commit follows. Not merged, not released.
+
+### Part 1, live: nothing on the plaza floor until A1 (plan Q19)
+The fixed sanctuary frame is the same on all five Meridian plans. The run's seed varies only the dead bulbs, the fires' phases and the sails' colours. Survivors stay out of live runs until A1 builds their structures.
+- **On the fence:**
+  - seven caged lamps on goosenecks over the fence top;
+  - eight sail masts (scaffold tubes clamped to the inner face, a lamp each);
+  - four lattice corner masts with warm floods;
+  - eight half-drum fires within 0.25 m of the inner face (no soot painted on the fence: in the first capture it read as a hooded figure at the fire);
+  - the war board and the MISSING board flat on the north fence. The war board is painted with the run's plan, and its posters for the three dealt instances are crossed in red as the view clears them; its desk lamp clicks on within 4 m.
+  - four notices, the fuse board over A1's generator, and the cable at 3.05 m.
+- **Gates:** two masts on the fence top at each opening (a flood down the lane, the strings' eyes; the north gate's east mast carries the camp PA), and a sign hung from each gate's string (CITY HALL / BELVEDERE CAMP over the north gate).
+- **Overhead, from 3.5 m:**
+  - 16 bulb strings: N-S and E-W spans at ±5.35 m, fence runs from each corner, one across each gate. That is about 420 bulbs, one in about fourteen dead, the lowest at 4.66 m.
+  - Four shade sails across the corners.
+- **Honest:**
+  - every piece's art below the gates' track (3.4 m) lies within 0.25 m of the fence where it stands, and never in a leaf pocket;
+  - nothing stands where an A1 block will;
+  - the strings and sails clear every future block by 0.3 m.
+  `CampChecks` checks all of this, against the bank's own triangles when `CHIPARENA_CAMP_BANK` is set.
+- **Light:**
+  - the camp takes up to three practical slots through `NativeLighting.KitLights` (two with reduced effects, one on Low), chosen by the hazard kit's score and eased;
+  - every lamp, flood and fire lays a warm pool and a halo, and the bulbs have halos;
+  - the fires breathe under 2.4 Hz (under 0.7 Hz with reduced effects, which also drops embers), and lamps and bulbs are steady, so nothing flashes;
+  - DARKNESS leaves the camp lit.
+- **Sound** (`docs/audio/SOUND-REQUESTS.md`, "The camp's sound bed"):
+  - the two nearest fires, the generator's hum at the fuse board, the PA's radio (64.7 FM), the murmur and the lamp's click, on NativeAudio's voices;
+  - these are synthesized placeholders (`Core/NativeCampSynth.cs`) until the owner's listening pass. The ElevenLabs batch is paid and needs the owner's word.
+- **Draw:**
+  - `CampScenery` in SourceWorld (live and killcam), the bank's props combined into six world meshes behind the loading screen (`PrewarmCamp` in `PrewarmStage`), so the hub's first frame builds nothing;
+  - StageLit, Fine within 40 m;
+  - about 48k Fine triangles and about 500 effect quads;
+  - nothing without the bank.
+
+### Part 2: the DEV preview of the whole W5 camp
+**Where:** the Developer walk only (Settings · Developer · Walk Meridian greybox), in Editor and development builds. It never draws in a live run.
+
+**What it draws:**
+- A1's structures on their blocks' boxes:
+  - the mess ring with the fountain and its burning brazier, and four benches (the fourth keeps a blanket, a crate and a lantern until its survivor joins);
+  - the kiosk with its hatches, shelves and the awning over the chip machine;
+  - the infirmary;
+  - the lookout with its glazed cabin and searchlight;
+  - four sentry towers;
+  - the radio shack;
+  - the supply cabin;
+  - the generator;
+  - eight sandbag walls.
+- The two machines (their real models).
+- 18 survivors at their posts: 13, plus the five possible rescued joiners. They are rigid posed figures, seeded, and never replicated.
+- See-through glass.
+
+**Keys:** C turns the preview on or off. U sets how many rescued survivors have joined (0-5). K shows the clearance overlay as filled boxes.
+
+### For Astra
+- **A1:** `camp-astra-a1-paste.md` in the side-session notes, checked against the live Meridian code.
+- **Delta 1:** camp-kiosk is 3.2 m tall, so the awning over the chip machine hangs above 3.1 m. The delta is passed on by the integrator.
+- **Measured over 2,000 seeds:**
+  - every pod hull clears every block by at least 1.93 m;
+  - every skid apron clears every block by at least 1.07 m;
+  - the ExitReach 2.4 capsule clears every block by at least 1.73 m.
+- **Live code A1 must change:** Meridian's lattice starts at (0,0,0) under the fountain, and four PvP rows overlap it.
+
+### Systems
+- **New Core:** `NativeCamp`, `NativeCampFx`, `NativeCampSynth`, `NativeCampMeshes`.
+- **New Runtime:** `NativeCampDraw`, `NativeCampAudio`, `NativeCampWalk`.
+- **New tools:** `tools/stages/camp_kit.py`, `camp_parts.py`, `camp_bank.py`.
+- **New docs:** `docs/expedition/BELVEDERE-CAMP.md`.
+- **Hook lines in shared files:**
+  - `NativeSourcePresentation.cs` (CampScenery);
+  - `NativeAudio.cs` (CampAudioFrame);
+  - `NativeExpeditionLiveUI.cs` (NativeCampDraw.Sync);
+  - `NativeLayeredCityWalkPreview.cs` (open, close, keys, the panel's line and banner; the panel is 248 px);
+  - `NativeStagePrewarm.cs` (PrewarmCamp) and `Tests/TransitionLoadingChecks.cs` (the camp's prewarm entry);
+  - `Tests/Program.cs` (`--camp`, `--camp-dump`).
+
+### Bank (never committed)
+`F:/Chip Arena Development/scratch/camp/bank/ChipArenaLocal/Resources/ChipArenaCamp.bytes`, 6,915,780 bytes, with its `.meta`. The integrator packs it into the Drive zip at release. Without it, nothing is drawn.
+
+### Checks
+- `CoreTests --camp` with `CHIPARENA_CAMP_BANK` (the rebuilt bank): pass, 147,880 checks. This covers:
+  - the table and its clearances;
+  - 2,000 landing fields;
+  - the posts;
+  - the live camp's honesty against the bank's own triangles, including no face flat on the floor, on the fence's inner face or on its top (z-fighting);
+  - light, sound and budgets: 49,886 Fine triangles.
+  Without the bank it runs 62,832 checks.
+- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`) at `8bb85346`: 1,082 PASS lines, exit 0, in 1,054 s. That run includes camp, hub z-fight, transitions/loading and party loading.
+  - The earlier run at `1d73aae3` stopped at PartyLoadingChecks' cradle-UI line. That line comes from shared's #437 and is re-pinned by `b2dea632`, merged here. No camp file uses that panel.
+  - The run before that found the new SourceWorld hook without a prewarm entry. The camp now builds behind the loading screen, through `PrewarmCamp`.
+- `tools/check_unity_compile.py --unity-root` (6000.3.24f1, no download) at `8bb85346`: Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor pass. `e3ea9ff5` changes no C#.
+- `git diff --check`: clean.
+- **Editor (BoZo live recipe):** see Captures. There were no exceptions in the Editor log.
+- **Not run:**
+  - a Windows player build or package;
+  - multiplayer with two clients (nothing is replicated: each peer draws the camp from the run's seed);
+  - Reduced effects and the Low tier in the Editor. These are covered by managed checks only: fire swells under 2.4 Hz (0.55 Hz with reduced effects), light slots 3/2/1, no allocation per frame.
+
+### Captures
+**Editor holds:** the BoZo live recipe. The first hold took 16.7 minutes; the lock was released at 15:06:34.
+
+**Re-film:** one flaw showed up in the first hold. The soot painted on the fence above each drum read as a hooded figure standing at the fire. It is removed in `e3ea9ff5`, with the bank rebuilt. The AFTER and the DEV preview were then filmed again in 12.2 minutes; the lock was released at 15:35:32.
+
+**After each hold:**
+- the Editor was back on `9319026b`;
+- the stage and motion banks were as released;
+- the camp bank was out of Resources.
+
+**Files:** `F:/Chip Arena Development/scratch/camp/clips/` (local, never committed):
+- `1-live-hub-walk-in-before-after.mp4`: walking in from the south gate, shared `5d54766c` beside `claude/camp` `e3ea9ff5`.
+- `2-dev-preview-push-in.mp4`: the DEV preview, pushing in on the mess ring.
+- `pair-*.jpg`: ten before/after stills:
+  - from the ground: looking north, north-east, at the north-east corner, the war board, the MISSING board, a fire and the north gate;
+  - from high up, from the south-east and the north-west;
+  - from above.
+- `preview-sheet.jpg` and `preview-0..8.jpg`: the preview's nine stills.
+- `clearances.jpg`: the landing field's four worst draws against the table.
+
+**What the Editor log shows:**
+- The camp was combined at the loading screen's kit step: `Belvedere Camp: 47 pieces, 16 strings, 416 bulbs, 4 sails; built in 47 ms`. The step took 94.0 ms with two kits (81.0 ms with one on shared).
+- The walk built the preview in 71 ms.
+- There were no exceptions.
+
+### Animation impact
+None. There is no rule, timing, hitbox, damage, cooldown, movement or network change. The survivors are presentation and never replicated.
+
+### Voxel dependency
+None.
+
+### Risks
+- **The bank:** 6.9 MB, never committed. It must go into the Drive zip at release. Without it nothing draws, which is the case on CI, cloud and public builds.
+- **Build time:** the camp combines at the loading screen's kit step (47 ms and 85 ms in the two holds). Any path that skips `PrewarmStage` builds it on the hub's first frame instead.
+- **Sound:** the camp's sounds are synthesized placeholders until the owner's listening pass. The ElevenLabs batch is requested in SOUND-REQUESTS and is paid, so it needs the owner's word.
+- **Captures:** the before and after live runs each deal their own seed (2713576937 and 3067774523), so the pods, and sometimes the plan, differ beyond the camp.
+- **Not in this branch:** the WMRD mast is D2's landmark, unchanged here. The survivors and A1's structures are not live until A1.
+- **For A1:** Meridian's nav lattice must start somewhere other than (0,0,0) under the fountain, and four PvP rows overlap the fountain (see the paste).
+
+### Next
+- The owner reviews the clips. The camp bank goes into the Drive zip at release.
+- In the same release as A1: the camp art on A1's blocks, the survivors in the live camp, the machine presentation, and the bleed's `camp-*` skip.
+
 ## 2026-11-20 — Claude: the live Meridian hub's z-fighting: the greybox gives way to the street dress on the live map, as on the walk (owner report; presentation only)
 
 The owner: "There is immense z-fighting on the hub in the new expedition map."
