@@ -535,6 +535,7 @@ namespace ChipArena.UnityConversion
             var axis=head-tail;float len=axis.Length();if(len<1e-4f)return;int n=Math.Max(1,(int)Math.Ceiling(len/.9f));
             for(int i=0;i<n;i++){var a=tail+axis*((float)i/n);var b=tail+axis*((float)(i+1)/n);fx.Streak(b,b-a,color,width,.001f,1,0,0,seed*16+i);}
         }
+        private Vector3 CamRightOf()=>CamRight;private Vector3 CamUpOf()=>CamUp(CamRight);
         private Vector3 CamRight{get{var f=view.Look-view.Eye;if(f.LengthSquared()<1e-8f)return Vector3.UnitX;var r=Vector3.Cross(Vector3.Normalize(f),Up);return r.LengthSquared()<1e-8f?Vector3.UnitX:Vector3.Normalize(r);}}
         private Vector3 CamUp(Vector3 right){var f=view.Look-view.Eye;if(f.LengthSquared()<1e-8f)return Up;return Vector3.Normalize(Vector3.Cross(right,Vector3.Normalize(f)));}
 
@@ -901,6 +902,13 @@ namespace ChipArena.UnityConversion
                 int drops=thin<1?3:7;float fall=h.Y-land.Y;
                 for(int d=0;d<drops;d++){float ph=((t-Drop)*1.6f+d/(float)drops+.13f*side)%1f;var p=Vector3.Lerp(h,land,ph*ph);fx.Glow(p,Ice*(1.2f*lvl*(float)Math.Sin(Math.PI*ph)),0,.05f,0,0,12220+side*16+d);}
                 fx.Glow(land,Cyan*(1.2f*lvl),0,.55f,1,0,12300+side);
+            }
+            // the command's open palm: lit as the arm sweeps out, a flare and short rays as it settles, then a steady light in it
+            float palm=NativeEntranceMath.Ramp(t,Command+.15f,Command+.5f)*(1-NativeEntranceMath.Ramp(t,FadeFrom,Total));
+            if(palm>.01f)
+            {
+                var h=HandAt(false,t);float set=Flash(t,Command+.45f,.04f,.5f);fx.Glow(h,Molten*(1.8f*palm+2.4f*set),0,.2f+.25f*set,1,0,12320);fx.Glow(h,Gold*(.4f*palm+.8f*set),0,.7f+.6f*set,0,0,12321);
+                if(thin>=1)for(int r=0;r<8;r++){float ang=(r+.5f)/8*6.2831853f+.3f;var d=CamRightOf()*(float)Math.Cos(ang)+CamUpOf()*(float)Math.Sin(ang);float len=.18f+.32f*set+.08f*R(12330,r);Line(fx,h+d*len,h+d*.06f,Molten*(1.2f*(.35f*palm+set)),.01f,.8f,12331+r);}
             }
             if(t<Drop+.6f)return;
             for(int i=0;i<Wedges;i++)
