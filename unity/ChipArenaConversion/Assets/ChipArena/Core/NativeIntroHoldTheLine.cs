@@ -42,13 +42,13 @@ namespace ChipArena.UnityConversion
             // The camera: wide and low from the field; the plant, low and close; over the shoulder through the breach as the ridge launches;
             // low in front with bolts streaking past the lens; from the side; the silence, pushing in; the bash, wide; the hero.
             Rig.Dolly(0,V(-2.4f,.72f,7.5f),V(-1.9f,.82f,6.2f),V(0,1.6f,-1),V(0,1.5f,-1),40,38)
-               .Dolly(PlantAt,V(1.85f,.45f,1.65f),V(1.72f,.5f,1.42f),V(0,.62f,.3f),V(0,.6f,.3f),38,36)
+               .Dolly(PlantAt,V(2.3f,.5f,2.05f),V(2.1f,.55f,1.82f),V(0,.62f,.3f),V(0,.6f,.3f),38,36)
                .Dolly(LaunchAt-.05f,V(.72f,1.85f,-1.4f),V(.68f,1.92f,-1.62f),V(0,3.2f,30),V(0,6.5f,40),46,44)
                .Dolly(Hits[0]-.2f,V(1.25f,.5f,3.65f),V(1.05f,.55f,3.3f),V(0,1.2f,0),V(0,1.2f,0),50,48).Handheld(.5f)
                .Dolly(Hits[2]-.08f,V(-3.2f,1.0f,.85f),V(-3.4f,1.1f,1.2f),V(0,1.15f,.3f),V(0,1.1f,.3f),44,42).Handheld(.4f)
                .Dolly(SilenceAt,V(.42f,1.3f,3.45f),V(.32f,1.3f,2.85f),V(0,1.25f,0),V(0,1.25f,0),36,34)
                .Dolly(BashAt-.05f,V(-1.0f,.6f,4.2f),V(-1.1f,.62f,4.5f),V(0,1.0f,.5f),V(0,1.0f,.6f),44,44);
-            HeroFrame(StanceAt-.25f,-1,1.2f,3.4f,33,.62f);
+            HeroFrame(StanceAt-.25f,-1,1.2f,3.4f,33,-.5f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
@@ -190,7 +190,7 @@ namespace ChipArena.UnityConversion
         };
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.96f,.98f,1),Steel*1.2f);card.Style=NativeIntroCardStyle.Slam;NameBeside(ref card,true);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.96f,.98f,1),Steel*1.2f);card.Style=NativeIntroCardStyle.Slam;NameBeside(ref card,false);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }

@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
                .Dolly(CutAAt-.1f,V(1.6f,3.6f,3.4f),V(1.3f,3.7f,3.0f),V(0,1.0f,-.4f),V(0,1.1f,-.6f),50,48)
                .Dolly(CutCAt-.05f,V(2.1f,.45f,.9f),V(2.0f,.5f,1.4f),V(0,1.0f,0),V(0,1.05f,0),46,46).Handheld(.5f)
                .Dolly(ConvergeAt-.05f,V(.3f,.8f,3.2f),V(.25f,.85f,2.7f),V(0,1.1f,0),V(0,1.12f,0),38,36);
-            HeroFrame(StanceAt+.05f,1,1.15f,3.2f,32,.6f);
+            HeroFrame(StanceAt+.05f,1,1.15f,3.2f,32,.5f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;

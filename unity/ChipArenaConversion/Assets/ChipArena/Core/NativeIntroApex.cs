@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
                .Dolly(CoilAt-.05f,perchHead+V(-.75f,.12f,1.3f),perchHead+V(-.7f,.1f,1.12f),perchHead+V(0,-.05f,0),perchHead+V(0,-.08f,0),25,23).Focus(0,0,.5f)
                .Dolly(LeapAt-.06f,V(.35f,.42f,1.8f),V(.36f,.4f,1.82f),V(.5f,3.4f,-2.9f),V(.08f,.95f,-.25f),50,55).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt-.02f,V(-2.7f,.45f,2.0f),V(-2.85f,.5f,2.2f),V(0,.55f,.35f),V(0,.62f,.3f),46,45);
-            HeroFrame(RiseAt+.05f,-1,1.05f,3.2f,32,.6f);
+            HeroFrame(RiseAt+.05f,-1,1.05f,3.2f,32,.45f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(LeapAt+.18f,.32f,.3f,.9f);
         }

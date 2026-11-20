@@ -104,9 +104,9 @@ namespace ChipArena.UnityConversion
         /// stillness, with the pilot off centre by `shift` m (+: the pilot on the frame's left third) so the name card sits in the clean
         /// space beside it (NameBeside) rather than over the legs.
         /// </summary>
-        protected void HeroFrame(float at,float side,float height,float distance,float fov,float shift,float blend=.5f)
+        protected void HeroFrame(float at,float side,float height,float distance,float fov,float shift,float blend=.5f,float angle=.42f)
         {
-            float yaw=Facing+side*.42f;var dir=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
+            float yaw=Facing+side*angle;var dir=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
             var from=dir*(distance+.45f)+new Vector3(0,height-.25f,0);var to=dir*distance+new Vector3(0,height-.18f,0);
             var look=new Vector3(0,height+.04f,0);var right=Vector3.Normalize(Vector3.Cross(look-to,Vector3.UnitY));
             Rig.Dolly(at,from,to,look+right*shift,look+right*shift+new Vector3(0,.02f,0),fov+2,fov).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,blend);

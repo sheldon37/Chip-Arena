@@ -62,16 +62,17 @@ namespace ChipArena.UnityConversion
             k.Key(Total,stand).Root(0,.88f,.12f,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.25f,0,-.15f);Keys=k;
             // The camera: locked off in the rain; low in front of its left for the stance; close on the saya's mouth; the cut seen wide;
             // the frozen moment ridden along the cut's line; time back, wide on the stalks; the sheathing; the click low; the hero.
-            var a=LineAt(-1.2f)+Side*.75f+new Vector3(0,.2f,0);var b=LineAt(1.6f)+Side*.85f+new Vector3(0,.18f,0);var c=LineAt(3.6f)+Side*.8f+new Vector3(0,.12f,0);var d=LineAt(5.0f)+Side*.7f+new Vector3(0,.1f,0);
+            // (the glide ends short of the bamboo clump behind on the left, looking on to the stalks the cut takes)
+            var a=LineAt(-1.4f)+Side*.8f+new Vector3(0,.22f,0);var b=LineAt(.8f)+Side*.85f+new Vector3(0,.2f,0);var c=LineAt(2.6f)+Side*.9f+new Vector3(0,.16f,0);var d=LineAt(3.6f)+Side*.95f+new Vector3(0,.12f,0);
             Rig.Dolly(0,V(-.55f,1.45f,6.2f),V(-.5f,1.42f,5.75f),V(.1f,1.15f,-1.5f),V(.1f,1.12f,-1.4f),40,38).Ease(NativeIntroEase.Linear)
                .Dolly(DrawAt-.05f,V(1.75f,.72f,2.45f),V(1.3f,.8f,1.85f),V(.15f,.95f,0),V(.2f,1.0f,0),42,37).Ease(NativeIntroEase.Out)
                .Dolly(GrabAt-.08f,V(.92f,1.02f,.98f),V(.78f,1.0f,.82f),V(.2f,.92f,.12f),V(.22f,.95f,.12f),26,24).Focus(0,0,.55f)
                .Hold(CutAt-.04f,V(-2.7f,.95f,1.9f),V(.35f,1.15f,-.25f),46)
-               .Spline(FreezeAt,new[]{a,b,c,d},LineAt(1.4f)+new Vector3(0,.05f,0),LineAt(7.4f),36,31).Ease(NativeIntroEase.InOut)
+               .Spline(FreezeAt,new[]{a,b,c,d},LineAt(1.4f)+new Vector3(0,.05f,0),LineAt(6.4f),36,31).Ease(NativeIntroEase.InOut)
                .Dolly(ResumeAt,V(-1.65f,1.25f,3.95f),V(-1.75f,1.3f,4.15f),V(1.3f,1.75f,-2.5f),V(1.5f,1.6f,-2.7f),45,44)
                .Dolly(SheatheAt,V(1.6f,1.15f,1.8f),V(1.3f,1.12f,1.52f),V(.1f,1.0f,.05f),V(.12f,1.02f,.05f),36,33)
                .Dolly(ClickAt-.05f,V(.45f,.34f,3.05f),V(.38f,.38f,2.8f),V(0,.9f,0),V(0,.95f,0),40,38);
-            HeroFrame(StillAt,1,1.15f,3.3f,31,.62f);
+            HeroFrame(StillAt,1,1.15f,3.3f,31,.5f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
