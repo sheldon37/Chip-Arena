@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
             U.Glow(new Rect(r.x+10,r.y+30,r.width-20,r.height),new Color(0,0,0,.55f*a),44);U.Glow(r,U.A(acc,(.16f+.08f*Breath(k))*a),24);
             Plate(r,HeroR,acc,a,h,s,k);var face=Inset(r,1);float pad=Mathf.Clamp(r.width*.065f,16,26),x=r.x+pad,cw=r.width-2*pad,y=r.y+pad;
             // Header: the class icon and line, the class tagline on the right.
-            var ci=new Rect(x,y,16,16);NativeIcons.Draw(ci,w.devOnly?"shuffle":NativeIcons.Class(w.@class),U.A(acc,a));
+            var ci=new Rect(x,y,16,16);NativeIcons.DrawWeaponPick(ci,w.devOnly?"shuffle":NativeIcons.Class(w.@class),U.A(acc,a));
             U.Text(new Rect(x+22,y-2,cw*.5f,20),ClassLine(w),11,U.A(acc,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
             U.Text(new Rect(x+cw*.4f,y-2,cw*.6f,20),Tagline(w),10,U.A(C.Muted(),a),TextAnchor.MiddleRight,mono:true,tracking:.16f);
             y+=26;U.HGradient(new Rect(x,y,cw*.5f,Px(1)),U.A(acc,0),U.A(acc,.45f*a));U.HGradient(new Rect(x+cw*.5f,y,cw*.5f,Px(1)),U.A(acc,.45f*a),U.A(acc,0));
@@ -309,11 +309,11 @@ namespace ChipArena.UnityConversion
         // colour when chosen.
         private static void Icon(Rect ic,string icon,Color acc,float a,float h,float s,float hoverAge,bool calm)
         {
-            if(a<=.002f)return;NativeIcons.Draw(new Rect(ic.x,ic.y+3,ic.width,ic.height),icon,new Color(0,0,0,.5f*a));
+            if(a<=.002f)return;NativeIcons.DrawWeaponPick(new Rect(ic.x,ic.y+3,ic.width,ic.height),icon,new Color(0,0,0,.5f*a));
             float f=calm||hoverAge<0?0:Mathf.Clamp01(1-hoverAge/.28f)*Mathf.Clamp01(3*Mathf.Max(h,s)),dx=2*f;
-            if(dx>0){NativeIcons.Draw(new Rect(ic.x-dx,ic.y,ic.width,ic.height),icon,C.Magenta(.55f*f*a));NativeIcons.Draw(new Rect(ic.x+dx,ic.y,ic.width,ic.height),icon,C.Cyan(.55f*f*a));}
+            if(dx>0){NativeIcons.DrawWeaponPick(new Rect(ic.x-dx,ic.y,ic.width,ic.height),icon,C.Magenta(.55f*f*a));NativeIcons.DrawWeaponPick(new Rect(ic.x+dx,ic.y,ic.width,ic.height),icon,C.Cyan(.55f*f*a));}
             Color rest=U.A(U.Mix(C.Ink(),acc,.3f),.82f),hot=U.Mix(C.Ink(),acc,.22f),on=U.Mix(acc,Color.white,.4f);
-            NativeIcons.Draw(ic,icon,U.A(U.Mix(U.Mix(rest,hot,h),on,s),a));
+            NativeIcons.DrawWeaponPick(ic,icon,U.A(U.Mix(U.Mix(rest,hot,h),on,s),a));
         }
         private static void ScanLine(Rect face,float p,float a,Color tone,float trail)
         {

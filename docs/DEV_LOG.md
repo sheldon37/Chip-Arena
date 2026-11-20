@@ -1,3 +1,7 @@
+## 2026-11-20 — Astra: weapon pick reveal hitch
+
+`codex/weapon-reveal-hitch` from shared `321d0b6d`. Card faces and flourishes rasterized exact-size vector icons synchronously on cold IMGUI repaints. Import class and weapon textures (including small artwork and Lucide fallbacks) ahead of time, warm the set at opening, and validate the imported catalog on the Windows builder. Five real 128 px weapon rasters took a median 58.4 ms across nine .NET CPU trials. Pinned Unity player/editor compilation, 5,598 Blind Pick and 1,504 flourish checks passed. Windows frame times and native publication require the builder. Release the isolated fix on the existing builder base while the unrelated Expedition content awaits integration. Gameplay, wire data and timing are unchanged.
+
 ## 2026-11-19 — Astra: authored instance cache routes
 
 Branch `codex/instance-cache-routes` from shared `eba02d3a`. A block-aware CoreTests run on the previous bays reproduced `Unreachable cache approach: exp-ward-zero:cache:1`. Moved both upper northeast stair bays to the ground-floor intake lockers. Testing Central Station exposed an obstructed pilot interaction at its second west-side cache-0 bay, now at the west pier. Regenerated the fixture and resource. Hulk clearance and the live geometry gate are preserved.

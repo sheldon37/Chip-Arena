@@ -312,7 +312,7 @@ namespace ChipArena.UnityConversion
         private static void Glyph(Vector2 p,float scale,float deg,float sx,Color c)
         {
             if(c.a<=.003f)return;if(Mathf.Abs(sx)<.04f)sx=sx<0?-.04f:.04f;
-            float k=Size(scale)/fspr;U.Push(p,Vector2.zero,k*sx,deg,k);NativeIcons.Draw(Square(p,fspr),fi,c);U.Pop();
+            float k=Size(scale)/fspr;U.Push(p,Vector2.zero,k*sx,deg,k);NativeIcons.DrawWeaponPick(Square(p,fspr),fi,c);U.Pop();
         }
         private static void Flash(float a,Color c){if(a>.003f)U.Fill(Whole,U.A(c,a));}
         private static void CardFlash(Rect r,float a,Color c){if(a>.003f){U.Glow(r,U.A(c,.5f*a),16);U.Round(r,U.A(c,.35f*a),R);}}

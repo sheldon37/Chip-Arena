@@ -41,6 +41,35 @@ namespace ChipArena.UnityConversion
         /// rasterise it into their slides on worker threads (NativeRooftopAds.Compose).</summary>
         public static string ArtMarkup(string id,out float box){Ensure();box=artBox;return art.TryGetValue(id??"",out var e)?e.markup:null;}
         public static string Action(string id){Ensure();return actions.TryGetValue(id??"",out var i)?i:null;}
+        private static Dictionary<string,Texture2D> pickTextures, smallPickTextures;
+
+        public static void WarmWeaponPick()
+        {
+            if (pickTextures != null) return;
+            Ensure();
+            pickTextures = new Dictionary<string,Texture2D>(StringComparer.Ordinal);
+            smallPickTextures = new Dictionary<string,Texture2D>(StringComparer.Ordinal);
+            foreach (var texture in Resources.LoadAll<Texture2D>("WeaponPickIcons"))
+            {
+                const string suffix = "-small";
+                string name = texture.name;
+                if (name.EndsWith(suffix, StringComparison.Ordinal))
+                    smallPickTextures.Add(name.Substring(0, name.Length - suffix.Length), texture);
+                else pickTextures.Add(name, texture);
+            }
+        }
+
+        public static void DrawWeaponPick(Rect r, string id, Color color)
+        {
+            if (color.a <= 0 || Event.current.type != EventType.Repaint) return;
+            WarmWeaponPick();
+            int px = Mathf.RoundToInt(Mathf.Max(r.width, r.height) * NativeUi.S);
+            if ((px <= artSmallPx && smallPickTextures.TryGetValue(id, out var texture)) ||
+                pickTextures.TryGetValue(id, out texture))
+                NativeUi.Image(r, texture, color);
+            else Draw(r, id, color);
+        }
+
         // Draw icon `id` filling the virtual rect `r` (square), tinted `c`. Art icons switch to their simplified small
         // drawing at or below the set's small size (physical pixels).
         public static void Draw(Rect r,string id,Color c)
