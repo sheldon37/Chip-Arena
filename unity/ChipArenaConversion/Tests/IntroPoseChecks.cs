@@ -42,10 +42,11 @@ namespace ChipArena.UnityConversion
         private static float Angle(Quaternion q){q=Quaternion.Normalize(q);return (float)(2*Math.Acos(Math.Min(1,Math.Abs(q.W)))*Deg);}
         private static float TwistAbout(Quaternion q,Vector3 axis){q=Quaternion.Normalize(q);var v=new Vector3(q.X,q.Y,q.Z);float a=2*(float)Math.Atan2(Vector3.Dot(v,Vector3.Normalize(axis)),q.W)*Deg;while(a>180)a-=360;while(a<-180)a+=360;return a;}
         public sealed class MapResult{public string Id;public readonly float[] Worst=new float[Bones.Length],Twist=new float[Bones.Length];public readonly float[] At=new float[Bones.Length];}
-        public static MapResult Mapping(NativeIntroEntry e,NativeVisualRig.Rig rig)
+        public static MapResult Mapping(NativeIntroEntry e,NativeVisualRig.Rig rig)=>Mapping(e.Id,e.Make(),e.Duration,rig);
+        public static MapResult Mapping(string id,NativeEntranceScript s,float duration,NativeVisualRig.Rig rig)
         {
-            var s=e.Make();var pose=new CapturedRig.Pose();var st=new NativeVisualRig.State(rig);var r=new MapResult{Id=e.Id};
-            for(int i=0;i<=e.Duration*30;i++)
+            var pose=new CapturedRig.Pose();var st=new NativeVisualRig.State(rig);var r=new MapResult{Id=id};
+            for(int i=0;i<=duration*30;i++)
             {
                 float t=s.Clock(i/30f);s.Pose(t,pose,out _,out _);pose.World();float relax=s is NativeIntroV2Script v2s?Math.Clamp(v2s.ArmsRelax(t),0,1):0;
                 NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax},false,false);
@@ -83,22 +84,32 @@ namespace ChipArena.UnityConversion
             // the limb's direction in its parent's frame, and its twist about its own length (the rest -y)
             down=Vector3.Transform(-Vector3.UnitY,local);var swing=CapturedRig.FromTo(-Vector3.UnitY,down);twist=TwistAbout(Quaternion.Inverse(swing)*local,-Vector3.UnitY);
         }
-        public static List<Finding> Limits(NativeIntroEntry e)
+        public static List<Finding> Limits(NativeIntroEntry e)=>Limits(e.Id,e.Make(),e.Duration,e.Spec);
+        /// <summary>The limits of script `s` (named `id`, `duration` s, holding weapon `spec` or none) every 1/30 s. A hand that holds or supports
+        /// a weapon is read in that weapon's convention (Core NativeIntroGrip.Natural: a gun's, the bow's and the shield's frame lie a quarter
+        /// turn from the hand, so a level aim is a straight wrist); a hand supports while the intro's grip (INativeIntroGrip) is over half on.</summary>
+        public static List<Finding> Limits(string id,NativeEntranceScript s,float duration,string spec)
         {
-            var s=e.Make();var pose=new CapturedRig.Pose();var open=new Dictionary<string,Finding>();var done=new List<Finding>();
-            int frame=0;
+            var pose=new CapturedRig.Pose();var open=new Dictionary<string,Finding>();var done=new List<Finding>();
+            int frame=0;var kind=NativeIntroGrip.Of(spec);var natural=new Quaternion[2];
             void Hit(float t,string joint,string what,float value,string unit)
             {
                 // (one finding per joint and fault over consecutive frames: its span and its worst)
                 string key=joint+"|"+what;
                 if(open.TryGetValue(key,out var f)&&frame-f.Last<=1){f.To=t;f.Last=frame;if(value>f.Worst){f.Worst=value;f.WorstAt=t;}open[key]=f;return;}
                 if(open.TryGetValue(key,out var old))done.Add(old);
-                open[key]=new Finding{Intro=e.Id,Joint=joint,What=what,From=t,To=t,Worst=value,WorstAt=t,Last=frame,Unit=unit};
+                open[key]=new Finding{Intro=id,Joint=joint,What=what,From=t,To=t,Worst=value,WorstAt=t,Last=frame,Unit=unit};
             }
             var torso=CapturedRig.Boxes.Where(b=>(b.Bone==CapturedRig.Chest||b.Bone==CapturedRig.Spine||b.Bone==CapturedRig.Pelvis)&&b.Size.X>.3f).ToArray();
-            for(int i=0;i<=e.Duration*30;i++)
+            for(int i=0;i<=duration*30;i++)
             {
                 float t=s.Clock(i/30f);s.Pose(t,pose,out _,out _);pose.World();frame=i;
+                float grip=s is INativeIntroGrip g&&g.GripAt(t,out var at)?at.Weight:0;
+                for(int side=0;side<2;side++)
+                {
+                    bool holds=spec!=null&&NativeIntroWeapon.Holds(spec,side==0),supports=kind!=NativeIntroGrip.Kind.None&&grip>.5f&&NativeIntroGrip.SupportLeft(kind)==(side==0);
+                    natural[side]=holds?NativeIntroGrip.Natural(kind,false):supports?NativeIntroGrip.Natural(kind,true):Quaternion.Identity;
+                }
                 for(int side=0;side<2;side++)
                 {
                     bool left=side==0;string S=left?"L ":"R ";int arm=left?CapturedRig.LArm:CapturedRig.RArm,hip=left?CapturedRig.LHip:CapturedRig.RHip;float outward=left?1:-1;
@@ -107,7 +118,7 @@ namespace ChipArena.UnityConversion
                     if(flex<-ElbowHyper)Hit(t,S+"elbow","bent backward (hyperextended)",-flex,"°");if(flex>ElbowFlex)Hit(t,S+"elbow","bent past its range",flex,"°");
                     if(Math.Abs(side_)>ElbowSide)Hit(t,S+"elbow","bent sideways",Math.Abs(side_),"°");
                     // wrist
-                    Swing(pose.Rotation[arm+2],out var h,out float wt);float bend=Angle(-Vector3.UnitY,h);
+                    Swing(Quaternion.Normalize(pose.Rotation[arm+2]*Quaternion.Inverse(natural[side])),out var h,out float wt);float bend=Angle(-Vector3.UnitY,h);
                     if(bend>WristBend)Hit(t,S+"wrist","bent past its range",bend,"°");if(Math.Abs(wt)>WristTwist)Hit(t,S+"wrist","twisted (turn the forearm instead)",Math.Abs(wt),"°");
                     if(Math.Abs(et+wt)>ForearmTwist)Hit(t,S+"forearm","twisted past about 90°",Math.Abs(et+wt),"°");
                     // shoulder (the arm in the chest's frame, the clavicle included)
@@ -146,26 +157,118 @@ namespace ChipArena.UnityConversion
             done.AddRange(open.Values);return done.OrderBy(f=>f.From).ThenBy(f=>f.Joint,StringComparer.Ordinal).ToList();
         }
 
-        /// <summary>Every registered intro: the bone-for-bone mapping (checked), the limits (reported; failed only when `strict`).</summary>
+        // ---- the feet on the model (docs/INTROS-V2.md 9c; I2b's IntroGenericChecks.Feet, for every intro) ----
+        /// <summary>A body point under the floor more than this (m) is through it: the ball, the ankle (its sole .05 m under it), the knee (its
+        /// cap .055 m), the hip and the pelvis (.09 m of seat under the joint).</summary>
+        public const float Through=.04f,SlideMost=.45f;
+        private static readonly string[] FeetBones={"ball_l","ball_r","foot_l","foot_r","calf_l","calf_r","thigh_l","thigh_r","pelvis"};
+        private static readonly float[] FeetUnder={0,0,.05f,.05f,.055f,.055f,.09f,.09f,.09f};
+        public struct FeetResult{public float Slide,SlideAt,Deepest,DeepestAt;public string SlideFoot,DeepBone;}
+        /// <summary>
+        /// The body as the model draws it (the keyed pose bound bone for bone on the measured skeleton, the feet unplanted, as Runtime
+        /// VisualIntroPose binds it) every 1/30 s while it is shown: a foot flat on the floor (its ball within 1.2 cm of it, its ankle within
+        /// 13 cm) stays put (its ball under SlideMost; a keyed foot held still while the root moved slid the drawn one back at about 1 m/s)
+        /// unless the entrance slides it (NativeProceduralEntrance.FeetSliding); and no ball, ankle, knee, hip or pelvis goes more than Through
+        /// into the floor (keyed drops sank the drawn hips 1.7 times as deep: a kneel's knee 30 cm through it).
+        /// </summary>
+        public static FeetResult Feet(NativeEntranceScript s,float duration,NativeVisualRig.Rig rig)
+        {
+            var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();float floor=NativeEntranceStage.FloorY;var at=new int[FeetBones.Length];
+            for(int b=0;b<FeetBones.Length;b++)at[b]=Array.IndexOf(rig.Names,FeetBones[b]);
+            int frames=(int)(duration*30);var p=new Vector3[frames+1,FeetBones.Length];var t=new float[frames+1];var r=new FeetResult();var proc=s as NativeProceduralEntrance;
+            for(int i=0;i<=frames;i++)
+            {
+                t[i]=s.Clock(i/30f);s.Pose(t[i],pose,out var root,out var rot);pose.World();float relax=s is NativeIntroV2Script v2?Math.Clamp(v2.ArmsRelax(t[i]),0,1):0;
+                NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax},false,false);
+                for(int b=0;b<FeetBones.Length;b++)p[i,b]=at[b]<0?new Vector3(0,1e3f,0):root+Vector3.Transform(st.Position[at[b]],rot);
+            }
+            for(int i=1;i<frames;i++)
+            {
+                if(s.Solid(t[i],0)<.5f)continue;
+                for(int b=0;b<FeetBones.Length;b++){float d=floor+FeetUnder[b]-p[i,b].Y;if(d>r.Deepest){r.Deepest=d;r.DeepestAt=t[i];r.DeepBone=FeetBones[b];}}
+                if(proc!=null&&proc.FeetSliding(t[i]))continue;
+                for(int side=0;side<2;side++)
+                {
+                    var ball=p[i,side];if(ball.Y-floor>.012f||p[i,2+side].Y-floor>.13f)continue;
+                    var d=p[i+1,side]-p[i-1,side];d.Y=0;float v=d.Length()*15;if(v>r.Slide){r.Slide=v;r.SlideAt=t[i];r.SlideFoot=side==0?"left":"right";}
+                }
+            }
+            return r;
+        }
+
+        // ---- the grip on the model (Core NativeIntroGrip, docs/INTROS-V2.md 9a) ----
+        /// <summary>How far the drawn off fist may sit from the drawn support point (m) once the long guns' fist has slid back along its
+        /// handguard (NativeVisualRig's support grip: SupportSlide), and how far a fist may slide.</summary>
+        public const float GripNear=.03f;
+        public struct GripResult{public float Worst,WorstAt,Frames;public float Slide;}
+        /// <summary>
+        /// Script `s` holding `spec` with its grip on, bound as Runtime VisualBodyBind binds it (Core NativeIntroGrip.Grasp: the intro's
+        /// weapon's hold, the support bound, the elbow to the grip's pole) every 1/30 s where the grip is fully on: how far the drawn off
+        /// fist's centre is from the drawn support point (the main hand's drawn weapon frame, less the support's slide along its handle).
+        /// </summary>
+        public static GripResult Grip(NativeEntranceScript s,float duration,string spec,NativeVisualRig.Rig rig)
+        {
+            var r=new GripResult();var k=NativeIntroGrip.Of(spec);if(k==NativeIntroGrip.Kind.None||!(s is INativeIntroGrip g))return r;
+            var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();bool left=NativeIntroGrip.SupportLeft(k);int side=left?0:1,vh=rig.Of[left?CapturedRig.LHand:CapturedRig.RHand];
+            for(int i=0;i<=duration*30;i++)
+            {
+                float t=s.Clock(i/30f);s.Pose(t,pose,out _,out _);pose.World();if(!g.GripAt(t,out var at)||at.Weight<.999f){st=new NativeVisualRig.State(rig);continue;}
+                var grasp=new NativeVisualRig.Grasp();NativeIntroGrip.Grasp(spec,at,pose,ref grasp);NativeVisualRig.Pose(st,pose,grasp,false,false);
+                NativeIntroGrip.Model(k,spec,at.Along,at.Pull,pose,out var hold);var weapon=pose.WorldRotation[left?CapturedRig.RHand:CapturedRig.LHand];
+                var want=(left?st.RightAnchor:st.LeftAnchor)+Vector3.Transform(hold.Center-hold.Axis*st.SupportSlide,weapon);
+                var turn=Quaternion.Normalize(st.World[vh]*Quaternion.Inverse(rig.AlignedWorld[vh]));var fist=st.Position[vh]+Vector3.Transform(rig.FistCenter[side],turn);
+                float d=Vector3.Distance(fist,want);r.Frames++;if(d>r.Worst){r.Worst=d;r.WorstAt=t;}r.Slide=Math.Max(r.Slide,st.SupportSlide);
+            }
+            return r;
+        }
+
+        /// <summary>
+        /// Every registered intro and every canonical pose of the guide (IntroPoseGallery): the bone-for-bone mapping (checked); the limits,
+        /// the feet on the model and the grip on the model (the gallery's checked; the intros' reported, failed only when `strict`).
+        /// </summary>
         public static void Run(bool strict,bool printAll)
         {
-            count=0;var rig=ModelPoseChecks.Measured();int findings=0,intros=0;var worstMap=new float[Bones.Length];var failed=new List<string>();
-            foreach(var e in NativeIntroCatalog.Entries)
+            count=0;var rig=ModelPoseChecks.Measured();int findings=0,intros=0;var worstMap=new float[Bones.Length];var failed=new List<string>();float worstSlide=0,worstDeep=0;
+            // (`armed`: a guide pose whose arms hold a weapon: they are solved onto it, by the hold and the grip, on the model as on the keyed rig,
+            // so only the body, the neck, the head and the legs are held to the keyed turns there)
+            void Map(string id,MapResult m,bool armed=false)
             {
-                var m=Mapping(e,rig);intros++;
-                if(printAll)Console.WriteLine("MAP "+e.Id.PadRight(26)+string.Join(" ",Bones.Select((b,k)=>b.name.Replace(" ","")+" "+m.Worst[k].ToString("0")+(b.limb?"/t"+m.Twist[k].ToString("0"):"")+"@"+m.At[k].ToString("0.0"))));
+                if(printAll)Console.WriteLine("MAP "+id.PadRight(26)+string.Join(" ",Bones.Select((b,k)=>b.name.Replace(" ","")+" "+m.Worst[k].ToString("0")+(b.limb?"/t"+m.Twist[k].ToString("0"):"")+"@"+m.At[k].ToString("0.0"))));
                 for(int k=0;k<Bones.Length;k++)
                 {
-                    var b=Bones[k];worstMap[k]=Math.Max(worstMap[k],m.Worst[k]);
-                    Check(m.Worst[k]<=Limit(b.name),e.Id+": the drawn "+b.name+" turns as keyed (worst "+m.Worst[k].ToString("0.0")+" deg at "+m.At[k].ToString("0.00")+" s; tolerance "+Limit(b.name)+")");
-                    if(b.limb)Check(m.Twist[k]<=(b.name.Contains("arm")?ArmTwist:BodyTurn),e.Id+": the drawn "+b.name+" keeps its keyed twist (worst "+m.Twist[k].ToString("0.0")+" deg)");
+                    var b=Bones[k];if(armed&&(b.name.Contains("arm")||b.name.Contains("hand")))continue;worstMap[k]=Math.Max(worstMap[k],m.Worst[k]);
+                    Check(m.Worst[k]<=Limit(b.name),id+": the drawn "+b.name+" turns as keyed (worst "+m.Worst[k].ToString("0.0")+" deg at "+m.At[k].ToString("0.00")+" s; tolerance "+Limit(b.name)+")");
+                    if(b.limb)Check(m.Twist[k]<=(b.name.Contains("arm")?ArmTwist:BodyTurn),id+": the drawn "+b.name+" keeps its keyed twist (worst "+m.Twist[k].ToString("0.0")+" deg)");
                 }
-                var l=Limits(e);findings+=l.Count;
+            }
+            // (each finding as text: the limits', the feet's and the grip's)
+            List<string> Findings(string id,NativeEntranceScript s,float duration,string spec)
+            {
+                var all=Limits(id,s,duration,spec).Select(f=>f.ToString()).ToList();var feet=Feet(s,duration,rig);worstSlide=Math.Max(worstSlide,feet.Slide);worstDeep=Math.Max(worstDeep,feet.Deepest);
+                if(feet.Slide>SlideMost)all.Add(id+" "+feet.SlideAt.ToString("0.00")+" s the drawn "+feet.SlideFoot+" foot slides on the floor at "+feet.Slide.ToString("0.00")+" m/s (keyed for the model: ModelFeet, docs/INTROS-V2.md 9c; or FeetSliding where it is meant)");
+                if(feet.Deepest>Through)all.Add(id+" "+feet.DeepestAt.ToString("0.00")+" s the drawn "+feet.DeepBone+" is "+(feet.Deepest*100).ToString("0")+" cm into the floor (drops in the model's metres: ModelFeet)");
+                var grip=Grip(s,duration,spec,rig);if(grip.Worst>GripNear)all.Add(id+" "+grip.WorstAt.ToString("0.00")+" s the drawn off fist is "+(grip.Worst*100).ToString("0")+" cm off the drawn weapon's support point");
+                return all;
+            }
+            foreach(var e in NativeIntroCatalog.Entries)
+            {
+                Map(e.Id,Mapping(e,rig));intros++;
+                var l=Findings(e.Id,e.Make(),e.Duration,e.Spec);findings+=l.Count;
                 if(printAll){Console.WriteLine("LIMITS "+e.Id+": "+(l.Count==0?"none":l.Count+" finding"+(l.Count==1?"":"s")));foreach(var f in l)Console.WriteLine("  "+f);}
                 if(l.Count>0&&failed.Count<40)failed.Add(e.Id+" ("+l.Count+")");
             }
-            if(strict)Check(findings==0,findings+" anatomical limit finding(s) in "+failed.Count+" intro(s): "+string.Join(", ",failed)+" (listed above)");
-            Console.WriteLine("PASS intro poses: "+count+" checks ("+intros+" intros bone for bone on the model: worst "+string.Join(", ",Bones.Select((b,k)=>b.name+" "+worstMap[k].ToString("0")))+" deg); anatomical limits: "+findings+" finding(s)"+(strict?"":" reported (--intro-limits lists and fails them)"));
+            // The guide's canonical poses: inside the limits, on the floor, still where planted and holding their weapons, always.
+            int poses=0;
+            foreach(var name in IntroPoseGallery.Names)
+            {
+                var s=IntroPoseGallery.Make(name);Map("pose "+name,Mapping("pose "+name,s,s.Seconds,rig),s.Spec!=null);
+                var l=Findings("pose "+name,IntroPoseGallery.Make(name),s.Seconds,s.Spec);if(printAll){Console.WriteLine("POSE "+name+": "+(l.Count==0?"clean":string.Join("; ",l)));}
+                Check(l.Count==0,"the guide's "+name+" (Tests/IntroPoseGallery): "+string.Join("; ",l));
+                if(s.Spec!=null&&NativeIntroGrip.Of(s.Spec)!=NativeIntroGrip.Kind.None){var g=Grip(IntroPoseGallery.Make(name),s.Seconds,s.Spec,rig);Check(g.Frames>0,"the guide's "+name+" holds its grip");}
+                poses++;
+            }
+            if(strict)Check(findings==0,findings+" finding(s) in "+failed.Count+" intro(s): "+string.Join(", ",failed)+" (listed above)");
+            Console.WriteLine("PASS intro poses: "+count+" checks ("+intros+" intros and "+poses+" guide poses bone for bone on the model: worst "+string.Join(", ",Bones.Select((b,k)=>b.name+" "+worstMap[k].ToString("0")))+" deg; drawn feet: slide at most "+worstSlide.ToString("0.00")+" m/s, at most "+(worstDeep*100).ToString("0")+" cm into the floor); limits, feet and grips: "+findings+" finding(s)"+(strict?"":" reported (--intro-limits lists and fails them)"));
         }
     }
 }
