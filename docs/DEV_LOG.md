@@ -58,7 +58,7 @@ Owner: "I need to redo essentially all of them (except top dog and Bombardier on
 
 **Checks:**
 - `--intros-v2`: 668 checks pass.
-- The full CoreTests the relgen5 way (a throwaway LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the released 14): exit 0 with 1,080 PASS lines at `8e777266` (the last code commit is `5585181e`; after it, docs only). Earlier runs: exit 0 at `ef62729a` and `c51a1394`. At `a934e23d` the voxel ratchet stopped the run (the first hands read the rig); fixed in `c51a1394`.
+- The full CoreTests the relgen5 way (a throwaway LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the released 14): exit 0 with 1,080 PASS lines at `42e2687e`, the last code commit (after it, docs only). Earlier runs: exit 0 at `ef62729a`, `c51a1394` and `8e777266`. At `a934e23d` the voxel ratchet stopped the run (the first hands read the rig); fixed in `c51a1394`.
 - `check_unity_compile.py`: all four assemblies pass.
 - `git diff --check`: clean.
 - pins.py: one flag, `NativeCosmeticRules.Intros` in `NativeProfileUI`. It is a false positive: LockerChecks counts that string only in `NativeLockerUI`.
@@ -66,7 +66,7 @@ Owner: "I need to redo essentially all of them (except top dog and Bombardier on
 **Editor holds** (lock taken and released each time; the Editor back on `9319026b` and compiled; stage and motion banks unchanged each time):
 - Hold 1 (03:06–03:18): the showcase at High (1/30 s) and Low (0.5 s), and the Locker.
 - Hold 2 (03:22–03:25): the Locker with DEV access again. Hold 1's shot had opened without `dmhold` and missed the panel.
-- Hold 3 (the showcase with its set bank): queued behind other agents' holds when this entry was written. The bank path is covered so far by the managed checks' fake bank only.
+- Hold 3 (the showcase with its set bank): queued behind other agents' holds from 03:26, then stopped at 04:06 without taking the lock. Its whole process tree was stopped, and nothing in the Editor checkout was touched. The bank path is shown working in the Editor by I5's own hold (its set bank drawn, ~04:00) and is driven by the managed checks' fake bank. The showcase bank (`F:/Chip Arena Development/scratch/intro-framework/ChipArenaIntroShowcase.bytes`) was not filmed.
 
 **Clips** (`F:/Chip Arena Development/scratch/intro-framework/clips/`):
 - `showcase-high-realtime.mp4` (8 s, 492 KB);
