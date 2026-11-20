@@ -1,3 +1,66 @@
+## 2026-11-20 — Claude (I5): the magic weapons' new intros: Forgeborn, Still Tide, Strike Point, Black Sun (owner request; presentation only)
+Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!"
+
+**Branch and status:** `claude/intro-elemental`, from shared `8d56f015`, with the framework `claude/intro-framework` merged up to its final `2da9c7fc`. Pushed, not merged. Design and as-built notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:** four v2 weapon intros, each registered on its weapon's slot. They replace Cinder Crown, Tidal Serpent, Thunderstep and Eventide Gate (archived by the framework, code kept).
+- **Forgeborn** (fire, 7.8 s, name at 6.0): in a caldera forge the lava cracks light in from the rim and a fire column erupts from the dais. The pilot walks out of it, the fire gathers into a crown of flame on its head, and the staff sends fire racing across the floor.
+- **Still Tide** (water, 8.2 s, name at 6.4): in a moonlit drowned hall the tide rises into a wave behind the pilot. At a sweep of the staff the wave parts round the pilot, then freezes mid-curl at a tap, the spray hanging as glints.
+- **Strike Point** (lightning, 7.2 s, name at 5.5): on a storm summit six spires charge, and the bolt comes down as the pilot, landing white-hot in a crouch. The pilot then calls a second bolt into the staff and sends it to every spire.
+- **Black Sun** (darkness, 8.4 s, name at 6.6): on an obsidian plain the moon covers the sun and every shadow pours into a void. The pilot steps out of it with one eye of light, the dark spreading like wings.
+
+How it is built:
+- **Core** `NativeIntroElemental.cs` (one family file).
+  - A keyed rig with the staff placed by arm IK, plus the model's own staff casts from the motion bank (`INativeIntroBody` windows, never back to the keys).
+  - The crown, the eye and the breath follow the drawn head (`INativeIntroHead`).
+  - Authored camera rigs with speed ramps. Lights and effects stay inside the v2 budgets. Every streak over 1 m is laid on its head's camera plane; one behind the lens is not drawn.
+  - Fractal bolts, name cards (Rise, Wipe, Slam, Assemble) and cue timelines.
+- **Sets:** `tools/intros/elemental_set.py` (Blender and the stage kit). The local bank `ChipArenaIntroElemental.bytes` (6,065,215 bytes) is never committed; without it the intros play on the framework's void.
+- **Sounds:**
+  - **Requested:** 31 sounds in `docs/audio/intros/I5.json`, with their keys on the I5 slot of `Core/NativeIntroSoundKeys.cs`.
+  - **Until they are generated:** each cue plays a one-shot key the installed bank fills (per the 2026-11-16 audio inventory), and a built-in clip if the bank is missing.
+  - **Fallback fix:** seven of the first fallbacks were loop keys or empty keys, which `BankPlay` skips, so they were swapped (`0b71051d`).
+- **Checks:** `Tests/IntroElementalChecks.cs` (`--intro-elemental`, one Program line).
+
+**Systems touched:** the new Core file and its checks; one registry line per intro (`NativeIntroCatalog`); the I5 sound-key slot; the sound rows; the set script; the docs. No runtime, wire, save or rule file.
+
+**Checks:**
+- `--intros-v2`: PASS (2699 checks; every registered intro: determinism, no allocation, budgets, Reduced effects, streaks, cues, sets). Run at the final code.
+- `--intro-elemental`: PASS (6697 checks), at the final code.
+- `--voxel`: PASS (no new ratchet counts), at the final code.
+- Full CoreTests the relgen5 way: PASS at `7f3f05bf` (1081 PASS lines, exit 0). The later commits change only fallback keys, one check, the eye's height and docs; the three runs above cover them.
+- `check_unity_compile.py`: PASS at `b83501d8` (Unity.InputSystem, ChipArena.Player, Assembly-CSharp, Assembly-CSharp-Editor; exit 0).
+- `git diff --check`: clean.
+
+Editor (two holds, both under 25 min):
+- **Hold 1** (03:25-03:49) filmed the first cut. Fixes came from it:
+  - Forgeborn: a darker caldera lit by its lava, the crown on the head, thin fire on the slam, the falls on the rim.
+  - Still Tide: a wave that reads as one wall with a curl.
+  - Strike Point: fractal bolts.
+  - All four: the staff beside the body, and low gloss on the sets.
+- **Hold 2** (04:21-04:43) filmed the final cut at High (1/30 s) and at Low (every 0.5 s), and the archived signatures on `8d56f015`. The Editor went back to `9319026b`, with its banks unchanged.
+- **After hold 2:** its frames showed Black Sun's eye on the collar, and its close-up framing the chest. The drawn head is the game joint's frame, which sits about 20 cm under the model's head bone. The eye and the close-up are now raised .16 m, measured from those frames (`b83501d8`). This has not been captured yet.
+- **Clips and strips:** `F:/Chip Arena Development/scratch/intro-elemental/clips/`. The captures have no sound; the cue clock is checked by the managed tests.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; these are intro presentations only. The match reads each intro's Duration and NameAt from the v2 registry, so these four weapons' intro phases run 7.2-8.4 s instead of 4.8 s, as the v2 contract defines.
+
+**Voxel dependency:** the keyed `CapturedRig` pose is the anchors' source and the Classic pose, as the v2 contract sets it. No new voxel reads; the ratchet is unchanged.
+
+**Risks:**
+- **Black Sun's raised eye** has not been seen in the Editor.
+- **Look, to review in the clips:**
+  - Still Tide's wave reads as a smooth wall more than a curling crest, and the frozen halves look lavender and matte.
+  - Forgeborn's column reads as much as smoke as fire.
+  - The name card sits over the pilot's legs in the hero frames.
+- **Reflections:** set finishes take the arena's reflection probe, so their gloss is held at .35 or less.
+- **The water:** the wave is two set pieces lifted, swung and swapped for their frozen form, not a fluid.
+- **Sound:** not heard. The generated sounds wait for the integrator's compiled queue job and a builder run.
+
+**Next:**
+- The integrator reviews the clips and captures Black Sun's eye beat once.
+- Compile the sound rows into the queue job (`tools/intros/compile_sound_requests.py`).
+- Pack `ChipArenaIntroElemental.bytes` (+ meta) into the Drive zip from `F:/Chip Arena Development/scratch/intro-elemental/bank/`.
+
 ## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
 
 Owner: "I need to redo essentially all of them (except top dog and Bombardier ones ...) ... "archive" them, so theyre no longer visible in the customization screen ... great animations and effects, non-block based background and designs ... great camera work". I0, the framework for the five intro authors (I1 dev, I2 generic, I3 melee, I4 ranged, I5 elemental).
