@@ -57,6 +57,8 @@ internal static class LandmarkReadChecks
                 else if (first != fixedPart) throw new Exception(plan.Name + ": a new deal moved a fixed landmark");
                 foreach (var c in a.Covers)
                     if (!map.blocks.Any(x => x.id == c)) throw new Exception(plan.Name + ": covers a missing block " + c);
+                var fixedCovers = NativeMeridianLandmarks.FixedCovers(plan.Seed, map);
+                if (!fixedCovers.SetEquals(a.Covers)) throw new Exception(plan.Name + ": FixedCovers differs from a deal's covers");
                 Exits(plan, a, solids, map);
                 Court(plan, a, solids, doors);
                 Fronts(plan, a, deal);

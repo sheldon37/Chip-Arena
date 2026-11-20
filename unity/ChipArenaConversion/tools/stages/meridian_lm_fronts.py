@@ -114,11 +114,11 @@ def bay(g, T, E, st, plain):
         bx(g, T, 0.0, w, .6, 1.4, -.05, -.02, F['tile-green'], bevel=.005, skip=('+z',))
         if not plain:
             g.face(((.75, 11.3, -.03), (1.75, 11.3, -.03), (1.75, 13.4, -.03), (.75, 13.4, -.03)), glow(WARM, 1.0), (0, 0, -1))
-        lk.cornice(g, T, H, 0.0, w, -.02, F['stone-dress'], s=.5)
+        lk.cornice(g, T, H - .015, 0.0, w, -.02, F['stone-dress'], s=.5)
     elif fam == 'ironworks':
         for y in (2.0, 11.6, 14.0):
             bx(g, T, 0.0, w, y, y + .3, -.06, -.02, F['brick-blue'], bevel=.005, skip=('+z',))
-        lk.cornice(g, T, H, 0.0, w, -.02, F['brick-blue'], s=.5)
+        lk.cornice(g, T, H - .015, 0.0, w, -.02, F['brick-blue'], s=.5)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------

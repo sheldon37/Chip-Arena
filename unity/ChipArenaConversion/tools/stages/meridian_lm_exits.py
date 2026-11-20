@@ -135,7 +135,8 @@ def belvedere_hotel(t, S):
             for yy in (1.0, 1.9, 2.8):
                 bx(sub, T, 0.0, w, yy, yy + .04, -.05, -.02, F['stucco-joint'], bevel=0, cell=0)
         lk.string_course(sub, T, 3.9, 0.0, w, -.02, F['stone-civic'])
-        lk.cornice(sub, T, y1, 0.0, w, -.02, F['stone-civic'], s=1.0)
+        if side != 's':          # the south face stands against its neighbours: nothing over their roofs
+            lk.cornice(sub, T, y1, 0.0, w, -.02, F['stone-civic'], s=1.0)
         bx(sub, T, 0.0, w, y0, y0 + .6, -.06, -.02, F['paint-green'], bevel=.01, skip=('+z',))
     lk.skin(g, box, face)
     lk.roof_cap(g, T, box, F['tar-felt'])

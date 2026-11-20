@@ -385,7 +385,7 @@ def water_tower(t, S):
     yt = y1 - 4.4
 
     def face(sub, side, w):
-        lk.facade(sub, T, -.02, 0.0, w, y0, yt, F['brick-stock'], [(w / 2 - .7, w / 2 + .7, y0, y0 + 2.4, None, .5)] if side == 'e' else [],
+        lk.facade(sub, T, -.02, 0.0, w, y0, yt, F['brick-stock'], [(w / 2 - .7, w / 2 + .7, y0 + .03, y0 + 2.4, None, .5)] if side == 'e' else [],
                   f_frame=F['paint-black'])
         # blind arches in the base (relief 0.15)
         if T.detail:

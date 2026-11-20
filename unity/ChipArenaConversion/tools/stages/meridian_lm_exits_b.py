@@ -153,8 +153,14 @@ def causeway_lamps(t, S):
             for p, q in zip(pts[:-1], pts[1:]):
                 mk.rod(g, p, q, .06, iron, T.small, caps=False)
             lk.lantern(g, T, pts[-1][0], pts[-1][1] - .02, z, s=.75, hang=.15)
-    # the water gate in the far bank (its face at z -85, the stair slot x -3..3 climbing from -7)
-    zf = S['terrace-7'][4]
+    # the water gate in the far bank: its face at z -85 toward the camp, the stair slot x -3..3 climbing south from -7 (built
+    # facing -z at z 0 and turned to face north)
+    lk.placed(g, lambda s: _water_gate(s, T, S), 180.0, (0.0, 0.0, S['terrace-7'][5]))
+    return g
+
+
+def _water_gate(g, T, S):
+    zf = 0.0
     stone, rust = F['stone-dress'], F['granite']
     xw, xe = S['terrace-7'][1], S['terrace-8'][0]
     y0 = -7.0 + 3.15
@@ -182,7 +188,6 @@ def causeway_lamps(t, S):
             y += .6
             k += 1
     lk.lantern(g, T, 0.0, y0 + 2.15, zf + .3, s=1.0, hang=.3)
-    return g
 
 
 @builder('mill-lucam')
@@ -339,10 +344,16 @@ def undercroft_crypt(t, S):
     for i in range(int((arc[2] - (y + 1.75)) / .3)):
         a = y + 1.75 + i * .3
         mk.rod(g, (x, a, z), (x, a + .26, z), .028, iron, 4, caps=False)
+    # the portal on the ramp's mouth (the lid's north edge at z -71, toward the arcade and the camp): built facing -z at z 0
     lid = S['undercroft-ramp-lid']
-    zf = lid[4]
+    lk.placed(g, lambda s: _crypt_portal(s, T, lid), 180.0, (0.0, 0.0, lid[5]))
+    return g
+
+
+def _crypt_portal(g, T, lid):
+    zf = 0.0
     stone = F['stone-dress']
-    xl, xr = lid[0] + 1.0, lid[1] - 1.0
+    xl, xr = -(lid[1] - 1.0), -(lid[0] + 1.0)
     bx(g, T, xl - .5, xr + .5, -1.0, 0.0, zf - .12, zf, stone, bevel=.02, skip=('+z',))
     mk.text_stroke(g, 'THE UNDERCROFT', (xl + xr) / 2, -.75, zf - .12, .07, F['stone-civic'], T, style='cast' if T.detail else 'flat', w=.06, d=.03)
     mk.mould(g, T, [(0, 0), (.12, .04), (.15, .12), (0, .16)], [(xl - .45, zf), (xr + .45, zf)], stone, y=-1.12, cell=0)
@@ -350,9 +361,8 @@ def undercroft_crypt(t, S):
         for dz in (-.3, -.9):
             cxs = xw + sgn * .12
             mk.rod(g, (cxs, -4.6, zf + dz), (cxs, -1.05, zf + dz), .1, stone, T.small + 2)
-            sk.lathe(g, [(.16, 0), (.16, .12), (.1, .22)], (cxs, -1.3, zf + dz), stone, T.small + 2, smooth=False)
+            sk.lathe(g, [(.12, 0), (.12, .12), (.1, .22)], (cxs, -1.3, zf + dz), stone, T.small + 2, smooth=False)
         lk.lantern(g, T, xw + sgn * .17, -.15, zf - .25, s=.45, hang=0.0)
-    return g
 
 
 @builder('leads-cupola')

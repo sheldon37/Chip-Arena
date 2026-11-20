@@ -116,7 +116,7 @@ namespace ChipArena.UnityConversion
             // The Navigation: a drained canal round Mill Island
             X(784, 0, "iron-bridge-arches", "The Iron Bridge", "twin lattice bowstring arches over the bridge", new[] { new Read(0, 9.2f, 65f, 8f) }),
             X(784, 1, "lock-gates", "The Lock ramp", "the open lock gates, the lock signal and the keeper's lamp", new[] { new Read(64f, 5.6f, -25.6f, 1.6f) }, "lock-cottage"),
-            X(784, 2, "causeway-lamps", "The Low Causeway", "swan-neck lamps down the causeway and its water gate", new[] { new Read(0, -3.3f, -61f, 1.2f), new Read(0, -1.3f, -85.3f, 5f) }),
+            X(784, 2, "causeway-lamps", "The Low Causeway", "swan-neck lamps down the causeway and its water gate", new[] { new Read(0, -3.3f, -61f, 1.2f), new Read(0, -1.3f, -84.7f, 5f) }),
             X(784, 3, "mill-lucam", "The covered mill bridge", "the mill's lucam and sack hoist", new[] { new Read(-50.6f, 10.4f, -14f, 4f) }, "mill"),
             // The Arcades: a covered market, its roofs and its undercroft
             X(1058, 0, "galleria-fan", "The Galleria", "the Galleria's glass fan and its globe lanterns", new[] { new Read(0, 6.3f, 66f, 1.1f), new Read(0, 6.4f, 78f, 1.1f) }),
@@ -271,6 +271,22 @@ namespace ChipArena.UnityConversion
             return layout;
         }
 
+        /// <summary>The blocks a layout's landmarks always draw in place of, whatever the deal: the exits' hero lots, the court and
+        /// the three halls (every dealt instance's front covers its hall). The city's own drawer leaves these to the landmarks.</summary>
+        public static HashSet<string> FixedCovers(uint plan, ContentMap map)
+        {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            if (map?.blocks == null) return set;
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var b in map.blocks) if (b?.id != null) ids.Add(b.id);
+            foreach (var e in Exits) if (e.Plan == plan) foreach (var c in e.Covers) if (ids.Contains(c)) set.Add(c);
+            foreach (var c in CourtBlocks) if (ids.Contains(c)) set.Add(c);
+            foreach (var id in ids)
+                if (id == "hall-a" || id == "hall-b" || id == "hall-c" || id.StartsWith("hall-a-", StringComparison.Ordinal) ||
+                    id.StartsWith("hall-b-", StringComparison.Ordinal) || id.StartsWith("hall-c-", StringComparison.Ordinal)) set.Add(id);
+            return set;
+        }
+
         /// <summary>The court's blocks the court's model draws in place of.</summary>
         public static readonly string[] CourtBlocks = { "city-hall", "city-hall-tower", "court-wall-S-a", "court-wall-S-b", "court-wall-N",
             "court-wall-W", "court-wall-E", "court-gate-lintel", "court-gate-pier-a", "court-gate-pier-b" };
@@ -323,10 +339,7 @@ namespace ChipArena.UnityConversion
             }
             // the roof (a unit square stretched over the hall's top) and the mouth's lining (2 m lengths through the hall)
             Add("roof", h.Across, into, At(-half, 0), h.Width, h.Depth);
-            {
-                int n = Math.Max(1, (int)Math.Round(h.Depth / Lining)); float s = h.Depth / (n * Lining);
-                for (int i = 0; i < n; i++) Add("lining", h.Across, into, At(0, i * Lining * s), 1, s);
-            }
+            Add("lining", h.Across, into, At(0, 0), 1, h.Depth / Lining);
             // the airlock's leaves, posed by PoseOf
             for (int side = -1; side <= 1; side += 2)
             {
