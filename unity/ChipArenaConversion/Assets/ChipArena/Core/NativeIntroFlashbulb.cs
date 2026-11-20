@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
         {
             var l=new System.Collections.Generic.List<NativeIntroCue>
             {
-                new NativeIntroCue(0,"intro2.flashbulb.crowd","ui.round-won","win",.35f),
+                new NativeIntroCue(0,"intro2.flashbulb.crowd","ui.round-won","win",.25f),
                 new NativeIntroCue(BulbsAt,"intro2.flashbulb.bulbs","ui.toggle","ui",.5f),
                 new NativeIntroCue(DoorsAt,"intro2.flashbulb.doors","structure.creak","wood",.55f),
                 new NativeIntroCue(WalkAt+.1f,"intro2.flashbulb.cheer","ui.round-won","win",.45f),
@@ -225,7 +225,7 @@ namespace ChipArena.UnityConversion
                 new NativeIntroCue(Photos[1],"intro2.flashbulb.photo","blast.transient","ui",.85f,1.04f),
                 new NativeIntroCue(Photos[2],"intro2.flashbulb.photo","blast.transient","ui",.85f,.96f),
                 new NativeIntroCue(StormAt,"intro2.flashbulb.burst","gun.dryfire","reload-end",.7f),
-                new NativeIntroCue(StormAt+.05f,"intro2.flashbulb.confetti","blast.fireworks","win",.5f),
+                new NativeIntroCue(StormAt+.05f,"intro2.flashbulb.confetti","death.style.confetti","win",.5f),
                 new NativeIntroCue(CardAt,"intro2.flashbulb.name","chip.critical","install",.75f),
             };
             // A shutter for every third photographer's flash through the walk (the rest are the crowd's bed).
