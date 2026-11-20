@@ -24,6 +24,8 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 BelfryU=new Vector3(-2.4f,0,10.8f);private const float HangY=6.32f,BellH=1.1f,PlinthY=.9f;
         /// <summary>The bell's hang point and where it comes to rest (source frame).</summary>
         public static readonly Vector3 Hang=S(BelfryU.X,HangY,BelfryU.Z),RestAt=L(1.15f,.0f,.95f);
+        /// <summary>The blow: the drawn pistol's muzzle above the wrist when held upright (m, from the Editor captures).</summary>
+        private const float BlowReach=.3f;
         private static readonly Vector3 Sun=Vector3.Normalize(SDir(0,.05f,1)),Gold=NativeEntranceFx.Hex(0xffc070),Ember=NativeEntranceFx.Hex(0xff8a3c),Dust=NativeEntranceFx.Hex(0xb08a62),Rose=NativeEntranceFx.Hex(0xff6a88);
         private static readonly Vector3 WindmillHub=S(-18.5f,9.2f+.28f,22.0f+.42f),Saloon=S(-(10f-.14f)+.04f,.42f,-7.1f+.56f);
         private const int Shingles=26,Planks=8,Splinters=18;
@@ -88,10 +90,11 @@ namespace ChipArena.UnityConversion
         {
             float w=NativeEntranceMath.Ramp(t,BlowFrom,BlowFrom+.3f)*(1-NativeEntranceMath.Ramp(t,BlowTo,Rest));if(w<=.001f)return;
             var fwd=Vector3.Transform(Vector3.UnitZ,rotation);var left=Vector3.Cross(Vector3.UnitY,fwd);pose.World();
-            // The head joint is the skull's pivot, ModelHeadLift below the eyes: the muzzle goes just in front of the mouth and a little to
-            // the right (the barrel upright beside the visor, never across it), so the wrist sits a barrel's length below, by the chest.
-            var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);var barrel=Vector3.Normalize(Vector3.UnitY+fwd*.08f+left*.12f);
-            var muzzle=head+new Vector3(0,ModelHeadLift-.1f,0)+fwd*.3f-left*.07f;var at=muzzle-barrel*NativeWeaponDressing.MuzzleZ("pistol");
+            // The head joint is the skull's pivot, ModelHeadLift below the eyes: the muzzle goes in front of the mouth's height, just right of
+            // the visor (the barrel upright beside it, never across it). The wrist sits Reach below it: the drawn pistol's muzzle rides about
+            // 0.3 m above the wrist when held upright (measured in the Editor captures; a deeper target folded the arm and turned the gun down).
+            var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);var barrel=Vector3.Normalize(Vector3.UnitY+fwd*.1f);
+            var muzzle=head+new Vector3(0,ModelHeadLift-.1f,0)+fwd*.28f-left*.15f;var at=muzzle-barrel*BlowReach;
             NativeEntrancePose.Reach(pose,root,rotation,false,at,Look(barrel,-fwd),w);
         }
         public override bool Clip(float t,out string clip,out float time)
