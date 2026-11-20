@@ -119,7 +119,7 @@ namespace ChipArena.UnityConversion
             IntroV2Set(script,t,camera);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
-            introBodyActor=-1;introBody=null;
+            introBodyActor=-1;introBody=null;introV2Actor=-1;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }
