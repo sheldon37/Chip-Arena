@@ -91,12 +91,13 @@ namespace ChipArena.UnityConversion
         /// onto `stance` (per foot: ankle x, z, yaw and lift above the floor; world), so a crouch bends the knees
         /// instead of sinking the feet. A living hold (breath, weight shift, head drift) grows in from `idleFrom`.
         /// </summary>
-        public static void Keyed(NativeEntranceKeys k,float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation,ReadOnlySpan<float> stance,float idleFrom=3.2f,Func<float,Vector3,Vector3> rootAt=null,bool hinged=false)
+        public static void Keyed(NativeEntranceKeys k,float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation,ReadOnlySpan<float> stance,float idleFrom=3.2f,Func<float,Vector3,Vector3> rootAt=null,bool hinged=false,float drop=1)
         {
+            // (`drop`: the body drop's scale: 1/NativeIntroFeet.LegScale where the keys' drops are the drawn model's metres, ModelFeet)
             pose.Reset();hinged|=k.Hinged;
             root=new Vector3(k.At(NativeEntranceKeys.RootX,t),k.At(NativeEntranceKeys.RootY,t),k.At(NativeEntranceKeys.RootZ,t));if(rootAt!=null)root=rootAt(t,root);
             rotation=Quaternion.CreateFromYawPitchRoll(k.At(NativeEntranceKeys.Yaw,t),k.At(NativeEntranceKeys.Pitch,t),k.At(NativeEntranceKeys.Roll,t));
-            pose.Position[CapturedRig.Body]=new Vector3(0,k.At(NativeEntranceKeys.BodyY,t),0);
+            pose.Position[CapturedRig.Body]=new Vector3(0,k.At(NativeEntranceKeys.BodyY,t)*drop,0);
             for(int j=0;j<NativeEntranceKeys.Bones.Length;j++)
             {
                 int c=NativeEntranceKeys.Joints+j*3,bone=NativeEntranceKeys.Bones[j];

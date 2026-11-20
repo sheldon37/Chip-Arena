@@ -30,14 +30,26 @@ namespace ChipArena.UnityConversion
         // (Model-native: the hands are the drawn model's joints, VisualJointFrame; without a model the keyed pose's anchors. No rig reads.)
         /// <summary>The v2 intro's body being bound this frame (VisualIntroPose) and how far its free arms relax (0: as keyed).</summary>
         private VisualBody introKeyedBody;private float introKeyedRelax;
+        /// <summary>This frame's grip IK of the v2 weapon intro being bound (Core NativeIntroGrip: docs/INTROS-V2.md 9a).</summary>
+        private bool introGripOn;private NativeIntroGripAt introGripAt;private string introGripSpec;
+        /// <summary>From VisualBodyBind, on the v2 intro's body: the drawn off fist on the drawn weapon's support point (the main hand's hold
+        /// from the intro's weapon, the support bound whatever the hands' distance), when the intro has its grip on this frame.</summary>
+        private void IntroV2Grip(ref NativeVisualRig.Grasp grasp,CapturedRig.Pose pose,VisualWeapon held)
+        {
+            if(!introGripOn)return;NativeIntroGrip.Grasp(introGripSpec,introGripAt,pose,ref grasp);
+            // (the drawn weapon's own measured support point and stock, as the match takes them: VisualWeaponGrasp)
+            if(held!=null)VisualWeaponGrasp(ref grasp,held);
+        }
         private INativeIntroBody introBody;private int introBodyActor=-1,introV2Actor=-1,introModelFrame=-1;private float introBodyClock;private CapturedAnimation.Player introModel;
         /// <summary>Before the intro body is posed: a v2 intro's model clip for this frame, and a weapon intro's weapon in the model's hands.</summary>
         private void IntroV2BodyBegin(NativeEntranceScript script,Actor actor,string style,float t)
         {
-            introModel=null;introV2Actor=-1;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
+            introModel=null;introV2Actor=-1;introGripOn=false;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
             // (the model's free arms as keyed, unless the intro asks for the match's relax: Core NativeIntroV2Script.ArmsRelax)
             introKeyedRelax=script is NativeIntroV2Script keyed?Mathf.Clamp01(keyed.ArmsRelax(t)):0;
             var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
+            // (its grip IK, when it has one: Core NativeIntroGrip; read in VisualBodyBind through IntroV2Grip)
+            if(spec!=null&&script is INativeIntroGrip grip&&grip.GripAt(t,out introGripAt)&&introGripAt.Weight>.001f){introGripOn=true;introGripSpec=spec;}
             if(script is INativeIntroBody body&&!(script is NativeBladeIntro)){introBody=body;introBodyActor=actor.Id;introBodyClock=t;}
         }
         /// <summary>From VisualIntroPose, on the drawn model: notes the v2 intro's model for its hands, and plays the intro's clip on it
@@ -130,14 +142,14 @@ namespace ChipArena.UnityConversion
                     bool standard=NativeWeaponSkins.Index(introSkins,spec)!=NativeWeaponSkins.PrototypeIndex;
                     for(int side=0;side<2;side++)
                     {
-                        bool left=side==0;if(!NativeIntroWeapon.Tip(spec,left,out var tip))continue;NativeIntroWeapon.Muzzle(spec,left,out var muzzle);
+                        bool left=side==0;if(!NativeIntroWeapon.Tip(spec,left,out var tip))continue;NativeIntroWeapon.Muzzle(spec,left,out var muzzle);NativeIntroWeapon.Grip(spec,left,out var grip);
                         int hb=left?CapturedRig.LHand:CapturedRig.RHand;Matrix4x4 w;
                         if(introWeaponBow){if(!left)continue;w=bowHand;}
                         else if(bladeIntro!=null)w=BladeIntroFrame(hb,introGrip);
                         else if(introHand!=null)w=introHand(hb);else continue;
                         // (a gun's flash leaves the drawn skin's crown, as the match's does)
                         if(NativeWeaponDressing.Gun(spec))muzzle=new System.Numerics.Vector3(0,0,NativeMuzzleFx.Crown(spec,standard));
-                        Put(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,w.MultiplyPoint3x4(Vector3.zero));
+                        Put(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(grip))));
                         Put(left?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip))));
                         Put(left?NativeEntranceAnchor.LeftMuzzle:NativeEntranceAnchor.RightMuzzle,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(muzzle))));
                         if(!left){var bore=w.MultiplyVector(Vector3.forward);if(bore.sqrMagnitude>1e-8f)introDrawnBore=bore.normalized;}

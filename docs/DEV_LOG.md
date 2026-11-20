@@ -85,6 +85,110 @@ Low draws without tone mapping, so a warm glow over a warm finish clips (fixed w
 Flashbulb is silent until its generated take lands. Next: the integrator merges the branch with the framework and packs the bank
 into the Drive zip; the generated sounds come with the builder's next audio run.
 
+## 2026-11-20 — Claude (I0c, I0d): intros v2 framework: the keyed pose on the model, model-aware anchors, the intro's own light, the weapon grip IK, the feet on the model and the pose-craft guide (owner report; presentation only)
+
+Owner (2026-11-20): "weird orientation things ... (notice flash bulbs legs when they walk through?)"; "The effects dont line up with
+either the weapon, or body. ... Like slipstream, the slide effect is away from the foot."; on One Breath: "arms looked really odd?".
+
+**Branch and status:** `claude/intro-framework` (from shared `8d56f015`). I0c pushed `7c0f3783` to `3df01f3a`, and its run was
+interrupted. I0d's work is `c5c284a5` (the code) and the docs commit after it, which carries this entry. Pushed, not merged.
+
+**I0c (already pushed; summarised here because its run stopped before its log entry):**
+- **Model-aware anchors** (head, eyes, visor, feet, toes, knees, pelvis, chest, wrists, palms, the weapon's grip, tip and muzzle).
+- **The intro owns its light:** no arena practicals, haze, light volume or reflection.
+- **Dressed ghosts,** and the match's map hidden during an intro.
+- **Arms drawn as keyed** (the match's free-arm relax re-solved them by up to 148°; `ArmsRelax(t)` opts back in).
+- **Hinged planted legs.**
+- **`Tests/IntroPoseChecks`:** bone for bone on the model, and anatomical limits (`--intro-limits`).
+
+**I0d:**
+- **Slipstream's slide sparks, measured** on the model offline. The managed bind was validated against I0c's Editor probe within
+  2-3 cm. At the clip's build, distances from the drawn ankle:
+
+  | Emitter | Before (keyed anchors), mean / max | After (model-aware), mean / max |
+  | --- | --- | --- |
+  | right-foot glow | 0.262 / 0.322 m | 0 m |
+  | newest foot spark burst | 0.270 / 0.320 m | 0.027 / 0.079 m |
+
+  The look of sparks "away" from the body is the hand's glow: it is drawn on the floor 0.43-0.68 m under a dragging hand that is
+  keyed in the air.
+- **The weapon grip IK** (Core `NativeIntroGrip`; opt-in `INativeIntroGrip.GripAt`; docs/INTROS-V2.md 9a):
+  - **On the keyed pose:** the off arm is solved onto the weapon in the other hand, in the match's own conventions, with the elbow
+    toward a chest-frame pole and the roll in the forearm.
+  - **On the drawn model:** the off fist closes on the drawn weapon's support point whatever the hands' distance. The left hand
+    uses the match's support grip (Bound). The right hand uses a new mirror for the staffs and the bow's string
+    (`NativeVisualRig.Grasp.RightSupport`). `SupportPole` steers the drawn elbow, and `Shoulder` seats a long gun's stock. The
+    match never sets the new fields.
+  - **One Breath, drawn offline:** the left fist was 0.11-0.21 m off the handguard (the support was at 0.29-0.39 weight, since its
+    keyed wrists were 0.38 m apart). With the grip it holds the handguard at 1.0 weight, slid back 0.14 m.
+- **The feet on the model** (Core `NativeIntroFeet`; opt-in `NativeProceduralEntrance.ModelFeet`; docs 9c). This is the framework
+  form of I2b's generic base (`claude/intro-generic` `a7c8cdec`). The drawn legs are 1.7 times the keyed ones on the shared root,
+  so a keyed planted foot slid the drawn one back at about 1 m/s, and drops sank the drawn hips 1.7 times as deep. With
+  `ModelFeet`, stances, steps and drops are the model's own, and `ModelKneel` puts the drawn knee on the floor.
+- **The canonical poses** (Core `NativeIntroPoses`, `Tests/IntroPoseGallery`; docs 9b): walk, run, kneel, crouch, landing, two hero
+  stances, the sword, greatsword and Katana guards, the rifle, machine-gun and pistol aims, the bow draw, the staff hold and the
+  shield brace. Each is clean on the model.
+- **The pose-craft guide** (docs/INTROS-V2.md 9b): how the model draws the keys, how to read `--intro-limits`, and the mistakes
+  found so far.
+- **The checks:**
+  - `--intro-limits` reads a weapon hand in its weapon's convention (measured on the match's own holds).
+  - `IntroPoseChecks` checks the drawn feet (no slide on the floor, nothing through it) and the drawn grip. The guide's poses are
+    always checked; an intro's findings are listed and fail only under `--intro-limits`.
+  - `Tests/IntroAnchorChecks`: every grip, tip and muzzle anchor of the fifteen weapons sits on the drawn weapon, in both skins.
+    The new sockets are the bow's arrow rest (muzzle) and upper limb tip, the Glaive's leading fang, and the shield's grip bar.
+    The clip-free Katana lies along its frame's +z, like every weapon.
+
+**Systems touched:**
+- Core: `NativeIntroGrip`, `NativeIntroFeet` and `NativeIntroPoses` (new); `NativeVisualRig` (the right support and the support
+  pole); `NativeEntranceProcedural` (`ModelFeet`, `GripIK`); `NativeEntrancePose` (the drop scale); `NativeIntroV2` (sockets);
+  `NativeEntranceDirector` (grip sockets).
+- Runtime: `NativeIntroV2Presentation` (the drawn grip, the grip anchors) and one line in `NativeVisualBodyPresentation`.
+- Tests: `IntroPoseChecks`, `IntroPoseGallery` (new), `IntroAnchorChecks` (new), `IntroV2Checks`.
+- Docs: `docs/INTROS-V2.md` (2a, 2b, 7, 9a-9c).
+
+**Checks (actual, at `c5c284a5`):**
+- `--intros-v2`: exit 0.
+  - intro poses: 359 checks. The one registered intro and the 16 guide poses are drawn bone for bone on the model. The drawn feet
+    slide at most 0.29 m/s and sink at most 1 cm into the floor.
+  - intro anchors: 187 checks on 26 weapon models. The worst is 3.9 cm (the darkness staff's tip in the Standard skin).
+  - intros v2: 1665 checks.
+- `--intro-limits`: exit 0. The showcase has no findings, and all 16 guide poses are clean.
+- Full CoreTests the relgen5 way (a throwaway LF worktree with `expedition_path.patch` and the released stage banks): exit 0,
+  1082 PASS lines in 981 s. The voxel ratchet passes.
+- Unity compile check (`tools/check_unity_compile.py`, 6000.3.24f1, no download), on this commit's tree: PASS Assembly-CSharp and
+  Assembly-CSharp-Editor.
+- `git diff --check` on the pushed range: clean.
+- **Batch 2, merged offline with every intro branch** (a throwaway merge, never pushed): `--intro-limits` lists 197 findings in
+  17 intros, so it fails as designed. Every batch-2 intro has a sliding foot. The worst sinks are a calf 27 cm into the floor
+  (lightning, 2.57 s), a ball 18 cm (greatsword) and a calf 13 cm (rifle, 3.36 s).
+
+**Editor verification:** one hold, from 12:51, on a throwaway merge, `58f331cf` (never pushed): this code plus the ranged and
+melee branches, with One Breath on the grip IK and Still Rain's Katana on +z. The adoption diff is kept locally, outside the repo,
+at `scratch/intro-framework/i0d/hold-58f331cf-adoption.patch`.
+- **One Breath through the intro camera (1.3-7.6 s):** the left hand now closes on the handguard (before, it hung limp beside it). At
+  the end, both hands carry the rifle (before, the arms were crossed). At 3.1 s the left arm crosses the face, because One Breath's
+  torso is square to the drone; batch 2 should blade it like `RifleAim`.
+- **The hold stopped early:** F: filled (162 MB free), and after 12:57 the Editor logged nothing more. Its next refresh never
+  compiled, so the side, three-quarter and Katana captures were not taken. When I stopped the hold, its exit released the lock
+  (about 13:13). I took the lock back at 13:13:31 and moved the Editor's checkout back to `9319026b`. The banks are as released (all
+  14 stage banks; the motion bank is 6136627 bytes, sha 37ec44d2). The lock was released at 13:17:49, before the Editor had compiled
+  the move: its refresh request was still waiting.
+- **Not verified in the Editor:** the Katana's +z, the grip from the side, and the feet. They were checked offline only.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Intros are presentation, and the
+match's binding is unchanged: its new fields default to off.
+
+**Voxel dependency:** the keyed rig (`CapturedRig`) is still the source of an intro's pose, as before. The new code converts it to
+the model (the feet, the grip); it adds no voxel body, model or debris.
+
+**Risks and next step:**
+- **The feet check and the generic intros:** `NativeIntroGenericScript` should add one line,
+  `public override bool FeetSliding(float t)=>Sliding(t);`. Without it, the framework check lists Slipstream's knee slide,
+  Flashbulb's cut and Cloudbreak's 3.08 s as slides.
+- **Batch 2 must adopt the tools:** `ModelFeet`, the grip, the canonical poses, and every `--intro-limits` finding cleared.
+- **Still Rain's `BladeAxis(+y)` override must go back to +z.**
+- **The model's measured skeleton** (the first outfit's) is what `ModelFeet` and the checks use.
+
 ## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
 
 Owner: "I need to redo essentially all of them (except top dog and Bombardier ones ...) ... "archive" them, so theyre no longer visible in the customization screen ... great animations and effects, non-block based background and designs ... great camera work". I0, the framework for the five intro authors (I1 dev, I2 generic, I3 melee, I4 ranged, I5 elemental).

@@ -165,22 +165,38 @@ namespace ChipArena.UnityConversion
         public static bool Twin(string spec)=>spec=="daggers"||spec==NativeFangs.Spec;
         /// <summary>Whether `spec`'s weapon rides hand `left` (a staff and the bow ride the left, as the match holds them; the twins both).</summary>
         public static bool Holds(string spec,bool left)=>spec!=null&&(Twin(spec)||(NativeLobbyPoses.HeldBone(spec)==CapturedRig.LHand)==left);
-        /// <summary>The weapon's far end in hand `left`'s weapon frame: a blade's point, a gun's or a staff's muzzle; false when that hand holds none.</summary>
+        /// <summary>The weapon's far end in hand `left`'s weapon frame: a blade's point, a gun's or a staff's muzzle, the Glaive's leading fang,
+        /// the bow's upper limb tip; false when that hand holds none (Tests/IntroAnchorChecks: on the drawn weapon).</summary>
         public static bool Tip(string spec,bool left,out Vector3 tip)
         {
             tip=Vector3.Zero;if(!Holds(spec,left))return false;
             if(NativeBladeView.Line(spec,left,out _,out tip))return true;
             if(NativeWeaponDressing.BladeTip(spec,out tip)){if(left)tip.X=-tip.X;return true;}
+            if(NativeBowWire.Is(spec)){tip=new Vector3(NativeBow.ArrowX,NativeBow.TipY,NativeBow.TipZ);return true;}
+            if(spec==NativeGlaive.Spec){tip=GlaiveFang;if(left)tip.X=-tip.X;return true;}
             tip=new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec));return true;
         }
-        /// <summary>Where a shot or a cast leaves the weapon in hand `left` (a gun's muzzle, a staff's head, the bow's arrow line ahead of the
-        /// riser; a blade's tip); false when that hand holds none.</summary>
+        /// <summary>Where a shot or a cast leaves the weapon in hand `left` (a gun's muzzle, a staff's head, the bow's arrow rest on the riser,
+        /// NativeBowModels.Rest; a blade's tip); false when that hand holds none.</summary>
         public static bool Muzzle(string spec,bool left,out Vector3 muzzle)
         {
             muzzle=Vector3.Zero;if(!Holds(spec,left))return false;
-            if(NativeWeaponDressing.Gun(spec)||NativeWeaponDressing.Staff(spec)||NativeBowWire.Is(spec)){muzzle=new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec));return true;}
+            if(NativeBowWire.Is(spec)){muzzle=NativeBowModels.Rest;return true;}
+            if(NativeWeaponDressing.Gun(spec)||NativeWeaponDressing.Staff(spec)){muzzle=new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec));return true;}
             return Tip(spec,left,out muzzle);
         }
+        /// <summary>Where hand `left` holds the weapon in its weapon frame (the grip anchors): the frame's origin, where the match's sweeps read
+        /// a weapon from (a blade's hilt, a gun's receiver over its grip, a staff's shaft), save the shield's, whose frame sits at the forearm
+        /// behind it (its grip bar, NativeVisualRig.ShieldBar), and the bow's (the riser on the arrow's line); false when that hand holds none.</summary>
+        public static bool Grip(string spec,bool left,out Vector3 grip)
+        {
+            // (the bow's on its arrow line over the fist, so the grip-to-muzzle line, WeaponBore, is the arrow's)
+            grip=Vector3.Zero;if(!Holds(spec,left))return false;if(spec=="shield")grip=ShieldBar;else if(NativeBowWire.Is(spec))grip=new Vector3(NativeBow.ArrowX,NativeBow.ArrowY,0);return true;
+        }
+        /// <summary>The Glaive's leading fang, its far end ahead of the ring (the Standard model's point furthest along its frame's +z).</summary>
+        public static readonly Vector3 GlaiveFang=new Vector3(.03f,-.1f,.64f);
+        /// <summary>The shield's grip bar in its weapon frame (NativeVisualRig.ShieldBar's centre).</summary>
+        public static readonly Vector3 ShieldBar=new Vector3(0,.09f,.15f);
     }
 
     /// <summary>
