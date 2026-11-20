@@ -107,7 +107,41 @@ namespace ChipArena.UnityConversion
         void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow);
         /// <summary>A source-model primitive (lit, or glow: unlit, its colour emitted, linear, may exceed 1).</summary>
         void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color);
+        /// <summary>Many copies of bank prop `prop` in one instanced draw (casings, debris, shards): positions and turns, one scale
+        /// and tint for all, no shadows. At most <see cref="NativeIntroSetLimits.Batch"/> a frame in all.</summary>
+        void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> rotation,float scale,Vector3 tint);
     }
+    /// <summary>The set's per-frame budgets (the managed checks hold every intro to them).</summary>
+    public static class NativeIntroSetLimits
+    {
+        /// <summary>Instanced copies a frame (Batch), all props together.</summary>
+        public const int Batch=400;
+        /// <summary>Pieces a frame: a generic, default or weapon intro; the dev intro (High, Low).</summary>
+        public const int Pieces=80,DevPieces=180,DevPiecesLow=90;
+        /// <summary>Effect calls a frame: a generic, default or weapon intro (High and Low); the dev intro (High, Low).</summary>
+        public const int Fx=600,DevFx=1000,DevFxLow=450;
+        /// <summary>The longest intro (s): a generic, default or weapon intro; the dev intro (the coordinator: the owner's song).</summary>
+        public const float Longest=9f,DevLongest=16f;
+    }
+
+    /// <summary>
+    /// Optional for a v2 intro: the model body plays a motion-bank clip (docs/INTROS-V2.md "Motion"): the clip and its time at `t`
+    /// (false: the model follows the keyed rig), and the fade into it. The keyed rig stays the anchors' source (camera, effects) and
+    /// the Classic body's pose. A NativeBladeIntro keeps its own path (this is not read for one).
+    /// </summary>
+    public interface INativeIntroBody
+    {
+        bool Clip(float t,out string clip,out float time);
+        float Fade(float t);
+    }
+    /// <summary>One hand as the runtime hands it in (source frame): the wrist's position and turn, from the model body when it is
+    /// drawn (Model true), else the keyed rig's.</summary>
+    public struct NativeIntroHand{public bool Model;public Vector3 At;public Quaternion Turn;}
+    /// <summary>
+    /// Optional for a v2 intro: the hands as drawn this frame, handed in before Props, Set and Effects (docs/INTROS-V2.md "Hands"),
+    /// so a muzzle flash, a cast or a trail leaves the drawn weapon. A checker that never hands them in still sees every effect.
+    /// </summary>
+    public interface INativeIntroHands{void Hands(float t,in NativeIntroHand right,in NativeIntroHand left);}
 
     /// <summary>
     /// The v2 intro interface (docs/INTROS-V2.md "The per-frame interface"). An intro is a NativeEntranceScript (its pose, camera,
@@ -178,8 +212,12 @@ namespace ChipArena.UnityConversion
     /// (<see cref="Rig"/>), speed ramps (<see cref="Ramps"/>), its own set with the dark lit void as the fallback, its name card,
     /// its lens, its cues. No pylon arena, no warp at Hit (ramps instead), no camera jolt (the rig's handheld, off in Reduced).
     /// </summary>
-    public abstract class NativeIntroV2Script:NativeProceduralEntrance,INativeIntroV2
+    public abstract class NativeIntroV2Script:NativeProceduralEntrance,INativeIntroV2,INativeIntroBody
     {
+        /// <summary>The model's motion-bank clip at `t` (false: it follows the keyed rig); override with your retimed clips.</summary>
+        public virtual bool Clip(float t,out string clip,out float time){clip=null;time=0;return false;}
+        /// <summary>The fade into the clip at `t` (s).</summary>
+        public virtual float Fade(float t)=>.12f;
         /// <summary>The intro's length and its name beat (presentation s; the registry repeats them for the match).</summary>
         public readonly float IntroTotal,IntroNameAt;
         public NativeIntroContext Context{get;set;}

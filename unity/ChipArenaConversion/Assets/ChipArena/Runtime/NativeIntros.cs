@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
             double started=match.Phase==NativePhase.Intro?match.IntroStarted:arena.BossSongAt;int seat=IntroPilot?.Seat.id??0;
             if(introClockArena!=arena||introClockStarted!=started||introClockSeat!=seat){introClock.Reset();introClockArena=arena;introClockStarted=started;introClockSeat=seat;}
             float age=IntroAge;
+            // Intros v2: an intro with its own bed is drawn on that bed as this machine plays it (as the Siren's song), else on its age.
+            if(NativeIntroCatalog.Registered(IntroStyle)){double bed=nativeAudio.IntroBedPlayback();return (float)introClock.Sample(NativeIntroClock.Target(age,bed,bed>=0),Time.unscaledDeltaTime);}
             return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle)),arena.IntroStartsBossSong),Time.unscaledDeltaTime);
         }
     }
@@ -78,6 +80,8 @@ namespace ChipArena.UnityConversion
         {
             if(script is NativeWeaponEntrance)script.Bind(NativeSourceMotion.EntranceClip(style));if(!script.Ready)throw new InvalidOperationException("Missing source entrance clip: "+style);
             float quality=Mathf.Clamp01(WeaponEffectsQuality),t=script.Clock(age);entranceScript=script;entranceTime=t;
+            // Intros v2 (docs/INTROS-V2.md): the frame's context (Reduced effects, the Low tier, the live display name) before any call.
+            IntroV2Begin(script,pilot,quality);
             var sheldon=script as NativeSheldonIntroScript;if(sheldon!=null)actor=SheldonIntroBegin(sheldon,actor,pilot,t);
             script.Pose(t,entrancePose,out var root,out var rotation);
             if(NativePoseWriter.Write(introRig.Bones,entrancePose,"the intro rig")){introRig.Root.transform.SetPositionAndRotation(CapturedAnimation.Vec(CapturedRig.Mirror(root)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)));introRig.Root.transform.localScale=Vector3.one;}
@@ -96,6 +100,8 @@ namespace ChipArena.UnityConversion
             string keepAccent=actor.AccentColor,scriptAccent=script.AccentAt(t);if(scriptAccent!=null)actor.AccentColor=scriptAccent;
             // The Last Warning holds TNT whatever the pilot carries into the match, so the fists close on that (VisualHold).
             string keepSpec=actor.SourceSpec;if(script is NativeBombadierIntro)actor.SourceSpec=NativeBombs.Spec;if(script is NativeGlaiveIntro){actor.SourceSpec=NativeGlaive.Spec;glaiveIntroActor=actor.Id;glaiveIntroClock=t;}if(script is NativeBladeIntro blade){actor.SourceSpec=blade.Spec;bladeIntro=blade;bladeIntroActor=actor.Id;bladeIntroClock=t;}if(script is NativeTopDogIntro){actor.SourceSpec=NativeTopDog.Spec;dogIntroActor=actor.Id;dogIntroClock=t;}
+            // Intros v2: a v2 intro's model clip (INativeIntroBody) and its weapon's hold (a weapon intro holds its weapon whatever the pilot carries).
+            IntroV2BodyBegin(script,actor,style,t);
             VisualIntroPose(introRig,actor,introNow,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,introNow,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             // Crimson Moon: the saya at the hip, and the blade in it while the script has it sheathed (NativeBladePresentation.cs).
@@ -105,9 +111,14 @@ namespace ChipArena.UnityConversion
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             entranceGhostActor=actor;EntranceGhosts(script,style,t);
+            // Intros v2: the hands as drawn, handed in before the set and the effects (INativeIntroHands).
+            IntroV2Hands(script,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);if(script is NativeTopDogIntro dogIntro)DogIntroToons(dogIntro,t);if(script is NativeGlaiveIntro ring)GlaiveIntroRing(ring,t);
+            // Intros v2: the set (its bank's pieces, or the dark lit void).
+            IntroV2Set(script,t,camera);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
+            introBodyActor=-1;introBody=null;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }

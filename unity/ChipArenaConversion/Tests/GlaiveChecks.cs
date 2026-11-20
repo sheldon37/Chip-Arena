@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             // ---- the intro: Crescent Return (owner 2026-11-09: "create a very well animated intro") ----
             {
                 var seat=new NativeSeat{spec=NativeGlaive.Spec};const string id=NativeGlaiveIntro.Id;
-                Check(NativeIntroRules.Style(seat)==id&&NativeIntroRules.Pickable(id)&&!NativeCosmeticGate.Restricted(id)&&NativeEntranceDirector.Directed(id)&&NativeEntranceDirector.Script(id) is NativeGlaiveIntro,"a Glaive pilot's own entrance, open to everyone, staged by the director");
+                Check(NativeIntroRules.Style(seat)==(NativeIntroCatalog.WeaponIntro(NativeGlaive.Spec)??id)&&NativeIntroRules.Pickable(id)&&!NativeCosmeticGate.Restricted(id)&&NativeEntranceDirector.Directed(id)&&NativeEntranceDirector.Script(id) is NativeGlaiveIntro,"a Glaive pilot's own entrance, open to everyone, staged by the director");
                 Check(Math.Abs(NativeIntroRules.Duration(id)-NativeGlaiveIntro.Total)<1e-4&&Math.Abs(NativeIntroRules.NameAt(id)-NativeGlaiveIntro.CardAt)<1e-4&&NativeIntroRules.IntroWeapon(id)=="weapon-"+NativeGlaive.Spec&&NativeIntroRules.StyleName(id)==NativeGlaiveIntro.Name&&NativeIntroRules.IntroSting(id)=="audio/intros/signal-spin","its length, its name card, its weapon, its name and its bed");
                 Check(NativeLocker.IntroText(id).Length>0&&NativeLocker.IntroIcon(id)=="spec-glaive"&&!NativeLocker.DevItem(id),"its Locker card");
                 // The ring: out and flying from its entrance to the catch, in the hand, out again for the orbit, in the hand from the return.

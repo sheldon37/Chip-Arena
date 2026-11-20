@@ -36,7 +36,8 @@ NativeIntroEntry.Dev("architect","DEV · Architect of Reality",9.4f,7.2f,()=>new
 | `Dev(slug, …)` | `dev-<slug>` | only live DEV access (the owner): listed, picked and staged only for them | never |
 
 The arguments are: the display name (the Locker card; the name card never shows it), `Duration` and `NameAt` in
-seconds (6–9 s; the dev intro may run to 9.5 s), the maker, and the author tag. The registry's `Duration` and `NameAt`
+seconds (6–9 s; the dev intro up to 16 s, the coordinator's call for the owner's song), the maker, the author tag, and an
+optional one-line Locker blurb. The registry's `Duration` and `NameAt`
 are what the match reads (`NativeIntroRules.Duration` / `NameAt`), so they must equal your script's own length and
 name beat. The checks enforce this.
 
@@ -58,7 +59,9 @@ scrub must draw the same frame. Never allocate per frame.
 | Member | What it does |
 | --- | --- |
 | `Context` (set by the runtime) | `Reduced` (Reduced effects), `Low` (Low graphics), `Quality` 0..1, `Name` (the live display name) |
-| `Pose(t, pose, out root, out rotation)` | The rig pose. Use `Keys`/`Steps` (`NativeProceduralEntrance`), or a pack clip layered and retimed as `NativeIntroMotion` and `Core/NativeBladeIntros.cs` do. |
+| `Pose(t, pose, out root, out rotation)` | The keyed rig pose (`Keys`/`Steps`, `NativeProceduralEntrance`): the anchors' source for the camera and effects, and the Classic body's pose. |
+| `Clip(t, out clip, out time)` / `Fade(t)` (`INativeIntroBody`; virtuals on `NativeIntroV2Script`) | The model body plays a motion-bank clip at its time (you retime it), fading in over `Fade` s; false: the model follows the keyed rig. One clip at a time (no upper-body layer tonight). A `NativeBladeIntro` keeps its own path. |
+| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame; `Model` true when it is the model's bone). Measure your muzzle, staff head or blade tip offsets in the wrist frame in your Editor hold. |
 | `Camera(age, out view)` | `NativeIntroV2Script` evaluates `Rig` (section 4). Override it only if you must. |
 | `Lights(t, lights)` | The void rig (`NativeIntroVoid.Light`), then add your own: `l.Add(at, colour, distance)`, at most 8 points. |
 | `Props(t, props, quality)` | Primitive set pieces through the source models. The base draws no pylon arena. |
@@ -67,7 +70,7 @@ scrub must draw the same frame. Never allocate per frame.
 | `Ghosts` / `Holo` / `Solid` / `Blasts` | As for every directed entrance (see `NativeEntranceDirector.cs`). |
 | `Card(t, ref card)` | The name card state (section 5). |
 | `Lens(t, out lens)` | Letterbox, fade to black, focus. It comes from `Rig` by default. |
-| `Music` | A bed played from the start (`"audio/intros/<sting>"`), or null for cues only. |
+| `Music` | A bed played from the start (any `Resources/Audio/<id>` clip: `"audio/intros/<sting>"` or `"music/<track>"`) on the music channel, or null for cues only. While the bed plays, the intro is drawn on the bed's playback time, as the Siren's song locks its cell, so beats land on the picture on a guest and after a loading delay. Muted, it runs on the age. |
 | `Cues` | The sound cue timeline (section 6). Build it once, as a `static readonly` array. |
 
 Rules (the checks enforce them):
@@ -87,6 +90,18 @@ Rules (the checks enforce them):
   under the lock, keep the master in `F:/Chip Arena Development/scratch/<task>/`, and name its path and size in your
   report.
 - **Size limits:** all intro banks together at most 40 MB, and no file over 24 MiB.
+- **The frame:** bank meshes are in Unity space, as `tools/stages/stagekit.py` writes them, and are drawn as authored.
+  `Piece(prop, at, rotation, …)` takes `at` and `rotation` in the source frame, and the runtime mirrors them
+  (x → −x). So a set modelled whole in stagekit's Unity space is placed with `Piece(prop, Vector3.Zero,
+  Quaternion.Identity, 1, …)`. In Unity space the pilot stands at the origin and ends facing (sin 0.22, 0, cos 0.22).
+- **Distance:** the camera's far plane stays the game's 200 m. Build sky domes, far peaks and backdrops inside about
+  190 m, scaled down: from a camera that moves a few metres they read the same as at 400 m. There is no `Far` override,
+  because raising it costs depth precision in the match after the intro.
+- **Fog:** the glow submesh takes the fog and the stage haze too (`StageHaze`, then `UNITY_APPLY_FOG`), so a far glow
+  fades with your `FogNear`/`FogFar`.
+- **Many small pieces:** `set.Batch(prop, positions, turns, scale, tint)` draws instanced copies with no shadows, up to
+  400 a frame in all. Use it for casings, debris and shards. `Piece` is for the set's real parts (at most 80 a frame;
+  the dev intro 180 on High, 90 on Low).
 - **Original work only.**
 - **Prop names:** `<prop>` is the Fine tier, and `<prop>/low` is the optional Low tier. Each prop's first part is
   drawn: submesh 0 solid, submesh 1 glow. Its materials are the stage art's (`ChipArena/StageLit`: vertex colours and
@@ -199,10 +214,10 @@ Every registered intro runs through the same checks automatically. You don't nee
 
 | Check | What it requires |
 | --- | --- |
-| registry | `Duration` and `NameAt` equal the script's `Length` and `IntroNameAt`; 6 ≤ Duration ≤ 9 (dev 9.5); 0 < NameAt < Duration − 0.8; the kind's id prefix; Ready |
+| registry | `Duration` and `NameAt` equal the script's `Length` and `IntroNameAt`; 6 ≤ Duration ≤ 9 (dev 16); 0 < NameAt < Duration − 0.8; the kind's id prefix; Ready |
 | determinism | two fresh scripts give the same pose, camera, lights, props, set calls, effects and card at sampled times, in any order (a scrub) |
 | allocation | no managed allocation per frame after warm-up (pose, camera, lights, props, set, effects, card, lens) |
-| budgets at peak | at most 600 FX calls a frame (300 on Low), 24 point-light requests, 120 primitives, 80 set pieces |
+| budgets at peak | at most 600 FX calls a frame (the dev intro: 1000 High, 450 Low), 8 point lights, 120 primitives, 80 set pieces (the dev intro: 180 High, 90 Low), 400 batched copies (`NativeIntroSetLimits`) |
 | Reduced effects | the camera never shakes (two Reduced runs, the handheld off) and no light or glow channel flashes faster than 3 Hz |
 | streaks | every streak longer than 1 m lies on its head's camera plane (within 2°) |
 | cues | sorted, inside [0, Duration], each with a key, alt or clip, and each heard exactly once through `NativeEntranceCueClock` at 60 Hz and at a guest's 20 Hz steps |
@@ -230,7 +245,7 @@ cap sword-low  "$(dense 0 8.5 0.5)" 4 weapon=sword map=arena bots=0 introcap=int
   checkout when no Editor process is up, then waits until it is up and has compiled.
 - It never kills anything. Call it before `take` when `editor_up` says down.
 
-## 9. Motion
+## 9. Motion and hands
 
 - **Fair game:** clips already in the motion bank, layered and retimed in code (the `NativeIntroMotion` pattern;
   `Core/NativeBladeIntros.cs` and `Core/NativeDevIntros.cs` pose the model from pack clips).

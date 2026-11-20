@@ -299,6 +299,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expeditions-menu"){ExpeditionsMenuChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--bombadier"){BombadierChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--top-dog"){TopDogChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--intros-v2"){IntroV2Checks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive"){GlaiveChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive-chips"){GlaiveChipChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--blades"){BladeChecks.Run(ProjectRoot());return 0;}
@@ -373,6 +374,7 @@ internal static class Program
             HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);IronworksPropChecks.Run(root);StationEnemyChecks.Run(root);FallenBossChecks.Run(root);BossChipChecks.Run(root);BossGuideChecks.Run(root);BossPicksChecks.Run(root);TelegraphChecks.Run(root);FallenIntroMocapChecks.Run(root);StationBossModelChecks.Run(root);HumBossChecks.Run(root);DeepEndBossChecks.Run(root);BackroomsBossSoundChecks.Run(root);BackroomsBossSafeSpotChecks.Run(root);StationBossPresentationChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);ZombieTwitchChecks.Run(root);ZombieLocoChecks.Run(root);ZombieGoreChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
+            IntroV2Checks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);DebrisChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
