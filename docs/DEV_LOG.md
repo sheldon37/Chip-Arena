@@ -1,3 +1,9 @@
+## 2026-11-20 — Astra: protect visor and entrance saves across PCs
+
+Branch `codex/locker-save-receipt` from shared `8d56f015`. Ordinary token refreshes no longer advance the revision of a Locker profile that has not been reloaded. Stale writes receive the existing conflict response. The Locker waits for the save response, checks the face gear and entrance, and exposes failures. On the next profile load, account-scoped pending face gear and entrance choices retry against unchanged fields while preserving newer remote choices. An acknowledged pick yields to later edits on another PC.
+
+The local account suite passed all 18 tests, including two clients with conflicting revisions and plain Visor across seven procedural intros. Managed CoreTests compiled and targeted Locker (1,643 checks) and pending-choice checks passed. No live account or Windows two-PC session used.
+
 ## 2026-11-20 — Astra: live Meridian deployment (PR #432)
 
 Branch `codex/playable-meridian`, based on shared `8d56f015`. A station ticket carries one of the five approved plans. The live run rebuilds its street geometry, navigation at multiple elevations, caches, encounter exits, instance entrances and final court from the deal. The existing Meridian art and spawn-themed outfits use those records. Per-search state is separate while crowd navigation shares its map topology. The previous grid is retained as a test fixture for its art suite.

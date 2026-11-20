@@ -11,6 +11,11 @@ namespace ChipArena.UnityConversion
             var list=(entries??Array.Empty<NativePendingEffect>()).Where(e=>e!=null&&e.account!=account).Take(15).ToList();
             if(allowed(selected)&&selected!=remote)list.Add(new NativePendingEffect{account=account,selected=selected,remote=remote});return list.ToArray();
         }
+        public static void Acknowledge(NativePendingEffect[] entries,string account,string stored)
+        {
+            var entry=entries?.FirstOrDefault(e=>e!=null&&e.account==account);
+            if(entry!=null&&entry.selected==stored)entry.account=null;
+        }
         public static string Restore(NativePendingEffect[] entries,string account,string remote,Func<string,bool> allowed)
         {
             var entry=entries?.FirstOrDefault(e=>e!=null&&e.account==account);if(entry==null)return remote;

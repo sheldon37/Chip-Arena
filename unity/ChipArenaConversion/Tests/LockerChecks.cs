@@ -66,7 +66,7 @@ internal static class LockerChecks
 
         // 3. Save Pilot keeps the old path exactly; Revert and Discard only restore the entry look; leaving asks first.
         Check(ui.Contains("SavePilot();if(server!=null&&InRoom)SendServer(new NativeNetMessage{type=\"profile\",profile=Profile(),token=account?.Token});if(Hosting)LobbyBroadcast();"),"Save Pilot: SavePilot, the room profile message, the host broadcast");
-        Check(ui.Contains("if(MenuButton(save,\"check\",\"Save Pilot\",null,true,dirty,e,15,true))LockerSave();")&&ui.Contains("k==2){LockerSave();LockerLeave();}"),"the Save Pilot and Save & leave buttons save through LockerSave (disabled while nothing changed)");
+        Check(ui.Contains("if(MenuButton(save,\"check\",\"Save Pilot\",null,true,dirty||signedIn&&account.ProfileError!=null,e,15,true))LockerSave();")&&ui.Contains("k==2){LockerSave();LockerLeave();}"),"the Save Pilot and Save & leave buttons save through LockerSave (disabled while nothing changed)");
         Check(Count(ui,"SavePilot();")==1&&Count(ui,"account.Save(")==0&&!Regex.IsMatch(ui,@"(?<![\w.])Save\(\);"),"the Locker saves only through SavePilot");
         Check(profile.Contains("Save();if(account.Account!=null)account.Save(Profile());"),"SavePilot still stores prefs and the account profile");
         Check(home.Contains("private void CustomizeScreen(float age)=>LockerScreen(age);")&&home.Contains("if(screen==MenuScreen.Customize&&from!=MenuScreen.Customize)LockerEnter();")&&home.Contains("var from=MenuTarget;"),"Customize opens the Locker and takes its baseline on entry (from the screen the menu is on or going to, NativeMenuTransitionUI.cs)");
