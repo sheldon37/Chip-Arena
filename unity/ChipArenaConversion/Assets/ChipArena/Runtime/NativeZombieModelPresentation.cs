@@ -96,9 +96,9 @@ namespace ChipArena.UnityConversion
         // Posing (HordeKindAdd, HordeKindDeath): the model in place of the voxel model
         // ================================================================================================================
         /// <summary>A living add (its rig posed from minionPose this frame): its model posed, true; false draws its voxel model.</summary>
-        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell,float jaw=0)
+        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell,float jaw=0,PveEntry spawn=null)
         {
-            if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
+            if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind,spawn);if(z==null)return false;
             if(z.Growing&&!ZombieGrowthAttach(z)){z.SeenAt=Time.unscaledTime;return false;}
             z.Dying=false;z.Jaw=jaw;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;z.Across=gait?.LegsAcross??1;z.Reach=gait?.Outreach??0;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
@@ -295,14 +295,19 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // Bodies: made per variant, kept and reused
         // ================================================================================================================
-        private ZombieBody ZombieModelOf(int id,int kind)
+        private ZombieBody ZombieModelOf(int id,int kind,PveEntry spawn)
         {
             if(zombieBodies.TryGetValue(id,out var z))
             {
                 if(z.Body.Root!=null&&z.Kind==kind)return z;
                 ZombieModelSpare(z);zombieBodies.Remove(id);
             }
-            var v=NativeZombieLooks.Of(kind,id,zombieTheme);if(v==null)return null;
+            string theme=zombieTheme;
+            if(zombieCityBleed!=null&&spawn?.@exit!=null){
+                var at=zombieCityBleed.At(spawn.@exit.Position());
+                if(at.Band>=NativeCityBleed.Bands.Drift)theme=NativeCityBleedDress.OutfitOf(NativeCityBleed.Theme(zombieCityBleed.Doors[at.Door].Instance))??theme;
+            }
+            var v=NativeZombieLooks.Of(kind,id,theme);if(v==null)return null;
             if(zombieSpares.TryGetValue(v,out var spares))while(spares.Count>0){var s=spares.Pop();if(s.Body.Root==null)continue;z=s;break;}
             if(z==null||z.Body.Root==null)
             {
@@ -996,7 +1001,12 @@ namespace ChipArena.UnityConversion
         // ---- a carried prop (Variant.Carry): the gear bank's, at the model's right-hand weapon frame as last posed ----
         // ---- the area the horde walks in (Core NativeZombieLooks.Theme: its zombies' clothes), set each frame from the arena ----
         private string zombieTheme;private static readonly NativeZombieLooks.Variant[][] ZombieAllLooks={NativeZombieLooks.All,NativeZombieLooks.Dressed};
-        private void ZombieThemeOf(NativeArena arena)=>zombieTheme=NativeZombieLooks.Theme(arena?.MapId);
+        private NativeCityBleed zombieCityBleed;
+        private void ZombieThemeOf(NativeArena arena)
+        {
+            zombieTheme=NativeZombieLooks.Theme(arena?.MapId);
+            zombieCityBleed=arena?.MapId==NativeExpeditionGeneratedWorld.MapId?GeneratedRun?.World?.Bleed:null;
+        }
         // ---- a fallen pilot's suit and smashed helmet (Variant.SuitShown, Helm; owner 2026-11-03: "zombies to use the player
         // default suit ... broken up and damaged full helmet + suit"): the robot suit's plates still on it and the helmet on its
         // head, the pilots' own models from the source-model bank (NativeRobotSuitPresentation.cs, NativeRobotHelmPresentation.cs)

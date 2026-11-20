@@ -65,6 +65,7 @@ namespace ChipArena.UnityConversion
                     return true;
                 }
                 if (WalkDealKeys()) return true;
+                if (CampWalkKeys()) return true;
                 if (Time.unscaledTime >= walkMeasureAfter)
                 {
                     walkSampleTime += Time.unscaledDeltaTime;
@@ -129,6 +130,7 @@ namespace ChipArena.UnityConversion
                 walkFrames = 0;
                 walkFrameMs = walkSampleTime = 0;
                 MeridianLandmarksOpen(plan, cityWalk, surveySlots);
+                CampWalkOpen(cityWalk, index, seed, surveySlots);
             }
             catch (Exception ex)
             {
@@ -142,6 +144,7 @@ namespace ChipArena.UnityConversion
         {
             CloseCityBleed();
             MeridianLandmarksClose();
+            CampWalkClose();
             if (walkTriangles.Valid)
             {
                 Debug.Log($"Meridian walk {cityWalk?.Map.name}: peak rendered triangles {walkPeakTriangles}; last sampled frame mean {walkFrameMs:F2} ms");
@@ -173,7 +176,7 @@ namespace ChipArena.UnityConversion
             if (cityWalk != null && arena?.Local != null)
             {
                 var pos = arena.Local.Body.position;
-                GUILayout.BeginArea(new Rect(20, 20, 410, 225), GUI.skin.box);
+                GUILayout.BeginArea(new Rect(20, 20, 410, 248), GUI.skin.box);
                 GUILayout.Label(cityWalk.Map.name + "   |   600 × 480 m");
                 string[] gates = { "North", "East", "South", "West" };
                 for (int i = 0; i < cityWalk.Routes.Count; i++)
@@ -185,8 +188,10 @@ namespace ChipArena.UnityConversion
                 if (walkFrameMs > 0)
                     GUILayout.Label(walkFrameMs.ToString("F1") + " ms/frame" + (walkTriangles.Valid ? "   Peak triangles " + walkPeakTriangles.ToString("N0") : ""));
                 WalkDealLabel();
+                CampWalkLabel();
                 GUILayout.Label("Hold Tab   Street plan     Esc   Choose another layout");
                 GUILayout.EndArea();
+                CampWalkBanner(width);
                 if (walkPlan != null && Input.GetKey(KeyCode.Tab))
                 {
                     float scale = Mathf.Min((width - 60) / walkPlan.width, (height - 100) / walkPlan.height);

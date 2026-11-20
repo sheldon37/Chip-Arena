@@ -94,17 +94,14 @@ namespace ChipArena.UnityConversion
             authored.compatibility=NativeExpeditionLayout.Compatibility(json,content);
             var room=new ExpeditionDeploymentRoom("load-fixture","p1",17,"black-siren",authored,content);
             if(!room.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances))throw new InvalidOperationException("Load fixture roll failed");
-            Bundle=ExpeditionRunBundle.Build(room.Ticket,content,json);
-            var simulationContent = Bundle.Content;
-            NativeLayeredCityWalk walk = null;
-            if (candidate != null)
-            {
-                var generation = Stopwatch.StartNew();
-                walk = Survey = new NativeLayeredCityWalk(candidate,Bundle.World.Blueprint.worldSeed);
-                PrepareSurveyWorld(Bundle.World, walk);
-                simulationContent = simulationContent.WithGeneratedMap(walk.Map);
-                CandidateGenerationMs = generation.Elapsed.TotalMilliseconds;
-            }
+            var ticket=room.Ticket;
+            if(candidate!=null)ticket.cityPlan=NativeCityLayout.Plans.ToList().IndexOf(candidate);
+            var generation=Stopwatch.StartNew();
+            Bundle=ExpeditionRunBundle.Build(ticket,content,json);
+            CandidateGenerationMs=generation.Elapsed.TotalMilliseconds;
+            var simulationContent=Bundle.Content;
+            var walk=Bundle.World.City;
+            if(candidate!=null)Survey=walk;
             var layout=Bundle.Layout;
             var run=NativeExpedition.Create("load-fixture",layout.world,"p1","pistol",17,layout.instances.Select(id=>new ExpeditionInstance{id=id,target=12}).ToArray());
             for(int id=2;id<=pilots;id++)if(!run.Join("p"+id,"pistol"))throw new InvalidOperationException("Load fixture seat refused");
@@ -152,89 +149,6 @@ namespace ChipArena.UnityConversion
             catch{Dispose();throw;}
         }
 
-        // Populate the isolated fixture from the surveyed streets. The ordinary deployment
-        // generator and its wire compatibility never consume the candidate's world.
-        private static void PrepareSurveyWorld(ExpeditionGeneratedWorld world, NativeLayeredCityWalk walk)
-        {
-            world.Map = walk.Map;
-            var area = world.Area;
-            area.map = walk.Map.id;
-            var assigned = NativeCityLayout.DealHalls(world.Blueprint.worldSeed, world.Blueprint.instances);
-            var doors = new System.Collections.Generic.List<ExpeditionDoorLayout>();
-            var anchors = new System.Collections.Generic.List<ExpeditionWorldAnchor>();
-            bool NearCache(V3 pos)=>walk.Caches.Any(cache=>
-                Math.Pow(pos.x-cache.x,2)+Math.Pow(pos.z-cache.z,2)<64);
-            var spawnDraw = new SourceRandom(world.Blueprint.worldSeed ^ 0x902b43c1u);
-            for (int side = 1; side < walk.Routes.Count; side++)
-            {
-                string instance = assigned[side], id = "exp-city:door:" + instance;
-                var mouth = walk.Routes[side].Points.Last();
-                var points = walk.Routes[side].Points;
-                var leg = mouth - points[points.Length - 2];
-                var forward = leg / leg.Length;
-                var yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
-                var right = new V3(forward.z,0,-forward.x);
-                ExpeditionPoint Spot(float inward, float across)
-                {
-                    var at = mouth - forward * inward + right * across;
-                    return new ExpeditionPoint { x=at.x, y=at.y, z=at.z, yaw=yaw };
-                }
-                ExpeditionVolume Volume(ExpeditionPoint centre, float width, float depth) => new ExpeditionVolume {
-                    x=centre.x, y=centre.y+2, z=centre.z, sx=width, sy=4, sz=depth, yaw=yaw };
-                var join = Spot(8,0);
-                anchors.Add(new ExpeditionWorldAnchor { id=id, area=area.id, kind="door", building=instance,
-                    x=mouth.x, y=mouth.y, z=mouth.z, yaw=yaw });
-                doors.Add(new ExpeditionDoorLayout { anchor=id, approach=Spot(4,0), closure=Volume(Spot(0,0),8,.5f),
-                    interact=Volume(Spot(2,0),5,5), join=new ExpeditionJoinCylinder { x=join.x,y=join.y,z=join.z,r=3,h=3 },
-                    entries=Array.Empty<ExpeditionPoint>(), returns=Enumerable.Range(0,8).Select(i => Spot(6+i/4*2,i%4*2-3)).ToArray() });
-            }
-            anchors.AddRange(walk.Caches);
-            area.doors = doors.ToArray();
-            area.gates = Array.Empty<ExpeditionGateLayout>();
-            area.anchors = anchors.ToArray();
-            area.interactions = walk.Caches.Select(NativeExpeditionGeneratedWorld.CacheInteraction).ToArray();
-            var spawnRows = new System.Collections.Generic.List<ExpeditionSpawnLayout>();
-            var zones = new System.Collections.Generic.List<ExpeditionHubZone>();
-            string[] kinds = { "shambler", "runner", "spitter", "brute", "hulk" };
-            foreach (var route in walk.Routes)
-            {
-                // Sample the gate-to-hall centre line at measured distances.
-                for (int station = 40 + (int)(spawnDraw.Next()*11); station < route.Length - 24; station += 28)
-                {
-                    float remaining = station;
-                    for (int j = 1; j < route.Points.Length; j++)
-                    {
-                        var a = route.Points[j-1];
-                        var d = route.Points[j] - a;
-                        if (remaining > d.Length) { remaining -= d.Length; continue; }
-                        var pos = a + d * (remaining / d.Length);
-                        if(NearCache(pos))break;
-                        int id = spawnRows.Count;
-                        var point = new PvePoint { x=pos.x, y=pos.y, z=pos.z };
-                        spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
-                            e=id, id="survey-entry-"+id, kind="door", from=point, @exit=point, clear=3, allowed=kinds } });
-                        zones.Add(new ExpeditionHubZone { Id="survey-zone-"+id, Ring=station<55?"near":station<95?"mid":"far",
-                            Near=station-5, Far=station+5, Spawns=new[] { id },
-                            Volume=new ExpeditionVolume { x=pos.x, y=pos.y+2, z=pos.z, sx=11, sy=6, sz=11 } });
-                        break;
-                    }
-                }
-            }
-            foreach (var roof in walk.RoofHatches.Where(p=>!NearCache(p)))
-            {
-                var zone = zones.OrderBy(z => (new V3(z.Volume.x,z.Volume.y,z.Volume.z)-roof).Length).First();
-                int id = spawnRows.Count;
-                zone.Spawns = zone.Spawns.Concat(new[] { id }).ToArray();
-                var point = new PvePoint { x=roof.x, y=roof.y, z=roof.z };
-                spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
-                    e=id, id="survey-hatch-"+id, kind="hatch", from=point, @exit=point, clear=3, allowed=kinds } });
-            }
-            world.Hub.Zones = zones.ToArray();
-            var court = walk.Routes[0].Points.Last();
-            area.bossPoints = new[] { new ExpeditionPoint { x=court.x, y=court.y, z=court.z } };
-            area.spawns = spawnRows.ToArray();
-        }
-
         public double[] Means()
         {
             Report();
@@ -246,14 +160,14 @@ namespace ChipArena.UnityConversion
             Tick++;
             foreach(var p in members)
             {
-                // Opposing short patrols on parallel streets just outside the south gate.
+                // Patrol the same approaches used to place the members at startup.
                 int seat=p.Seat.id;
                 float extent=Bundle.World.Map.id==NativeExpeditionGeneratedWorld.MapId?7:6;
                 float end=((Tick/150+seat)%2==0)?extent:-extent;
                 var delta=new Vector3(end-p.Body.position.x,0,-27.5f-seat*1.5f-p.Body.position.z);
-                if (Survey != null)
+                if (Bundle.World.City != null)
                 {
-                    Survey.Routes[seat-1].Sample((Tick/150+seat)%2==0 ? 8 : 18,
+                    Bundle.World.City.Routes[seat-1].Sample((Tick/150+seat)%2==0 ? 8 : 18,
                         out var foot,out _,out _);
                     delta=NativeArena.Vec(foot)-p.Body.position;
                     delta.y=0;

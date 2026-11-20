@@ -101,6 +101,11 @@ namespace ChipArena.UnityConversion
             Check(!room.Execute("guest",0,ExpeditionDeploymentIntent.RollInstances),"room rejects guest");
             Check(room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"room rolls validated live pool");
             Check(!room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"duplicate roll rejected by revision");
+            var nextPlan=new ExpeditionDeploymentRoom("next","host",123,"black-siren",layout,content,room.Ticket.cityPlan);
+            Check(nextPlan.Ticket.cityPlan!=room.Ticket.cityPlan,"party cannot deploy twice into the same plan");
+            var changedPlan=room.Ticket;changedPlan.cityPlan=nextPlan.Ticket.cityPlan;
+            var planReceiver=new ExpeditionDeploymentReceiver();
+            Check(planReceiver.Accept(room.Ticket,layout,content)&&!planReceiver.Accept(changedPlan,layout,content),"station rejects a changed plan");
             var originalMaps=content.maps;
             var bundle=ExpeditionRunBundle.Build(room.Ticket,content,layoutJson);
             Check(ReferenceEquals(content.maps,originalMaps)&&!content.maps.Any(m=>m.id==NativeExpeditionGeneratedWorld.MapId),"bundle leaves shipped map catalogue unchanged");
@@ -153,10 +158,17 @@ namespace ChipArena.UnityConversion
                 foreach(var door in world.Area.doors)
                 {
                     foreach(var point in door.returns.Concat(new[]{door.approach}))Check(ExpeditionLayoutChecks.Supported(world.Map,point.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight),"independent entrance collision probe");
-                    for(int i=0;i<8;i++){double angle=i*Math.PI/4;Check(ExpeditionLayoutChecks.Supported(world.Map,new V3(door.join.x+3*(float)Math.Cos(angle),0,door.join.z+3*(float)Math.Sin(angle)),.45f,1.8f),"join circle collision probe");}
+                    for(int i=0;i<8;i++){double angle=i*Math.PI/4;Check(ExpeditionLayoutChecks.Supported(world.Map,new V3(door.join.x+3*(float)Math.Cos(angle),door.join.y,door.join.z+3*(float)Math.Sin(angle)),.45f,1.8f),"join circle collision probe");}
+                }
+                foreach(var zone in world.Hub.Zones)
+                {
+                    var street=world.Area.spawns[zone.Spawns[0]].entry;
+                    Check(zone.Spawns.Skip(1).All(i=>world.Area.spawns[i].entry.kind=="drop"&&
+                        (world.Area.spawns[i].entry.@exit.Position()-street.@exit.Position()).Length<.001f),
+                        "roof drops land on their encounter's certified street apron");
                 }
                 var caches=world.Area.anchors.Where(a=>a.kind=="chest").ToArray();
-                Check(caches.Length==4,"three district caches and one neutral cache");
+                Check(caches.Length==5,"five Meridian caches");
                 foreach(var cache in caches)
                 {
                     var pos=new V3(cache.x,cache.y,cache.z);
@@ -167,7 +179,7 @@ namespace ChipArena.UnityConversion
                     var point=world.Area.interactions.Single(it=>it.anchor==cache.id);
                     Check(point.range==2&&Math.Abs((new V3(point.x,point.y,point.z)-pos).Length-.9)<.001,"cache reach");
                 }
-                Check(world.Map.blocks.Length<500&&world.Map.nav.nodes.Length<12000,"bounded generated map");
+                Check(world.Map.blocks.Length<8000&&world.Map.nav.nodes.Length<120000,"bounded generated map");
             }
 
 

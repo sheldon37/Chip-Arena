@@ -31,6 +31,9 @@ namespace ChipArena.UnityConversion
             public bool Undressed(int i)=>!Dressed(Roles[i]);
             // (a lot's sides are its facade modules', wherever they stand: a face in their plane is theirs)
             public bool SideDrawn(int i)=>!Dressed(Roles[i])||Roles[i]==RLot;
+            // (the floor runs on under the camp fence: the greybox draws the fence with chamfered edges, and its foot's groove showed
+            // the void under the floor once the dress's own blocks gave way on the live map)
+            public bool FloorRunsUnder(int i)=>Roles[i]==RCamp;
             public bool DrawsTop(int i)=>Dressed(Roles[i])&&Roles[i]!=RTread&&Roles[i]!=RParapet&&Roles[i]!=RRail&&Roles[i]!=RPost&&Roles[i]!=RWagon;
             public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false,int layer=-1)
             {
@@ -89,6 +92,8 @@ namespace ChipArena.UnityConversion
             foreach(var r in map.ramps??Array.Empty<MapRamp>())if(r.kind=="ramp")DressSlope(b,r);
             Lamps(b);
             Marks(b);
+            // the surfaces' seams, once every surface is made: no two meet in a T-junction at any mix of LODs (NativeMeridianChunks)
+            P.Seams=BuildSeams(P);
             return P;
         }
 
@@ -130,10 +135,12 @@ namespace ChipArena.UnityConversion
         private static bool[] Exposed(Builder b,int bi,int f,float[] us,float[] vs,V3 o,V3 u,V3 v)
         {
             var n=NormalOf(f);int nu=us.Length-1,nv=vs.Length-1;var e=new bool[nu*nv];
+            // (the face's three tests made once, not per cell: each is a new delegate)
+            Func<int,bool> ignore=f==2?b.FloorRunsUnder:(Func<int,bool>)null,drawn=f==2?b.DrawsTop:(Func<int,bool>)b.IsDressed,always=f==2?b.Undressed:(Func<int,bool>)b.SideDrawn;
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
             {
                 var p=o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f);
-                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed,f==2?b.Undressed:b.SideDrawn);
+                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi,.01f,ignore)&&!b.S.Shared(p.x,p.y,p.z,f,bi,drawn,always);
             }
             return e;
         }

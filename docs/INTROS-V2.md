@@ -116,13 +116,17 @@ about 0.3 m from the drawn head. Feet, knees, hands and the weapon differ likewi
 | `LeftToe` (new, and right) | the ball of the foot | the keyed toe joint |
 | `LeftWrist` (new, and right) | the wrist | the keyed wrist |
 | `LeftHand` (and right) | the palm (wrist to the middle finger's knuckle) | the voxel fist |
-| `LeftGrip` (new, and right) | the weapon frame's origin, as the match's sweeps read it | the keyed wrist |
-| `LeftTip` (and right) | the weapon's far end on the drawn weapon frame: a blade's tip socket (`NativeWeaponDressing.BladeTip`, the blade classes' `NativeBladeView.Line`), a gun's or staff's muzzle | the keyed hand + `TipLength` (0.15 m) |
-| `LeftMuzzle` (new, and right) | where a shot or a cast leaves it: a gun's crown (`NativeMuzzleFx.Crown`, where the match's flash leaves the drawn skin), a staff's head, the bow's arrow line (`NativeIntroWeapon.Muzzle`) | the keyed wrist + that socket |
+| `LeftGrip` (new, and right) | where the hand holds the weapon (`NativeIntroWeapon.Grip`): the weapon frame's origin, as the match's sweeps read it; the shield's grip bar; the bow's riser on the arrow line | the keyed wrist + that socket |
+| `LeftTip` (and right) | the weapon's far end on the drawn weapon frame: a blade's tip socket (`NativeWeaponDressing.BladeTip`, the blade classes' `NativeBladeView.Line`), a gun's or staff's muzzle, the Glaive's leading fang, the bow's upper limb tip | the keyed hand + `TipLength` (0.15 m) |
+| `LeftMuzzle` (new, and right) | where a shot or a cast leaves it: a gun's crown (`NativeMuzzleFx.Crown`, where the match's flash leaves the drawn skin), a staff's head, the bow's arrow rest (`NativeBowModels.Rest`; `NativeIntroWeapon.Muzzle`) | the keyed wrist + that socket |
 
 - Weapon anchors are drawn only for a Weapon intro while its weapon is drawn that frame, on the hand(s) that hold it
   (`NativeIntroWeapon.Holds`: a staff and the bow the left, the daggers and the Fangs both, the rest the right).
-- `WeaponBore(left, t)` gives the grip-to-muzzle direction (a gun's bore). `Aim(left, t)` (hand to tip) follows the drawn tip too.
+- `WeaponBore(left, t)` gives the grip-to-muzzle direction (a gun's bore, the bow's arrow line). `Aim(left, t)` (hand to tip) follows the drawn tip too.
+- `Tests/IntroAnchorChecks` holds every grip, tip and muzzle anchor of the fifteen weapons to the drawn weapon (both skins, each hand
+  that holds it, no clip playing): within 4.5 cm of its surface, the tip at its far end. Today's worst is 3.9 cm (the darkness staff's
+  crown). **The clip-free Katana lies along its weapon frame's +z**, as every weapon does (its tip socket sits on its blade's point);
+  a blade line or `RightTip` on +z is right for it.
 - `Root`, `Forward` and `Focus` are never drawn.
 
 **Remove your hand-tuned head and weapon offsets once you merge this** (they were measured against the keyed rig or the old
@@ -142,9 +146,13 @@ The model is posed from the keyed pose bone for bone (Core `NativeVisualRig`): e
 so the drawn head, chest and pelvis face exactly as the keyed ones in every pose, however deep. `IntroV2Checks` holds every
 registered intro to it every 1/20 s on two skeletons (within 3°; today the worst is 0.03°). Whiteout's kneel bows the head 56°
 below the horizon: from a camera above the pilot's left shoulder its visor faces the snow and the band of glass reads as turned
-aside. What differs between the rig and the model is where things are, which the anchors (2a) carry. The feet are not planted
-on the model in an intro (the legs copy the keyed turns), so a kneeling knee or a sliding foot may sit a few centimetres off
-the floor: put floor effects at the anchor's `x`, `z` on the floor (`NativeEntranceStage.FloorY`), as Slipstream does.
+aside. What differs between the rig and the model is where things are, which the anchors (2a) carry.
+
+The legs are where it matters most: **the drawn legs are 1.7 times the keyed ones on the shared root**, and the model's feet are not
+planted (the legs copy the keyed turns). A keyed foot held still while the root moves slides the drawn foot back at about 1 m/s in
+a walk, and a keyed drop sinks the drawn hips 1.7 times as deep (a kneel's knee 30 cm through the floor). Key the legs on the model
+(section 9c, `ModelFeet`). Put floor effects at the anchor's `x`, `z` on the floor (`NativeEntranceStage.FloorY`), as Slipstream
+does.
 
 ## 3. Sets: the bank and its fallback
 
@@ -314,6 +322,8 @@ Every registered intro runs through the same checks automatically. You don't nee
 | sets | without a bank something is still drawn (the void or your primitives); with a fake bank that has every prop, your `Scene` stays inside the piece and batch budgets and allocates nothing |
 | the pose on the model | your keyed pose, bound onto the model's skeleton (the measured and the synthetic one) every 1/20 s, keeps the drawn head, chest and pelvis facing within 3° of the keyed ones (section 2b) |
 | anchors (framework) | keyed until a body is handed in; then each handed anchor exactly where it was drawn at that frame's time and carried rigidly by its keyed joint at other times; `ClearDrawn` gives the keyed ones back; no allocation; the weapon sockets for all fifteen weapons; the reflection's defaults; the runtime's order (camera keyed, the drawn body before the lights, set and effects) |
+| weapon anchors (`Tests/IntroAnchorChecks`) | every grip, tip and muzzle anchor of the fifteen weapons on the drawn weapon, in both skins (section 2a) |
+| poses (`Tests/IntroPoseChecks`) | your keyed pose bound bone for bone on the model; the anatomical limits; the drawn feet (no slide on the floor, nothing through it); the drawn grip (the off fist on the drawn weapon); the guide's canonical poses always clean (section 9b). Your intro's findings are listed by `--intro-limits` (section 9b) and fail only there |
 
 Put your own extra checks in your own `Tests/Intro<Name>Checks.cs`, and add one call in `Program.cs` on its own line.
 
@@ -357,3 +367,271 @@ The frames are `t<N>_screen.png`, so a clip is
 - **The model follows your keys joint for joint** (section 2b); the effects follow the model (section 2a).
 - **The hands, the head and the weapon:** use the anchors (`LeftWrist`, `LeftHand`, `RightGrip`, `RightTip`, `RightMuzzle`,
   `Head`, `Eyes`, `Visor` …). `Hands()` and `Head()` still work and hand in the same points.
+- **Weapons in two hands:** the grip IK (section 9a). **Legs, walks, kneels and landings:** key them on the model (section 9c).
+  **How to pose well, and how to read the checks:** the pose-craft guide (section 9b).
+
+## 9a. The weapon grip IK (I0d, 2026-11-20)
+
+Owner, on One Breath: "arms looked really odd". The front hand hung limp under the barrel, the arms tangled on the aim, and at the
+end the arms were crossed, holding nothing. Two causes:
+- **The keyed pose:** the off hand was put on the keyed rifle by an IK that kept the elbow wherever it was, so it tangled.
+- **The drawn model:** it copied the keyed off arm turn for turn. On the model's shorter arms and narrower shoulders (its shoulders
+  are 0.13 m from the spine, the rig's 0.35 m), the hand missed the drawn rifle by 10-20 cm. The match's own support grip, which
+  would put the fist on the handguard, switches off once the keyed wrists are more than 0.30 m apart.
+
+The grip IK (Core `NativeIntroGrip`) solves the off hand onto a two-handed weapon at both levels:
+1. **The keyed pose**, which `--intro-limits` checks. The off arm is solved onto the weapon held in the other hand, in the match's
+   own convention for that weapon, the elbow toward a pole, the hand's roll carried by the forearm.
+2. **The drawn model.** The off fist closes on the drawn weapon's support point, from the drawn weapon frame, whatever the hands'
+   distance. Its elbow goes to the pole's side. A long gun can be shouldered.
+
+**Opt in** by implementing `INativeIntroGrip` on your script:
+
+```csharp
+public sealed class NativeIntroOneBreath:NativeRangedIntro,INativeIntroGrip
+{
+    // The off hand on the handguard throughout; the stock in the shoulder while it aims, off it as the pilot rises to the carry.
+    public bool GripAt(float t,out NativeIntroGripAt g)
+    {
+        g=new NativeIntroGripAt(weight:1,pole:default,along:0,pull:0,shoulder:1-NativeEntranceMath.Ramp(t,RiseFrom,RiseFrom+.55f));
+        return true;
+    }
+    protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
+    {
+        // Only the main hand is yours. Leave the off hand to the grip.
+        NativeEntrancePose.Reach(pose,root,rotation,false,grip,rifleTurn,1);
+        NativeIntroGrip.Forearm(pose,false,NativeIntroGrip.Natural(NativeIntroGrip.Kind.LongGun,false));
+    }
+}
+```
+
+- **When it runs:** `NativeProceduralEntrance.Pose` calls the grip after your `Arms`. If you override `Pose`, call `GripIK(t, pose)`
+  after your own `Arms`. The runtime reads the same `GripAt` for the drawn model.
+- **The fields of `NativeIntroGripAt`:**
+
+  | Field | What it does |
+  | --- | --- |
+  | `Weight` | 0..1. Blend it in and out over 0.1-0.2 s, as a key would. |
+  | `Pole` | Where the off elbow points, in the chest's frame (+x the pilot's left, +y up, +z ahead). Zero takes the weapon's default: down and out, or for the bow's string elbow, back and high. |
+  | `Along` | Slides the hand along the weapon (metres): further up a staff, back on a handguard. |
+  | `Pull` | The bow's draw. Give the grip and your `Bow` view the same pull. |
+  | `Shoulder` | A long gun's stock in the drawn shoulder pocket while the keyed butt is at the keyed shoulder. Use it for an aim, not for a carry. |
+- **The support point per weapon:**
+
+  | Weapon | Main hand | Off hand goes to |
+  | --- | --- | --- |
+  | rifle, machine gun | right | the handguard or shroud, cupped from below; the fist slides back toward the receiver if a short arm needs it |
+  | pistol | right | round the shooting fist |
+  | greatsword, Katana | right | the lower grip of the hilt (the Katana's own support socket) |
+  | fire, water, lightning, darkness | left | the shaft, 0.40 m up from the main fist |
+  | bow | left | the string at the nock (`Pull`) |
+  | shield | right | the left rim, upper third, a bracing fist |
+
+  The daggers and the Fangs hold a blade in each hand; the sword is one-handed.
+- **The main hand stays yours:** keys, `NativeEntrancePose.Reach`, or `NativeIntroGrip.Hold(pose, left, spec, at, turn, pole)`.
+  Hold places the main wrist in the chest's frame, as the match keys its own holds. `NativeIntroGrip.Aim(pose, yaw, pitch)` makes
+  the weapon's turn from the pilot's facing, and `ChestPoint` converts a world target. Key positions in the keyed rig's
+  proportions (section 9b), never at heights measured on the model.
+- **Checked:** `IntroPoseChecks` binds your pose with the grip as the runtime does, and lists a drawn off fist more than 3 cm from
+  the drawn support point. Each canonical weapon pose holds within 0.0 cm (the long guns after their slide).
+
+## 9b. Pose craft: how to key a body that looks right on the model (I0d, 2026-11-20)
+
+### How the model draws your keys
+
+- **Joint turns are copied bone for bone** (section 2b). Your keys are joint turns on the keyed rig. Euler XYZ, source frame:
+  +x the pilot's left, +y up, +z ahead.
+
+  | Joint | Sign |
+  | --- | --- |
+  | `LA`, `RA` (arms) | x < 0 raises the arm forward; z > 0 takes the left arm out, z < 0 the right |
+  | `LE`, `RE` (elbows) | x < 0 bends |
+  | `LL`, `RL` (hips) | x < 0 brings the thigh forward |
+  | `LK`, `RK` (knees) | x > 0 bends |
+  | `Sp`, `C`, `N`, `Hd` (spine, chest, neck, head) | x > 0 bows forward; y turns toward the pilot's left |
+  | `B` (body) | leans the whole body about the root |
+- **The proportions are not copied.** The keyed rig is the voxel pilot's: legs 0.5 m long, shoulders 0.35 m from the spine at about
+  1.1 m up, head joint 1.36 m, eyes 1.55 m. The model has legs 1.7 times as long, shoulders 0.13 m from the spine at 1.4 m, and eyes
+  at about 1.6 m. So:
+  - **Place hands and weapons in the chest's frame**, as the match does (`NativeIntroGrip.Hold`, the `NativeIntroPoses` helpers).
+    A hand keyed at 1.36 m because that is the model's shoulder height is a raised arm on the keyed rig, and the model copies that.
+  - **Key the legs on the model** (section 9c).
+  - **Check on the model, not on the rig.** Run `--intro-limits`, and draw the model as a stick figure (I2b's
+    `tools/intros/generic_sticks.py`, which reads `INTRO_GENERIC_MODEL`).
+
+### Reading `--intro-limits`
+
+Run `dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release -- --intro-limits`. It lists every registered
+intro, then every canonical pose, then fails if any intro has a finding. The full suite runs the same checks, reports your
+findings and fails only on the canonical poses.
+
+```
+MAP intro2-weapon-rifle  pelvis 0@0.0 ... Lupperarm 22/t3@7.2 Lforearm 22/t5@5.8 Lhand 85@5.8 ...
+LIMITS intro2-weapon-rifle: 6 findings
+  intro2-weapon-rifle 0.00-5.63 s L forearm: twisted past about 90° (worst 117° at 3.31 s)
+  intro2-weapon-rifle 5.67 s the drawn right foot slides on the floor at 3.01 m/s (keyed for the model: ModelFeet ...)
+  intro2-weapon-rifle 3.36 s the drawn calf_r is 13 cm into the floor (drops in the model's metres: ModelFeet)
+POSE walk: clean
+```
+
+- **A `MAP` line** shows, for each bone, how far the drawn bone turned from your keyed one, worst first, and when: `Lupperarm 22/t3@7.2`
+  is the direction 22° off, the twist 3° off, at 7.2 s. Legs, spine, neck and head must be 0. Arms and hands differ by design: the
+  model spreads a hanging arm 15°, keeps a hand out of the body, and eases a wrist bent past its own range. A large arm number means
+  the model moved your arm. It does that when your hand is inside the body or the head.
+- **A `LIMITS` finding** names the intro, the time span, the joint and the fault, with its worst value and when it happened. Fix
+  it at the worst time.
+
+  | Finding | What it means | Fix |
+  | --- | --- | --- |
+  | elbow or knee bent backward, sideways or past its range | a hinge used as a ball joint | bend it about its own x only: elbows x < 0, knees x > 0, at most about 155° |
+  | wrist bent past its range (85°) | the hand folded back on the forearm | point the hand along the forearm. A weapon hand is read in its weapon's convention: a gun's, the bow's and the shield's frame lie a quarter turn from the hand, so a level aim is a straight wrist (`NativeIntroGrip.Natural`) |
+  | wrist twisted (turn the forearm instead), forearm twisted past about 90° | the palm turned by the wrist, or more than a forearm can roll | carry the roll in the forearm (`NativeIntroGrip.Forearm` moves it to the elbow's own twist); past 95° the hand can't get there, so rotate the arm or choose another hand turn |
+  | shoulder: upper arm twisted past its range (110°) | a palm turned by spinning the upper arm | turn the palm with the forearm |
+  | shoulder: arm behind or across past its range (70° behind, 55° across) | an arm through the body | turn the chest instead |
+  | hip: flexed, behind, out, across or twisted past its range (140° flexed, 40° behind) | a thigh past what a hip does | in a run's flight one thigh goes forward and one back; never both back |
+  | spine, chest, neck or head bent or twisted past its range | the body bent through itself | spread a big turn over the spine, the chest, the neck and the head |
+  | hand, elbow or knee inside the torso | a limb through the body | move it out: on the model it is pushed out and your pose changes |
+  | the drawn foot slides on the floor (more than 0.45 m/s) | a keyed planted foot on a moving root (the model's legs are 1.7 times as long) | `ModelFeet` (section 9c), or `FeetSliding(t)` where the slide is meant (a knee slide, a cut) |
+  | the drawn ball, ankle, knee, hip or pelvis into the floor (more than 4 cm) | a keyed drop sinks the drawn hips 1.7 times as deep | `ModelFeet`: drops in the model's metres |
+  | the drawn off fist is off the drawn weapon's support point (more than 3 cm) | the grip can't reach | bring the weapon nearer the off shoulder, or slide the hand (`Along`) |
+
+### The canonical poses: code to copy
+
+Each pose is in Core `NativeIntroPoses` and is checked by `Tests/IntroPoseGallery` on the model every build: clean against the
+limits, feet still and on the floor, grip on the weapon. Start a key from a basis and tweak it:
+`k.Key(t, NativeIntroPoses.Kneel()).Root(x, .88f, z, yaw).J(Hd, .1f)`. The gallery file is the worked example for every pose: its
+stance, its `Arms` and its grip.
+
+| Pose | Basis | Stance (`ModelFeet`: the model's ankles) | `Arms` and grip |
+| --- | --- | --- | --- |
+| walk with counter-swing | `NativeIntroPoses.Walk(k, plan, track, t0, steps)`: keys at each contact (hips low, turned with the leading leg, chest countering, the opposite arm forward with the elbow bent) and each passing | from `NativeIntroFeet.Track` (0.65 m a step every 0.55 s) | none |
+| run | `NativeIntroPoses.Run(k, plan, track, t0, strikes)`: strike, toe-off and flight keys, the foot planted through its stance | 0.22 m ahead of the hips | none |
+| kneel | `Kneel()` (hips 0.47 m down) | `Stance(.13, .42, .1, -.13, -.1, -.3)` and `ModelKneel(t, false) => 1` | none |
+| crouch | `Crouch()` (hips 0.5 m down, chest over the knees) | `Stance(.15, .1, .2, -.15, -.12, -.3)` | none |
+| landing | `Landing()` as an `ImpactKey` (hips 0.6 m down, arms out), then a rebound key | `Stance(.2, .05, .25, -.2, -.08, -.35)` | none |
+| hero stances | `Hero()`, `HeroWide()` | `Stance(.13, .04, .15, -.13, -.04, -.3)` and `Stance(.24, .02, .3, -.24, -.02, -.3)` | none |
+| sword guard | `Guard()` | `Stance(.12, .2, .15, -.15, -.2, -.5)` | `NativeIntroPoses.Guard(pose, "sword")` |
+| greatsword or Katana guard | `Guard()` | as above | `Guard(pose, spec)`, grip on |
+| rifle or machine-gun aim | `RifleAim()` (the match's bladed torso and clavicles) | `Stance(.14, .18, .3, -.14, -.16, -.6)` | `AimRifle(pose, spec, yaw, pitch)`, grip on with `Shoulder` 1 |
+| pistol aim | `PistolAim()` | `Stance(.13, .04, .1, -.13, -.04, -.1)` | `AimPistol(pose, yaw, pitch)`, grip on |
+| bow draw | `BowDraw()`, root yawed a quarter turn right of the shot | `Stance(.13, .05, .4, -.13, -.05, 0)` on that yaw | `DrawBow(pose, yaw, pitch, NativeIntroPoses.BowAnchorPull)` (the match's bow pose), grip on with the same `Pull` |
+| staff hold | `StaffHold()` | `Stance(.12, .2, .15, -.15, -.2, -.5)` | `HoldStaff(pose, spec)`, grip on |
+| shield brace | `ShieldBrace()` | `Stance(.13, .22, .1, -.15, -.22, -.45)` | `BraceShield(pose)`, grip on |
+
+**The bow's draw on the model:** the bow's own full draw (`Pull` 1) puts the nock 0.82 m behind the riser. That is the keyed rig's
+draw length, and on the model it lands 30 cm past the head. `BowAnchorPull` (0.55) anchors the string at the drawn jaw.
+
+### Mistakes found so far, and what to do instead
+
+- **Over-long strides.** The keyed legs reach about 0.3 m either side of the hips, so a keyed step of 0.5 m left a planted foot
+  hanging short of the floor. On the model the stride also slid (next item). Use `ModelFeet` and write the model's steps:
+  0.6-0.75 m every 0.5-0.6 s.
+- **Feet planted on a moving root.** Every keyed walk slid the drawn stance foot back at about 1 m/s: 0.29 m in a 0.6 s stance in a
+  measured walk. Use `ModelFeet`.
+- **Drops in the keyed rig's metres.** A keyed drop sinks the drawn hips 1.7 times as deep: Whiteout's and Cloudbreak's kneels put a
+  knee 30 cm through the floor. With `ModelFeet` a `Drop` is the drawn hips' own metres, and `ModelKneel` puts the drawn knee on the
+  floor.
+- **Both thighs back on one key.** Flashbulb at 0.80 s had both hips 75° behind, so the body falls forward. In a stride one thigh
+  is forward and one back; the hip limit is 40° behind.
+- **Palm turns carried by the upper arm's twist.** The dev intro's V turned each arm 60° about its line, a 126° shoulder twist. A
+  palm turns with the forearm (the elbow's own y): `NativeIntroGrip.Forearm`.
+- **Keys that relied on the relax.** Before 5aca7b05 the match's free-arm relax re-solved keyed arms by up to 148°, so loose keys
+  looked fine. Arms are now drawn as keyed. Key them where they should be, or opt back in with `ArmsRelax(t)`.
+- **Hands keyed at the model's heights.** A hand at 1.36 m is the model's shoulder height but 0.25 m over the keyed rig's shoulder,
+  so the keyed arm points up and the model copies it (the rifle's chicken wing). Key hands in the chest's frame.
+- **The off hand placed by the keyed rig alone.** It missed the drawn weapon, and the match's support grip was off past 0.30 m. Use
+  the grip IK (section 9a).
+- **A learnt blade axis.** Still Rain learnt the Katana's axis from the drawn blade in the model hand's frame, which differs from the
+  keyed wrist's by the eased wrist, and then aimed the keyed wrist with it, so the cut stood straight up. The clip-free Katana lies
+  along its weapon frame's +z, like every weapon (`Tests/IntroAnchorChecks`). Aim +z.
+
+## 9c. Feet on the model: `ModelFeet` (I0d, 2026-11-20; the framework form of I2b's generic base, `claude/intro-generic` a7c8cdec)
+
+The drawn legs are 1.7 times the keyed ones, on hips that move 1.7 times as far from rest, on the shared root, and the drawn feet
+are not planted (section 2b). Opt in with `protected override bool ModelFeet=>true;` on a `NativeProceduralEntrance` (every v2
+script, the blade intros too). It changes what your keys mean:
+
+- **`Start` and `Steps` are where the drawn model's ankles go**: world x, z on the floor, a step's `H` lift in the model's metres.
+  Each frame the keyed foot is put where the drawn one then lands (`NativeIntroFeet.OnModel`), so a planted drawn foot stays put.
+- **`Drop` is the drawn hips' drop, in the model's metres.** For example, `Drop(-.5f)` puts the drawn hips 0.5 m lower.
+- **A walking step rolls heel to toe.** Before a step of 0.25 m or more with a swing of 0.2 s or more, the heel rises onto the ball,
+  and the heel strikes with the toe up.
+- **The overrides:**
+
+  | Override | What it does |
+  | --- | --- |
+  | `ModelKneel(t, left)` | 0..1: that leg's drawn knee down on the floor under the hips, the shin behind, the toes tucked. The leg must be planted. |
+  | `ModelGround(t)` | What the feet stand on (a roof, a ledge). |
+  | `ModelShift(t, plan)` | Moves the plan (feet riding a platform). |
+  | `FeetSliding(t)` | true where a slide is meant (a knee slide, a cut), so the check does not flag it. |
+- **The walk helpers:** `NativeIntroFeet.Track` is a hips' line with a start-up, a steady speed and a slow-down; key `RootPath` from
+  it. `NativeIntroFeet.Walk(plan, track, ...)` writes the steps, each landing ahead of the hips, and `NativeIntroPoses.Walk` adds
+  the body's keys.
+- **If you override `Pose`,** call `ModelPose(t, pose, out root, out rotation)` instead of `NativeEntrancePose.Keyed`.
+- **The generic intros' base** (`NativeIntroGenericScript`) does this itself and must not set `ModelFeet`. It should map its own
+  slides for the check: `public override bool FeetSliding(float t)=>Sliding(t);`.
+- **Checked** (`IntroPoseChecks`, every registered intro, on the model every 1/30 s while shown):
+  - a foot flat on the floor (its ball within 1.2 cm of it) stays put, its ball under 0.45 m/s, unless `FeetSliding`;
+  - no ball, ankle, knee, hip or pelvis goes more than 4 cm into the floor.
+
+  The canonical walk slides at most 0.05 m/s, the run 0.29 m/s at its toe-off, and no pose goes more than 1 cm in.
+
+## 9d. Pack clips as keys: `FromPack` (I0d, 2026-11-20; owner on Slipstream: "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I have")
+
+An animation pack's humanoid clips can drive an intro's keyed body. There is still no match animation system in an intro: no `Clip()`,
+and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the model as any keys are.
+
+- **The bank:** `Resources/ChipArenaIntroMotion.bytes` in the git-ignored local assets (Core `NativeIntroPack.Resource`). It is the
+  intros' own bank, never the match's motion bank (`ChipArenaVisualMotion.bytes`, sha 37ec44d2, which holds check). It is baked by the
+  local tool's `bozo-intromotion.request` (the scratch patch `intromotion_patch.py`). The bake samples each clip on the baked body the
+  way the motion bank does (a manual graph, root motion off, foot IK on), at 60 Hz. It records the bones' rotations rather than
+  muscles, and it records the body's own rest skeleton. Never commit the bank or the pack's FBX. The bank ships as a local asset, as
+  the motion bank does.
+  - The runner pack (BIPER "Runner Action Animation Pack", `CLazyRunnerActionAnimPack`) installs under
+    `Assets/LocalAssets/CLazyRunnerActionAnimPack`. Extract only the clips you need, plus `Models/ClazyRunner.FBX`, their avatar source.
+    Keep each file's `.meta` so its GUID is kept.
+- **The conversion (Core `NativeIntroPack`):** each frame is the model binding (`NativeVisualRig.Pose`) run backwards on the bank's
+  skeleton. A keyed joint's turn is its chain's last bone's world turn off the aligned rest, less the chain's start. The arms' spread
+  and the wrist's eased bend are undone. The pelvis's offset goes on the keyed body over the legs' ratio. So the keys drawn on the model
+  are the clip on the model: the round trip on the measured skeleton redraws the body within 0.01 degrees.
+  - The drawn body takes a pack clip's arms exactly as keyed (`NativeVisualRig.Grasp.Exact`, set from
+    `NativeProceduralEntrance.PackWeight(t, Arms)`). The voxel-body corrections are let go: Inside (a hand inside the shoulders) and
+    Clear (a fist kept off the body). Without that, the slide's left arm was drawn 18 degrees off the clip. The match never sets it.
+- **The API:**
+
+  | Call | What it does |
+  | --- | --- |
+  | `k.FromPack(clip, from, to, start = 0, speed = 1, loop = false, root = Path, mask = All, blendIn = .1, blendOut = .1)` | Plays `clip` over the keys from intro time `from` to `to`, `start` seconds into the clip at `speed`. Its joints in `mask` ease in and out from what the keys put there. The planting lets go while its legs play. A foot the clip has on the floor is held where it came down against the intro's root (the keyed leg as a hinge), eased out over the last 30 ms before it lifts. |
+  | `NativeIntroPack.RootMode.Path` | The intro's root (its keys or `RootPath`). Move it at the clip's `Speed` along the facing for the drawn feet to hold. |
+  | `NativeIntroPack.RootMode.Kept` | The clip's own travel: on from the root at `from`, along the facing, at `Speed` times the segment's weight. The root stays where the clip took it after `to`. |
+  | masks `All`, `Legs`, `Torso`, `Arms`, `LeftArm`, `RightArm` | `Legs` includes the pelvis's turn and place. Keys and `Arms()` still key what a mask leaves out, such as a weapon carry over a pack run (`Legs \| Torso`). The grip IK works on top. |
+  | `NativeIntroPack.Local.TryGet(name, out clip)` | The clip: `Length`, `Rate`, `Frames`, `Speed`, `Travel`, and `Loop` as the pack marks it. |
+  | `clip.Sample(time, loop, joints, out body)` | Each keyed joint's local turn (22, CapturedRig's order) and the keyed body's offset. `NativeIntroPack.Euler(q, near)` gives the keys' XYZ angles. Allocation-free. |
+  | `clip.Foot(time, loop, left, out ankle, out ball)`, `clip.OnFloor(time, loop, left)` | The drawn foot in the rig frame (the model's metres) and whether it is down: for planning the feet in the model's space (a car's frame). |
+  | `bank.Model(clip, frame, world, at)` | The frame as baked on the model, bone by bone (for checks). |
+
+- **Without the bank** (CI, a build without the local assets), a segment does nothing and the keys under it play. Key a fallback
+  under every pack segment.
+- **Speed:** a clip samples in place. `Speed` is how fast a foot on the floor moves back under the body, which is the speed the root
+  must travel for that foot to hold. Match the root to it, or use `Kept`. Where the intro's path must differ (a train, a car), plan
+  the feet in the model's space from `Foot` and `OnFloor`.
+- **The first bank** (Slipstream's clips, I2b's picks; 2026-11-20): 9 clips, 131,257 bytes, at 60 Hz on the body's 180-bone skeleton:
+  `Mvm_PowerDash_Front`, `Mvm_Dash`, `Mvm_Boost`, `Jmp_FrontAir_A_Start`, `Jump_Down_A_Loop`, `Esc_Slide_All`, `Esc_Slide_Start`,
+  `Esc_Slide_Loop` and `Esc_Slide_End`. Each clip's keys draw its limbs within 0.1 degrees of the clip on the model, with the ankles
+  within a millimetre. The turns are within 4.7 degrees, the worst being `Esc_Slide_Start`'s right hand, a wrist bent past what the
+  binding's eased wrist reaches.
+  - `Speed`: `Mvm_Dash` 9.12 m/s, `Mvm_PowerDash_Front` 7.95, `Jmp_FrontAir_A_Start` 2.21. On its own travel the Dash's feet slide
+    0.00 m/s.
+  - `Mvm_Boost` barely touches the floor on this body: its feet are down in 12% of frames, and its stance ankle stays about 5 cm high.
+    Prefer the Dash, or lower the root.
+  - The slides put a leg up to 6 cm into the floor (`Esc_Slide_Loop`). Lift the root by that much while sliding.
+- **Checked** (`Tests/IntroPackChecks`, `--intro-pack`, and in `--intros-v2`):
+  - always: the Euler round trip, the binding's round trip on the measured skeleton, and that sampling allocates nothing;
+  - with the local bank (`CHIPARENA_INTRO_MOTION`, the local assets' copy, or `scratch/intro-framework/ChipArenaIntroMotion.bytes`):
+    every clip's keys draw its limbs along the clip on the model, and its ankles where the clip's are. A grounded clip (a foot down a
+    sixth of the time or more), played through `FromPack` on its own travel, keeps its feet still and out of the floor.
+  - `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits. The keyed wrist
+    is the weapon's frame, which the binding eases, so a mocap wrist reads as bent past its range there. The keyed torso is the voxel
+    body's. `IntroPackChecks` lists those keyed findings per clip, for information.
+  - `CHIPARENA_PACK_DUMP=<clip>` prints that clip's feet frame by frame.
+  - `IntroPoseChecks` loads the local bank first, so `--intro-limits` checks an intro's pack segments as the game plays them.

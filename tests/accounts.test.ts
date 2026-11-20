@@ -52,17 +52,39 @@ test('short passwords register, authenticate and recover; empty and oversized pa
 });
 
 
+test('two PCs cannot overwrite a newer visor and intro with a stale pilot',async()=>{
+ const f=await fixture();
+ try{
+  const credentials={username:'two_pcs',password};
+  const pcA:any=await(await f.request('register',credentials)).json();
+  const pcB:any=await(await f.request('login',credentials)).json();
+  const profile={cosmetics:{weaponSkins:'face:visor',intro:'grid-rez',overrideWeaponIntro:true}};
+  assert.equal((await f.request('profile',{revision:pcA.account.revision,profile},pcA.session)).status,200);
+  const stale={revision:pcB.account.revision,profile:{cosmetics:{intro:'blackout',overrideWeaponIntro:true}}};
+  assert.equal((await f.request('profile',stale,pcB.session)).status,409);
+  const reload:any=await(await f.request('me',undefined,pcB.session)).json();
+  assert.equal(reload.account.profile.cosmetics.weaponSkins,'face:visor');
+  assert.equal(reload.account.profile.cosmetics.intro,'grid-rez');
+  reload.account.profile.cosmetics.intro='blackout';
+  assert.equal((await f.request('profile',{revision:reload.account.revision,profile:reload.account.profile},pcB.session)).status,200);
+  const login:any=await(await f.request('login',credentials)).json();
+  assert.equal(login.account.profile.cosmetics.weaponSkins,'face:visor');
+  assert.equal(login.account.profile.cosmetics.intro,'blackout');
+  assert.equal(login.account.profile.cosmetics.overrideWeaponIntro,true);
+ }finally{f.db.close();}
+});
+
 test('native account cosmetics survive save, reload and a second login without granting DEV access',async()=>{
  const f=await fixture();try{
   const first:any=await(await f.request('register',{username:'nativepilot',password})).json();assert.equal(first.account.profileSchema,2);
   let revision=0;
   for(const intro of ['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']){
-   const response=await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro,overrideWeaponIntro:true,lobbyBack:'hex-field',preferredSpec:'sword',hat:'auditor-halo'}}},first.session);
+   const response=await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro,weaponSkins:'face:visor',overrideWeaponIntro:true,lobbyBack:'hex-field',preferredSpec:'sword',hat:'auditor-halo'}}},first.session);
    assert.equal(response.status,200);const saved:any=await response.json();revision=saved.account.revision;
    const reread:any=await(await f.request('me',undefined,first.session)).json();
-   assert.equal(reread.account.profile.cosmetics.intro,intro);assert.equal(reread.account.profile.cosmetics.overrideWeaponIntro,true);assert.equal(reread.account.profile.cosmetics.lobbyBack,'hex-field');assert.equal(reread.account.profile.cosmetics.hat,'none');
+   assert.equal(reread.account.profile.cosmetics.weaponSkins,'face:visor');assert.equal(reread.account.profile.cosmetics.intro,intro);assert.equal(reread.account.profile.cosmetics.overrideWeaponIntro,true);assert.equal(reread.account.profile.cosmetics.lobbyBack,'hex-field');assert.equal(reread.account.profile.cosmetics.hat,'none');
   }
-  const second:any=await(await f.request('login',{username:'nativepilot',password})).json();assert.equal(second.account.profile.cosmetics.intro,'overclock');assert.equal(second.account.profile.cosmetics.lobbyBack,'hex-field');
+  const second:any=await(await f.request('login',{username:'nativepilot',password})).json();assert.equal(second.account.profile.cosmetics.weaponSkins,'face:visor');assert.equal(second.account.profile.cosmetics.intro,'overclock');assert.equal(second.account.profile.cosmetics.lobbyBack,'hex-field');
   // Unity weapon skins: a normalized per-weapon map (strict allowlist, Standard when absent or invalid), kept across reloads.
   const skinned:any=await(await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro:'overclock',lobbyBack:'hex-field',weaponSkins:' sword : prototype ,pistol:prototype,rifle:standard,nope:prototype,shield:gold,<script>'}}},first.session)).json();
   revision=skinned.account.revision;assert.equal(skinned.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');

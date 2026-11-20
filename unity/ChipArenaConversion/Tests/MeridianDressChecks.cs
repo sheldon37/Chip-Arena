@@ -86,7 +86,8 @@ internal static class MeridianDressChecks
         var walkSrc=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeLayeredCityWalkPreview.cs"));
         Check(walkSrc.Contains("MeridianDressOpen(cityWalk, plan.Seed, seed);")&&walkSrc.Contains("MeridianDressClose();"),"one call line each in OpenCityWalk and CloseCityWalk");
         var dressing=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeArenaDressing.cs"));
-        Check(dressing.Contains("if(surveyBlocks&&NativeMeridianDressDraw.Hides(arena.MapId,p.Definition.id))continue;"),"the greybox leaves out only the walk's covered blocks the dress drew this frame");
+        Check(dressing.Contains("if(meridianBlocks&&NativeMeridianDressDraw.Hides(arena.MapId,p.Definition.id))continue;")&&dressing.Contains("meridianBlocks=NativeMeridianDress.HidesGreybox(mapId);"),
+            "the greybox leaves out only the covered blocks the dress drew this frame, on the walk's layouts and the live map (HubZFightChecks measures the live hub)");
         var draw=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeMeridianDressDraw.cs"));
         Check(draw.Contains("bank=NativePackBanks.Bank(NativeMeridianDress.Bank);if(bank==null)return false;")&&draw.Contains("Time.frameCount-activeFrame<=1"),"without the bank nothing is made; a stale dress hides nothing");
         Check(!draw.Contains("WardField(")&&!draw.Contains("NativeWardZeroField")&&!draw.Contains("NativeIronworks"),"the dress never touches Ward Zero's or the Ironworks' light field");

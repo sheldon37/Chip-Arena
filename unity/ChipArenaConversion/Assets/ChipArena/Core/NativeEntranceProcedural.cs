@@ -15,7 +15,10 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The hero facing every procedural entrance ends on.</summary>
         public const float Facing=-.22f;
-        protected NativeEntranceKeys Keys;protected float[] Start;protected NativeEntrancePose.Step[] Steps=Array.Empty<NativeEntrancePose.Step>();
+        private NativeEntranceKeys keys;
+        /// <summary>The keys; a v2 intro's carry its hinged legs (NativeEntranceKeys.Hinged), whoever samples them.</summary>
+        protected NativeEntranceKeys Keys{get=>keys;set{keys=value;if(value!=null)value.Hinged=HingedLegs;}}
+        protected float[] Start;protected NativeEntrancePose.Step[] Steps=Array.Empty<NativeEntrancePose.Step>();
         private readonly float[] feet=new float[8];protected Func<float,Vector3,Vector3> RootPath;
         protected NativeProceduralEntrance(string style,float hit,int accent):base(style,hit,accent){Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f);}
         /// <summary>A stance (left x, z, yaw, right x, z, yaw) in the hero facing's frame, as world values.</summary>
@@ -28,8 +31,52 @@ namespace ChipArena.UnityConversion
         {var p=NativeEntranceMath.RotateY(new Vector3(x,0,z),facing);return new NativeEntrancePose.Step(left,lift,land,p.X+ox,p.Z+oz,yaw+facing,h);}
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {
-            NativeEntrancePose.Feet(t,Start,Steps,feet);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath);Arms(t,pose,root,rotation);
+            if(ModelFeet){ModelPose(t,pose,out root,out rotation);return;}
+            NativeEntrancePose.Feet(t,Start,Steps,feet);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath,HingedLegs);Arms(t,pose,root,rotation);GripIK(t,pose);
         }
+        /// <summary>Intros v2's grip IK (Core NativeIntroGrip, docs/INTROS-V2.md 9a): an intro that implements INativeIntroGrip has its off hand
+        /// put on its weapon here, after Arms has placed the main hand. An intro that overrides Pose calls it after its own Arms.</summary>
+        protected void GripIK(float t,CapturedRig.Pose pose){if(this is INativeIntroGrip g&&g.GripAt(t,out var at)&&at.Weight>.001f)NativeIntroGrip.Solve(pose,WeaponSpec,at);}
+        /// <summary>How much of `mask`'s joints (NativeIntroPack.Arms, Legs...) the keys' pack segments play at `t` (0: none, or no bank): the
+        /// drawn body takes those arms exactly as keyed (the binding's Grasp.Exact), and the checks hold them to the clip on the model.</summary>
+        public float PackWeight(float t,int mask)=>Keys==null||Keys.Packs.Length==0?0:NativeIntroPack.Weight(Keys,t,mask);
+
+        // ---- the feet on the model (Core NativeIntroFeet; docs/INTROS-V2.md 9c) ----
+        /// <summary>
+        /// Opt-in: the keys' stances and steps (Start, Steps) are where the drawn MODEL's ankles go (world x, z on the floor; a step's lift in
+        /// the model's metres) and their drops (Drop) are the drawn hips' (the model's metres); each frame the keyed foot is put where the
+        /// drawn one then lands, a walking foot rolls heel to toe, and a kneeling leg (ModelKneel) puts the drawn knee on the floor. Without
+        /// it the drawn legs, 1.7 times the keyed ones on the shared root, slid a planted foot back at about 1 m/s in a walk and sank a
+        /// keyed drop 1.7 times as deep. Off by default (the older entrances and an intro that does this itself, as the generic intros' base).
+        /// </summary>
+        protected virtual bool ModelFeet=>false;
+        /// <summary>(ModelFeet) How far leg `left` kneels at `t`, 0..1 (it must be planted then): the drawn knee down on the floor under the
+        /// hips, the shin along the floor behind, the toes tucked under (NativeIntroFeet.OnKnee), whatever the hips' height.</summary>
+        protected virtual float ModelKneel(float t,bool left)=>0;
+        /// <summary>(ModelFeet) What the feet stand on at `t` (the floor top; a roof or a ledge the pilot is on): the plan's lifts are above it.</summary>
+        protected virtual float ModelGround(float t)=>NativeEntranceStage.FloorY;
+        /// <summary>(ModelFeet) Moves this frame's plan (per foot x, z, yaw, lift: the model's ankles) before it goes on the model: feet riding a
+        /// moving platform.</summary>
+        protected virtual void ModelShift(float t,float[] plan){}
+        /// <summary>Whether the drawn feet may move on the floor at `t` (a slide on the boots or a knee, a cut that puts them down elsewhere, a
+        /// knee snapping down in a landing): Tests/IntroPoseChecks holds every other foot flat on the floor still.</summary>
+        public virtual bool FeetSliding(float t)=>false;
+        private readonly float[] toes=new float[2];
+        /// <summary>The pose with the feet on the model (ModelFeet): the plan as the model's ankles, the keyed hips from the keys (drops in the
+        /// model's metres), the kneeling legs, the keyed feet put where the drawn ones land, then Arms and the grip. An intro that overrides
+        /// Pose and wants this calls it.</summary>
+        protected void ModelPose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
+        {
+            NativeIntroFeet.Plan(t,Start,Steps,feet,toes);ModelShift(t,feet);float drop=1/NativeIntroFeet.LegScale;
+            // (First the pose as keyed, for the hips; then the feet put where the model's land, from those hips.)
+            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath,HingedLegs,drop);
+            for(int side=0;side<2;side++){float w=ModelKneel(t,side==0);if(w>.001f){NativeIntroFeet.OnKnee(pose,root,rotation,feet,side==0,w);toes[side]+=(NativeIntroFeet.KneelToe-toes[side])*w;}}
+            NativeIntroFeet.OnModel(pose,root,rotation,feet,ModelGround(t)-NativeEntranceStage.FloorY);
+            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath,HingedLegs,drop);
+            NativeIntroFeet.Roll(pose,toes);Arms(t,pose,root,rotation);GripIK(t,pose);
+        }
+        /// <summary>Planted legs as true hinges (NativeEntrancePose.HingedLeg): the v2 intros; the older entrances keep their shortest-turn legs.</summary>
+        protected virtual bool HingedLegs=>false;
         /// <summary>When the pilot settles into its idle under the name card.</summary>
         protected virtual float HeroAt=>NameAt;
         /// <summary>Hand IK over the keyed arms (grips, a palm on the floor, a chip to the chest).</summary>

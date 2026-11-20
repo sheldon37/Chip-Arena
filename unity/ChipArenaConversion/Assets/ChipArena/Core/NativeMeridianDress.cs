@@ -41,6 +41,18 @@ namespace ChipArena.UnityConversion
         /// made. The live expedition's generated map keeps its look until the run moves onto candidate-3 (then its id joins the
         /// table, read where its map is lit: W1's NativeLighting.Look).</summary>
         public static readonly (string map,string look)[] LookTable={("expedition-city-walk-","expedition-night")};
+        /// <summary>Whether the arena dressing (Runtime NativeArenaDressing) leaves out, on this map, each block the dress drew in place
+        /// of this frame (Runtime NativeMeridianDressDraw.Hides, which holds only while the dress draws): the Developer walk's five
+        /// layouts (expedition-city-walk-&lt;plan seed&gt;) and the live run's generated map, which since PR #432 is one deal's street
+        /// plan with this dress over it. Drawn both ways, every dressed floor and wall lay twice in one plane (the hub's z-fighting,
+        /// owner 2026-11-20). The scale walks (-a, -b) and every other map keep their boxes.</summary>
+        public static bool HidesGreybox(string mapId)
+        {
+            const string walk="expedition-city-walk-";
+            if(mapId==null)return false;
+            if(mapId==NativeExpeditionGeneratedWorld.MapId)return true;
+            return mapId.StartsWith(walk,StringComparison.Ordinal)&&uint.TryParse(mapId.Substring(walk.Length),out _);
+        }
         /// <summary>The table's look for a map id (null: none), given whether the city bank is present (asked only on a match).</summary>
         public static string LookOf(string mapId,Func<bool> bank)
         {
@@ -92,6 +104,9 @@ namespace ChipArena.UnityConversion
             public readonly HashSet<string> Left=new HashSet<string>(StringComparer.Ordinal);
             /// <summary>Route lamp points that found no wall or span to hang from (dark gaps on the route; counted for the report).</summary>
             public int Unmounted;
+            /// <summary>The surfaces' seams (NativeMeridianChunks <see cref="BuildSeams"/>): made once the surfaces are, read-only after.
+            /// Null: each surface tessellates on its own grid (a plan built by hand).</summary>
+            public SeamTable Seams;
             public int ChunkOf(float x,float z){int cx=Math.Max(0,Math.Min(Nx-1,(int)Math.Floor((x-MinX)/ChunkSize)));int cz=Math.Max(0,Math.Min(Nz-1,(int)Math.Floor((z-MinZ)/ChunkSize)));return cx+cz*Nx;}
             /// <summary>A digest of the whole plan (keys, places, surfaces, lamps): the determinism checks compare it.</summary>
             public ulong Digest()
@@ -189,11 +204,11 @@ namespace ChipArena.UnityConversion
             }
             private int CX(float x)=>Math.Max(0,Math.Min(nx-1,(int)Math.Floor((x-minX)/Cell)));
             private int CZ(float z)=>Math.Max(0,Math.Min(nz-1,(int)Math.Floor((z-minZ)/Cell)));
-            /// <summary>Whether a point lies inside any block (more than eps inside it), other than `skip`.</summary>
-            public bool Inside(float x,float y,float z,int skip=-1,float eps=.01f)
+            /// <summary>Whether a point lies inside any block (more than eps inside it), other than `skip` and those `ignore` names.</summary>
+            public bool Inside(float x,float y,float z,int skip=-1,float eps=.01f,Func<int,bool> ignore=null)
             {
                 var c=cells[CX(x)+CZ(z)*nx];if(c==null)return false;
-                foreach(int i in c){if(i==skip)continue;int o=i*6;if(x>B[o]+eps&&x<B[o+1]-eps&&y>B[o+2]+eps&&y<B[o+3]-eps&&z>B[o+4]+eps&&z<B[o+5]-eps)return true;}
+                foreach(int i in c){if(i==skip||ignore!=null&&ignore(i))continue;int o=i*6;if(x>B[o]+eps&&x<B[o+1]-eps&&y>B[o+2]+eps&&y<B[o+3]-eps&&z>B[o+4]+eps&&z<B[o+5]-eps)return true;}
                 return false;
             }
             private readonly HashSet<int> near=new HashSet<int>();private readonly List<int> nearList=new List<int>();
