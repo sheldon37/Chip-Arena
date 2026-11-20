@@ -1,3 +1,98 @@
+## 2026-11-20 — Claude: the live Meridian hub's z-fighting: the greybox gives way to the street dress on the live map, as on the walk (owner report; presentation only)
+
+The owner: "There is immense z-fighting on the hub in the new expedition map."
+
+**Branch and status:** `claude/hub-zfight` from shared `a85e5b93` (PR #436). The fix is `4fd9dff4`; the docs and this entry follow
+it (comments, the probe's report lines and docs only). Pushed, not merged.
+
+### The cause
+Since PR #432 the live run's generated map (`expedition-generated-city`) is one deal's Meridian street plan, and
+`NativeExpeditionWorldPresentation.ShowMeridian` draws the street dress, the landmarks and the bleed over it. But the arena
+dressing left out the blocks the dress draws in place of only on the Developer walk's maps: its hide line,
+`if(surveyBlocks&&NativeMeridianDressDraw.Hides(...))` (`Runtime/NativeArenaDressing.cs`), tests `expedition-city-walk-<seed>`.
+So on the live map the greybox still drew every dressed block, and each of the dress's surfaces lay in the plane of a greybox
+face. (`docs/expedition/MERIDIAN-DRESS.md` listed this hide line under "For Astra"; it did not move with #432.) It is not Astra's
+data: no block in the hub duplicates another (the camp fence's corners overlap, as built, and the greybox's own lifts part them
+2 mm).
+
+### The pairs (the hub: 64 m square at the camp, y -3 to 12; `--hub-zfight-probe`, with all three city banks)
+- **The floor:** the greybox's `terrace-*` tops (`Runtime/NativeArenaDressing.cs` `Render`, NativeBlockLit, no layer) under the
+  dress's asphalt (`Core/NativeMeridianDressPlan.cs:209`, `Surface(b,bi,2,NativeMeridianSurfaces.Asphalt,0,4f)`, StageLit layer
+  0), at y 0.000 with no gap: 3,964 m² on Crown Hill, 4,036 on The Navigation, 4,089 on The Arcades, 3,984 on The Stride and
+  4,011 on The Yards, of the square's 4,096 m². That is the whole camp floor and the streets just outside its gates.
+- **The walls:** the terraces' sides under the dress's engineering brick (`NativeMeridianDressPlan.cs:210`, layer 0), and the
+  lots' boxes under their facade modules (layer 0), where they stand in the square: 104 m² of modules on Crown Hill (the chute
+  tenements).
+- **The city:** the same doubling lay under every one of the dress's surfaces: about 392,000 to 426,000 m² per plan. It showed
+  most on the hub, the lit, open floor every run starts on.
+- **Nothing else** fights in the hub. The dress's paint parts from its asphalt by StageLit's layers; the one landmark piece in the
+  square (The Arcades' exit) meets nothing; the bleed's nearest piece stands 113 to 136 m from the camp's centre; the gates' parts
+  and the fence's corners are parted by the greybox's own 2 mm lifts; the pods' craters lie 16 mm up (W4).
+
+### What changed
+- `Core/NativeMeridianDress.HidesGreybox(mapId)`: the walk's five layouts and the live map.
+- `Runtime/NativeArenaDressing.cs`: the hide line reads it (`meridianBlocks`). It still holds only while the dress draws
+  (`NativeMeridianDressDraw.Hides` needs the dress's last frame), so a build without the city bank draws the greybox as before.
+  The walk's survey box look (`surveyBlocks`) is unchanged.
+- Colliders, blocks, navigation, generation and rules are untouched.
+
+### The check
+`Tests/HubZFightChecks.cs` (`--hub-zfight`, in the full suite): every street plan's live deal, built as the station builds it;
+the dress planned as `ShowMeridian` plans it; everything drawn in the hub gathered (the greybox boxes the arena dressing still
+draws, with the map's lifts; the dress's surfaces, and with `CHIPARENA_MERIDIAN_BANK` its modules; the gates at rest). It fails
+on any two same-facing faces in one plane that overlap where they can be seen (4 mm; floors 30 mm; two NativeBlockLit faces 2 mm,
+their lifts' step) unless StageLit's layers part them, and it pins the runtime's hide line to `HidesGreybox`. With the hide off
+(shared's behaviour) it fails on Crown Hill with 186 pairs, naming `terrace-42`'s top under its asphalt first.
+`--hub-zfight-probe` lists the hub's blocks and every pair as shared drew it and as the branch draws it.
+
+### Checks
+- `--hub-zfight`: pass (29 checks) without the bank and with `CHIPARENA_MERIDIAN_BANK`; with the hide off (shared's
+  behaviour) it fails, as above. `--hub-zfight-probe` with all three city banks: 0 pairs on every plan (the output is
+  `F:/Chip Arena Development/scratch/hub-zfight/probe-hub-zfight.txt`).
+- `--meridian-dress` with `CHIPARENA_MERIDIAN_BANK`: pass (697,842 checks; its hide-line pin now reads `meridianBlocks`).
+- Full CoreTests the relgen5 way (a throwaway LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at
+  `4fd9dff4`: 1,081 PASS lines, no exception, "35 managed-core checks passed", exit 0.
+- `tools/check_unity_compile.py` (6000.3.24f1, my own output folder): Input System, Player, Assembly-CSharp and Editor pass.
+  `git diff --check`: clean.
+- The owner's Editor compiled `a85e5b93` and `4fd9dff4` in the hold (Tundra success).
+- Not run: a Windows player build, multiplayer (a guest's frame).
+
+### Captures
+One Editor hold of 17.5 min (13:24:53 to 13:42:35), the usual helpers, frames on C: (F: was full earlier). The three city banks
+were in the Editor's Resources throughout and unchanged; the 14 stage banks and the motion bank were verified. The BoZo tool took
+one local option for the hold, `xseed=N` (the station's room rebuilt with seed N, so both commits deal the same plan; the station's
+own seed comes from the clock), and was put back from its backup. The Editor went back to `9319026b` (compiled) and the lock was
+given back. (An earlier pass at 13:17 was paused: the Editor sat behind Unity's "Low disk space" dialog; it ended cleanly with no
+captures.)
+- **BEFORE:** shared `a85e5b93`. **AFTER:** `4fd9dff4`. Live Black Siren runs on Crown Hill (seed 2027808452) and The Arcades
+  (seed 3428989595), High, 1280x720; the dress drew in every run (2,704 and 4,332 blocks covered). Posed eyes: a 1.7 m dolly across
+  the plaza, a 0.45 m grazing pan out of a gate, a 14 m orbit, a gate view, the game's own camera, and a grazing dolly along a long
+  dressed street outside the hub (Crown Hill's Vale Cold Store street, The Arcades' City Hall street).
+- **Sheets:** `F:/Chip Arena Development/scratch/hub-zfight/look/sheet-crown-before-after.jpg`, `sheet-arcades-before-after.jpg`
+  (every view), and `crops-crown-before-after.jpg`, `crops-arcades-before-after.jpg` (the floor up close).
+- **Clips** in `F:/Chip Arena Development/scratch/hub-zfight/look/clips/`: `crown-hub-eye-dolly.mp4`, `crown-hub-graze-pan.mp4`,
+  `arcades-hub-high-orbit.mp4`, `arcades-street-dolly.mp4` (6 to 9 s each, under 0.7 MB).
+- **What they show:** before, the hub floor is a patchwork of the greybox's beige and the asphalt at every eye; after, it is
+  asphalt. Outside the hub, before, the greybox lot boxes stood in front of the facade modules' recesses, so the streets read as
+  blank dark walls; after, the shopfronts and their lit windows show.
+- **Seen, not fixed here:** with no greybox under the dress, small see-through marks show on the live floor (the toon outline draws
+  each as a 5 px dark cross): pinholes at T-junctions between the dress's floor quads (pre-existing: the approved walk has them),
+  and a dotted line along the camp fence's base, where the chamfered greybox fence leaves gaps at the floor line (the walk draws the
+  fence as a plain survey box). Counted on the AFTER frames: 5 to 111 a frame (most from the 14 m view). The integrator's call:
+  ship this, then fix both in the dress (`claude/dress-seams`).
+
+### Notes
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Voxel dependency:** none.
+- **For Astra:** nothing in your files. MERIDIAN-DRESS.md's "For Astra" hide line is done on our side.
+- **Risks:**
+  - As on the walk, a dressed block is not drawn at all where its chunk is not: past 175 m on High and Balanced and 125 m on
+    Low (`NativeMeridianDress.Far`). Before, the live run drew their greybox there. The night's fog ends at 150 m.
+  - A stale or partial city bank that lacks a module would leave its block's face bare in the live run, as on the walk.
+    MeridianDressChecks holds every seen face drawn with the bank.
+  - The killcam's replay arena shares the live map's id, so it hides the same blocks while the dress draws (as it should).
+- **Next:** the integrator reviews the sheets and clips and merges; the see-through marks follow on `claude/dress-seams`.
+
 ## 2026-11-20 — Astra: protect visor and entrance saves across PCs
 
 Branch `codex/locker-save-receipt` from shared `8d56f015`. Ordinary token refreshes no longer advance the revision of a Locker profile that has not been reloaded. Stale writes receive the existing conflict response. The Locker waits for the save response, checks the face gear and entrance, and exposes failures. On the next profile load, account-scoped pending face gear and entrance choices retry against unchanged fields while preserving newer remote choices. An acknowledged pick yields to later edits on another PC.
