@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         /// put on its weapon here, after Arms has placed the main hand. An intro that overrides Pose calls it after its own Arms.</summary>
         protected void GripIK(float t,CapturedRig.Pose pose){if(this is INativeIntroGrip g&&g.GripAt(t,out var at)&&at.Weight>.001f)NativeIntroGrip.Solve(pose,WeaponSpec,at);}
         /// <summary>How much of `mask`'s joints (NativeIntroPack.Arms, Legs...) the keys' pack segments play at `t` (0: none, or no bank): the
-        /// drawn body takes those arms exactly as keyed (NativeVisualRig.Grasp.Exact), and the checks hold them to the clip on the model.</summary>
+        /// drawn body takes those arms exactly as keyed (the binding's Grasp.Exact), and the checks hold them to the clip on the model.</summary>
         public float PackWeight(float t,int mask)=>Keys==null||Keys.Packs.Length==0?0:NativeIntroPack.Weight(Keys,t,mask);
 
         // ---- the feet on the model (Core NativeIntroFeet; docs/INTROS-V2.md 9c) ----
