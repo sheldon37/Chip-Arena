@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
 
         /// <summary>A piece's kind: its bank key, mount, envelope at scale 1 in its own frame (Floor: centred on the floor's top,
         /// z along the street; Wall: the bay's foot on the face, +z out of the wall, -x the viewer's right; Span: from the cable's
-        /// start, x across the street; Overhead: the cell's centre on its underside), whether it casts, and a lamp's light and head.</summary>
+        /// start, x across the street; Overhead: the hanging point), whether it casts, and a lamp's light and head.</summary>
         public sealed class Kind
         {
             public readonly string Key;public readonly Mount Mount;public readonly V3 Min,Max,Head;public readonly bool Casts;public readonly uint Light;
@@ -47,22 +47,51 @@ namespace ChipArena.UnityConversion
             {Key=key;Mount=mount;Min=min;Max=max;Casts=casts;Light=light;Head=head;}
         }
         private static V3 V(float x,float y,float z)=>new V3(x,y,z);
-        public const uint Sodium=0xFFB45A,Office=0xF4F2C8,Siren=0xFF2424,SignalRed=0xFF3020,SignalGreen=0x40FF70,Work=0xFF8A2A,HighBay=0xFFB060,Pool=0x8FF4FF;
+        /// <summary>The lamps' light (art bible 3.2: each instance's light; the city's sodium; Ward Zero's cold flood for its lamps
+        /// not yet turned red).</summary>
+        public const uint Sodium=0xFFB45A,Office=0xF2EE9A,Siren=0xFF2A30,SignalRed=0xFF3A2E,SignalGreen=0x38E06C,Work=0xFF9A30,HighBay=0xFF7A2A,Pool=0x52E4E0,ColdFlood=0xD4E6FF;
+        /// <summary>The floor fields: each comes whole, with a ragged edge (+z), a ragged corner (+z and +x) and as scattered bits
+        /// (the field's tiles lost tile by tile toward its rim, never a hard rectangle).</summary>
+        public static readonly string[] Fields={"level0.carpet","poolrooms.tile","poolrooms.flood","wardzero.vinyl","station.platform","ironworks.plates"};
         public static readonly Kind[] Kinds=
         {
             // floors
             new Kind("level0.carpet",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            new Kind("level0.carpet.edge",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            new Kind("level0.carpet.corner",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            new Kind("level0.carpet.bits",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
             new Kind("poolrooms.tile",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("poolrooms.tile.edge",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("poolrooms.tile.corner",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("poolrooms.tile.bits",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
             new Kind("poolrooms.flood",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("poolrooms.flood.edge",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("poolrooms.flood.corner",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("poolrooms.flood.bits",Mount.Floor,V(-1,0,-1),V(1,.045f,1)),
+            new Kind("wardzero.vinyl",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("wardzero.vinyl.edge",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("wardzero.vinyl.corner",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("wardzero.vinyl.bits",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("station.platform",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("station.platform.edge",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("station.platform.corner",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("station.platform.bits",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
+            new Kind("ironworks.plates",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            new Kind("ironworks.plates.edge",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            new Kind("ironworks.plates.corner",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            new Kind("ironworks.plates.bits",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
             new Kind("poolrooms.drain",Mount.Floor,V(-.6f,0,-.3f),V(.6f,.03f,.3f)),
             new Kind("poolrooms.ring",Mount.Floor,V(-.45f,0,-.45f),V(.45f,.055f,.45f)),
             new Kind("wardzero.litter",Mount.Floor,V(-1,0,-1),V(1,.02f,1)),
-            new Kind("wardzero.decon",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
             new Kind("station.rails",Mount.Floor,V(-.9f,0,-1),V(.9f,.03f,1)),
-            new Kind("station.platform",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
             new Kind("ironworks.ash",Mount.Floor,V(-1,0,-1),V(1,.03f,1)),
             new Kind("ironworks.slag",Mount.Floor,V(-.35f,0,-1),V(.35f,.04f,1)),
-            new Kind("ironworks.plates",Mount.Floor,V(-1,0,-1),V(1,.04f,1)),
+            // stains and cracks: the bleed in the paving of an open street
+            new Kind("level0.stain",Mount.Floor,V(-1,0,-1),V(1,.02f,1)),
+            new Kind("poolrooms.puddle",Mount.Floor,V(-1,0,-1),V(1,.02f,1)),
+            new Kind("wardzero.scuff",Mount.Floor,V(-1,0,-1),V(1,.015f,1)),
+            new Kind("station.oil",Mount.Floor,V(-1,0,-1),V(1,.015f,1)),
+            new Kind("ironworks.crack",Mount.Floor,V(-1,0,-1),V(1,.015f,1)),
             // ground storey skins (threshold) and warp skins: flat
             new Kind("level0.wallpaper",Mount.Wall,V(-1.25f,0,0),V(1.25f,Storey,.05f)),
             new Kind("level0.threshold",Mount.Wall,V(-1.25f,0,0),V(1.25f,Storey,.05f)),
@@ -115,10 +144,11 @@ namespace ChipArena.UnityConversion
             new Kind("level0.troffer",Mount.Overhead,V(-.65f,-.35f,-.2f),V(.65f,0,.2f),true,Office,V(0,-.33f,0)),
             new Kind("station.dropper",Mount.Overhead,V(-.15f,-.5f,-.6f),V(.15f,0,.6f)),
             new Kind("ironworks.hook",Mount.Overhead,V(-.6f,-2.2f,-.6f),V(.6f,0,.6f),true),
-            // Level 0's office ceiling (2 m cells, from the underside up)
-            new Kind("level0.ceiling.tile",Mount.Overhead,V(-1,-.35f,-1),V(1,1.8f,1),true),
-            new Kind("level0.ceiling.gap",Mount.Overhead,V(-1,-.35f,-1),V(1,1.8f,1),true),
-            new Kind("level0.ceiling.light",Mount.Overhead,V(-1,-.35f,-1),V(1,1.8f,1),true,Office,V(0,0,0)),
+            new Kind("common.pendant",Mount.Overhead,V(-.3f,-1.1f,-.3f),V(.3f,0,.3f),true,Sodium,V(0,-1f,0)),
+            // Level 0's office ceiling: rows 2.5 m deep, carried wall to wall (x across the street, scaled to the walls' gap)
+            new Kind("level0.ceiling.tile",Mount.Span,V(0,-.06f,-1.25f),V(2,.3f,1.25f),true),
+            new Kind("level0.ceiling.gap",Mount.Span,V(0,-.06f,-1.25f),V(2,.3f,1.25f),true),
+            new Kind("level0.ceiling.light",Mount.Span,V(0,-.06f,-1.25f),V(2,.3f,1.25f),true,Office,V(1,-.05f,0)),
         };
         private static readonly Dictionary<string,int> kindIndex=Index();
         private static Dictionary<string,int> Index(){var d=new Dictionary<string,int>(StringComparer.Ordinal);for(int i=0;i<Kinds.Length;i++)d.Add(Kinds[i].Key,i);return d;}
@@ -291,12 +321,13 @@ namespace ChipArena.UnityConversion
             plan.WallSlots+=slots.Count;plan.FloorCells+=floor.Count;
             fitWorld=w;fitNear=near;
             uint rs=NativeCityBleed.Hash(seed*2654435761u^(uint)(d+1)*40503u);
-            Floors(plan,w,near,floor,theme,d,rs);
+            var field=Floors(plan,w,near,floor,theme,d,rs);
             Lines(plan,w,near,bleed,segs,theme,d,rs);
+            Stains(plan,floor,field,theme,d,rs);
             Walls(plan,slots,theme,d,rs);
             Lamps(plan,slots,theme,d,rs);
+            if(theme=="level0")Ceilings(plan,w,near,slots,crossings,d,rs);
             Spans(plan,w,near,slots,theme,d,rs);
-            if(theme=="level0")Ceilings(plan,w,near,floor,crossings,d,rs);
         }
 
         private static float Rand(uint rs,uint salt,int i)=>(NativeCityBleed.Hash(rs^salt*0x9E3779B9u^(uint)i*0x85EBCA6Bu)&0xFFFFFF)/16777216f;
@@ -318,6 +349,18 @@ namespace ChipArena.UnityConversion
                     if(Math.Min(fhi.x,ohi.x)-Math.Max(flo.x,olo.x)>.01f&&Math.Min(fhi.z,ohi.z)-Math.Max(flo.z,olo.z)>.01f)return false;
                 }
             }
+            if(Kinds[k].Mount==Mount.Span||Kinds[k].Mount==Mount.Overhead)
+            {
+                // a ceiling row and anything else overhead never share space (the rows abut; the troffer wires give way to them)
+                bool ceiling=Kinds[k].Key.StartsWith("level0.ceiling",StringComparison.Ordinal);Bounds(piece,out var clo,out var chi);
+                foreach(var o in plan.Pieces)
+                {
+                    var ok=Kinds[o.Kind];if(ok.Mount!=Mount.Span&&ok.Mount!=Mount.Overhead)continue;
+                    if(!ceiling&&!ok.Key.StartsWith("level0.ceiling",StringComparison.Ordinal))continue;
+                    Bounds(o,out var olo,out var ohi);
+                    if(Math.Min(chi.x,ohi.x)-Math.Max(clo.x,olo.x)>.02f&&Math.Min(chi.z,ohi.z)-Math.Max(clo.z,olo.z)>.02f&&Math.Min(chi.y,ohi.y)-Math.Max(clo.y,olo.y)>-.02f)return false;
+                }
+            }
             if(Kinds[k].Mount!=Mount.Floor&&fitWorld!=null)
             {
                 Bounds(piece,out var lo,out var hi);var ins=new V3(.012f,.012f,.012f);lo=lo+ins;hi=hi-ins;
@@ -335,39 +378,89 @@ namespace ChipArena.UnityConversion
         }
         private static readonly V3 One=new V3(1,1,1);
 
-        // Paint on the street: patches that creep in through the warp and cover the threshold.
-        private static void Floors(Plan plan,World w,List<int> near,List<(V3 at,float metres,NativeCityBleed.Bands band,float share,V3 along,float width,int seg)> cells,string theme,int d,uint rs)
+        // Paint on the street: fields that creep in through the warp and cover the threshold, on the 2 m grid. A field's cell
+        // whose neighbour is not in the field is ragged on that side (an edge or a corner), a cell between two gaps falls to
+        // bits, and bits scatter a cell beyond the field's rim: the fields thin out tile by tile, never a hard rectangle.
+        private static string[] Floors(Plan plan,World w,List<int> near,List<(V3 at,float metres,NativeCityBleed.Bands band,float share,V3 along,float width,int seg)> cells,string theme,int d,uint rs)
         {
-            for(int i=0;i<cells.Count;i++)
+            int n=cells.Count;var field=new string[n];var index=new Dictionary<long,int>();
+            for(int i=0;i<n;i++)index[CellKey(cells[i].at)]=i;
+            for(int i=0;i<n;i++)
             {
                 var c=cells[i];float r=Rand(rs,11,i);float t=(c.share-NativeCityBleed.WarpAt)/(NativeCityBleed.ThresholdAt-NativeCityBleed.WarpAt);
-                float yaw=(int)(Rand(rs,12,i)*4)*(float)(Math.PI/2);bool warp=c.band==NativeCityBleed.Bands.Warp,thresh=c.band==NativeCityBleed.Bands.Threshold;
+                bool warp=c.band==NativeCityBleed.Bands.Warp,thresh=c.band==NativeCityBleed.Bands.Threshold,drift=c.band==NativeCityBleed.Bands.Drift;
                 // the warp's patches creep with the share; a seeded field (4 m cells) keeps them in clumps, not salt and pepper
                 float clump=(NativeCityBleed.Cell(c.at,4)&1023)/1023f;bool patch=thresh||warp&&clump*.6f+r*.4f<.25f+.6f*Math.Max(0,t);
-                bool drift=c.band==NativeCityBleed.Bands.Drift;
                 switch(theme)
                 {
                     // the carpet starts creeping in through the drift's inner half
-                    case "level0":if(patch||drift&&clump*.7f+r*.3f<1.4f*(c.share-.35f))Add(plan,"level0.carpet",c.at,yaw,One,d,c.band,rs,i);break;
+                    case "level0":if(patch||drift&&clump*.7f+r*.3f<1.4f*(c.share-.35f))field[i]="level0.carpet";break;
+                    // the flood lies in pools across the threshold's tile (clumps, never a checkerboard)
+                    case "poolrooms":if(thresh)field[i]=clump<.45f?"poolrooms.flood":"poolrooms.tile";else if(patch)field[i]="poolrooms.tile";break;
+                    case "wardzero":if(patch)field[i]="wardzero.vinyl";break;
+                    case "station":if(thresh)field[i]="station.platform";break;
+                    case "ironworks":if(thresh)field[i]="ironworks.plates";break;
+                }
+            }
+            bool Joined(int i,int dx,int dz)
+            {
+                if(!index.TryGetValue(CellKey(cells[i].at+new V3(dx*Tile,0,dz*Tile)),out int j)||field[j]==null)return false;
+                // a pool joins only pool (its shallow rim shows against the tile), the tile joins tile or pool
+                return field[i]=="poolrooms.flood"?field[j]=="poolrooms.flood":Family(field[j])==Family(field[i]);
+            }
+            var used=new bool[n];
+            for(int i=0;i<n;i++)
+            {
+                if(field[i]==null)continue;var c=cells[i];
+                bool px=Joined(i,1,0),mx=Joined(i,-1,0),pz=Joined(i,0,1),mz=Joined(i,0,-1);int missing=(px?0:1)+(mx?0:1)+(pz?0:1)+(mz?0:1);
+                string key=field[i];float yaw=(int)(Rand(rs,12,i)*4)*(float)(Math.PI/2);const float Q=(float)(Math.PI/2);
+                if(missing==1){key+=".edge";yaw=!pz?0:!px?Q:!mz?2*Q:3*Q;}
+                else if(missing==2&&(px!=mx)){key+=".corner";yaw=!pz&&!px?0:!px&&!mz?Q:!mz&&!mx?2*Q:3*Q;}
+                else if(missing>=2)key+=".bits";
+                // the warp's outer half thins further: a ragged cell there may fall to bits
+                float t=(c.share-NativeCityBleed.WarpAt)/(NativeCityBleed.ThresholdAt-NativeCityBleed.WarpAt);
+                if(missing>0&&c.band==NativeCityBleed.Bands.Warp&&t<.35f&&Rand(rs,13,i)<.4f)key=field[i]+".bits";
+                if(Add(plan,key,c.at,yaw,One,d,c.band,rs,i))used[i]=true;
+            }
+            // a cell beyond the rim: the field's last bits
+            for(int i=0;i<n;i++)
+            {
+                if(field[i]!=null)continue;var c=cells[i];string k=null;
+                foreach(var (dx,dz) in new[]{(1,0),(-1,0),(0,1),(0,-1)})
+                    if(index.TryGetValue(CellKey(c.at+new V3(dx*Tile,0,dz*Tile)),out int j)&&!string.IsNullOrEmpty(field[j])){k=field[j]=="poolrooms.flood"?"poolrooms.tile":field[j];break;}
+                if(k==null||Rand(rs,14,i)>.35f)continue;
+                if(Add(plan,k+".bits",c.at,(int)(Rand(rs,15,i)*4)*(float)(Math.PI/2),One,d,c.band,rs,i+400000)){used[i]=true;field[i]="";}
+            }
+            return field;
+        }
+        private static string Family(string key)=>key=="poolrooms.flood"?"poolrooms.tile":key;
+        private static long CellKey(V3 at)=>((long)(int)Math.Floor(at.x/Tile)<<32)^(uint)(int)Math.Floor(at.z/Tile)^((long)Math.Round(at.y*4)<<52);
+
+        // The scatter on the cells no field took: storm drains and rings for the Poolrooms, leaflets for Ward Zero, ash for the
+        // Ironworks, and each instance's stains and cracks (in clumps, thickest in the warp, a few in the rumour): an open street
+        // still reads its instance in its paving.
+        private static void Stains(Plan plan,List<(V3 at,float metres,NativeCityBleed.Bands band,float share,V3 along,float width,int seg)> cells,string[] field,string theme,int d,uint rs)
+        {
+            string stain=theme=="level0"?"level0.stain":theme=="poolrooms"?"poolrooms.puddle":theme=="wardzero"?"wardzero.scuff":theme=="station"?"station.oil":"ironworks.crack";
+            for(int i=0;i<cells.Count;i++)
+            {
+                if(field[i]!=null)continue;var c=cells[i];float r=Rand(rs,16,i);float yaw=(int)(Rand(rs,17,i)*4)*(float)(Math.PI/2);
+                float clump=(NativeCityBleed.Cell(c.at,6)&1023)/1023f;bool drift=c.band==NativeCityBleed.Bands.Drift,warp=c.band==NativeCityBleed.Bands.Warp;
+                switch(theme)
+                {
                     case "poolrooms":
-                        // the flood lies in pools across the threshold's tile (clumps, never a checkerboard)
-                        if(thresh)Add(plan,clump<.45f?"poolrooms.flood":"poolrooms.tile",c.at,0,One,d,c.band,rs,i);
-                        else if(patch)Add(plan,"poolrooms.tile",c.at,0,One,d,c.band,rs,i);
-                        else if(drift&&r<.05f)Add(plan,"poolrooms.drain",c.at,YawOf(c.along),One,d,c.band,rs,i);
-                        if(warp&&!patch&&r>.94f)Add(plan,"poolrooms.ring",c.at+new V3(0,.001f,0),yaw,One,d,c.band,rs,i+100000);
+                        if(drift&&r<.05f){Add(plan,"poolrooms.drain",c.at,YawOf(c.along),One,d,c.band,rs,i+500000);continue;}
+                        if(warp&&r>.94f){Add(plan,"poolrooms.ring",c.at+new V3(0,.001f,0),yaw,One,d,c.band,rs,i+100000);continue;}
                         break;
                     case "wardzero":
-                        if(patch)Add(plan,"wardzero.decon",c.at,yaw,One,d,c.band,rs,i);
-                        else if(drift&&clump<.18f+.5f*(c.share-NativeCityBleed.DriftAt))Add(plan,"wardzero.litter",c.at,yaw,One,d,c.band,rs,i);
-                        break;
-                    case "station":
-                        if(thresh)Add(plan,"station.platform",c.at,0,One,d,c.band,rs,i);
+                        if(drift&&clump<.18f+.5f*(c.share-NativeCityBleed.DriftAt)){Add(plan,"wardzero.litter",c.at,yaw,One,d,c.band,rs,i);continue;}
                         break;
                     case "ironworks":
-                        if(thresh)Add(plan,"ironworks.plates",c.at,yaw,One,d,c.band,rs,i);
-                        else if(drift&&clump<.2f+.8f*(c.share-NativeCityBleed.DriftAt))Add(plan,"ironworks.ash",c.at,yaw,One,d,c.band,rs,i);
+                        if(drift&&clump<.2f+.8f*(c.share-NativeCityBleed.DriftAt)){Add(plan,"ironworks.ash",c.at,yaw,One,d,c.band,rs,i);continue;}
                         break;
                 }
+                float p=c.band==NativeCityBleed.Bands.Rumour?.03f:drift?.12f:warp?.16f:0;
+                if(p>0&&clump*.5f+r*.5f<p*1.6f)Add(plan,stain,c.at,yaw,One,d,c.band,rs,i+600000);
             }
         }
 
@@ -523,15 +616,15 @@ namespace ChipArena.UnityConversion
                 var s=slots[i];if(s.Band<NativeCityBleed.Bands.Drift||s.Metres<next)continue;
                 bool flush=theme=="poolrooms"&&s.Band>=NativeCityBleed.Bands.Warp;
                 if(s.Side!=side&&HasOther(slots,i,side))continue;
-                if(!flush&&s.Top<4.6f+.6f)continue;
-                next=s.Metres+LampEvery;side=-s.Side;
+                if(flush&&s.Sloped)continue;
                 string key;uint light=0;var state=LampState.Steady;float r=Rand(rs,31,count),t=(s.Share-NativeCityBleed.DriftAt)/(NativeCityBleed.WarpAt-NativeCityBleed.DriftAt);
                 switch(theme)
                 {
                     case "level0":key="level0.lamp";r=Rand(rs,32,count/4);break;
-                    case "poolrooms":key=flush?"poolrooms.poollamp":"common.lamp";if(!flush)light=0x9FE8F0;break;
+                    case "poolrooms":key=flush?"poolrooms.poollamp":"common.lamp";if(!flush)light=Pool;break;
                     case "wardzero":
-                        if(s.Band>=NativeCityBleed.Bands.Warp||Rand(rs,33,count)<t){key="wardzero.lamp";state=LampState.Turning;}else key="common.lamp";break;
+                        // the tell: a rising share of the lamps turn red; the rest burn the campus's cold flood
+                        if(s.Band>=NativeCityBleed.Bands.Warp||Rand(rs,33,count)<t){key="wardzero.lamp";state=LampState.Turning;}else{key="common.lamp";light=ColdFlood;}break;
                     case "station":key="station.lamp";light=Rand(rs,34,count)<.6f?SignalRed:SignalGreen;break;
                     default:key=s.Band>=NativeCityBleed.Bands.Warp?"ironworks.highbay":"ironworks.worklamp";break;
                 }
@@ -539,9 +632,12 @@ namespace ChipArena.UnityConversion
                 {
                     if(r<.2f)state=LampState.Dead;else if(Rand(rs,35,count)<.1f)state=LampState.Flicker;
                 }
-                if(flush&&s.Sloped)continue;
-                float h=flush?0:4.6f+s.Rise;
-                Add(plan,key,s.Foot+new V3(0,h,0),YawOf(s.Normal),One,d,s.Band,rs,count,state,light);count++;
+                // the bracket at 4.6 m, or at 3.9 m on a lower wall (the lamp still wholly over the clear height and under the top)
+                var K=Kinds[KindOf(key)];float mount=flush?0:s.Top>=4.6f+K.Max.y+.05f?4.6f:s.Top>=3.9f+K.Max.y+.05f&&3.9f+K.Min.y>=Clear+.05f?3.9f:-1;
+                if(mount<0)continue;
+                // Level 0's office light: a troffer every 6 m through its warp and threshold
+                next=s.Metres+(theme=="level0"&&s.Band>=NativeCityBleed.Bands.Warp?LampEvery/2:LampEvery);side=-s.Side;
+                Add(plan,key,s.Foot+new V3(0,mount+(flush?0:s.Rise),0),YawOf(s.Normal),One,d,s.Band,rs,count,state,light);count++;
             }
         }
         private static bool HasOther(List<Slot> slots,int i,int side)
@@ -549,9 +645,9 @@ namespace ChipArena.UnityConversion
             var s=slots[i];foreach(var o in slots)if(o.Side==side&&Math.Abs(o.Metres-s.Metres)<Bay*1.5f&&o.Band>=NativeCityBleed.Bands.Drift)return true;return false;
         }
 
-        // Cables across the street between two facing walls: Level 0's troffer wires and the Station's catenary from the drift,
-        // the Poolrooms' lane ropes and pennants, Ward Zero's decon tents and the Ironworks' pipe bridges from the warp, the
-        // crane girder at the Ironworks' threshold.
+        // Cables across the street between two facing walls (up to 32 m apart): Level 0's troffer wires and the Station's
+        // catenary, pendant lamps in the other instances' drift, the Poolrooms' lane ropes and pennants, Ward Zero's decon tents
+        // and the Ironworks' pipe bridges from the warp, the crane girder at the Ironworks' threshold.
         private static void Spans(Plan plan,World w,List<int> near,List<Slot> slots,string theme,int d,uint rs)
         {
             float next=-1;int count=0;V3? lastWire=null;float lastWireMetres=0;
@@ -566,9 +662,10 @@ namespace ChipArena.UnityConversion
                 {
                     case "level0":if(thresh)continue;piece=null;height=5.4f;break;
                     case "station":piece=null;height=5.8f;break;
-                    case "poolrooms":if(!warp)continue;piece=count%2==0?"poolrooms.lanerope":"poolrooms.pennants";height=5.2f;break;
-                    case "wardzero":if(!warp)continue;piece="wardzero.tent";height=4.9f;break;
-                    default:if(!warp)continue;piece=thresh?"ironworks.girder":"ironworks.pipes";height=thresh?9.5f:6.2f;break;
+                    // the drift's own cables carry a pendant lamp in the instance's light (an open street's lamps hang over it)
+                    case "poolrooms":piece=!warp?null:count%2==0?"poolrooms.lanerope":"poolrooms.pennants";height=!warp?5.6f:5.2f;break;
+                    case "wardzero":piece=!warp?null:"wardzero.tent";height=!warp?5.6f:4.9f;break;
+                    default:piece=!warp?null:thresh?"ironworks.girder":"ironworks.pipes";height=!warp?5.6f:thresh?9.5f:6.2f;break;
                 }
                 // the facing wall across the street, at the same station
                 Slot other=default;bool found=false;
@@ -578,15 +675,23 @@ namespace ChipArena.UnityConversion
                 if(s.Top<need||other.Top<need)continue;
                 height+=s.Rise;
                 var a=s.Foot+new V3(0,height,0);var b=other.Foot+new V3(0,height,0);var ab=new V3(b.x-a.x,0,b.z-a.z);float gap=ab.Length;
-                if(gap<4||gap>24)continue;var across=ab/gap;float yaw=YawOf(new V3(across.z,0,-across.x));
+                if(gap<4||gap>32)continue;var across=ab/gap;float yaw=YawOf(new V3(across.z,0,-across.x));
                 // the street's floor under the span must lie Clear m below its lowest point everywhere (checked again by BleedChecks)
                 var kind=piece==null?Kinds[KindOf("common.wire")]:Kinds[KindOf(piece)];
-                if(!SpanClear(w,near,a,b,height+kind.Min.y))continue;
-                next=s.Metres+SpanEvery;
+                if(!SpanClear(w,near,a,b,height+(piece==null&&theme!="level0"&&theme!="station"?-1.15f:kind.Min.y)))continue;
                 if(piece==null)
                 {
-                    Add(plan,"common.wire",a,YawOf(across)-(float)(Math.PI/2),new V3(gap,1,1),d,s.Band,rs,count*16);
-                    if(theme=="level0")
+                    if(!Add(plan,"common.wire",a,YawOf(across)-(float)(Math.PI/2),new V3(gap,1,1),d,s.Band,rs,count*16))continue;
+                    if(theme!="level0"&&theme!="station")
+                    {
+                        // the pendant: aqua over the Poolrooms' drift, the cold flood (or already red) over Ward Zero's, the work
+                        // lamps' orange over the Ironworks'
+                        float t=(s.Share-NativeCityBleed.DriftAt)/(NativeCityBleed.WarpAt-NativeCityBleed.DriftAt);
+                        uint light=theme=="poolrooms"?Pool:theme=="wardzero"?(Rand(rs,42,count)<t?Siren:ColdFlood):Work;
+                        float r=Rand(rs,43,count);var state=r<.2f?LampState.Dead:r<.3f?LampState.Flicker:LampState.Steady;
+                        Add(plan,"common.pendant",a+across*(gap/2),yaw,One,d,s.Band,rs,count*16+5,state,light);
+                    }
+                    else if(theme=="level0")
                     {
                         int n=gap>12?2:1;for(int k=0;k<n;k++){var at=a+across*(gap*(k+1)/(n+1));Add(plan,"level0.troffer",at,yaw,One,d,s.Band,rs,count*16+1+k,TroffState(rs,count*16+1+k));}
                     }
@@ -605,9 +710,11 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     int n=Math.Max(1,(int)Math.Round(gap/2));float scale=gap/(2*n);
-                    for(int k=0;k<n;k++)Add(plan,piece,a+across*(2*scale*k),YawOf(across)-(float)(Math.PI/2),new V3(scale,1,1),d,s.Band,rs,count*16+k%16+1000*k);
+                    int placed=0;for(int k=0;k<n;k++)if(Add(plan,piece,a+across*(2*scale*k),YawOf(across)-(float)(Math.PI/2),new V3(scale,1,1),d,s.Band,rs,count*16+k%16+1000*k))placed++;
+                    if(placed==0)continue;
                     if(piece=="ironworks.girder")Add(plan,"ironworks.hook",a+across*(gap*(.35f+.3f*Rand(rs,41,count)))+new V3(0,kind.Min.y,0),yaw,One,d,s.Band,rs,count*16+15);
                 }
+                next=s.Metres+SpanEvery;
                 Add(plan,"common.anchor",s.Foot+new V3(0,height,0),YawOf(s.Normal),One,d,s.Band,rs,count*16+13);
                 Add(plan,"common.anchor",other.Foot+new V3(0,height,0),YawOf(other.Normal),One,d,s.Band,rs,count*16+14);
                 count++;
@@ -615,19 +722,35 @@ namespace ChipArena.UnityConversion
         }
         private static LampState TroffState(uint rs,int i){float r=Rand(rs,36,i);return r<.2f?LampState.Dead:r<.3f?LampState.Flicker:LampState.Steady;}
 
-        // Level 0's signature: an office ceiling grid hung 6 m over its crossings in the warp, and over the whole street at the
-        // threshold, half its tiles gone (2 m cells on the floor's own grid).
-        private static void Ceilings(Plan plan,World w,List<int> near,List<(V3 at,float metres,NativeCityBleed.Bands band,float share,V3 along,float width,int seg)> cells,List<(V3 at,float width,float metres,NativeCityBleed.Bands band)> crossings,int d,uint rs)
+        // Level 0's signature: an office ceiling hung over the street, carried wall to wall (rows 2.5 m deep, one per pair of
+        // facing bays, scaled across to the walls' gap), over its crossings in the warp and the whole threshold, half its tiles
+        // gone. Only where walls hold it on both sides: nowhere does it float.
+        private static void Ceilings(Plan plan,World w,List<int> near,List<Slot> slots,List<(V3 at,float width,float metres,NativeCityBleed.Bands band)> crossings,int d,uint rs)
         {
-            const float H=6f;
-            for(int i=0;i<cells.Count;i++)
+            int count=0;
+            for(int i=0;i<slots.Count;i++)
             {
-                var c=cells[i];bool under=c.band==NativeCityBleed.Bands.Threshold;
-                if(!under&&c.band==NativeCityBleed.Bands.Warp)foreach(var x in crossings)if(x.band>=NativeCityBleed.Bands.Warp&&Math.Abs(x.at.x-c.at.x)<x.width/2+4&&Math.Abs(x.at.z-c.at.z)<x.width/2+4&&Math.Abs(x.at.y-c.at.y)<.1f){under=true;break;}
-                if(!under)continue;
-                var at=c.at+new V3(0,H,0);if(!BoxClear(w,near,at+new V3(-1,0,-1),at+new V3(1,1.8f,1)))continue;
-                float r=Rand(rs,51,i);string key=r<.45f?"level0.ceiling.tile":r<.8f?"level0.ceiling.gap":"level0.ceiling.light";
-                Add(plan,key,at,0,One,d,c.band,rs,i,key=="level0.ceiling.light"?TroffState(rs,i+7000):LampState.None);
+                var s=slots[i];if(s.Side<0||s.Sloped||s.Band<NativeCityBleed.Bands.Warp)continue;
+                if(s.Band==NativeCityBleed.Bands.Warp)
+                {
+                    bool atCrossing=false;foreach(var x in crossings)if(x.band>=NativeCityBleed.Bands.Warp&&Math.Abs(x.metres-s.Metres)<x.width/2+6){atCrossing=true;break;}
+                    if(!atCrossing)continue;
+                }
+                Slot o=default;bool found=false;
+                foreach(var q in slots)if(q.Side<0&&!q.Sloped&&Math.Abs(q.Metres-s.Metres)<.01f&&V3.Dot(q.Normal,s.Normal)<-.99f){o=q;found=true;break;}
+                // as high as 5.6 m, lower under lower walls (never under 4.4 m: a jumping head stays clear), in 0.4 m steps
+                if(!found)continue;float H=Math.Min(5.6f,(float)Math.Floor((Math.Min(s.Top,o.Top)-.5f-4.4f)/.4f)*.4f+4.4f);if(H<4.4f)continue;
+                var a=s.Foot+new V3(0,H,0);var b=o.Foot+new V3(0,H,0);var ab=new V3(b.x-a.x,0,b.z-a.z);float gap=ab.Length;
+                if(gap<4||gap>30)continue;var across=ab/gap;var along=new V3(-across.z,0,across.x);
+                bool clear=true;foreach(float off in new[]{-1.2f,0,1.2f})if(!SpanClear(w,near,a+along*off,b+along*off,H-.06f)){clear=false;break;}
+                if(!clear)continue;
+                int n=Math.Max(1,(int)Math.Round(gap/2));float scale=gap/(2*n);
+                for(int k=0;k<n;k++)
+                {
+                    float r=Rand(rs,51,count*32+k);string key=r<.5f?"level0.ceiling.tile":r<.8f?"level0.ceiling.gap":"level0.ceiling.light";
+                    Add(plan,key,a+across*(2*scale*k),YawOf(across)-(float)(Math.PI/2),new V3(scale,1,1),d,s.Band,rs,count*32+k+700000,key=="level0.ceiling.light"?TroffState(rs,count*32+k+7000):LampState.None);
+                }
+                count++;
             }
         }
 

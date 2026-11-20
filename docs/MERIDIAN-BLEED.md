@@ -30,29 +30,35 @@ The owner asked for streets "influenced by the instance that is generated", so t
 The planner walks each instance door's route from the band's outer edge (165 m) to the door front's line, 12 m out, where D2's door front begins. It plans pieces from the bank `ChipArenaCityBleed` (built by `tools/stages/meridian_bleed.py`). Every piece keeps the city's placement rules:
 
 - **Floor paint:** 6 cm or less. Every corner lies on a floor's top, on a 2 m world grid. Paint never lies on paint.
+  - **Fields** (Level 0's carpet, the Poolrooms' tile and pools, Ward Zero's vinyl, the Station's platform tile, the Ironworks' plates) come in 0.5 m sub-tiles. A cell whose neighbour is outside the field is ragged on that side (an edge or a corner variant, turned to face the gap). A cell between two gaps falls to scattered bits, and bits scatter a cell beyond the rim. So a field thins tile by tile and is never a hard rectangle; the threshold stays solid but its rim is broken too.
+  - Whole cells are plain, because an instanced cell repeats. The accents (damp, worn vinyl, grime, maroon tiles, rust) ride the ragged cells.
+  - **Stains and cracks** take the cells no field took: damp stains, puddles with a glint, worn decon lane paint, oil and cracked setts, cracks and soot. They are thickest in the warp, and a few appear in the rumour.
 - **Wall pieces:** set on a collider face that is found from the street and is continuous and in sight across the whole bay. They are flat (6 cm or less) below 3.1 m over the floor; lamps, signs, sheeting and the upper skins stand above it. Bays beside ramps and stairs take only signs and posters, a metre or more over the floor.
 - **Spans:** cables between two facing walls, with every point 3.1 m or more over the floor below.
-- **Level 0's ceiling:** cells hung 6 m up, over its warp crossings and its whole threshold.
+- **Level 0's ceiling:** rows 2.5 m deep carried wall to wall between two facing walls (scaled to their gap), over its warp crossings and its whole threshold. The rows sit at 5.6 m, lower under lower walls but never under 4.4 m. Only where walls hold the ceiling on both sides: nowhere does it float, and nothing dangles. On candidate 3 that is The Arcades' south approach. Elsewhere Level 0 gets a troffer every 6 m on the walls it has.
 - **Keep-outs:** nothing within 3.3 m of a join circle (8 m out from each door), and nothing inside a door front (the hall's frontage and 12 m in front of it).
 
 Each instance's set:
 
 | Instance | Drift | Warp | Threshold |
 | --- | --- | --- | --- |
-| Level 0 | Carpet creeping in, EXIT signs, troffer span wires and troffer lamps (dying circuit by circuit) | Wallpaper and skirting on the walls, missing-brick panels, damp carpet patches, the ceiling grid over crossings | Wallpapered windowless walls, carpet underfoot, the ceiling overhead |
-| The Poolrooms | Glowing storm drains, NO RUNNING plates, glass block | White pool tile underfoot, tiled doorways with no rooms, pool lamps set low in the walls, lane ropes and pennants, rings in the flood | White tile walls, tile and still water underfoot, steady light (no lamp dies) |
-| Ward Zero | STAY INDOORS posters and leaflets, PA horns, lamps turning red with the share | Containment growth, quarantine sheeting above 3.1 m, decon tents over the street, every lamp red and turning, decon matting | White cladding with the teal band, sheeting above |
-| Central Station | Tram rails, roundels, signal heads as street lamps, catenary with droppers | Blue brick, a fan of tracks | Cream and green tile walls, platform tile |
-| City Ironworks | Ash drifts, roller doors, SAFETY FIRST plates, caged work lamps | Riveted plate walls, slag in the gutters (faint, steady cracks: never a fake hazard), pipe bridges, sodium high-bays | Furnace brick, steel floor plates, a crane girder with its hook |
+| Level 0 | Carpet creeping in, damp stains, EXIT signs, troffer span wires and troffer lamps (dying circuit by circuit) | Wallpaper and skirting on the walls, missing-brick panels, damp carpet, the ceiling over walled crossings | Wallpapered windowless walls, carpet underfoot, the ceiling between walls |
+| The Poolrooms | Glowing storm drains, puddles, NO RUNNING plates, glass block, aqua pendants | White pool tile underfoot, tiled doorways with no rooms, pool lamps set low in the walls, lane ropes and pennants, rings in the flood | White tile walls; tile and pools underfoot (dark in the middle, shallow toward a tiled rim, caustic threads shimmering); steady light (no lamp dies) |
+| Ward Zero | STAY INDOORS posters and leaflets, worn decon lane paint, PA horns, lamps and pendants in the cold flood #D4E6FF, turning red with the share | Containment growth (violet #A04CFF), quarantine sheeting above 3.1 m, decon tents over the street, every lamp red and turning, worn pale clinical vinyl underfoot | White cladding with the teal band (teal only as a band or a stripe, never the floor), sheeting above |
+| Central Station | Tram rails, oil stains and cracked setts, roundels, signal heads as street lamps, catenary with droppers | Blue brick, a fan of tracks | Aged cream and green tile walls; aged cream platform tile with grime and the railway's maroon at its ragged rim |
+| City Ironworks | Ash drifts, cracks and soot, roller doors, SAFETY FIRST plates, caged work lamps and work-lamp pendants | Riveted plate walls, slag in the gutters (faint, steady cracks: never a fake hazard), pipe bridges, sodium high-bays | Furnace brick, steel floor plates, a crane girder with its hook |
 
 Rumour signs come every 36 m or so. Ward Zero's EVACUATION ROUTE signs always point away from the door.
 
 ### The light
 
+- The lamps' colours are the art bible's (3.2): Level 0's fluorescent #F2EE9A, the Poolrooms' aqua #52E4E0, Ward Zero's alarm red #FF2A30 and cold flood #D4E6FF, the Station's signal red and green, the Ironworks' caged work lamp #FF9A30.
 - About one lamp every 12 m, alternating sides. One in five is dead and one in ten flickers (the owner's rule), by the run seed.
+- On a lower wall the bracket drops from 4.6 m to 3.9 m, still wholly over the clear height.
+- In the drift, cables between facing walls up to 32 m apart carry a pendant lamp in the instance's light.
 - Exceptions: Ward Zero's beacons turn, and the Poolrooms' threshold never fails.
 - Each working lamp lays a soft pool on the floor.
-- Over each instance door, the cloud deck glows in its colour (an additive glow with no fog), so the rumour band reads from the camp.
+- Over each instance door, the cloud deck glows in the bible's sky colour for it (an additive glow with no fog; Ward Zero's red over violet), so the rumour band reads from the camp.
 
 ### The atmosphere
 
@@ -64,8 +70,8 @@ Positions follow the blocks and routes, so they are fixed per layout. The run se
 
 ### Budget and fallback
 
-- Up to about 600 pieces a walk, 260 within 60 m of an eye, and 46 instanced draws (at most 500 instances a draw).
-- The bank is about 1.5 MB.
+- Up to about 600 pieces a walk, 230 within 60 m of an eye, and 74 instanced draws (at most 500 instances a draw).
+- The bank is about 1.8 MB.
 - Without the bank (CI, a build without the Drive zip, `--ca-no-pack-banks` or `--ca-no-city-bleed`), `NativeCityBleedDraw.Open` returns null and today's greybox draws unchanged.
 
 ## Themed module variants (for D1's street planner)

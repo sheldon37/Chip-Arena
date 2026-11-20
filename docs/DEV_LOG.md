@@ -57,7 +57,7 @@ None on hit timing, hitboxes, damage, cooldowns, movement or networking.
 None.
 
 ### Bank
-`F:/Chip Arena Development/scratch/meridian-bleed/bank/ChipArenaLocal/Resources/ChipArenaCityBleed.bytes`: 1,528,962 bytes, with its .meta. Never committed. The integrator packs it into the Drive zip. A build without it draws today's greybox.
+`F:/Chip Arena Development/scratch/meridian-bleed/bank/ChipArenaLocal/Resources/ChipArenaCityBleed.bytes`: 1,820,244 bytes after the look-fix pass, with its .meta. Never committed. The integrator packs it into the Drive zip. A build without it draws today's greybox.
 
 ### For D1 and the integrator, once `claude/meridian-dress` is on shared
 1. Assign `NativeMeridianDress.ThemeAt = p => walkBleed?.ThemeAt(p)` in OpenCityBleed, and null it in CloseCityBleed. This is D3's to do after merging shared in.
@@ -75,6 +75,15 @@ None.
 - Open approaches carry few pieces, because pieces need walls or floors to hang on. Crown Hill's east plateau and The Yards' west cutting are examples. Their bleed reads through the floor paint, the sky glow, the atmosphere and (after D1's merge) the module skins.
 - The atmosphere writes RenderSettings each frame while the walk is open. It hands back to any look that writes after it, and restores on close.
 - Not seen with D1's night look or D2's door fronts yet.
+
+### Look-fix pass (the integrator's review)
+- **Floor fields:** never a hard rectangle. 0.5 m sub-tiles, ragged edge and corner variants turned to face the gap, bits a cell beyond the rim, thinning through the warp's outer half; the threshold's rim is broken too. Whole cells are plain (an instanced cell repeats); the accents ride the ragged cells.
+- **Ward Zero's floor:** worn pale clinical vinyl in small tiles with scuffs, replacing the teal grid. Teal stays a band or a stripe. The bible's violet and cold flood are used for the light.
+- **The Station:** aged cream tile with grime, darker grout and the railway's maroon.
+- **The Poolrooms' pools:** a dark middle, shallower water toward a tiled rim, and caustic threads that shimmer (a per-instance glow, no new shader, cheap on Low).
+- **Level 0's ceiling:** rows carried wall to wall only where two facing walls hold them; nothing floats or dangles. On candidate 3 that is The Arcades' south approach. Elsewhere Level 0 gets a troffer every 6 m on its walls.
+- **Open approaches:** stains and cracks in each instance's paving, pendant lamps on cables up to 32 m between facing walls, wall lamps on lower walls (3.9 m brackets), and the bible's sky-glow colours. Nothing free-standing below 3.1 m.
+- **Checks:** `--bleed` PASS (11,025 pieces, 74 draws); `zfight.py` on the same three scenes and modes: no bleed pair; the compile gate PASS; `git diff --check` clean. Bank: 1,820,244 bytes. No captures in this pass.
 
 **Next:** the integrator reviews the clips; D3 wires ThemeAt after D1 merges; Astra takes the contracts above.
 

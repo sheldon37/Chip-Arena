@@ -138,6 +138,7 @@ def finishes():
     a('ceiling-stain', 0x9C8A5C, P, .08, 0, .4, 0, 0)
     a('tbar', 0xE8E6DE, N, .50, .2, .4, 0, .10)
     a('stain', 0x9A8656, P, .10, 0, .3, 0, 0)
+    a('stain-damp', 0x3A3628, P, .25, 0, .2, 0, 0)
     a('exit-green', 0x1E7A44, N, .5, 0, .3, 0, 0)
     # the Poolrooms (THE DEEP END)
     a('tile-pool', 0xE8F2F4, TI, .70, 0, .3, 0, 0, .15)
@@ -146,6 +147,9 @@ def finishes():
     a('mosaic-pale', 0x9FD0EE, TI, .60, 0, .3, 0, 0, .04)
     a('mosaic-blue', 0x2F7FD0, TI, .60, 0, .3, 0, 0, .04)
     a('water', 0x1A5C66, N, .92, 0, 0, 0, 0)
+    a('water-deep', 0x123E48, N, .95, 0, 0, 0, 0)
+    a('water-shallow', 0x3E8A90, N, .9, 0, 0, 0, 0)
+    a('tile-crack', 0xA8B4B6, TI, .5, 0, .6, 0, 0, .15)
     a('coping', 0xF0F2EE, P, .55, 0, .5, .10, .10)
     a('float-pink', 0xE86A8C, N, .55, 0, .3, 0, 0)
     a('float-white', 0xF2EEE6, N, .55, 0, .3, 0, 0)
@@ -163,13 +167,24 @@ def finishes():
     a('stencil-black', 0x1E1E24, N, .30, 0, .3, 0, .4)
     a('decon-teal', 0x1F9C9C, N, .35, 0, .4, 0, .5)
     a('decon-white', 0xD6DEDC, N, .35, 0, .5, 0, .3)
+    # the ward's floor: worn pale vinyl in small tiles (low saturation; the teal stays a band or a stripe)
+    a('vinyl', 0xBFC6C4, TI, .45, 0, .7, 0, .05, .3)
+    a('vinyl-worn', 0xAEAD9C, TI, .35, 0, .9, 0, .05, .3)
+    a('scuff', 0x7E8584, N, .3, 0, .6, 0, 0)
+    a('tape', 0xD2D6D0, N, .4, 0, .5, 0, .3)
     a('growth', 0x3A1E58, N, .55, 0, .2, 0, 0)
     a('growth-skin', 0x5A2C8A, N, .65, 0, .2, 0, 0)
     a('steel-white', 0xE4E8EA, N, .55, .3, .4, 0, .15)
     # Central Station (THE 6:47)
     a('cast-green', 0x2A4A3E, N, .45, .3, .8, .05, .35)
     a('board-black', 0x141418, N, .40, 0, .3, 0, 0)
-    a('tile-cream', 0xEADFC2, TI, .60, 0, .5, 0, .05, .15)
+    a('tile-cream', 0xCDBE98, TI, .50, 0, 1.0, .05, .08, .15)
+    # the station's floor: cream tile gone grey-brown with grime, its grout dark, and the railway's maroon
+    a('tile-cream-aged', 0xB3A27C, TI, .40, 0, 1.2, .05, .08, .3)
+    a('grime', 0x7E6F52, P, .2, 0, .8, 0, 0)
+    a('tile-maroon', 0x6A2626, TI, .45, 0, 1.0, 0, .08, .3)
+    a('oil', 0x161412, N, .85, 0, .3, 0, 0)
+    a('crack', 0x24221F, N, .2, 0, .5, 0, 0)
     a('tile-green', 0x2E6A4E, TI, .60, 0, .5, 0, .05, .15)
     a('rail', 0x8A8E92, N, .70, .9, .3, 0, .4)
     a('setts', 0x5A5652, FL, .45, 0, .9, .30, .20, .22)
@@ -367,25 +382,167 @@ def plate(g, T, s, x, y, w, h, f_plate, f_text, depth=.015, px=None, border=None
 # ---------------------------------------------------------------------------------------------------------------------------
 # Floors (floor frame: centred, y up from the floor's top, z along the street)
 # ---------------------------------------------------------------------------------------------------------------------------
-def floor_carpet(g, T):
-    # office carpet tiles, 50 cm, two dye lots and the damp creeping through (a stain field across the tile)
-    c = F['carpet']
+# The fields (Core NativeCityBleedDress.Fields): a 2 m cell of 0.5 m sub-tiles, whole, ragged on its +z side (`edge`), on its
+# +z and +x sides (`corner`), or scattered (`bits`), so a field thins tile by tile toward its rim.
+ROWKEEP = (1.0, 1.0, .62, .26)
+
+
+def kept(key, variant, i, j):
+    if variant == '':
+        return True
+    hh = h01(key, variant, 'keep', i, j)
+    if variant == 'edge':
+        return hh < ROWKEEP[j]
+    if variant == 'corner':
+        return hh < min(ROWKEEP[i], ROWKEEP[j])
+    return hh < .3
+
+
+def rim(variant, i, j):
+    """How near a sub-tile lies to its cell's ragged side (0 inside, 1 at the edge)."""
+    if variant == 'edge':
+        return j / 3.0
+    if variant == 'corner':
+        return max(i, j) / 3.0
+    return 1.0 if variant == 'bits' else 0.0
+
+
+def sub_carpet(g, T, x0, z0, i, j, variant):
+    k = h01('carpet', variant, i, j)
+    damp = variant != '' and k < .15 + .4 * rim(variant, i, j)
+    f = F['carpet-damp'] if damp else (F['carpet-b'] if h01('lot', variant, i, j) < .25 else F['carpet'])
+    slab(g, T, x0 + .004, x0 + .496, z0 + .004, z0 + .496, 0, .03 + .005 * k, f, cell=0)
+
+
+def sub_tile(g, T, x0, z0, i, j, variant):
+    f = F['tile-crack'] if variant != '' and h01('crack', variant, i, j) < .25 * rim(variant, i, j) else F['tile-pool']
+    slab(g, T, x0, x0 + .5, z0, z0 + .5, 0, .025, f, cell=0)
+
+
+def sub_flood(g, T, x0, z0, i, j, variant):
+    # a pool: deep and dark in its middle, shallower toward its rim, the tile showing at the rim itself
+    r = rim(variant, i, j)
+    if variant != '' and r > .9 and variant != 'bits':
+        slab(g, T, x0, x0 + .5, z0, z0 + .5, 0, .025, F['tile-pool'], cell=0)
+        return
+    slab(g, T, x0, x0 + .5, z0, z0 + .5, 0, .02, F['tile-pool'], cell=0)
+    f = F['water-deep'] if variant == '' else (F['water-shallow'] if r > .5 or variant == 'bits' else F['water'])
+    top_rect(g, T, x0, x0 + .5, z0, z0 + .5, .042 if variant == '' else .038, f, cell=0)
+
+
+def sub_vinyl(g, T, x0, z0, i, j, variant):
+    r = rim(variant, i, j)
+    f = F['vinyl-worn'] if variant != '' and h01('worn', variant, i, j) < .45 * r else F['vinyl']
+    slab(g, T, x0, x0 + .5, z0, z0 + .5, 0, .02, f, cell=0)
+    if T.detail and h01('scuff', variant, i, j) < (.1 if variant == '' else .3):
+        a = PI * h01('sa', variant, i, j)
+        cx, cz, l = x0 + .25, z0 + .25, .12 + .1 * h01('sl', variant, i, j)
+        dx, dz, nx, nz = math.cos(a) * l, math.sin(a) * l, -math.sin(a) * .012, math.cos(a) * .012
+        g.face(((cx - dx - nx, .0205, cz - dz - nz), (cx + dx - nx, .0205, cz + dz - nz), (cx + dx + nx, .0205, cz + dz + nz), (cx - dx + nx, .0205, cz - dz + nz))[::-1], F['scuff'], (0, 1, 0))
+
+
+def sub_platform(g, T, x0, z0, i, j, variant):
+    r = rim(variant, i, j)
+    hh = h01('plat', variant, i, j)
+    f = F['tile-cream-aged'] if variant == '' else (F['tile-maroon'] if hh < .12 * r else (F['grime'] if hh > 1 - .35 * r else F['tile-cream-aged']))
+    slab(g, T, x0, x0 + .5, z0, z0 + .5, 0, .02, f, cell=0)
+
+
+def sub_plates(g, T, x0, z0, i, j, variant):
+    r = rim(variant, i, j)
+    f = F['rust'] if h01('rust', variant, i, j) < (.08 if variant == '' else .45 * r) else F['iron-raw']
+    slab(g, T, x0 + .003, x0 + .497, z0 + .003, z0 + .497, 0, .02 + .004 * h01('ph', variant, i, j), f, cell=0)
+    if T.detail:
+        for (u, v) in ((.12, .12), (.37, .12), (.12, .37), (.37, .37)):
+            x, z = x0 + u, z0 + v
+            g.face(((x - .05, .0255, z), (x, .0255, z - .02), (x + .05, .0255, z), (x, .0255, z + .02)), F['steel-dark'], (0, 1, 0))
+
+
+SUB = {'level0.carpet': sub_carpet, 'poolrooms.tile': sub_tile, 'poolrooms.flood': sub_flood, 'wardzero.vinyl': sub_vinyl,
+       'station.platform': sub_platform, 'ironworks.plates': sub_plates}
+WHOLE = {'poolrooms.tile': ('tile-pool', .025), 'wardzero.vinyl': ('vinyl', .02), 'station.platform': ('tile-cream-aged', .02),
+         'ironworks.plates': ('iron-raw', .02)}
+
+
+def field(g, T, key, variant):
+    if T.lod and variant == '' and key in WHOLE:
+        fn, top = WHOLE[key]
+        slab(g, T, -1, 1, -1, 1, 0, top, F[fn], cell=0)
+        return
     for i in range(4):
         for j in range(4):
-            x0, z0 = -1 + i * .5, -1 + j * .5
-            k = h01('carpet', i, j)
-            damp = k < .22
-            f = F['carpet-damp'] if damp else (F['carpet-b'] if h01('lot', i, j) < .3 else c)
-            slab(g, T, x0 + .004, x0 + .496, z0 + .004, z0 + .496, 0, .03 + .005 * k, f, cell=0)
+            if kept(key, variant, i, j):
+                SUB[key](g, T, -1 + i * .5, -1 + j * .5, i, j, variant)
+    if key == 'poolrooms.flood' and variant != 'bits':
+        # the caustic glints: thin bright threads over the water (the runtime lets them shimmer)
+        n = 2 if T.lod == 0 else 1
+        for k in range(n):
+            z0 = -.85 + 1.4 * h01('cz', variant, k)
+            pts = [(-.9 + 1.5 * h01('cx', variant, k) * .3 + .3 * m, z0 + .07 * math.sin(m * 2.3 + k)) for m in range(5)]
+            for (a, b) in zip(pts, pts[1:]):
+                if max(abs(a[0]), abs(b[0])) > .98 or (variant != '' and max(a[1], b[1]) > .2) or (variant == 'corner' and max(a[0], b[0]) > .2):
+                    continue
+                dx, dz = b[0] - a[0], b[1] - a[1]
+                l = math.hypot(dx, dz) or 1
+                nx, nz = -dz / l * .005, dx / l * .005
+                g.face(((a[0] - nx, .0435, a[1] - nz), (b[0] - nx, .0435, b[1] - nz), (b[0] + nx, .0435, b[1] + nz), (a[0] + nx, .0435, a[1] + nz)), glow(0x9AF2F0, .5), (0, 1, 0))
 
 
-def floor_pool_tile(g, T):
-    slab(g, T, -1, 1, -1, 1, 0, .025, F['tile-pool'], cell=1.0 if T.lod == 0 else 0)
+# Stains and cracks: an open street reads its instance in its paving
+def blob(g, cx, cz, r, y, f, seed, m=10, stretch=1.0):
+    pts = []
+    for k in range(m):
+        a = 2 * PI * k / m
+        rr = r * (.7 + .55 * h01(seed, k))
+        pts.append((max(-.98, min(.98, cx + math.cos(a) * rr * stretch)), y, max(-.98, min(.98, cz + math.sin(a) * rr))))
+    g.face(pts[::-1], f, (0, 1, 0))
 
 
-def floor_flood(g, T):
-    slab(g, T, -1, 1, -1, 1, 0, .02, F['tile-pool'], cell=0)
-    top_rect(g, T, -1, 1, -1, 1, .042, F['water'], cell=1.0 if T.lod == 0 else 0)
+def crackline(g, pts, y, f, w=.012):
+    for (a, b) in zip(pts, pts[1:]):
+        dx, dz = b[0] - a[0], b[1] - a[1]
+        l = math.hypot(dx, dz) or 1
+        nx, nz = -dz / l * w, dx / l * w
+        g.face(((a[0] - nx, y, a[1] - nz), (b[0] - nx, y, b[1] - nz), (b[0] + nx, y, b[1] + nz), (a[0] + nx, y, a[1] + nz))[::-1], f, (0, 1, 0))
+
+
+def floor_stain(g, T):
+    # damp soaking up through the paving: the carpet's water, before the carpet
+    for k in range(3):
+        blob(g, -.5 + h01('dx', k), -.5 + h01('dz', k), .22 + .2 * h01('dr', k), .004 + .002 * k, F['stain-damp'], 'ds%d' % k, 12 if T.lod == 0 else 6, 1.4)
+    if T.detail:
+        slab(g, T, .2, .55, -.6, -.3, 0, .012, F['carpet-damp'], cell=0)
+
+
+def floor_puddle(g, T):
+    blob(g, 0, 0, .55, .006, F['water-shallow'], 'pd', 14 if T.lod == 0 else 7, 1.3)
+    blob(g, .1, -.05, .3, .009, F['water'], 'pd2', 10 if T.lod == 0 else 5, 1.2)
+    crackline(g, [(-.35, .05), (-.1, .12), (.15, .06), (.4, .14)], .0105, glow(0x9AF2F0, .5), .006)
+
+
+def floor_scuff(g, T):
+    # the decon lanes' paint, worn: white lane lines with a short teal stripe (never chevrons), drag marks across them
+    for z in (-.55, .55):
+        slab(g, T, -1, 1, z - .05, z + .05, 0, .006, F['tape'], cell=0)
+    slab(g, T, -.3, .3, -.53, -.47, .006, .009, F['decon-teal'], cell=0)
+    if T.detail:
+        for k in range(4):
+            a = PI * (.1 + .8 * h01('sa', k))
+            cx, cz = -.6 + 1.2 * h01('sx', k), -.6 + 1.2 * h01('sz', k)
+            crackline(g, [(cx - math.cos(a) * .3, cz - math.sin(a) * .3), (cx + math.cos(a) * .3, cz + math.sin(a) * .3)], .011, F['scuff'], .02)
+
+
+def floor_oil(g, T):
+    blob(g, .1, .1, .4, .005, F['oil'], 'oil', 12 if T.lod == 0 else 6, 1.5)
+    crackline(g, [(-.9, -.4), (-.5, -.35), (-.2, -.55), (.3, -.5), (.8, -.7)], .009, F['crack'])
+    if T.detail:
+        crackline(g, [(-.2, -.55), (-.1, -.85)], .009, F['crack'], .008)
+
+
+def floor_crack(g, T):
+    blob(g, -.2, .3, .35, .004, F['ash-dark'], 'soot', 10 if T.lod == 0 else 5, 1.3)
+    crackline(g, [(-.9, .1), (-.45, .2), (-.1, -.1), (.35, 0), (.9, -.35)], .008, F['crack'])
+    crackline(g, [(-.1, -.1), (0, -.6), (.25, -.9)], .008, F['crack'], .009)
 
 
 def floor_drain(g, T):
@@ -427,21 +584,12 @@ def floor_litter(g, T):
         ca, sa = math.cos(a), math.sin(a)
         y = .004 + .0011 * (i % 9)
         pts = [(x + ca * u - sa * v, y, z + sa * u + ca * v) for u, v in ((-w / 2, -l / 2), (w / 2, -l / 2), (w / 2, l / 2), (-w / 2, l / 2))]
-        f = F['paper'] if h01('lc', i) < .6 else (F['paper-old'] if h01('lc2', i) < .7 else F['decon-teal'])
+        f = F['paper'] if h01('lc', i) < .6 else F['paper-old']
         g.face(pts, f, (0, 1, 0))
         if T.detail and f == F['paper']:
             # the leaflet's black heading band
             hp = [(x + ca * u - sa * v, y + .0005, z + sa * u + ca * v) for u, v in ((-w * .4, l * .25), (w * .4, l * .25), (w * .4, l * .42), (-w * .4, l * .42))]
             g.face(hp, F['stencil-black'], (0, 1, 0))
-
-
-def floor_decon(g, T):
-    # the decon line's rubber matting: teal squares on a white grid (never red on the ground)
-    slab(g, T, -1, 1, -1, 1, 0, .015, F['decon-white'], cell=0)
-    for i in range(4):
-        for j in range(4):
-            x0, z0 = -1 + i * .5 + .04, -1 + j * .5 + .04
-            slab(g, T, x0, x0 + .42, z0, z0 + .42, .015, .026, F['decon-teal'], cell=0)
 
 
 def floor_rails(g, T):
@@ -451,10 +599,6 @@ def floor_rails(g, T):
         slab(g, T, x - .035, x + .035, -1, 1, .012, .028, F['rail'], cell=0)
         if T.detail:
             top_rect(g, T, x - .012, x + .012, -1, 1, .0285, F['iron-black'], cell=0)
-
-
-def floor_platform(g, T):
-    slab(g, T, -1, 1, -1, 1, 0, .02, F['tile-cream'], cell=1.0 if T.lod == 0 else 0)
 
 
 def floor_ash(g, T):
@@ -485,17 +629,6 @@ def floor_slag(g, T):
             l = math.hypot(dx, dz) or 1
             nx, nz = -dz / l * .012, dx / l * .012
             g.face(((a[0] - nx, .032, a[1] - nz), (b[0] - nx, .032, b[1] - nz), (b[0] + nx, .032, b[1] + nz), (a[0] + nx, .032, a[1] + nz)), glow(0xFF7A28, .9), (0, 1, 0))
-
-
-def floor_plates(g, T):
-    slab(g, T, -1, 1, -1, 1, 0, .02, F['iron-raw'], cell=1.0 if T.lod == 0 else 0)
-    if T.detail:
-        for i in range(-3, 4):
-            for j in range(-3, 4):
-                x, z = i * .27, j * .27
-                g.face(((x - .05, .022, z), (x, .022, z - .02), (x + .05, .022, z), (x, .022, z + .02)), F['steel-dark'], (0, 1, 0))
-        for x in (-1, 0, 1):
-            slab(g, T, x - .01 if x > -1 else -1, x + .01 if x < 1 else 1, -1, 1, .02, .03, F['rust'], cell=0)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -577,7 +710,7 @@ def wall_growth(g, T):
                 a = 2 * PI * h01('gn', i, k)
                 px, py = cx + math.cos(a) * r * .35, cy + math.sin(a) * r * .35
                 if -HB + .05 < px < HB - .05 and .1 < py < 3.0:
-                    sk.lathe(g, [(.045, 0.0), (.04, .02), (.02, .035), (0.0, .04)], (px, py, -.01), glow(0xB070FF, 1.2), 6, axis=(0, 0, -1))
+                    sk.lathe(g, [(.045, 0.0), (.04, .02), (.02, .035), (0.0, .04)], (px, py, -.01), glow(0xA04CFF, 1.2), 6, axis=(0, 0, -1))
 
 
 def wall_cladding(g, T, upper=False):
@@ -1037,49 +1170,49 @@ def hung_hook(g, T):
     g.extend(sub)
 
 
-# Level 0's office ceiling: a 2 m cell of a T-bar grid (0.5 m tiles), hung on wires into the dark
+def hung_pendant(g, T):
+    # a pendant lamp on a drop from the span cable: an enamel shade, its lamp glowing white for the runtime to tint
+    rod(g, (0, 0, 0), (0, -.72, 0), .006, F['cable'], 3, caps=False)
+    sk.lathe(g, [(.03, -.72), (.06, -.76), (.24, -.92), (.27, -.97)][::-1], (0, 0, 0), F['iron-black'], T.round, axis=(0, 1, 0))
+    n = T.round
+    g.face([(math.cos(2 * PI * k / n) * .23, -.965, math.sin(2 * PI * k / n) * .23) for k in range(n)], glow(LAMP, 2.4), (0, -1, 0))
+
+
+# Level 0's office ceiling: a row 2.5 m deep carried wall to wall (x across from 0 to 2, scaled to the walls' gap), a T-bar grid
+# of 0.5 x 0.625 m tiles, from its underside; no hangers, nothing dangling
 def ceiling(g, T, kind):
-    tiles = []
+    nz = 4
     for i in range(4):
-        for j in range(4):
-            tiles.append((i, j))
-    light = kind == 'light'
-    for (i, j) in tiles:
-        x0, z0 = -1 + i * .5, -1 + j * .5
-        k = h01('ct', kind, i, j)
-        if light and j in (1, 2) and i in (1, 2):
-            g.face(((x0 + .02, .015, z0 + .02), (x0 + .48, .015, z0 + .02), (x0 + .48, .015, z0 + .48), (x0 + .02, .015, z0 + .48)), glow(LAMP, 2.2), (0, -1, 0))
-            continue
-        gone = kind == 'gap' and k < .7 or kind == 'tile' and k < .12
-        if gone:
-            continue
-        f = F['ceiling-stain'] if h01('cs', kind, i, j) < .2 else F['ceiling-tile']
-        tilt = kind == 'gap' and k > .93
-        y = .02
-        if tilt:
-            # a tile hanging off its grid by one edge
-            g.face(((x0 + .02, y, z0 + .02), (x0 + .48, y, z0 + .02), (x0 + .48, y - .3, z0 + .45), (x0 + .02, y - .3, z0 + .45)), f, (0, -.83, -.55))
-            g.face(((x0 + .02, y + .01, z0 + .02), (x0 + .02, y - .29, z0 + .45), (x0 + .48, y - .29, z0 + .45), (x0 + .48, y + .01, z0 + .02)), f, (0, .83, .55))
-            continue
-        g.face(((x0 + .01, y, z0 + .01), (x0 + .49, y, z0 + .01), (x0 + .49, y, z0 + .49), (x0 + .01, y, z0 + .49)), f, (0, -1, 0))
-        g.face(((x0 + .01, y + .015, z0 + .01), (x0 + .01, y + .015, z0 + .49), (x0 + .49, y + .015, z0 + .49), (x0 + .49, y + .015, z0 + .01)), f, (0, 1, 0))
-    # the T-bars: the cell's lines at -1, -0.5, 0, 0.5 in x and z (its +1 edges are the next cell's -1)
+        for j in range(nz):
+            x0, z0 = i * .5, -1.25 + j * .625
+            k = h01('ct', kind, i, j)
+            if kind == 'light' and i in (1, 2) and j in (1, 2):
+                g.face(((x0 + .02, .012, z0 + .02), (x0 + .48, .012, z0 + .02), (x0 + .48, .012, z0 + .605), (x0 + .02, .012, z0 + .605)), glow(LAMP, 2.2), (0, -1, 0))
+                continue
+            if kind == 'gap' and k < .65 or kind == 'tile' and k < .1:
+                continue
+            f = F['ceiling-stain'] if h01('cs', kind, i, j) < .22 else F['ceiling-tile']
+            g.face(((x0 + .012, .015, z0 + .012), (x0 + .488, .015, z0 + .012), (x0 + .488, .015, z0 + .613), (x0 + .012, .015, z0 + .613)), f, (0, -1, 0))
+            g.face(((x0 + .012, .03, z0 + .012), (x0 + .012, .03, z0 + .613), (x0 + .488, .03, z0 + .613), (x0 + .488, .03, z0 + .012)), f, (0, 1, 0))
+    # the T-bars: the row's lines at x 0, 0.5, 1, 1.5 and z -1.25 (its far edges are the next segment's and the next row's)
     for k in range(4):
-        c = -1 + k * .5
-        a, b = (c, c + .02) if k == 0 else (c - .012, c + .012)
-        bx(g, T, a, b, 0, .04, -1, 1, F['tbar'], bevel=0)
-        bx(g, T, -1, 1, 0, .04, a, b, F['tbar'], bevel=0)
-    for (x, z) in ((-.5, -.5), (.5, .5)):
-        rod(g, (x, .04, z), (x, 1.78, z), .004, F['cable'], 3, caps=False)
+        x = k * .5
+        a, b = (x, x + .02) if k == 0 else (x - .012, x + .012)
+        bx(g, T, a, b, -.04, .015, -1.25, 1.25, F['tbar'], bevel=0)
+    for k in range(nz):
+        z = -1.25 + k * .625
+        a, b = (z, z + .02) if k == 0 else (z - .012, z + .012)
+        bx(g, T, 0, 2, -.04, .015, a, b, F['tbar'], bevel=0)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # The table: each kind's builder, and whether it is authored in the city kit's facade frame (turned half round)
 # ---------------------------------------------------------------------------------------------------------------------------
 BUILD = {
-    'level0.carpet': floor_carpet, 'poolrooms.tile': floor_pool_tile, 'poolrooms.flood': floor_flood, 'poolrooms.drain': floor_drain,
-    'poolrooms.ring': floor_ring, 'wardzero.litter': floor_litter, 'wardzero.decon': floor_decon, 'station.rails': floor_rails,
-    'station.platform': floor_platform, 'ironworks.ash': floor_ash, 'ironworks.slag': floor_slag, 'ironworks.plates': floor_plates,
+    'poolrooms.drain': floor_drain, 'poolrooms.ring': floor_ring, 'wardzero.litter': floor_litter, 'station.rails': floor_rails,
+    'ironworks.ash': floor_ash, 'ironworks.slag': floor_slag,
+    'level0.stain': floor_stain, 'poolrooms.puddle': floor_puddle, 'wardzero.scuff': floor_scuff, 'station.oil': floor_oil,
+    'ironworks.crack': floor_crack, 'common.pendant': hung_pendant,
     'level0.wallpaper': lambda g, T: wall_wallpaper(g, T), 'level0.threshold': lambda g, T: wall_wallpaper(g, T, True),
     'poolrooms.threshold': lambda g, T: wall_pool(g, T), 'wardzero.growth': wall_growth, 'wardzero.cladding': lambda g, T: wall_cladding(g, T),
     'station.brick': wall_bluebrick, 'station.threshold': lambda g, T: wall_station(g, T), 'ironworks.plate': wall_plate,
@@ -1100,9 +1233,12 @@ BUILD = {
     'level0.ceiling.tile': lambda g, T: ceiling(g, T, 'tile'), 'level0.ceiling.gap': lambda g, T: ceiling(g, T, 'gap'),
     'level0.ceiling.light': lambda g, T: ceiling(g, T, 'light'),
 }
+for _key in SUB:
+    for _v in ('', 'edge', 'corner', 'bits'):
+        BUILD[_key + ('.' + _v if _v else '')] = (lambda kk, vv: (lambda g, T: field(g, T, kk, vv)))(_key, _v)
 TURN = [-1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, -1.0, 0]  # half round about +y: the kit's facade frame to the kind's Wall frame
 # pieces worth a Cycles occlusion bake (relief); the flat paint takes none
-AO = ('lamp', 'troffer', 'tent', 'pipes', 'girder', 'hook', 'ceiling', 'clock', 'board', 'horn', 'sheet', 'upper', 'highbay', 'rollerdoor')
+AO = ('lamp', 'troffer', 'tent', 'pipes', 'girder', 'hook', 'ceiling', 'clock', 'board', 'horn', 'sheet', 'upper', 'highbay', 'rollerdoor', 'pendant')
 
 
 def build(key, mount, T):
@@ -1359,6 +1495,44 @@ def build_variants(sb, args):
     print('variants: %d themed keys over %d themes' % (count // 2, len(THEMES)))
 
 
+def field_sheet(out):
+    """Each floor field as the planner lays one (a blob of cells on the 2 m grid: whole inside, ragged edges and corners on its
+    rim, bits a cell beyond it), seen from a pilot's height, on a grey ground."""
+    T = tier(0)
+    mask = ['..xxxx..', '.xxxxxx.', 'xxxxxxxx', 'xxxxxxx.', '.xxxxx..', '..xx....']
+    Q = PI / 2
+    laid = []
+    for n, key in enumerate(SUB):
+        g = Geo()
+        ox = n * 20.0
+        g.face(((ox - 4, -.002, -4), (ox + 20, -.002, -4), (ox + 20, -.002, 16), (ox - 4, -.002, 16))[::-1], F['concrete'], (0, 1, 0))
+        def on(c, r):
+            return 0 <= r < len(mask) and 0 <= c < len(mask[0]) and mask[r][c] == 'x'
+        for r in range(-1, len(mask) + 1):
+            for c in range(-1, len(mask[0]) + 1):
+                if on(c, r):
+                    px, mx, pz, mz = on(c + 1, r), on(c - 1, r), on(c, r + 1), on(c, r - 1)
+                    miss = 4 - (px + mx + pz + mz)
+                    v, yaw = '', 0.0
+                    if miss == 1:
+                        v, yaw = 'edge', (0 if not pz else Q if not px else 2 * Q if not mz else 3 * Q)
+                    elif miss == 2 and px != mx:
+                        v, yaw = 'corner', (0 if not pz and not px else Q if not px and not mz else 2 * Q if not mz and not mx else 3 * Q)
+                    elif miss >= 2:
+                        v = 'bits'
+                elif any(on(c + dc, r + dr) for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))) and h01('fringe', key, c, r) < .35:
+                    v, yaw = 'bits', 0.0
+                else:
+                    continue
+                sub = Geo()
+                field(sub, T, key, v)
+                cy, sy = math.cos(yaw), math.sin(yaw)
+                g.extend(sub.transformed([cy, 0, sy, ox + c * 2 + 1, 0, 1, 0, 0, -sy, 0, cy, r * 2 + 1]))
+        laid.append((g, sk.Bake(g, None, floors=(-50.0,), seed=n)))
+    views = [('field-%s' % k, (n * 20.0 + 8, 6.5, -7.0), (n * 20.0 + 8, 0.0, 6.0), 55) for n, k in enumerate(SUB)]
+    sk.preview(laid, views, out, size=(1000, 600))
+
+
 def variant_sheet(out):
     """Each theme's skins as a little facade (three bays: a ground bay, a door bay, a ground bay; two storeys; the band),
     side by side, facing the camera."""
@@ -1426,6 +1600,7 @@ def main():
             sheet(pv, keys, K, args.preview)
             if not args.only:
                 variant_sheet(args.preview)
+                field_sheet(args.preview)
     if not args.only:
         build_variants(sb, args)
     if args.out:

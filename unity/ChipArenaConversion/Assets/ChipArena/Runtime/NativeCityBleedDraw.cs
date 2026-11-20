@@ -24,17 +24,19 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Each theme's mood: the sky glow over its door, its fog and ambient tints, how far the fog and ambient go
         /// toward them at full share, and the ambient's gain at its threshold (the Poolrooms' one bright, calm place).</summary>
-        private struct Mood{public uint Sky,Fog,Ambient;public float Fogging,Tinting,Bright;}
+        private struct Mood{public uint Sky,Dome,Fog,Ambient;public float Fogging,Tinting,Bright;}
+        // The sky glows are the art bible's (3.2: each instance's glow on its bearing; Ward Zero's red over violet), the fog and
+        // ambient tints their light's.
         private static Mood MoodOf(string theme)
         {
             switch(theme)
             {
-                case "level0":return new Mood{Sky=0xE8DC70,Fog=0x3A3620,Ambient=0x9C9460,Fogging=.55f,Tinting=.45f,Bright=1.4f};
-                case "poolrooms":return new Mood{Sky=0x60E0E0,Fog=0x1C4A50,Ambient=0x8EE0E8,Fogging=.6f,Tinting=.5f,Bright=2.4f};
-                case "wardzero":return new Mood{Sky=0xFF3040,Fog=0x2A0E1A,Ambient=0x7A3A5A,Fogging=.55f,Tinting=.45f,Bright=1f};
-                case "station":return new Mood{Sky=0x70A8FF,Fog=0x101C34,Ambient=0x50709A,Fogging=.5f,Tinting=.4f,Bright=1f};
-                case "ironworks":return new Mood{Sky=0xFF7020,Fog=0x2A1A10,Ambient=0x9A5A30,Fogging=.6f,Tinting=.45f,Bright=1.1f};
-                default:return new Mood{Sky=0x9A6BFF,Fog=0x1A1230,Ambient=0x6A5A9A,Fogging=.4f,Tinting=.3f,Bright=1f};
+                case "level0":return new Mood{Sky=0x9A9440,Dome=0x9A9440,Fog=0x3A3620,Ambient=0x9C9460,Fogging=.55f,Tinting=.45f,Bright=1.4f};
+                case "poolrooms":return new Mood{Sky=0x2E9C9A,Dome=0x2E9C9A,Fog=0x1C4A50,Ambient=0xEAF6F4,Fogging=.6f,Tinting=.5f,Bright=2.4f};
+                case "wardzero":return new Mood{Sky=0x9A2430,Dome=0x5A2C8A,Fog=0x2A1430,Ambient=0xD4E6FF,Fogging=.55f,Tinting=.45f,Bright=1f};
+                case "station":return new Mood{Sky=0x3A5AA0,Dome=0x3A5AA0,Fog=0x101C34,Ambient=0x7CB4FF,Fogging=.5f,Tinting=.4f,Bright=1f};
+                case "ironworks":return new Mood{Sky=0xA0461A,Dome=0xA0461A,Fog=0x2A1A10,Ambient=0xFF9A30,Fogging=.6f,Tinting=.45f,Bright=1.1f};
+                default:return new Mood{Sky=0x5A2C8A,Dome=0x5A2C8A,Fog=0x1A1230,Ambient=0x8A3CFF,Fogging=.4f,Tinting=.3f,Bright=1f};
             }
         }
 
@@ -42,7 +44,7 @@ namespace ChipArena.UnityConversion
         private const int BatchSize=500;
         private sealed class Kind
         {
-            public Mesh[] Mesh=new Mesh[NativeStageArt.Tiers];public bool Casts;public int Subs;
+            public Mesh[] Mesh=new Mesh[NativeStageArt.Tiers];public bool Casts,Shimmer;public int Subs;
             public readonly List<int> Pieces=new List<int>();
         }
         private sealed class Batch{public readonly Matrix4x4[] M=new Matrix4x4[BatchSize];public readonly Vector4[] Glow=new Vector4[BatchSize];public int Count;}
@@ -82,7 +84,8 @@ namespace ChipArena.UnityConversion
             var K=NativeCityBleedDress.Kinds;kinds=new Kind[K.Length];
             for(int k=0;k<K.Length;k++)
             {
-                var kind=new Kind{Casts=K[k].Casts};
+                // the water's caustic threads shimmer (the flood and the puddles: their glow's gain, per instance)
+                var kind=new Kind{Casts=K[k].Casts,Shimmer=K[k].Key.StartsWith("poolrooms.flood",StringComparison.Ordinal)||K[k].Key=="poolrooms.puddle"};
                 for(int t=0;t<NativeStageArt.Tiers;t++)
                 {
                     var prop=bank.Find("rig/bleed/"+K[k].Key+"/"+t);if(prop==null||prop.Parts.Length==0)continue;
@@ -145,10 +148,10 @@ namespace ChipArena.UnityConversion
             for(int d=0;d<bleed.Doors.Length;d++)
             {
                 string theme=NativeCityBleed.Theme(bleed.Doors[d].Instance);if(theme==null||theme=="final")continue;
-                var m=MoodOf(theme);var a=bleed.Doors[d].At;var at=new Vector3(a.x,a.y+55,a.z);var sky=Hex(m.Sky);
-                Quad(at,new Vector3(95,0,0),new Vector3(0,0,95),new Color(sky.r,sky.g,sky.b,.16f));
+                var m=MoodOf(theme);var a=bleed.Doors[d].At;var at=new Vector3(a.x,a.y+55,a.z);var sky=Hex(m.Sky);var dome=Hex(m.Dome);
+                Quad(at,new Vector3(95,0,0),new Vector3(0,0,95),new Color(sky.r,sky.g,sky.b,.34f));
                 var toward=new Vector3(a.x,0,a.z);toward=toward.sqrMagnitude>1?toward.normalized:Vector3.forward;var across=new Vector3(toward.z,0,-toward.x);
-                Quad(new Vector3(a.x,a.y+30,a.z)+toward*20,across*110,new Vector3(0,42,0),new Color(sky.r,sky.g,sky.b,.13f));
+                Quad(new Vector3(a.x,a.y+30,a.z)+toward*20,across*110,new Vector3(0,42,0),new Color(dome.r,dome.g,dome.b,.28f));
             }
             if(v.Count==0)return;
             fx=new Mesh{name="City bleed light",indexFormat=v.Count>65000?IndexFormat.UInt32:IndexFormat.UInt16};
@@ -199,6 +202,7 @@ namespace ChipArena.UnityConversion
         private Vector4 GlowOf(int i,float time)
         {
             var g=baseGlow[i];var p=plan.Pieces[i];
+            if(kinds[p.Kind].Shimmer){float k=.45f+.55f*Mathf.Abs(Mathf.Sin(time*.9f+(p.Seed&1023)*.0061f+p.At.x*.13f));return new Vector4(g.x*k,g.y*k,g.z*k,1);}
             if(p.Lamp==NativeCityBleedDress.LampState.Flicker||p.Lamp==NativeCityBleedDress.LampState.Turning){float k=Intensity(i,time);return new Vector4(g.x*k,g.y*k,g.z*k,1);}
             return g;
         }
