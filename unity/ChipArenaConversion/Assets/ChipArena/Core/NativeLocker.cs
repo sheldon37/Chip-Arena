@@ -113,6 +113,7 @@ namespace ChipArena.UnityConversion
         public static string IntroName(string id,string label)=>Clean(label);
         public static string IntroText(string id)
         {
+            var v2=NativeIntroCatalog.Find(id);if(v2!=null)return v2.Blurb??(v2.Spec!=null?Title(v2.Spec)+" entrance.":"An entrance.");// Intros v2 (Core NativeIntroCatalog)
             switch(id)
             {
                 case "orbital-drop":return "A drop pod slams down and blows its door open.";

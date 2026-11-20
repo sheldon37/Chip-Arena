@@ -1,0 +1,725 @@
+{
+  "author": "I2",
+  "sounds": [
+    {
+      "key": "intro2.cloudbreak.wind",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.8,
+        "max": 2.8
+      },
+      "levelDb": -16,
+      "fadeOutMs": 600,
+      "prompt": "High-altitude wind rushing over a bare mountain summit at dawn, a cold steady gusting whoosh with a faint whistle, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.boom",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": -12,
+      "fadeOutMs": 400,
+      "prompt": "A distant sonic boom rolling across an open sky, a deep double thump with a soft rumbling tail, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.fall",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.2
+      },
+      "levelDb": -9,
+      "fadeOutMs": 250,
+      "prompt": "Something falling out of the sky at great speed, a rising roaring whistle of air and a crackle of heat, getting closer and louder, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.flip",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -12,
+      "fadeOutMs": 120,
+      "prompt": "A fast cloth-and-air whoosh of a body flipping over in mid-air, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.ignite",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -8,
+      "fadeOutMs": 200,
+      "prompt": "Two compact jet thrusters igniting at once, a sharp ignition pop into a bright blue roaring burn, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.thrust",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.3
+      },
+      "levelDb": -10,
+      "fadeOutMs": 350,
+      "prompt": "A sustained braking burn from small jet thrusters, a smooth roaring hiss that slows and drops in pitch, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.touch",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "prompt": "A heavy armoured figure landing softly in a crouch on a concrete pad, a deep thud with grit scattering, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.gust",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.4
+      },
+      "levelDb": -10,
+      "fadeOutMs": 500,
+      "prompt": "A blast of wind and grit blown outward across a concrete pad, a whooshing gust with sand and ice crystals hissing, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.cool",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.4
+      },
+      "levelDb": -15,
+      "fadeOutMs": 400,
+      "prompt": "Small jet thrusters spinning down, a falling whine with a few soft sputters and metal ticking as it cools, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.sun",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.8
+      },
+      "levelDb": -14,
+      "fadeOutMs": 600,
+      "prompt": "A warm swelling shimmer of light, a soft rising airy pad with a gentle sparkle, like sunrise, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.name",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -9,
+      "fadeOutMs": 400,
+      "prompt": "A bright heroic stinger, a clean metallic swell rising into a crisp shining hit with a soft airy tail, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.cloudbreak.puff",
+      "category": "boss",
+      "priority": 3,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.45
+      },
+      "levelDb": -16,
+      "fadeOutMs": 100,
+      "prompt": "A tiny short puff of a small jet thruster, a soft blue hiss, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.storm",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 3.8
+      },
+      "levelDb": -12,
+      "fadeOutMs": 800,
+      "prompt": "A howling polar blizzard, wind roaring and moaning with snow hissing against metal, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.visor",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -12,
+      "fadeOutMs": 150,
+      "prompt": "A soft electronic power-up chirp, a helmet visor display waking with a short rising tone, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.heat",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -12,
+      "fadeOutMs": 300,
+      "prompt": "An electric heater coil warming up fast, a rising hum with a faint sizzle and crackle of melting frost, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.crack",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -7,
+      "fadeOutMs": 300,
+      "prompt": "A thick shell of ice cracking and shattering off armour, sharp brittle cracks and tinkling shards falling, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.steam",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.4
+      },
+      "levelDb": -12,
+      "fadeOutMs": 500,
+      "prompt": "A burst of steam hissing off hot metal in the cold, a strong hiss fading to a soft simmer, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.rise",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -13,
+      "fadeOutMs": 200,
+      "prompt": "Boots crunching and shifting in deep snow as someone stands up, a creak of armour plates, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.pulse",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -7,
+      "fadeOutMs": 400,
+      "prompt": "A deep heat pulse released from a suit, a heavy low thump with a rushing whoosh of steam outward, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.calm",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.5,
+        "max": 2.2
+      },
+      "levelDb": -15,
+      "fadeOutMs": 800,
+      "prompt": "Wind dying away to calm, a fading gust leaving a soft high airy shimmer, like an aurora overhead, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.whiteout.name",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -9,
+      "fadeOutMs": 400,
+      "prompt": "A cold crystalline stinger, a glassy chime swelling into a bright hit with an icy shimmering tail, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.rush",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.8,
+        "max": 2.8
+      },
+      "levelDb": -10,
+      "fadeOutMs": 500,
+      "prompt": "A maglev train racing through a tunnel, a deep fast rumble and hum with air roaring past, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.burst",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -9,
+      "fadeOutMs": 400,
+      "prompt": "A train bursting out of a tunnel into a large hall, a pressure whoomp opening into a wide whoosh, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.run",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.5,
+      "targetSeconds": {
+        "min": 0.12,
+        "max": 0.3
+      },
+      "levelDb": -13,
+      "fadeOutMs": 60,
+      "prompt": "A single fast running footstep on a metal train roof, a light solid clank, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.leap",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -11,
+      "fadeOutMs": 150,
+      "prompt": "A powerful leap through rushing air, a short strong whoosh, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.slide",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.1
+      },
+      "levelDb": -8,
+      "fadeOutMs": 250,
+      "prompt": "Armoured boots skidding across a stone floor at speed, a grinding scrape with sparks crackling, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.pass",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -9,
+      "fadeOutMs": 500,
+      "prompt": "A sleek maglev train passing at speed, a rising and falling electric hum with a doppler whoosh, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.stop",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.45
+      },
+      "levelDb": -12,
+      "fadeOutMs": 100,
+      "prompt": "A slide coming to a hard stop, a short scuff and a solid boot plant, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.chime",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.4
+      },
+      "levelDb": -14,
+      "fadeOutMs": 600,
+      "prompt": "A gentle two-note station chime, soft clean electronic bell tones, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.name",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -9,
+      "fadeOutMs": 400,
+      "prompt": "A sleek fast stinger, a quick electric whoosh resolving into a sharp bright synth hit, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.slipstream.board",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.0
+      },
+      "levelDb": -14,
+      "fadeOutMs": 200,
+      "prompt": "A split-flap departure board clattering over, a rapid run of small plastic flaps flipping, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.rumble",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.8,
+        "max": 2.8
+      },
+      "levelDb": -16,
+      "fadeOutMs": 800,
+      "prompt": "A low rumble deep inside ancient standing stones in a desert canyon, a dry wind over it, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.crack",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.8
+      },
+      "levelDb": -9,
+      "fadeOutMs": 250,
+      "prompt": "A crack running up a huge standing stone, a sharp stony snap with grit trickling down, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.charge",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -11,
+      "fadeOutMs": 300,
+      "prompt": "Light building inside a stone seam, a warm rising resonant hum with a faint crackle, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.split",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.8
+      },
+      "levelDb": -7,
+      "fadeOutMs": 500,
+      "prompt": "Two massive standing stones grinding apart, a deep stone-on-stone grind and a rush of bright air, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.through",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -11,
+      "fadeOutMs": 400,
+      "prompt": "Stepping out of a sheet of warm light, a soft sweeping shimmer with a gentle rush of dust, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.step",
+      "category": "boss",
+      "priority": 3,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.45
+      },
+      "levelDb": -15,
+      "fadeOutMs": 100,
+      "prompt": "A single calm footstep on worn stone with a little sand, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.seal",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "Two huge stones grinding shut, a heavy stone grind ending in a deep thud and settling dust, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.name",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -9,
+      "fadeOutMs": 400,
+      "prompt": "A grand mystical stinger, a deep resonant swell rising into a warm bright hit, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.crowd",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 3.8
+      },
+      "levelDb": -14,
+      "fadeOutMs": 800,
+      "prompt": "An excited crowd outside a premiere at night, murmuring and calling out, wordless, no clear speech, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.bulbs",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -14,
+      "fadeOutMs": 150,
+      "prompt": "A row of marquee light bulbs switching on one after another, a quick run of soft electric clicks, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.doors",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -13,
+      "fadeOutMs": 250,
+      "prompt": "Heavy glass theatre doors swinging open, a soft whoosh and a brass latch click, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.cheer",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.8
+      },
+      "levelDb": -11,
+      "fadeOutMs": 600,
+      "prompt": "A crowd cheering and whooping as a star appears, wordless, no clear speech, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.photo",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.45
+      },
+      "levelDb": -9,
+      "fadeOutMs": 120,
+      "prompt": "A press camera shutter firing with a camera flash popping, a crisp click and a bright pop, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.burst",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -11,
+      "fadeOutMs": 200,
+      "prompt": "Many press cameras firing at once, a rapid burst of overlapping shutter clicks and flash pops, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.confetti",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -12,
+      "fadeOutMs": 400,
+      "prompt": "Confetti cannons popping and paper confetti fluttering down, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.name",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -9,
+      "fadeOutMs": 400,
+      "prompt": "A glamorous stinger, a bright brassy swell with a sparkle and a punchy hit, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.flashbulb.shutter",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.5,
+      "targetSeconds": {
+        "min": 0.1,
+        "max": 0.3
+      },
+      "levelDb": -14,
+      "fadeOutMs": 60,
+      "prompt": "A single press camera shutter click, isolated, no reverb, no music, no background noise"
+    }
+  ]
+}

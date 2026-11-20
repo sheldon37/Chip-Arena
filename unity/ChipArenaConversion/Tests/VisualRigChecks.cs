@@ -707,7 +707,8 @@ namespace ChipArena.UnityConversion
                 {
                     var picked=new NativeSeat{spec=spec};var spawned=new NativeSeat{spec=spec};NativeDevMotions.Normalize(spawned);
                     var script=NativeEntranceDirector.Script(style) as NativeDevPackIntro;
-                    Check(NativeIntroRules.Style(picked)==style&&NativeIntroRules.Style(spawned)==style&&NativeIntroRules.Style(new NativeSeat{spec=NativeDevMotions.Base(spec)})!=style&&NativeIntroRules.Pickable(style)&&NativeEntranceDirector.Directed(style)&&script!=null&&script.Spec==spec,
+                    var expect=NativeIntroCatalog.WeaponIntro(NativeDevMotions.Base(spec))??style;// Intros v2: the base weapon's registered intro takes over
+                    Check(NativeIntroRules.Style(picked)==expect&&NativeIntroRules.Style(spawned)==expect&&(expect!=style||NativeIntroRules.Style(new NativeSeat{spec=NativeDevMotions.Base(spec)})!=style)&&NativeIntroRules.Pickable(style)&&NativeEntranceDirector.Directed(style)&&script!=null&&script.Spec==spec,
                         spec+": its own entrance, picked or spawned as its base (the base keeps its own)");
                     Check(Math.Abs(NativeIntroRules.Duration(style)-script.Length)<1e-4&&NativeIntroRules.NameAt(style)<NativeIntroRules.Duration(style)&&NativeIntroRules.IntroWeapon(style)=="weapon-"+spec&&NativeIntroRules.StyleName(style).StartsWith("DEV · ",StringComparison.Ordinal)
                         &&NativeLocker.IntroText(style).Length>0&&NativeLocker.IntroIcon(style)!=null&&NativeDevMotions.Grip(spec,out _,out _),spec+": its entrance's phase, card, weapon, name, Locker text and hold");

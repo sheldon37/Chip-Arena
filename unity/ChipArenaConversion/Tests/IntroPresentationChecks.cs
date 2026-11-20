@@ -40,8 +40,8 @@ internal static class IntroPresentationChecks
         foreach(var s in styles){Check(NativeIntroRules.Entrance(s)==s&&NativeIntroRules.Entrance(s,"pistol")==s,s+" stages itself");}
         foreach(var s in new[]{"weapon-siren","weapon-leet","",null,"DEV-SIREN","neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave"})
         {
-            Check(NativeIntroRules.Entrance(s)==NativeIntroRules.Default,(s??"null")+" falls back to "+NativeIntroRules.Default);Check(NativeIntroRules.Entrance(s,"rifle")=="weapon-rifle",(s??"null")+" stages the pilot's signature");
-            Check(NativeIntroRules.Entrance(s,"siren")==NativeIntroRules.Default&&NativeIntroRules.Entrance(s,null)==NativeIntroRules.Default,(s??"null")+" without a signature stages "+NativeIntroRules.Default);
+            Check(NativeIntroRules.Entrance(s)==NativeIntroRules.Fallback,(s??"null")+" falls back to "+NativeIntroRules.Fallback);Check(NativeIntroRules.Entrance(s,"rifle")==NativeIntroRules.Signature("rifle"),(s??"null")+" stages the pilot's signature");
+            Check(NativeIntroRules.Entrance(s,"siren")==NativeIntroRules.Fallback&&NativeIntroRules.Entrance(s,null)==NativeIntroRules.Fallback,(s??"null")+" without a signature stages "+NativeIntroRules.Fallback);
         }
         // Timing: every non-DEV entrance (old or new, known or not) keeps the 4.8 s phase and the 3.2 s name card, so match flow is unchanged.
         foreach(var s in new[]{"weapon-siren","neon-drop","hero-landing","orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","overclock","weapon-sword","weapon-darkness"})
@@ -50,15 +50,16 @@ internal static class IntroPresentationChecks
         foreach(var r in new[]{"neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave","missing",null})
         {
             string intro=r;bool pick=true;NativeIntroRules.Migrate(ref intro,ref pick);Check(intro==NativeIntroRules.Default&&!pick,(r??"null")+" migrates to the weapon signature");
-            Check(NativeIntroRules.Style(new NativeSeat{spec="greatsword",overrideIntro=true,intro=r})=="weapon-greatsword",(r??"null")+" override plays the signature");
+            Check(NativeIntroRules.Style(new NativeSeat{spec="greatsword",overrideIntro=true,intro=r})==NativeIntroRules.Signature("greatsword"),(r??"null")+" override plays the signature");
         }
-        foreach(var p in NativeIntroRules.Procedural){string intro=p;bool pick=true;NativeIntroRules.Migrate(ref intro,ref pick);Check(intro==p&&pick,p+" survives migration");Check(NativeIntroRules.Style(new NativeSeat{spec="rifle",overrideIntro=true,intro=p})==p,p+" plays when picked");}
+        // Intros v2 (owner 2026-11-20): the procedural entrances are archived: a pick migrates to no pick and plays the weapon's intro.
+        foreach(var p in NativeIntroRules.Procedural){string intro=p;bool pick=true;NativeIntroRules.Migrate(ref intro,ref pick);Check(intro==NativeIntroRules.Default&&!pick&&NativeIntroCatalog.Archived(p),p+" is archived and migrates away");Check(NativeIntroRules.Style(new NativeSeat{spec="rifle",overrideIntro=true,intro=p})==NativeIntroRules.Signature("rifle"),p+" picked plays the weapon's intro");Check(NativeIntroRules.Entrance(p,"rifle")==p,p+" still stages when replicated");}
         // The account service only knows the Electron list: a procedural pick is stored as neon-drop and remembered locally.
         foreach(var p in NativeIntroRules.Procedural)Check(NativeIntroRules.ServiceIntro(p)=="neon-drop",p+" is stored as the service's fallback");
         foreach(var s in new[]{"weapon-sword","dev-emperor","neon-drop"})Check(NativeIntroRules.ServiceIntro(s)==s,s+" is stored as is");
         // The Bow's Arrowfall postdates the Electron list too: stored as neon-drop, remembered locally; it plays when picked
         // and as the Bow's signature.
-        Check(NativeIntroRules.ServiceIntro(NativeBowEntrance.Id)=="neon-drop"&&NativeIntroRules.Signature("bow")==NativeBowEntrance.Id&&NativeIntroRules.Style(new NativeSeat{spec="rifle",overrideIntro=true,intro=NativeBowEntrance.Id})==NativeBowEntrance.Id,"weapon-bow is stored as the service's fallback and plays as the Bow's signature");
+        Check(NativeIntroRules.ServiceIntro(NativeBowEntrance.Id)=="neon-drop"&&NativeIntroRules.Signature("bow")==(NativeIntroCatalog.WeaponIntro("bow")??NativeBowEntrance.Id)&&NativeIntroRules.Style(new NativeSeat{spec="rifle",overrideIntro=true,intro=NativeBowEntrance.Id})==NativeIntroRules.Signature("rifle"),"weapon-bow is stored as the service's fallback and plays as the Bow's signature");
         // Lights: what Unity applies equals the source's diffuse light (linear colour x intensity / PI) in every mode.
         int lights=0;var rng=new Random(1709);
         for(int i=0;i<400;i++)

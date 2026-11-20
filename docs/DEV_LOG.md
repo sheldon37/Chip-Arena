@@ -237,6 +237,515 @@ Branch `codex/playable-meridian`, based on shared `8d56f015`. A station ticket c
 
 Managed checks exercised all five city startups, Hulk clearance and routes, deployment reconstruction, host migration, and cache interactions. Windows native physics, the four-pilot load gate and test-channel publication require the builder receipt.
 
+## 2026-11-20 — Claude (I2b): the generic intros' bodies keyed for the model they are drawn on, an ending each, Slipstream's taller tunnel (owner: "weird orientations", "head in tunnel"; presentation only)
+
+**Branch and base:** `claude/intro-generic` (I2's branch, continued from `29e328f8` after the interrupt), with the framework
+`claude/intro-framework` merged at `3df01f3a` and then `f0e6e052`. Implementation commits `a7c8cdec`, `7545ab8d`, `f63686e4`,
+`82ee57fb`, `92b1c960`. Pushed, no PR, not merged; nothing released. As-built notes: `docs/INTROS-GENERIC.md` "Feet on the model"
+and each intro's "Motion".
+
+**What changed and why:** the owner saw sideways legs and odd orientations; the integrator asked for the five raised to the Top Dog
+and Bombardier standard. Measured offline on the model's own skeleton (a new review dump, `INTRO_GENERIC_MODEL`): the model takes the
+keyed legs' turns bone for bone on legs 1.7 times as long (hip to ankle .851 m against the rig's .5), under hips that move 1.7 times
+as far from rest, on the shared root, with its feet unplanted. So in every walk a keyed foot held still while the root travelled slid
+the drawn foot back at about 1 m/s (a quarter of a metre a step), and the keyed drops sat Whiteout's and Cloudbreak's kneels and
+Slipstream's slide on the floor with a knee 23-31 cm through it.
+- **The base** (`NativeIntroGenericScript`): stances and steps are written where the model's ankle goes, and each frame the keyed foot
+  is put where the drawn one lands (`OnModel`, from the keyed hips of a first pass); drops in the model's metres (`Sink`); a walking
+  foot's heel rises onto the ball (the ball held, the ankle coming over it), its toe trails and the heel strikes; `Kneel` puts the
+  model's knee on the floor under the hips with the shin behind and the toes tucked; walks on a speed `Track`, each step landing
+  where the hips will be half way through its stance (`Walk`); a ground height for feet on the train's roof (`Ground`).
+- **Re-keyed on it:** Cloudbreak's superhero landing (the right knee and fist on the pad, the left foot out front, the left arm swept
+  back) and its rise over the front foot, filmed closer; Whiteout's huddled kneel (forearm on the knee), the shiver, the crack, the
+  rise and the pulse; Slipstream's roof crouch, an accelerating sprint with pumping arms and knee drive, the take-off, a split leap
+  and a knee slide with a dragging hand; Threshold's measured walk out of the slit (strides of about .7 m every .49 s) and its glance
+  back; Flashbulb's catwalk strut (crossing feet, swinging hips), the three poses and a hands-on-hips cover. Hands that meet the body
+  were solved on the measured skeleton for where the model's hand lands, then keyed.
+- **An ending each** (the integrator's review: the last seconds stood at attention): Cloudbreak turns to the sunrise, rolls a shoulder
+  back, sets its left fist on its hip and brings its head round to the lens on the name; Whiteout looks up at the aurora on a long
+  breath, then lays its right hand over its heart; Slipstream brushes the slide's dust off its shoulder and settles loose and cocked;
+  Threshold sweeps its right arm out aside, hand open, presenting the gate; Flashbulb's hands-on-hips cover is taken by one last flash
+  from the lens as the name slams (not in Reduced effects).
+- **Slipstream's slide light** (the integrator's review: the hand's glow drew on the floor .43-.68 m under a hand keyed in the air):
+  the sparks and the scorch follow the drawn knee, and the hand's glow and sparks show only while the drawn fingertips touch the floor.
+- **Slipstream's tunnel a metre taller** (the owner: "head in tunnel"; the helmet reached into the curved ceiling as the pilot stood
+  and ran on the roof): the set's lining (`tools/intros/generic_slipstream.py` `ST_TUNNEL`, `ST_MOUTH`) and its mirror in Core
+  (`NativeIntroSlipstream.TunnelCeiling`); the shot swings out only once the pilot is out of the tunnel's mouth and stays inside the
+  lining until then. The set bank is rebuilt (local, v9).
+- **The framework merge** (`f0e6e052`: grip IK, opt-in `ModelFeet`, canonical poses): this base keeps its own model-space feet (it
+  overrides `Pose`, so nothing corrects twice) and reports its slides as the framework's `FeetSliding`, so the framework's new feet
+  check reads the same windows.
+- **Regression checks** (`IntroGenericChecks`): `Feet`: on the model, a foot flat on the floor stays put (under .45 m/s) except where
+  the intro slides it (`Sliding`), and no knee, ankle or ball goes 4 cm into the floor; `Tunnel`: Slipstream's helmet (the head bone
+  + .25 m) stays at least 5 cm under the tunnel's ceiling while inside it, and the camera stays inside the lining (it fails on the old
+  lining by 28 cm).
+
+**Systems touched:** Core `NativeIntroGeneric.cs` and the five intro files; Tests `IntroGenericChecks.cs`; the set generator
+`tools/intros/generic_slipstream.py`; `docs/INTROS-GENERIC.md`. No framework file, no Runtime file, no rules, no wire, no saves. The
+cues and effects are unchanged but for Threshold's footfall dust and step cues (on the new footfalls), Slipstream's slide sparks and
+scorch, Flashbulb's last flash and Cloudbreak's closer touchdown camera.
+
+**Checks (actual, on `92b1c960`; the docs commit after it changes no code and no check reads it):**
+- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the integrator's `banks-next`):
+  exit 0, 1083 PASS, 0 FAIL. Within it: generic intros 25,009 checks; intros v2 4,202; intro poses 484 with 0 limit, feet or grip
+  findings (drawn feet slide at most .40 m/s and go at most 3 cm into the floor).
+- Unity compile check (`tools/check_unity_compile.py`, 6000.3.24f1, no download): all four assemblies PASS. `git diff --check`: clean.
+- The Editor compiled the head and played the four approved intros through their own shots (hold 2).
+
+**Captures (local, never committed; `F:/Chip Arena Development/scratch/intro-generic/clips/`):**
+- Hold 1 on `a7c8cdec` (31.8 min, over its 25-minute slot): all five at High and Low with side and three-quarter review views:
+  `<Name>-high-b1.mp4` and `sheets/<Name>-b1-*.png`, with `sheets/Flashbulb-strut-before-after-side.png` and
+  `sheets/Kneels-before-after.png`.
+- Hold 2 on `92b1c960` (16.8 min, over the 12 asked): Cloudbreak, Whiteout, Threshold and Flashbulb at High through their own shots
+  every 1/30 s, trimmed to the intro (no loading card, no match frame): `<Name>-high-b2.mp4` (7.4-8.0 s, 0.87-1.30 MB) and
+  `sheets/<Name>-b2-*.png`. The integrator reviewed them and sent them to the owner; Threshold's sweep is modest at its final shot's
+  size (approved as is); the pale name card on the snow and the sunlit floor is the framework's (I0d is on it).
+- Slipstream is not filmed on the final head: it gets its own short hold once its run comes from the pack.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation; the registered Duration
+and NameAt are unchanged).
+
+**Voxel dependency:** none added (the keyed rig is authored through `NativeEntranceKeys` as before). A Classic (voxel) body draws the
+keyed rig, whose planted feet now creep forward through a walk (the model is drawn by default).
+
+**Risks and next step:**
+- The conversion's constants are the measured skeleton's (leg ratio 1.702, hip offsets); a model with other leg proportions would
+  slide by the difference (a few percent of the walking speed).
+- The set bank is local and was rebuilt for the taller tunnel (v9, 7,724,139 bytes; master in
+  `F:/Chip Arena Development/scratch/intro-generic/bank/`, the old v8 in `bank-v8-old`). Pack v9 into the Drive zip: with v8 the
+  helmet reaches into the old ceiling.
+- The `introeyeseq` review camera fell back to the intro's own shot on a few frames inside speed ramps and blends (a local tool quirk).
+- Next: Slipstream's run from the owner's Runner Action pack (five clips picked: the dash start and loop, the jump, the fall and the
+  slide; no wall run, no root motion) once I0d's intro motion bank lands (Core cannot sample the bank's humanoid muscles; no pack data
+  is committed), then its own short hold; the integrator merges the branch and packs the bank.
+
+## 2026-11-20 — Claude (I2): five new generic intros, Cloudbreak the new default (owner: "5 new intros"; presentation only)
+
+**Branch and base:** `claude/intro-generic` from shared `8d56f015`, with I0's `claude/intro-framework` merged in as it moved
+(last at `545faef6`, the card fix). Pushed, not merged; nothing released. Design and as-built notes: `docs/INTROS-GENERIC.md`.
+
+**What changed and why** (owner, 2026-11-20: "a much higher quality standard, great animations and effects, non-block based
+background and designs ... With great camera work as well!"): five weapon-agnostic v2 intros replacing the archived generic ones,
+each with its own story, modelled set, camera language, effects and cue timeline.
+- **Cloudbreak** (the new default, `intro2-default`, 7.6 s, name 5.7): a re-entry streak out of the dawn sky onto a summit relay
+  station above the clouds, a flip and a thruster-braked touchdown in slow motion, the sun breaking the cloud line.
+- **Whiteout** (`intro2-whiteout`, 8.0 s, name 6.2): a frosted figure kneeling in a polar blizzard thaws, rises, and a heat pulse
+  parts the storm over the outpost and the aurora.
+- **Slipstream** (`intro2-slipstream`, 7.4 s, name 5.6): riding a maglev's roof out of a tunnel into a station, a sprint, a leap and
+  a sliding stop on the platform as the train pulls away.
+- **Threshold** (`intro2-threshold`, 8.2 s, name 6.4; was Waygate): a seam of light splits two leaning standing stones in a canyon
+  and the pilot walks out through the slit.
+- **Flashbulb** (`intro2-flashbulb`, 7.8 s, name 6.0): a premiere's red carpet, three poses held for the photographers' flashes,
+  the cover shot.
+- **The name** sits centred in a band under the feet (`card.Y` 0.855) over closing frames that show the whole figure above it
+  (a check holds it).
+- **Sets:** scripted Blender 5.2.3 (`tools/intros/generic_sets.py` and its modules, on stagekit), two tiers, one local bank
+  `ChipArenaIntroGeneric.bytes` (6,829,925 bytes; master in `F:/Chip Arena Development/scratch/intro-generic/bank/`), never
+  committed. No placeholder shapes: the sun has a limb, the gate's light is a vortex, the thaw is wet ground and slush, the aurora
+  is rays, the glass doors and ad panels carry designs. Without the bank each intro draws its own plain fallback in its own light.
+- **Motion:** keyed on the intro rig (as Top Dog and Last Warning); Flashbulb's stride (`Armed-Walk` 1.33x) and Slipstream's run
+  (`Unarmed-Sprint` 1.45x) play from the motion bank on the model through the framework's `Clip`, for weapons whose motion set
+  holds the clip (the keyed rig walks and runs otherwise; lending asked of I0). No new pack clips, no rebake. Whiteout's visor
+  is the model's own (its accent) and its light rides the head as drawn (`INativeIntroHead`): the model's kneel and bow part from
+  the keyed head.
+- **Sound:** every cue has a filled one-shot bank stand-in and a built-in clip (the checks refuse a loop or an empty stand-in);
+  49 generated keys requested in `docs/audio/intros/I2.json` (82 takes, 128 s), their contract lines in
+  `Core/NativeIntroSoundKeys.cs`.
+
+**Review round (integrator and owner, 2026-11-20 morning):**
+- **Waygate became Threshold** (`intro2-threshold`): its ring gate, lamps lit round the ring and vortex read as a famous film's gate
+  (and the name is from a book series). Now two leaning standing stones meet in a cleft; a crack of light runs up the seam, the
+  stones grind apart, light and dust pour out of the slit and the pilot walks out through it; no circles, chevrons or vortex, the
+  plaza laid in a grid (no floor arcs). Its sound keys and requests were renamed and rewritten (48 keys in all now).
+- **Cloudbreak:** a square pad (a painted H, hazard-striped corners, edge lights, scuffs; no circles), and its cone peaks replaced
+  by three layers of ridged ranges fading into the dawn haze, with open cloud toward the sun.
+- **Own animation, no motion-bank clips** (owner: "think like the top dog and Bombardier ones"): Flashbulb's strut, Threshold's walk
+  out and Slipstream's sprint, gather, leap and reach into the slide are keyed (`NativeEntranceKeys`, two keys a step).
+- **Why Flashbulb's legs went sideways** (owner report): the walk's stance and steps were written in the hero facing's frame
+  (`Stance`/`Step` turn x and z by `Facing` about the mark), so 6 m up the carpet the planned feet sat 1.4 m to the side of the body
+  and the legs reached for them as the clip faded in and out; the clip itself (`Armed-Walk`) is the sword's guarded walk, hips
+  side-on, so its knees bent sideways at the lens; the strides (1.05 m) were beyond the keyed legs' reach (about .3 m either side of
+  the hips); the right foot never stepped onto the mark, so that leg stretched back under the poses and the cover; and the poses
+  turned the body up to 49 degrees over planted feet. All five fixed: world-frame walk steps, keyed strides of about .55 m (Flashbulb
+  cuts from the doorway to the pilot halfway down the carpet; Threshold's stones moved 1.3 m nearer the mark), both feet onto the
+  mark, the feet pivoting into each pose. Threshold had the same frame and stride faults.
+- **Whiteout's head turn** in deep poses is the framework's (I0c); this branch only softened the kneel's bow and made its close-up
+  frontal (the repro is at `a04711b5`).
+
+**Systems touched:** Core (`NativeIntroGeneric.cs` and one file per intro, my registry lines, my sound-key lines), Tests
+(`IntroGenericChecks.cs`, one line in `Program.cs`), `tools/intros/generic_*.py`, docs. No Runtime file, no rules, no wire, no saves.
+
+**Checks:** `CoreTests --intro-generic` PASS (14,860 checks: registry and timing, cue order, filled one-shot stand-ins, clock,
+determinism, finite values, no per-frame allocation, budgets with and without the bank, Reduced flashes, long streaks on the
+camera plane, every closing frame's figure above the name band); `--intros-v2` PASS (3,195 checks, 6 registered intros); the full
+suite the relgen5 way (LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` banks-next) 1,081 PASS, exit 0 at `4949aac2`
+(the last code commit; also at `2f96ecf9` and `577b896e`); Unity compile 4 PASS at `4949aac2` (after the framework's card fix);
+`git diff --check` clean; `compile_sound_requests.py --check` reads 49 valid keys (the manifest is the integrator's to compile).
+Not run: a Windows player build, multiplayer, Reduced-effects captures, clip playback for weapons other than the sword.
+
+**Captures (BoZo, Cyber City, sword, High every 1/15 s and Low every 0.5 s):** hold hB (`f025a05c`, bank 6,515,281 bytes; 25.8
+min) Cloudbreak, Whiteout, Flashbulb; hold hC (`ebea6907`, bank 6,801,773 bytes; 18.7 min) Slipstream, Waygate; hold hD
+(`a04711b5`, bank 6,829,925 bytes; 24.5 min) Whiteout and Flashbulb (High and Low), Waygate (High). The clips: Cloudbreak from hB
+(only its sun's shading changed since), Slipstream from hC, the others from hD (Waygate's Low strip from hC, before the far wall's
+saddle; Whiteout's clip still shows the visor's glow sphere, removed after it in `4949aac2`). Clips in `F:/Chip Arena
+Development/scratch/intro-generic/clips/` (`<Name>-high.mp4`, 15 fps real time, and `<Name>-low-strip.png`). Seen in them and
+fixed: the name on the legs (now a band under the feet), Whiteout's visor glow off the drawn head and its insert framing, flat
+placeholder shapes (the sun, the gate's light and the red cliff filling the dark ring, the thaw, the aurora's panels, the glass
+doors, the ad panels), the glass clipping to yellow in Low.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the intros are presentation (the
+match reads only their registered Duration and NameAt, 7.4-8.2 s, inside the 6-9 s rule). Whiteout (8.0) and Waygate (8.2) end
+after 8.0 s; no timing test uses a generic intro.
+
+**Voxel dependency:** none added. The intros author the keyed intro rig through `NativeEntranceKeys` (the framework's sanctioned
+path, no rig reads, no `WeaponShape.Cube`); the voxel ratchet passes unchanged.
+
+**Risks and next step:** the motion-bank clips play only for weapons whose set holds them (lending asked of I0; the keyed rig
+covers the rest); the keyed rig and the drawn model part in deep poses (Whiteout's kneel: effects there ride the drawn head);
+Low draws without tone mapping, so a warm glow over a warm finish clips (fixed where seen, Flashbulb's glass); the crowd's cheer in
+Flashbulb is silent until its generated take lands. Next: the integrator merges the branch with the framework and packs the bank
+into the Drive zip; the generated sounds come with the builder's next audio run.
+
+## 2026-11-20 — Claude (I0c, I0d): intros v2 framework: the keyed pose on the model, model-aware anchors, the intro's own light, the weapon grip IK, the feet on the model and the pose-craft guide (owner report; presentation only)
+
+Owner (2026-11-20): "weird orientation things ... (notice flash bulbs legs when they walk through?)"; "The effects dont line up with
+either the weapon, or body. ... Like slipstream, the slide effect is away from the foot."; on One Breath: "arms looked really odd?".
+
+**Branch and status:** `claude/intro-framework` (from shared `8d56f015`). I0c pushed `7c0f3783` to `3df01f3a`, and its run was
+interrupted. I0d's work is `c5c284a5` (the code) and the docs commit after it, which carries this entry. Pushed, not merged.
+
+**I0c (already pushed; summarised here because its run stopped before its log entry):**
+- **Model-aware anchors** (head, eyes, visor, feet, toes, knees, pelvis, chest, wrists, palms, the weapon's grip, tip and muzzle).
+- **The intro owns its light:** no arena practicals, haze, light volume or reflection.
+- **Dressed ghosts,** and the match's map hidden during an intro.
+- **Arms drawn as keyed** (the match's free-arm relax re-solved them by up to 148°; `ArmsRelax(t)` opts back in).
+- **Hinged planted legs.**
+- **`Tests/IntroPoseChecks`:** bone for bone on the model, and anatomical limits (`--intro-limits`).
+
+**I0d:**
+- **Slipstream's slide sparks, measured** on the model offline. The managed bind was validated against I0c's Editor probe within
+  2-3 cm. At the clip's build, distances from the drawn ankle:
+
+  | Emitter | Before (keyed anchors), mean / max | After (model-aware), mean / max |
+  | --- | --- | --- |
+  | right-foot glow | 0.262 / 0.322 m | 0 m |
+  | newest foot spark burst | 0.270 / 0.320 m | 0.027 / 0.079 m |
+
+  The look of sparks "away" from the body is the hand's glow: it is drawn on the floor 0.43-0.68 m under a dragging hand that is
+  keyed in the air.
+- **The weapon grip IK** (Core `NativeIntroGrip`; opt-in `INativeIntroGrip.GripAt`; docs/INTROS-V2.md 9a):
+  - **On the keyed pose:** the off arm is solved onto the weapon in the other hand, in the match's own conventions, with the elbow
+    toward a chest-frame pole and the roll in the forearm.
+  - **On the drawn model:** the off fist closes on the drawn weapon's support point whatever the hands' distance. The left hand
+    uses the match's support grip (Bound). The right hand uses a new mirror for the staffs and the bow's string
+    (`NativeVisualRig.Grasp.RightSupport`). `SupportPole` steers the drawn elbow, and `Shoulder` seats a long gun's stock. The
+    match never sets the new fields.
+  - **One Breath, drawn offline:** the left fist was 0.11-0.21 m off the handguard (the support was at 0.29-0.39 weight, since its
+    keyed wrists were 0.38 m apart). With the grip it holds the handguard at 1.0 weight, slid back 0.14 m.
+- **The feet on the model** (Core `NativeIntroFeet`; opt-in `NativeProceduralEntrance.ModelFeet`; docs 9c). This is the framework
+  form of I2b's generic base (`claude/intro-generic` `a7c8cdec`). The drawn legs are 1.7 times the keyed ones on the shared root,
+  so a keyed planted foot slid the drawn one back at about 1 m/s, and drops sank the drawn hips 1.7 times as deep. With
+  `ModelFeet`, stances, steps and drops are the model's own, and `ModelKneel` puts the drawn knee on the floor.
+- **The canonical poses** (Core `NativeIntroPoses`, `Tests/IntroPoseGallery`; docs 9b): walk, run, kneel, crouch, landing, two hero
+  stances, the sword, greatsword and Katana guards, the rifle, machine-gun and pistol aims, the bow draw, the staff hold and the
+  shield brace. Each is clean on the model.
+- **The pose-craft guide** (docs/INTROS-V2.md 9b): how the model draws the keys, how to read `--intro-limits`, and the mistakes
+  found so far.
+- **The checks:**
+  - `--intro-limits` reads a weapon hand in its weapon's convention (measured on the match's own holds).
+  - `IntroPoseChecks` checks the drawn feet (no slide on the floor, nothing through it) and the drawn grip. The guide's poses are
+    always checked; an intro's findings are listed and fail only under `--intro-limits`.
+  - `Tests/IntroAnchorChecks`: every grip, tip and muzzle anchor of the fifteen weapons sits on the drawn weapon, in both skins.
+    The new sockets are the bow's arrow rest (muzzle) and upper limb tip, the Glaive's leading fang, and the shield's grip bar.
+    The clip-free Katana lies along its frame's +z, like every weapon.
+
+**Systems touched:**
+- Core: `NativeIntroGrip`, `NativeIntroFeet` and `NativeIntroPoses` (new); `NativeVisualRig` (the right support and the support
+  pole); `NativeEntranceProcedural` (`ModelFeet`, `GripIK`); `NativeEntrancePose` (the drop scale); `NativeIntroV2` (sockets);
+  `NativeEntranceDirector` (grip sockets).
+- Runtime: `NativeIntroV2Presentation` (the drawn grip, the grip anchors) and one line in `NativeVisualBodyPresentation`.
+- Tests: `IntroPoseChecks`, `IntroPoseGallery` (new), `IntroAnchorChecks` (new), `IntroV2Checks`.
+- Docs: `docs/INTROS-V2.md` (2a, 2b, 7, 9a-9c).
+
+**Checks (actual, at `c5c284a5`):**
+- `--intros-v2`: exit 0.
+  - intro poses: 359 checks. The one registered intro and the 16 guide poses are drawn bone for bone on the model. The drawn feet
+    slide at most 0.29 m/s and sink at most 1 cm into the floor.
+  - intro anchors: 187 checks on 26 weapon models. The worst is 3.9 cm (the darkness staff's tip in the Standard skin).
+  - intros v2: 1665 checks.
+- `--intro-limits`: exit 0. The showcase has no findings, and all 16 guide poses are clean.
+- Full CoreTests the relgen5 way (a throwaway LF worktree with `expedition_path.patch` and the released stage banks): exit 0,
+  1082 PASS lines in 981 s. The voxel ratchet passes.
+- Unity compile check (`tools/check_unity_compile.py`, 6000.3.24f1, no download), on this commit's tree: PASS Assembly-CSharp and
+  Assembly-CSharp-Editor.
+- `git diff --check` on the pushed range: clean.
+- **Batch 2, merged offline with every intro branch** (a throwaway merge, never pushed): `--intro-limits` lists 197 findings in
+  17 intros, so it fails as designed. Every batch-2 intro has a sliding foot. The worst sinks are a calf 27 cm into the floor
+  (lightning, 2.57 s), a ball 18 cm (greatsword) and a calf 13 cm (rifle, 3.36 s).
+
+**Editor verification:** one hold, from 12:51, on a throwaway merge, `58f331cf` (never pushed): this code plus the ranged and
+melee branches, with One Breath on the grip IK and Still Rain's Katana on +z. The adoption diff is kept locally, outside the repo,
+at `scratch/intro-framework/i0d/hold-58f331cf-adoption.patch`.
+- **One Breath through the intro camera (1.3-7.6 s):** the left hand now closes on the handguard (before, it hung limp beside it). At
+  the end, both hands carry the rifle (before, the arms were crossed). At 3.1 s the left arm crosses the face, because One Breath's
+  torso is square to the drone; batch 2 should blade it like `RifleAim`.
+- **The hold stopped early:** F: filled (162 MB free), and after 12:57 the Editor logged nothing more. Its next refresh never
+  compiled, so the side, three-quarter and Katana captures were not taken. When I stopped the hold, its exit released the lock
+  (about 13:13). I took the lock back at 13:13:31 and moved the Editor's checkout back to `9319026b`. The banks are as released (all
+  14 stage banks; the motion bank is 6136627 bytes, sha 37ec44d2). The lock was released at 13:17:49, before the Editor had compiled
+  the move: its refresh request was still waiting.
+- **Not verified in the Editor:** the Katana's +z, the grip from the side, and the feet. They were checked offline only.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Intros are presentation, and the
+match's binding is unchanged: its new fields default to off.
+
+**Voxel dependency:** the keyed rig (`CapturedRig`) is still the source of an intro's pose, as before. The new code converts it to
+the model (the feet, the grip); it adds no voxel body, model or debris.
+
+**Risks and next step:**
+- **The feet check and the generic intros:** `NativeIntroGenericScript` should add one line,
+  `public override bool FeetSliding(float t)=>Sliding(t);`. Without it, the framework check lists Slipstream's knee slide,
+  Flashbulb's cut and Cloudbreak's 3.08 s as slides.
+- **Batch 2 must adopt the tools:** `ModelFeet`, the grip, the canonical poses, and every `--intro-limits` finding cleared.
+- **Still Rain's `BladeAxis(+y)` override must go back to +z.**
+- **The model's measured skeleton** (the first outfit's) is what `ModelFeet` and the checks use.
+
+## 2026-11-20 — Claude: DEV · Architect of Reality, the polish pass on the integrator's review (I1b; presentation only)
+
+The integrator's review of the first version (`7a0302e2`): the structure works; the payoff is not godlike yet. Fixed on the same
+branch; every beat time and `Duration`/`NameAt` (15.7 s / 12.63 s) unchanged (the song's sync is right).
+
+- **Branch:** `claude/intro-dev-architect`, from `7a0302e2`, the framework merged in as it landed: the card fix `545faef6`, `7c0f3783`
+  (I0c: the keyed pose drawn faithfully on the model, model-aware anchors, the intro's own light), `17380adb` (the dressed entrance
+  ghost) and `d0138423` (its ratchet-clean local). Pushed, not merged.
+- **The finale (12.62-15.7):** a low hero frame from just over the floor looking up, a slow push and orbit to the front: the
+  architect about half the frame tall between the two monoliths behind it, the sky's name above. It never lands: it sinks to
+  hover over the dais as the world lands, the hands fling open into a V and lower out through the sides with light pouring from
+  them into the dais and on out along the seams into an open pose it holds to the end, both palms up to the ceiling (owner, on the
+  preview: the hands from 13 to 15 s read as random rotation; the command sweep is gone), the visor blazing white-gold. On the drop light erupts up every monolith and on into the sky as beams, runs up
+  the crown's spires, the sky wells up deep blue and settles darker, dust shakes off the landing world, a fountain of sparks, gold
+  embers.
+- **No rings anywhere (owner):** the crown is eight gold spires rooted over the monoliths and leaning in toward one point over
+  the dais (rays); the floor is sixteen wedges round a sixteen-sided dais, each cut once at an apothem alternating 3.5 / 4.6 m, so
+  no seam runs round it, and the dais's rays continue the seams (one sunburst); the wires leave out the chords; the floor's flood,
+  its pulses and its swell run each seam in its own turn (no ring of light round the floor); the drop's sparks rise as a fountain.
+  The old ring props are gone from the set (a check).
+- **The floor:** black glass. Two things washed it grey at the hero lens's 3-6 degree grazing angle: the arena's reflection probe
+  (the intro's set reads it wherever the match is staged) and, once that was gone, the crown's gold rim light from behind and above,
+  whose specular lobe on a 0.66-smooth finish lit the whole near band. The obsidian's baked occlusion is now pressed to nothing (the
+  stage shader occludes the probe's reflection by it, not the lights' highlights), its finish is glass-smooth (0.9: a light shows
+  only as its own mirror image) and the gold light comes from overhead. Its seams graded cyan at the dais to gold at the rim.
+- **The name:** forged in the sky: code glyphs fly up out of the floor's seams to each letter's strokes and its pen writes it
+  white-hot (an ember glow, a gold body, a white-gold molten core; bold; the strokes trimmed so the joints don't light up like
+  bulbs), a pulse as the name completes, then a slow molten shimmer; light rays fanned behind it. Long names of heavy letters shed
+  the outer layers, then the glyphs and the rays, never their strokes (a check holds the heaviest 20-letter name inside the dev
+  budgets). The card is its small caption: `Size` .04, lower right (`X` .78), "THE ARCHITECT" over the live name, its letters
+  decoding in step with the sky's pens.
+- **The draft (5.0-6.6):** the body of light is the dressed pilot's own silhouette in cyan, armour and helmet and all (the
+  framework's entrance ghost at no lag, `17380adb`: bright edges, a soft inner glow, no scanlines; owner: the first ghost was a
+  blank model without armour, and a bald head once its hair was hidden) with pens of light tracing each limb's silhouette edges,
+  a scan sweeping it up and back down and a core of light swelling in its chest; it fills solid from the core out, and the
+  ignition throws rays, sparks and the shards out. (A bespoke helmet drawn in light was begun for the bare ghost and dropped
+  when the framework dressed every ghost.)
+- **The solid body (6.66-8.0):** cyan and ice rim lights from behind, the ambient and the front key down through the moment, the
+  visor's glow and light, an aura (glyph-light circling, a soft glow behind, motes rising).
+- **The close-up (11.82-12.62):** frontal on the visor, the lens a little under its line (from well below, the first hold's view
+  climbed into the helmet's open bottom and read as the back of a head); the visor drawn dim on the inhale and kindling a step on
+  each dip; the hands come down into the frame; the lens stays clear of the body and the raised arms (a check).
+- **The palms up (13.0-15.7):** keyed, not posed per frame: each upper arm turned about its own line (where it points unchanged)
+  and the wrist bent back, so the palm (the hand frame's +z, as Core `NativeDraftPlant.PalmIn` has it) faces straight up with the
+  fingers out along the forearm; solved offline on the keyed rig at the keys' times (the open pose's arms turned 47.5 degrees, the
+  wrists 20 back): the palms within 4.4 degrees of up from 13.0 and 0.5 from 13.55, turning under 45 degrees a second after
+  13.05. They come up as the arms swing from the V to the sides (12.82-13.0, part of the drop's opening). Both hands pour their
+  light to the end (the command's stop and palm flare are gone).
+- **The head and the hands:** on the model-aware anchors (`7c0f3783`, docs/INTROS-V2.md 2a) the visor's light is the drawn glass
+  (`Anchor(Visor)`), the hands' light the drawn palms, the chest and the draft's lines the drawn joints; the hand-tuned offsets are
+  gone. The keyed camera still frames the visor from the keyed head (`EyeUp` .18 m up the head's axis, `VisorFront` .13 m ahead:
+  `FramedVisor`), as measured on the first version's frames and confirmed on the first hold's.
+- **Files:** Core `NativeIntroArchitect.cs`, Runtime `NativeIntroArchitectCard.cs` (the letters' timing), `Tests/IntroArchitectChecks.cs`,
+  `tools/stages/intro_dev_architect.py`, `docs/INTRO-DEV-ARCHITECT.md`, PROJECT_STATE.
+- **The set bank (never committed):** rebuilt, `ChipArenaIntroDev.bytes` 4,753,227 bytes (sha256 `b2efced4...`), master and meta in
+  `F:/Chip Arena Development/scratch/intro-dev/bank/` (the first version's kept beside it as `ChipArenaIntroDev-v1.bytes`). The
+  integrator packs it; without it the intro draws the framework's void under the same effects.
+- **Checks:** `--intro-architect` 9,833 passed (the first version's plus: the hover from the drop to the end; the palms up from
+  13.0 to the end; the head's frame
+  and the visor; the close-up frontal on the visor a little under its line, its lens clear of the head, chest, shoulders, elbows
+  and hands; the hero frame low and looking up, the architect .36-.62 of the frame tall, the sky's name above the head and in
+  frame; the card a small caption; no ring-shaped prop; the heaviest 20-letter name inside the dev budgets); peaks 545 effects
+  and 121 set pieces on High, 213 and 76 on Low, 8 lights; `--intros-v2` passes (2,659); the voxel ratchet at zero for this
+  intro's files; the Unity compile passes (all four assemblies); `git diff --check` clean; the full CoreTests the relgen5 way at
+  `e1f15e97` (the framework's `d0138423` merged), exit 0 (1,080 groups).
+- **Holds:** three, each with the rebuilt bank put in, the Editor back on `9319026b` after and the lock given back: b1 07:46-07:55
+  (`581b71f8`), b2 08:15-08:25 (`93ff46d0`), b3 09:24-09:36 (`e9848e07`, the framework's `7c0f3783` merged: the floor near-black
+  glass under the intro's own light, the hands' columns on the drawn palms, the name and the visor as before; the draft's ghost
+  still bald, before the dressed ghost). Hold 4 (the dressed draft ghost and the palms up, with I2's side and three-quarter
+  cameras) waits on the integrator's word.
+- **Clips:** the first version's kept as `*-v1.*` in `F:/Chip Arena Development/scratch/intro-dev/clips/`; hold 2's preview in
+  `.../intro-dev/i1b/preview-b2/`, hold 3's in `.../intro-dev/i1b/preview-b3/` (the drop's audio and the picture's snap both at
+  12.600 s: 0 frames apart). Hold 3's show the old hands and the bald draft ghost; the final set comes from hold 4 into `clips/`.
+- **Not run:** a Windows player build; two clients (a guest's view of the bed clock); the sound by ear (the captures are muted;
+  the review clip carries the song on the capture's clock).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the intro's length and name beat
+  are unchanged.
+- **Voxel dependency:** none added (the ratchet is at zero for both files): the head's frame comes from the anchors (the neck's
+  line and the body's facing), not a rig pose; the effects read the drawn model's anchors.
+- **Risks:** not yet seen in the Editor: the palms up (the keys take the model's palm as the hand frame's +z, as the chip draft
+  has it) and the dressed ghost in the draft; I0c's joint-limits check has not run on this intro; the side and three-quarter
+  views wait for hold 4.
+- **Next:** hold 4 at the integrator's word (`i1b/tools/hold4.sh`), I0c's joint-limits check merged and cleared, the final clips;
+  then the integrator reviews them, merges after the framework, packs the rebuilt bank and compiles the intros' sound manifest.
+
+## 2026-11-20 — Claude: DEV · Architect of Reality, the owner's new dev intro, on their song "Obey" (I1 of the intros revamp; presentation only)
+
+Owner: "a new dev intro for myself. The dev intro id like to be even better, with name effects and everything. Essentially
+something 'bad-ass, godlike' really show the authority of the dev"; theme "Architect of reality"; then the music: "I like this one
+for dev intro; maybe start around 5-6 secs. It drops at about 18 seconds (allow the intro to be slightly longer if this is
+normally a constraint)".
+
+- **Branch:** `claude/intro-dev-architect` from shared `8d56f015`, the framework `claude/intro-framework` merged in (its
+  final, `2da9c7fc`). Pushed, not merged. Doc: `docs/INTRO-DEV-ARCHITECT.md`.
+- **What:** `dev-architect` ("DEV · Architect of Reality", the framework's Dev kind: live DEV access only), 15.7 s, the name at
+  12.63 s on the song's drop. The old arena (the entrance stage, modelled) is struck by a column of light and glitches with the
+  music, then comes apart into wireframe, code glyphs and light over a void; a presence of light; the body drafted in lines of
+  light and condensed from the core out; the architect hangs still while pens of light draw the new world's plan; the new world
+  is gathered in from the void as wireframes on the riser's five stutters; on the drop it snaps into place solid (a floating
+  obsidian platform, eight monoliths, a crown, far spires), light floods its seams, the architect lands and the live name is
+  written into the sky letter by letter in light (an original stroke font) while the card decodes and locks the same letters
+  (the `"architect"` card effect). Each beat sits on a transient measured in the song.
+- **Files:** Core `NativeIntroArchitect.cs` (the intro and `NativeArchitectFont`), Runtime `NativeIntroArchitectCard.cs`, one line
+  each in `NativeIntroCatalog` and `NativeIntroCardScreen`, 17 lines in `NativeIntroSoundKeys`, `Tests/IntroArchitectChecks.cs`
+  (+ one `Program.cs` line, `--intro-architect`), the set's Blender script `tools/stages/intro_dev_architect.py`, the sound rows
+  `docs/audio/intros/I1.json` and list `dev-architect.md`, the song `Resources/Audio/music/architect-obey.wav` (+ meta,
+  asset-lock receipt).
+- **The song:** the owner's track from 5.17 s to 20.92 s, faded 15.30-15.70, cover art stripped. A WAV, so the drop sits on its
+  sample (an MP3's encoder delay would land it 25-50 ms late). Imported compressed in memory and preloaded, at its own level. The
+  intro is drawn on its playback (the framework's bed clock).
+- **The set bank (never committed):** `ChipArenaIntroDev.bytes`, 4,833,747 bytes (sha256 `97bf6512...`), master and meta in
+  `F:/Chip Arena Development/scratch/intro-dev/bank/`; for the integrator to pack into the Drive zip. Without it the intro draws the
+  framework's void under the same effects.
+- **Checks:** `--intro-architect` 9,220 passed (the registry, the beats, the cues, every frame on High and Low with and without
+  the bank, the peaks: 460 effects and 129 set pieces on High, 205 and 80 on Low, 8 lights; the streak rule; determinism under a
+  scrub; no allocation per frame; Reduced effects; the body's build; the stroke font); `--intros-v2` passes (1,660); the Unity
+  compile passes; `git diff --check` clean; `package_source.py --check` passes; the full CoreTests the relgen5 way at
+  `6643cdf6` (the code's last commit), exit 0 (1,080 groups). Three Editor holds (a review pass, the final, and a short third
+  one the integrator approved to check two late fixes: the name card moved into a clean band below the feet, and the
+  skyline's towers, which the final capture showed crossing the crane at 3 s), captures in
+  `F:/Chip Arena Development/scratch/intro-dev/cap/` (r1, r2, r3).
+- **Not run:** a Windows player build; two clients (a guest's and a late joiner's view of the bed clock); the sound by ear (the
+  captures are silent; the review clip carries the song on the capture's clock).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The match reads the registry's
+  length (15.7 s) for this intro's turn, as for every intro.
+- **Voxel dependency:** none added. The architect is keyed on the entrance rig like every procedural entrance; the drawn model
+  follows it through the framework; the new files read no rig.
+- **Risks:** the game's loading wipe covers the first ~0.1 s, so the strike is seen just after the song's opening hit; the crown is
+  a ring-shaped piece of architecture overhead (kept dim so it does not read as a ring of light; one line removes it); the intro is
+  long for a match intro (vote-skip still works); its 17 sounds wait on a builder job (until then each cue plays an existing bank
+  sound or a built-in clip); under the hero light the platform reads as pale stone rather than black (the finish and the lights are
+  one-line tunings). The head anchor (the skull's pivot, about 0.16 m under the eyes) is read only for the soft gold glow behind
+  the head (+0.12 m), which sits right in the final frame; no close-up or light is aimed at the eyes by it.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-dev/clips/`: `architect-high-realtime.mp4` (15.75 s with the song on the
+  capture's clock, 2.6 MB), `architect-name-slowmo.mp4` (12.3-14.6 s at quarter speed), `architect-low-strip.png`.
+- **Next:** the integrator reviews the clips, merges after the framework,
+  packs the bank, and compiles the intros' sound manifest (`tools/intros/compile_sound_requests.py`) for a builder run.
+
+## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
+
+Owner: "I need to redo essentially all of them (except top dog and Bombardier ones ...) ... "archive" them, so theyre no longer visible in the customization screen ... great animations and effects, non-block based background and designs ... great camera work". I0, the framework for the five intro authors (I1 dev, I2 generic, I3 melee, I4 ranged, I5 elemental).
+
+**Branch and status:** `claude/intro-framework` from shared `8d56f015`. Pushed, not merged.
+
+**The contract:** `docs/INTROS-V2.md`, pushed first (`927620bb`, 02:36).
+- **Registry:** one line per intro in `Core/NativeIntroCatalog.cs`, on its own slot. The kinds are Weapon (`intro2-weapon-<spec>`), Generic (`intro2-<slug>`), Default (`intro2-default`) and Dev (`dev-<slug>`, live DEV access only).
+- **Interface:** `INativeIntroV2` / `NativeIntroV2Script`: context, set, card, lens, music, cues. Optional: `INativeIntroBody` (a model clip), `INativeIntroHands` (the wrists as drawn, and a gun's muzzle) and `INativeIntroBow`.
+
+**What changed:**
+- **The archive:** every older intro except the Top Dog's and the Bombadier's (`NativeIntroCatalog.Archived`).
+  - Hidden from the Locker (`LockerIntrosV2`, after the pinned list line).
+  - A saved, profile or replicated pick of one migrates to no pick (`Migrate`, `PickableIntro`, `Style`), so it plays the weapon's intro.
+  - The code and data stay, and they still stage when replicated by an older host.
+  - The weapon signature moves to a weapon's v2 intro once that is registered; until then the old one plays.
+  - The archived DEV classes (Emperor, Ansatsuken, L33T, Cyber Lord) take the new default once it is registered. The DEV Greatsword and DEV Katana take their base weapon's.
+  - The Siren keeps its boss entrance.
+- **The camera rig** (`Core/NativeIntroCamera.cs`):
+  - shots: hold, dolly, crane, Catmull-Rom spline, orbit, and the hero framing;
+  - follow with lead, roll, eases, and cut/blend/whip transitions (C2 at both ends);
+  - focus pull, handheld (dropped in Reduced effects), letterbox and black keys;
+  - speed ramps (`NativeIntroTime`) that repay the time, so later beats keep their age.
+- **The name card** (`Runtime/NativeIntroCardScreen.cs`):
+  - the live display name (the seat's name, the account profile's);
+  - five reveal styles: Rise, Slam, Type, Assemble, Wipe;
+  - the kicker (the weapon) and the line (the intro text), the lens bars, black and the focus vignette;
+  - a bespoke-effect hook for the dev intro (`NativeIntroCardEffects`, one line).
+- **Sets** (`Runtime/NativeIntroV2Presentation.cs`):
+  - local banks `ChipArenaIntro*.bytes`, drawn with the stage art's material, with instanced batches for small pieces;
+  - the dark lit void as the fallback (`Core/NativeIntroVoid.cs`), never the block arena.
+- **Sound** (`Runtime/NativeIntroAudio.cs`):
+  - a cue timeline per intro on the presentation clock: the generated key, else an existing bank key, else a built-in clip;
+  - each cue heard once (the entrance cue clock);
+  - the intro's bed through the sting path; while the bed plays, the intro is drawn on it, except under a fixed-step capture;
+  - the `intro2.*` key contract (`Core/NativeIntroSoundKeys.cs`) and `tools/intros/compile_sound_requests.py`; the guide is `docs/audio/intros/README.md`.
+- **Generation:** the builder queue is live on this PC (its DPAPI setup, receipts, and a status of `complete` at 06:25 UTC). It generates only inside a builder run. No author rows existed when the framework shipped, so no job is queued.
+- **The showcase:** `dev-intro2-showcase` (DEV only, throwaway): a crane, a speed ramp, an orbit, the hero frame, the Rise card and cues. Its set comes from a small procedural bank, `ChipArenaIntroShowcase` (22,610 bytes, original, built by `F:/Chip Arena Development/scratch/intro-framework/tools/showcase-bank`). Without the bank it draws the void.
+- **Author requests answered** in the notes folder (`intro-framework-requests.md`):
+  - done: model clips, hands with a gun's muzzle, the bow drawn as the match draws it, batches;
+  - the far plane stays 200 m (domes inside 190 m); the glow takes the fog;
+  - the dev intro may run to 16 s, with 180/90 pieces and 1000/450 effect calls (the coordinator's call for the owner's song);
+  - not tonight: upper-body layers, melee grip and line virtuals, the saya on other scripts, clip-posed ghosts.
+- **The local tools** (git-ignored, not committed):
+  - BoZo options `introcap=<id>` and `introq=high|low` (`F:/Chip Arena Development/scratch/intro-framework/tools/toolpatch.py`, idempotent; the tool is at Version 3137 or later);
+  - `editor_relaunch.sh` (owner-approved for overnight only; never kills anything). It wasn't needed: the Editor stayed up.
+
+**Systems touched:**
+- Core: `NativeIntroRules`, `NativeEntranceDirector` (`Clock` and `Camera` made virtual; `Script` reads the registry), `NativeLocker` (v2 text), `NativeSoundBank` (`Find` reads the intro keys), new `NativeIntro*`.
+- Runtime:
+  - `NativeIntros` (context, set, hands, body, bed clock, the v2 bow);
+  - `NativeProfileUI` (`PickableIntro`, `Label`);
+  - `NativeLockerUI` (one line plus the signature);
+  - `NativeMatchOverlays`, `NativeAudio` and `NativeVisualBodyPresentation` (one line each);
+  - `NativeBowPresentation` (`BowIntroDraw`, shared with Arrowfall);
+  - new `NativeIntro*`.
+- Tests: new `IntroV2Checks`, which checks every registered intro automatically (`--intros-v2`). The intro checks in IntroPresentation, Sheldon, Glaive, VisualRig, CyberLord and NativeSystems now follow the registry and the archive.
+
+**Checks:**
+- `--intros-v2`: 668 checks pass.
+- The full CoreTests the relgen5 way (a throwaway LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the released 14): exit 0 with 1,080 PASS lines at `42e2687e`, the last code commit (after it, docs only). Earlier runs: exit 0 at `ef62729a`, `c51a1394` and `8e777266`. At `a934e23d` the voxel ratchet stopped the run (the first hands read the rig); fixed in `c51a1394`.
+- `check_unity_compile.py`: all four assemblies pass.
+- `git diff --check`: clean.
+- pins.py: one flag, `NativeCosmeticRules.Intros` in `NativeProfileUI`. It is a false positive: LockerChecks counts that string only in `NativeLockerUI`.
+
+**Editor holds** (lock taken and released each time; the Editor back on `9319026b` and compiled; stage and motion banks unchanged each time):
+- Hold 1 (03:06–03:18): the showcase at High (1/30 s) and Low (0.5 s), and the Locker.
+- Hold 2 (03:22–03:25): the Locker with DEV access again. Hold 1's shot had opened without `dmhold` and missed the panel.
+- Hold 3 (the showcase with its set bank): queued behind other agents' holds from 03:26, then stopped at 04:06 without taking the lock. Its whole process tree was stopped, and nothing in the Editor checkout was touched. The bank path is shown working in the Editor by I5's own hold (its set bank drawn, ~04:00) and is driven by the managed checks' fake bank. The showcase bank (`F:/Chip Arena Development/scratch/intro-framework/ChipArenaIntroShowcase.bytes`) was not filmed.
+
+**Clips** (`F:/Chip Arena Development/scratch/intro-framework/clips/`):
+- `showcase-high-realtime.mp4` (8 s, 492 KB);
+- `showcase-low-strip.jpg`;
+- `locker-entrance-guest.png` (the archive applied: only the weapon signature);
+- `locker-entrance-dev.png` (Last Warning, Order Up!, Pipeline Proof);
+
+**Not run:** a two-client match with a v2 pick; a Windows player; the bed clock against a real song on a guest.
+
+**Animation impact:**
+- No hit timing, hitbox, damage, cooldown or movement change.
+- The match reads each intro's registered `Duration` and `NameAt`, as for every entrance. A v2 intro's length is the intro phase's length.
+- Networking: the replicated style string only. New ids are new strings; older clients stage the pilot's signature for an id they don't know.
+
+**Voxel dependency:**
+- None added (the voxel ratchet passes).
+- The hands are the drawn model's joints (VisualJointFrame), else the keyed anchors. A gun's muzzle reads the frame the model's weapon is drawn on after the hand fit (`introHand`, as the match's muzzle flash does).
+
+**For Astra:**
+- The account service stores unknown native intro ids as `neon-drop` (`src/relay/accounts.ts` `NATIVE_INTROS`). The client keeps a v2 pick locally (`NativePendingEffect`), but it doesn't follow the player to another PC until the service learns the `intro2-*` ids and `dev-architect` (developer only, like `sheldon-intro`).
+- `shared/intros.ts` needs nothing for the native client.
+
+**Risks:**
+- The match intro phase gets longer for v2 intros (6–16 s against 4.8 s).
+- A pick of an archived DEV intro (Emperor, Siren, …) now plays the weapon's intro even for the owner.
+- The DEV grants panel still offers the archived dev intros as grants (harmless: they aren't listed).
+
+**Next:** the authors register their intros; the integrator compiles the sound rows and queues the approved job before a builder push.
+
 ## 2026-11-20 — Claude: release 2 of the expedition overhaul: the caches on A2, the LEGENDARY beam, the Meridian look (integrator)
 Owner: "Release them" (the caches) and "Looks good" (the Meridian look at night). Shared `c181c819`, the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`, 376.6 MiB).
 - **Merged:** `claude/cache-openings` (`eba02d3a`: the presentation on Astra's A2, its adapter reading `tier`, the locker standing on A2's block with the block's box undrawn, the LEGENDARY beam laid on its head's camera plane), `claude/meridian-bleed` (`8befbda3`: D1, D2 and D3), `claude/cache-locker-column` (`c181c819`: the beacon's tube stands down where the steel locker stands, board 3).
