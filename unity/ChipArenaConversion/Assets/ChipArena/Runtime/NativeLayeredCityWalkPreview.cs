@@ -120,6 +120,7 @@ namespace ChipArena.UnityConversion
                 lastSurveyLayout = index;
                 NativeLighting.Apply(cityWalk.Map, cameraView);
                 cameraView.farClipPlane = 800;
+                MeridianDressOpen(cityWalk, plan.Seed, seed);
                 walkTriangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
                 walkMeasureAfter = Time.unscaledTime + 1;
                 walkPeakTriangles = 0;
@@ -141,6 +142,7 @@ namespace ChipArena.UnityConversion
                 Debug.Log($"Meridian walk {cityWalk?.Map.name}: peak rendered triangles {walkPeakTriangles}; last sampled frame mean {walkFrameMs:F2} ms");
                 walkTriangles.Dispose();
             }
+            MeridianDressClose();
             arena?.Dispose();
             arena = null;
             match = null;
