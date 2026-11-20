@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
             int n=script.Ghosts(t,entranceGhosts);bool holo=script.Holo(t,out var hc,out float ho,out var hoff);
             for(int i=0;i<n+(holo?1:0);i++)
             {
-                bool isHolo=i==n;var g=isHolo?new NativeEntranceGhost{Lag=0,Opacity=ho,Color=hc,Offset=hoff}:entranceGhosts[i];if(g.Opacity<=.003f)continue;
+                bool isHolo=i==n;var g=isHolo?new NativeEntranceGhost{Lag=0,Opacity=ho,Color=hc,Offset=hoff,Bare=script is NativeIntroV2Script holoScript&&holoScript.HoloBare}:entranceGhosts[i];if(g.Opacity<=.003f)continue;
                 script.Pose(t-g.Lag,entranceGhostPose,out var root,out var rotation);entranceGhostPose.World();
                 var rootM=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(root+g.Offset)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),Vector3.one);
                 for(int b=0;b<22;b++)entranceGhostBones[b]=rootM*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(entranceGhostPose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(entranceGhostPose.WorldRotation[b])),Vector3.one);
@@ -177,7 +177,8 @@ namespace ChipArena.UnityConversion
                     // (Its hands onto the ghost's weapon frames, so the model's own weapon sits in them: VisualLiveGhostWeapon.)
                     asModel=VisualLiveGhostDraw(2L<<40|(uint)i,holder,introActor,entranceGhostPose,Vector3.zero,"NativeEntranceGhost",tint,g.Opacity,new Vector4(scan.r,scan.g,0,0),entranceGhostActor);
                     // (Intros v2: the ghost's hair as the live body wears it, hidden under the helmet: IntroV2GhostHair.)
-                    if(asModel&&script is INativeIntroV2)IntroV2GhostHair(2L<<40|(uint)i);
+                    // (and its head gear, the helmet or mask and the hat, in the ghost's look: IntroV2GhostGear)
+                    if(asModel&&script is INativeIntroV2){IntroV2GhostHair(2L<<40|(uint)i);if(!g.Bare)IntroV2GhostGear(2L<<40|(uint)i,tint,scan,g.Opacity);}
                 }
                 if(!asModel)sourceModels.Queue(model,rootM,entranceGhostBone,null,0,null,tint,scan,g.Opacity);
                 if(weaponGhost!=null&&!isHolo)

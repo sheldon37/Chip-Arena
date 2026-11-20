@@ -279,6 +279,8 @@ namespace ChipArena.UnityConversion
         }
         public override Vector3 CameraJolt(float t)=>Vector3.Zero;
         public override int Boxes(float t,Span<Vector4> into)=>0;
+        /// <summary>The hologram (Holo) without the pilot's head gear (an intro that draws its own over it); its ghosts say so each (NativeEntranceGhost.Bare).</summary>
+        public virtual bool HoloBare=>false;
         /// <summary>No pylon arena: the set comes through <see cref="Set"/>.</summary>
         public override void Props(float t,INativeEntranceProps props,float quality){}
         public virtual string SetBank=>null;
