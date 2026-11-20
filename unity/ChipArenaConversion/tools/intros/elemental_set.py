@@ -592,7 +592,7 @@ def grid(g, P, f, flat=False, facing=None, inside=None, wrap_j=False, pick=None)
 # Facing). Core NativeIntroStillTide keeps these.
 # ---------------------------------------------------------------------------------------------------------------------------
 WATER_SKYLIGHTS = (-14.0, -6.0, 2.0)          # the broken vault's bays (hall z)
-WATER_ICE_RINGS = (1.6, 3.2, 5.5, 8.5, 14.0)  # the frost's rings round the mark (rig water/ice/k)
+WATER_ICE_RINGS = (1.6, 3.2, 5.5, 8.5, 14.0)  # the frost front's reach for each of its patch sets (rig water/ice/k)
 WATER_LEVEL = (.14, .22)                      # the water over the floor before and after the tide
 WATER_HALF = 5.0                              # a wave half's length along its +z
 HALL_X, HALL_Z0, HALL_Z1, NAVE_X = 9.2, -24.0, 16.0, 5.2
@@ -613,11 +613,11 @@ def water_finishes():
     F['wave-light'] = sk.fin('water-wave-light', 0x3fb6e2, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
     F['wave-glow'] = sk.fin('water-wave-glow', 0x5fe0ff, sk.DETAIL_GLOW, glow=1.1)
     F['foam'] = sk.fin('water-foam', 0xdff6ff, sk.DETAIL_NONE, smooth=.2, dirt=0.0)
-    F['ice'] = sk.fin('water-ice', 0xc4f2fc, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
-    F['ice-deep'] = sk.fin('water-ice-deep', 0x5cc6e6, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
+    F['ice'] = sk.fin('water-ice', 0xc4f2fc, sk.DETAIL_NONE, smooth=.18, dirt=0.0)
+    F['ice-deep'] = sk.fin('water-ice-deep', 0x5cc6e6, sk.DETAIL_NONE, smooth=.18, dirt=0.0)
     F['ice-glow'] = sk.fin('water-ice-glow', 0x8ff4ff, sk.DETAIL_GLOW, glow=1.7)
-    F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=2.3)
-    F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.25, dirt=0.0)
+    F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=1.4)
+    F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.12, dirt=0.0)
     F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
     F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
     F['lead'] = sk.fin('water-lead', 0x1c2224, sk.DETAIL_IRON, smooth=.4, metal=.6, dirt=.6)
@@ -817,7 +817,7 @@ def ice_colours(bk, g):
     white = np.array(sk.srgb(0xf2feff))
     c = c + (white - c) * (np.clip(rnd2 - .78, 0, 1) * 1.4)[:, None]
     bk.colour[lit, :3] = np.round(np.clip(c[lit], 0, 1) * 255).astype(np.uint8)
-    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.58 * 255))
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.3 * 255))
 
 
 def hearth_colours(bk, g):
@@ -883,6 +883,8 @@ def water_half(T, frozen):
         # a bright rim along the crest and down the curl's edge, proud of the ice
         rim = Geo()
         for i in range(nz):
+            if (i + 1) / nz > .64:
+                break
             for j0, j1, nrm in ((5, 6, (0, 1, 0)), (6, 7, (0, 1, 0)), (8, 9, (1, .4, 0)), (9, 10, (1, 0, 0))):
                 a0, a1, b0, b1 = P[i, j0], P[i + 1, j0], P[i + 1, j1], P[i, j1]
                 lift = np.array(nrm, dtype=np.float64) * .012
@@ -906,6 +908,8 @@ def water_half(T, frozen):
         vein = Geo()
         for i in range(nz):
             u0, u1 = i / nz, (i + 1) / nz
+            if u1 > .64:
+                break
             a = [(1.9 * (.75 + .25 * wave_env(u)), 3.62 * wave_env(u) - .012, WATER_HALF * u) for u in (u0, u1)]
             b = [(1.05 * (.75 + .25 * wave_env(u)), 3.95 * wave_env(u) - .012, WATER_HALF * u) for u in (u0, u1)]
             vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(.3, -1, 0))
@@ -930,28 +934,35 @@ def water_set(T):
     surface = Geo()
     sk.grid_face(surface, (-HALL_X + .05, 0, HALL_Z1 - .05), (2 * HALL_X - .1, 0, 0), (0, 0, HALL_Z0 - HALL_Z1 + .1), 1, 1, F['water'], (0, 1, 0), (2.0, 5.0, 10.0)[T.i])
     props['water/surface'] = yawed(surface, FACING)
-    # the frost's rings round the mark, in the mark's frame (Core turns them with the facing)
-    r0 = 0.0
-    sides = (48, 28, 16)[T.i]
-    for k, r in enumerate(WATER_ICE_RINGS):
-        g = Geo()
-        for i in range(sides):
-            a0, a1 = 2 * math.pi * i / sides, 2 * math.pi * (i + 1) / sides
-            f = F['frost'] if H(k, i, 1) > .3 else F['ice']
-            pts = [(math.cos(a0) * r, 0, math.sin(a0) * r), (math.cos(a1) * r, 0, math.sin(a1) * r)]
-            pts += [(math.cos(a1) * r0, 0, math.sin(a1) * r0), (math.cos(a0) * r0, 0, math.sin(a0) * r0)] if r0 > 0 else [(0, 0, 0)]
-            g.face(pts, f, normal=(0, 1, 0))
-            # a lit crack across some cells
-            if T.i == 0 and H(k, i, 2) > .7:
-                am = (a0 + a1) / 2
-                ra, rb = r0 + (r - r0) * .2, r0 + (r - r0) * .85
-                w = .015
-                d = (math.cos(am), math.sin(am))
-                n = (-d[1], d[0])
-                g.face([(d[0] * ra + n[0] * w, .004, d[1] * ra + n[1] * w), (d[0] * rb + n[0] * w, .004, d[1] * rb + n[1] * w),
-                        (d[0] * rb - n[0] * w, .004, d[1] * rb - n[1] * w), (d[0] * ra - n[0] * w, .004, d[1] * ra - n[1] * w)], F['frost-glow'], normal=(0, 1, 0))
+    # the frost over the water, in the mark's frame (Core turns it with the facing): broken, irregular patches (never a ring: the
+    # owner's standing rule), each a roughened cell of a jittered tiling with gaps that open outward. Rig water/ice/k holds the
+    # patches whose centres lie inside WATER_ICE_RINGS[k] (and outside the one before), so the frost front reveals them in turn.
+    frost = [Geo() for _ in WATER_ICE_RINGS]
+    for i, ((cx, cz), poly) in enumerate(hex_cells(WATER_ICE_RINGS[-1], (.8, 1.05, 1.35)[T.i], 71, jitter=.42)):
+        r = math.hypot(cx, cz)
+        k = next((kk for kk, rr in enumerate(WATER_ICE_RINGS) if r < rr), None)
+        if k is None or H(i, 31) < .18 + .3 * (r / WATER_ICE_RINGS[-1]):
+            continue
+        q = shrink(poly, .05 + .12 * H(i, 32))
+        cxp = sum(v[0] for v in q) / len(q)
+        czp = sum(v[1] for v in q) / len(q)
+        y = .002 + .0006 * (i % 3)
+        pts = [(cxp + (x - cxp) * (.62 + .38 * H(i, j, 33)), y, czp + (z - czp) * (.62 + .38 * H(i, j, 33))) for j, (x, z) in enumerate(q)]
+        f = F['frost'] if H(i, 34) > .3 else F['ice']
+        for j in range(len(pts)):
+            frost[k].face([(cxp, y, czp), pts[j], pts[(j + 1) % len(pts)]], f, normal=(0, 1, 0))
+        # a lit crack across some of them
+        if T.i == 0 and H(i, 35) > .78:
+            a = math.pi * H(i, 36)
+            d = (math.cos(a), math.sin(a))
+            nn = (-d[1], d[0])
+            half_len = .25 + .2 * H(i, 37)
+            w = .014
+            ya = y + .002
+            frost[k].face([(cxp - d[0] * half_len + nn[0] * w, ya, czp - d[1] * half_len + nn[1] * w), (cxp + d[0] * half_len + nn[0] * w, ya, czp + d[1] * half_len + nn[1] * w),
+                           (cxp + d[0] * half_len - nn[0] * w, ya, czp + d[1] * half_len - nn[1] * w), (cxp - d[0] * half_len - nn[0] * w, ya, czp - d[1] * half_len - nn[1] * w)], F['frost-glow'], normal=(0, 1, 0))
+    for k, g in enumerate(frost):
         props['water/ice/%d' % k] = g
-        r0 = r
     right = water_half(T, False)
     props['water/wave/R'] = right
     props['water/wave/L'] = mirrored(right)
@@ -1337,13 +1348,15 @@ def bake(geos, ao, floors):
             hearth_colours(out[k], geos[k])
         if k in DARKENED:
             darken(out[k], geos[k], *DARKENED[k])
+        if k.startswith('water/ice/'):
+            darken(out[k], geos[k], ('water-frost', 'water-ice'), .35)
     return out
 
 
 # The sets whose ground takes less of the arena's reflection probe and ambient (both scale by the baked occlusion in
 # NativeStageLit): the storm's wet dark rock and the black obsidian. (finishes, occlusion at most)
 DARKENED = {'lightning/plateau': (('storm-slate', 'storm-slate-top', 'storm-scorch', 'storm-rock'), .42),
-            'darkness/plain': (('dark-obsidian', 'dark-obsidian-edge', 'dark-ash', 'dark-ash-dark'), .2)}
+            'darkness/plain': (('dark-obsidian', 'dark-obsidian-edge', 'dark-ash', 'dark-ash-dark'), .07)}
 
 
 def darken(bk, g, names, occ):
