@@ -226,7 +226,7 @@ def walls(g, T, E):
                 for j in range(kl):
                     u = (j + .5) * w / kl
                     if T.detail:
-                        lk.scroll_bracket(sub, T, (u, 5.4, -.02), (u, 5.4, -.95), F['iron-black'], w=.06, curl=.2)
+                        lk.scroll_bracket(sub, T, (u, 5.4, -.02), (u, 5.4, -.95), F['iron-black'], w=.06, curl=.2, simple=True)
                         lk.lantern(sub, T, u, 5.35, -.85, s=.7, glass=glow(WHITE_GOLD, 2.6), hang=0.0)
                     else:
                         sub.face(((u - .2, 4.8, -.3), (u + .2, 4.8, -.3), (u + .2, 5.4, -.3), (u - .2, 5.4, -.3)), glow(WHITE_GOLD, 2.6), (0, 0, -1))

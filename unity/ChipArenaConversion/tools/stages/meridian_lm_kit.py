@@ -35,8 +35,11 @@ _BX = mk.bx
 def _bx(g, T, x0, x1, y0, y1, z0, z1, f, bevel=.02, cell=None, skip=()):
     """The kit's box, without chamfers on small parts (under 1.2 m every way): a chamfered box is 44 triangles, a plain one 12,
     and at the landmarks' read distances a small part's chamfer is under a pixel."""
-    if max(abs(x1 - x0), abs(y1 - y0), abs(z1 - z0)) < 1.2:
+    dims = (abs(x1 - x0), abs(y1 - y0), abs(z1 - z0))
+    if max(dims) < 1.2:
         bevel = 0.0
+    if cell is None and min(dims) < .6:
+        cell = 0          # a band, a plinth or a coping: its length needs no vertex-colour cells
     return _BX(g, T, x0, x1, y0, y1, z0, z1, f, bevel=bevel, cell=cell, skip=skip)
 
 
@@ -48,6 +51,8 @@ def tier(t):
     """0 Fine (LOD0), 2 Low (LOD1), 'far' (the far layer: the Low tier's counts, no bevels)."""
     T = mk.tier(0 if t == 0 else 1)
     T.cell = 1.5 if t == 0 else 10.0
+    if t == 0:
+        T.arc = 8          # (an arched window's head is cut into T.arc strips: 8 reads as round from 20 m)
     T.far = t == 'far'
     return T
 
@@ -163,13 +168,13 @@ def globe(g, T, x, y, z, r=.45, f=None):
     sk.lathe(g, [(r * .45, 0), (r * .35, r * .25)], (x, y - r * .45, z), F['brass'], T.small, smooth=False)
 
 
-def scroll_bracket(g, T, a, b, f, w=.08, curl=.35):
+def scroll_bracket(g, T, a, b, f, w=.08, curl=.35, simple=False):
     """A wrought scroll bracket from the wall point a out to the tip b (in a vertical plane): a top bar, a lower curved
     stay and a scroll at the root."""
     ax, ay, az = a
     bx_, by, bz = b
     mk.seg(g, T, (ax, ay, az), (bx_, by, bz), w, w, f)
-    n = 6 if T.detail else 3
+    n = 6 if (T.detail and not simple) else 3
     # the stay: a quarter arc from the wall below up to two thirds of the arm
     pts = []
     for i in range(n + 1):
@@ -181,7 +186,7 @@ def scroll_bracket(g, T, a, b, f, w=.08, curl=.35):
         pts.append((px, py + (by - ay) * .66 * math.sin(ang), pz))
     for p, q in zip(pts[:-1], pts[1:]):
         mk.seg(g, T, p, q, w * .8, w * .8, f)
-    if T.detail:
+    if T.detail and not simple:
         # the root scroll: a small spiral of bars
         cx, cy, cz = ax + (bx_ - ax) * .12, ay - curl * .9, az + (bz - az) * .12
         m = 8
@@ -237,7 +242,7 @@ def window(g, T, x0, x1, y0, y1, z, lit, f_frame, rise=0.0, f_dark=None, bars=Tr
         g.face([(p[0], p[1], z) for p in pts], pane, (0, 0, -1))
     else:
         g.face(((x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)), pane, (0, 0, -1))
-    if bars and T.detail and x1 - x0 > .5:
+    if bars and lit and T.detail and x1 - x0 > .5:   # (a dark pane's bars do not read at night)
         zb = z - .02
         cx = (x0 + x1) / 2
         mk.seg(g, T, (cx, y0, zb), (cx, h.top(cx), zb), .05, .04, f_frame)
