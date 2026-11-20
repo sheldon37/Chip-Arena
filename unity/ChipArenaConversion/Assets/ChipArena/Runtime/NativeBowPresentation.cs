@@ -106,10 +106,16 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void BowIntro(NativeBowEntrance script,float t)
         {
-            if(sourceModels==null||introRig?.Bones==null)return;bool std=NativeWeaponSkins.Index(introSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
-            script.BowAt(t,out var v,out var f);if(BowDraw(introRig,std,0,v,f,introAccent,1,0,null,null,false,t,null)<0)return;
+            script.BowAt(t,out var v,out var f);if(!BowIntroDraw(v,f,t))return;bool std=NativeWeaponSkins.Index(introSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
             string arrow=NativeBowModels.ArrowId(std,0);int n=script.Arrows(t,bowIntroArrows);
             for(int i=0;i<n;i++)sourceModels.Queue(arrow,BowPiece(bowIntroArrows[i]),null,null,0,null,accent:introAccent);
+        }
+        /// <summary>An entrance's bow on the model's hands at `t` from a view (Arrowfall's, or a v2 Bow intro's: Core INativeIntroBow), as the
+        /// match draws it; false when nothing drew.</summary>
+        private bool BowIntroDraw(NativeBow.View v,NativeBowPose.Frame f,float t)
+        {
+            if(sourceModels==null||introRig?.Bones==null)return false;bool std=NativeWeaponSkins.Index(introSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
+            return BowDraw(introRig,std,0,v,f,introAccent,1,0,null,null,false,t,null)>=0;
         }
         /// <summary>
         /// The chip modules on the bow, laid out as on the other ranged weapons (NativeWeaponDressing.Modules, the 'muzzle' just
