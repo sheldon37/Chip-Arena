@@ -153,6 +153,37 @@ namespace ChipArena.UnityConversion
     public interface INativeIntroBow{bool Bow(float t,out NativeBow.View view);}
 
     /// <summary>
+    /// A held weapon's points in its weapon frame (source frame: +x the rig's left, +y up the sights, +z along the blade or barrel: the
+    /// frame the weapon is drawn on), as the match places its own effects there: a blade's tip socket (NativeWeaponDressing.BladeTip; a
+    /// blade class's NativeBladeView.Line), a gun's, a staff's and the bow's muzzle (NativeWeaponDressing.MuzzleZ along +z). The anchors'
+    /// keyed fallback puts them on the keyed wrist (NativeEntranceScript.Anchor); the runtime on the drawn weapon (Runtime IntroV2Drawn,
+    /// where a gun's muzzle is the drawn skin's crown, NativeMuzzleFx.Crown, as the match's flash leaves it).
+    /// </summary>
+    public static class NativeIntroWeapon
+    {
+        /// <summary>The daggers and the Fangs hold a blade in each hand.</summary>
+        public static bool Twin(string spec)=>spec=="daggers"||spec==NativeFangs.Spec;
+        /// <summary>Whether `spec`'s weapon rides hand `left` (a staff and the bow ride the left, as the match holds them; the twins both).</summary>
+        public static bool Holds(string spec,bool left)=>spec!=null&&(Twin(spec)||(NativeLobbyPoses.HeldBone(spec)==CapturedRig.LHand)==left);
+        /// <summary>The weapon's far end in hand `left`'s weapon frame: a blade's point, a gun's or a staff's muzzle; false when that hand holds none.</summary>
+        public static bool Tip(string spec,bool left,out Vector3 tip)
+        {
+            tip=Vector3.Zero;if(!Holds(spec,left))return false;
+            if(NativeBladeView.Line(spec,left,out _,out tip))return true;
+            if(NativeWeaponDressing.BladeTip(spec,out tip)){if(left)tip.X=-tip.X;return true;}
+            tip=new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec));return true;
+        }
+        /// <summary>Where a shot or a cast leaves the weapon in hand `left` (a gun's muzzle, a staff's head, the bow's arrow line ahead of the
+        /// riser; a blade's tip); false when that hand holds none.</summary>
+        public static bool Muzzle(string spec,bool left,out Vector3 muzzle)
+        {
+            muzzle=Vector3.Zero;if(!Holds(spec,left))return false;
+            if(NativeWeaponDressing.Gun(spec)||NativeWeaponDressing.Staff(spec)||NativeBowWire.Is(spec)){muzzle=new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec));return true;}
+            return Tip(spec,left,out muzzle);
+        }
+    }
+
+    /// <summary>
     /// The v2 intro interface (docs/INTROS-V2.md "The per-frame interface"). An intro is a NativeEntranceScript (its pose, camera,
     /// lights, props, effects, ghosts and blasts, as every directed entrance) that also implements this: its set, its name card,
     /// its lens, its music and its sound cues. Usually through <see cref="NativeIntroV2Script"/>; a script that must derive

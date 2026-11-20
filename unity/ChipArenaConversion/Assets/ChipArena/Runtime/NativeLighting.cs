@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             }
             Shader.SetGlobalVectorArray(StagePosId,pointPos);Shader.SetGlobalVectorArray(StageColorId,pointColor);
         }
-        public static void EndIntro(ContentMap map,Camera camera){ProbeBack();Shader.SetGlobalFloat(VisualStageId,0);if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
+        public static void EndIntro(ContentMap map,Camera camera){IntroRelease();ProbeBack();Shader.SetGlobalFloat(VisualStageId,0);if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
         // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin),
         // and the guns' muzzle lights (no arena flash lights a stage).
@@ -49,6 +49,72 @@ namespace ChipArena.UnityConversion
         private static UnityEngine.Rendering.SphericalHarmonicsL2 probeKept;private static bool probeDriven;
         private static void ProbeBack(){if(!probeDriven)return;probeDriven=false;RenderSettings.ambientProbe=probeKept;}
         private static void ProbeDrive(Color sky,Color ground){if(!probeDriven){probeKept=RenderSettings.ambientProbe;probeDriven=true;}var sh=new UnityEngine.Rendering.SphericalHarmonicsL2();sh.AddAmbientLight((sky+ground)*.5f);sh.AddDirectionalLight(Vector3.up,(sky-ground)*.5f,1);RenderSettings.ambientProbe=sh;}
+        // ---- a v2 intro's own light (docs/INTROS-V2.md "Lighting"; Runtime DirectedIntro, after Entrance each frame a v2 intro draws) ----
+        // While a v2 intro draws, it owns the light of its set and its pilot: the arena's practical lights, its rim, haze, flash lights and
+        // light volume are dark; the ambient probe is the intro's own (its Sky and Ground, as DriveProbe has it); and its reflection is the
+        // intro's (a small sky-horizon-ground cubemap, NativeEntranceLights.Reflection, as the default reflection: no arena probe draws then).
+        // Everything it replaced goes back as it was when an older entrance draws next (IntroRelease) or the intro ends (EndIntro). The
+        // arena itself is not drawn meanwhile, so the match never sees any of it.
+        private static bool introOwned;private static Vector4 keptRimDir,keptRimColor,keptHaze;private static float keptHazeTop;
+        private static readonly List<Vector4> keptFlashPos=new List<Vector4>(4),keptFlashColor=new List<Vector4>(4);
+        private static DefaultReflectionMode keptReflectMode;private static Texture keptReflect;private static float keptReflectIntensity;
+        private static Cubemap introReflect;private static Vector3 introReflectSky=-Vector3.one,introReflectHorizon,introReflectGround;private static Color[] introReflectFace;
+        private static readonly Vector4[] introDarkPos=Dark(NativeMapLooks.MaxLights,true),introDarkColor=Dark(NativeMapLooks.MaxLights,false),introDarkFlashPos=Dark(NativeBlastSim.LightCapacity,true),introDarkFlashColor=Dark(NativeBlastSim.LightCapacity,false);
+        private static Vector4[] Dark(int n,bool pos){var a=new Vector4[n];for(int i=0;i<n;i++)a[i]=pos?new Vector4(0,-10000,0,.0001f):Vector4.zero;return a;}
+        private static readonly int IntroHazeId=Shader.PropertyToID("_ArenaHaze"),IntroHazeTopId=Shader.PropertyToID("_ArenaHazeTop"),IntroFlashPosId=Shader.PropertyToID("_ArenaFlashPos"),IntroFlashColorId=Shader.PropertyToID("_ArenaFlashColor"),IntroGiId=Shader.PropertyToID("_ArenaGI");
+        /// <summary>Whether a v2 intro owns the stage's light now (IntroOwn until IntroRelease).</summary>
+        public static bool IntroOwned=>introOwned;
+        /// <summary>A v2 intro's frame: its own ambient and reflection, none of the arena's light (after Entrance has written its rig).</summary>
+        public static void IntroOwn(NativeEntranceLights l)
+        {
+            if(!introOwned)
+            {
+                introOwned=true;keptRimDir=Shader.GetGlobalVector(ArenaRimDirId);keptRimColor=Shader.GetGlobalVector(ArenaRimColorId);keptHaze=Shader.GetGlobalVector(IntroHazeId);keptHazeTop=Shader.GetGlobalFloat(IntroHazeTopId);
+                Shader.GetGlobalVectorArray(IntroFlashPosId,keptFlashPos);Shader.GetGlobalVectorArray(IntroFlashColorId,keptFlashColor);
+                keptReflectMode=RenderSettings.defaultReflectionMode;keptReflect=RenderSettings.customReflectionTexture;keptReflectIntensity=RenderSettings.reflectionIntensity;
+            }
+            Shader.SetGlobalVectorArray(ArenaPosId,introDarkPos);Shader.SetGlobalVectorArray(ArenaColorId,introDarkColor);Shader.SetGlobalInt(ArenaCountId,0);
+            Shader.SetGlobalVector(ArenaRimColorId,Vector4.zero);Shader.SetGlobalVector(IntroHazeId,Vector4.zero);Shader.SetGlobalVector(IntroGiId,Vector4.zero);
+            Shader.SetGlobalVectorArray(IntroFlashPosId,introDarkFlashPos);Shader.SetGlobalVectorArray(IntroFlashColorId,introDarkFlashColor);
+            ProbeDrive(new Color(l.Sky.X,l.Sky.Y,l.Sky.Z),new Color(l.Ground.X,l.Ground.Y,l.Ground.Z));
+            l.Reflection(out var sky,out var horizon,out var ground);var cube=IntroReflection(new Vector3(sky.X,sky.Y,sky.Z),new Vector3(horizon.X,horizon.Y,horizon.Z),new Vector3(ground.X,ground.Y,ground.Z));
+            if(cube!=null){RenderSettings.defaultReflectionMode=DefaultReflectionMode.Custom;RenderSettings.customReflectionTexture=cube;RenderSettings.reflectionIntensity=Mathf.Max(0,l.ReflectIntensity);}
+        }
+        /// <summary>Gives back what IntroOwn replaced (an older entrance draws next, or the intro ends).</summary>
+        public static void IntroRelease()
+        {
+            if(!introOwned)return;introOwned=false;
+            UploadArenaLights();Shader.SetGlobalVector(ArenaRimDirId,keptRimDir);Shader.SetGlobalVector(ArenaRimColorId,keptRimColor);Shader.SetGlobalVector(IntroHazeId,keptHaze);Shader.SetGlobalFloat(IntroHazeTopId,keptHazeTop);
+            if(keptFlashPos.Count>0)Shader.SetGlobalVectorArray(IntroFlashPosId,keptFlashPos);if(keptFlashColor.Count>0)Shader.SetGlobalVectorArray(IntroFlashColorId,keptFlashColor);
+            RenderSettings.defaultReflectionMode=keptReflectMode;RenderSettings.customReflectionTexture=keptReflect;RenderSettings.reflectionIntensity=keptReflectIntensity;
+        }
+        // The intro's reflection: a 16-texel HDR cubemap, its sky above, its horizon level, its ground below (linear colours), smooth between,
+        // made again only when a colour moves (nothing per frame otherwise); null where the platform has no half-float cubemaps.
+        private static Cubemap IntroReflection(Vector3 sky,Vector3 horizon,Vector3 ground)
+        {
+            const int Size=16;const float Step=1f/512;
+            if(introReflect!=null&&Mathf.Max(Mathf.Max(Abs3(sky-introReflectSky),Abs3(horizon-introReflectHorizon)),Abs3(ground-introReflectGround))<Step)return introReflect;
+            if(introReflect==null)
+            {
+                if(!SystemInfo.SupportsTextureFormat(TextureFormat.RGBAHalf))return null;
+                introReflect=new Cubemap(Size,TextureFormat.RGBAHalf,true){name="Intro reflection",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Trilinear};introReflectFace=new Color[Size*Size];
+            }
+            introReflectSky=sky;introReflectHorizon=horizon;introReflectGround=ground;
+            for(int f=0;f<6;f++)
+            {
+                for(int y=0;y<Size;y++)for(int x=0;x<Size;x++)
+                {
+                    float u=(x+.5f)/Size*2-1,v=(y+.5f)/Size*2-1;Vector3 d;
+                    // (Unity's cubemap faces in order: +x, -x, +y, -y, +z, -z; each face's rows run down it)
+                    switch(f){case 0:d=new Vector3(1,-v,-u);break;case 1:d=new Vector3(-1,-v,u);break;case 2:d=new Vector3(u,1,v);break;case 3:d=new Vector3(u,-1,-v);break;case 4:d=new Vector3(u,-v,1);break;default:d=new Vector3(-u,-v,-1);break;}
+                    float h=d.normalized.y;Vector3 c=h>=0?Vector3.Lerp(horizon,sky,Mathf.SmoothStep(0,1,h/.55f)):Vector3.Lerp(horizon,ground,Mathf.SmoothStep(0,1,-h/.35f));
+                    introReflectFace[y*Size+x]=new Color(c.x,c.y,c.z,1);
+                }
+                introReflect.SetPixels(introReflectFace,(CubemapFace)f);
+            }
+            introReflect.Apply(true);return introReflect;
+        }
+        private static float Abs3(Vector3 v)=>Mathf.Max(Mathf.Abs(v.x),Mathf.Max(Mathf.Abs(v.y),Mathf.Abs(v.z)));
         private static MapFogState ReadFog(){var c=RenderSettings.fogColor;return new MapFogState{On=RenderSettings.fog,Mode=(MapFogMode)(int)RenderSettings.fogMode,WritesDensity=true,Density=RenderSettings.fogDensity,Color=new MapLookColor{r=c.r,g=c.g,b=c.b,a=c.a},Start=RenderSettings.fogStartDistance,End=RenderSettings.fogEndDistance};}
         private static void WriteFog(in MapFogState f){RenderSettings.fog=f.On;RenderSettings.fogMode=(FogMode)(int)f.Mode;if(f.WritesDensity)RenderSettings.fogDensity=f.Density;RenderSettings.fogColor=C(f.Color);RenderSettings.fogStartDistance=f.Start;RenderSettings.fogEndDistance=f.End;}
         // The stages' shadows (NativeMapLooks.StageCascades and StageShadowDistance: every old map's own), written only on a change.
