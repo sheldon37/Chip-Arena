@@ -267,13 +267,14 @@ internal static class CampChecks
         string Core(string f) => File.ReadAllText(Path.Combine(root, "Assets/ChipArena/Core", f));
         Check(R("NativeSourcePresentation.cs").Contains("CampScenery(arena);"), "the camp draws from SourceWorld (live and killcam)");
         Check(R("NativeAudio.cs").Contains("CampAudioFrame(arena,menu);"), "the camp's sound runs every frame");
+        Check(R("NativeStagePrewarm.cs").Contains("if(PrewarmCamp(arena))built++;"), "the camp is combined behind the loading screen, not on its first frame");
         Check(R("NativeExpeditionLiveUI.cs").Contains("NativeCampDraw.Sync(v);"), "the war board follows the live view's cleared instances");
         var walk = R("NativeLayeredCityWalkPreview.cs");
         foreach (var hook in new[] { "CampWalkOpen(cityWalk, index, seed, surveySlots);", "CampWalkClose();", "if (CampWalkKeys()) return true;", "CampWalkLabel();", "CampWalkBanner(width);" })
             Check(walk.Contains(hook), "the walk's hook " + hook);
         var w = R("NativeCampWalk.cs"); Check(w.StartsWith("#if UNITY_EDITOR || DEVELOPMENT_BUILD", StringComparison.Ordinal), "the DEV preview's switches exist only in Editor and development builds");
         var d = R("NativeCampDraw.cs");
-        Check(d.Contains("else if(NativeCampWalk.Active(arena.MapId)){walk=true;") && d.Contains("bool live=run?.City!=null&&arena.MapId==run.Map.id,walk=false,show=false;"), "the preview shows only in the walk: a live run never sets it");
+        Check(d.Contains("else if(NativeCampWalk.Active(arena.MapId)){walk=true;") && d.Contains("bool live=run?.City!=null&&arena.MapId==run.Map.id;walk=false;show=false;"), "the preview shows only in the walk: a live run never sets it");
         int start = d.IndexOf("private void BuildPreview", StringComparison.Ordinal); Check(start > 0 && d.IndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", start, StringComparison.Ordinal) - start < 200, "the preview's build is compiled only in Editor and development builds");
         foreach (var (name, text) in new[] { ("NativeCampDraw.cs", d), ("NativeCampAudio.cs", R("NativeCampAudio.cs")), ("NativeCampWalk.cs", w), ("NativeCamp.cs", Core("NativeCamp.cs")), ("NativeCampFx.cs", Core("NativeCampFx.cs")), ("NativeCampMeshes.cs", Core("NativeCampMeshes.cs")), ("NativeCampSynth.cs", Core("NativeCampSynth.cs")) })
         {

@@ -261,15 +261,7 @@ namespace ChipArena.UnityConversion
         /// its light slots and sound.</summary>
         private void CampScenery(NativeArena arena)
         {
-            var run=GeneratedRun?.World;bool live=run?.City!=null&&arena.MapId==run.Map.id,walk=false,show=false;
-            uint seed=0;int plan=0,rescued=0;string[] deal=null;
-            if(live){seed=run.Blueprint.worldSeed;plan=GeneratedRun.Ticket?.cityPlan??0;deal=run.HallSlots;}
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            else if(NativeCampWalk.Active(arena.MapId)){walk=true;seed=NativeCampWalk.Seed;plan=NativeCampWalk.Plan;deal=NativeCampWalk.Deal;rescued=NativeCampWalk.Rescued;show=NativeCampWalk.Preview;}
-#endif
-            if(!live&&!walk){camp?.Idle();campLast=-1;return;}
-            camp??=new NativeCampDraw();
-            if(!camp.Ready||camp.Seed!=seed||camp.PlanIndex!=plan||camp.HasPreview!=walk||walk&&camp.Rescued!=rescued){if(!camp.Open(seed,plan,deal,walk,rescued))return;}
+            if(!CampEnsure(arena,out bool walk,out bool show)){camp?.Idle();campLast=-1;return;}
             float now=PresentationClock(arena),dt=campLast<0?0:Mathf.Clamp(now-campLast,0,.1f);campLast=now;
             Vector3? pilot=arena.ViewPilot?.Body!=null?arena.ViewPilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight:(Vector3?)null;
             camp.Frame(WorldEye,now,pilot,LowGraphics,EffectsQuality<.5f,EffectsQuality,show,dt);
@@ -277,6 +269,24 @@ namespace ChipArena.UnityConversion
             if(show)CampPreviewMachines(arena,now);
 #endif
         }
+        /// <summary>The camp built for this arena's map (behind the loading screen through PrewarmCamp, else on its first frame): the live
+        /// generated hub, or the Developer walk with its preview (Editor and development builds). False on every other map, or without
+        /// the bank.</summary>
+        private bool CampEnsure(NativeArena arena,out bool walk,out bool show)
+        {
+            var run=GeneratedRun?.World;bool live=run?.City!=null&&arena.MapId==run.Map.id;walk=false;show=false;
+            uint seed=0;int plan=0,rescued=0;string[] deal=null;
+            if(live){seed=run.Blueprint.worldSeed;plan=GeneratedRun.Ticket?.cityPlan??0;deal=run.HallSlots;}
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            else if(NativeCampWalk.Active(arena.MapId)){walk=true;seed=NativeCampWalk.Seed;plan=NativeCampWalk.Plan;deal=NativeCampWalk.Deal;rescued=NativeCampWalk.Rescued;show=NativeCampWalk.Preview;}
+#endif
+            if(!live&&!walk)return false;
+            camp??=new NativeCampDraw();
+            if(!camp.Ready||camp.Seed!=seed||camp.PlanIndex!=plan||camp.HasPreview!=walk||walk&&camp.Rescued!=rescued)return camp.Open(seed,plan,deal,walk,rescued);
+            return true;
+        }
+        /// <summary>From PrewarmStage, behind the loading screen: the camp's meshes combined before its first frame (true when built).</summary>
+        public bool PrewarmCamp(NativeArena arena)=>arena!=null&&CampEnsure(arena,out _,out _);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // The camp's two machines in the preview (their real models, idling), where A1 puts them (plan R10).
         private PveMachine[] campMachines;

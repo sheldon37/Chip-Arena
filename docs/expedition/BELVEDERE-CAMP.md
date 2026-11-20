@@ -59,7 +59,8 @@ until the owner's listening pass and batch.
 - The bank's props are combined once per run into six world meshes: one per side of the fence, the strings, and the sails with
   the cables. They draw with ChipArena/StageLit: Fine within 40 m, Low beyond and on the Low tier.
 - The fires and halos draw as one effects batch.
-- Live, and in the killcam, through `CampScenery` in `SourceWorld`.
+- Live, and in the killcam, through `CampScenery` in `SourceWorld`. The meshes are combined behind the loading screen
+  (`PrewarmCamp` in `PrewarmStage`), so the hub's first frame builds nothing.
 - Without the bank (CI, cloud and public builds, `--ca-no-pack-banks`), nothing is drawn.
 
 ## Part 2: the DEV preview
