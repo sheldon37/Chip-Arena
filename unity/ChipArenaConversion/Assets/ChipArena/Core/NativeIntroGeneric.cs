@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The base of the five generic intros (owner 2026-11-20: "5 new intros ... a much higher quality standard, great animations and
     /// effects, non-block based background and designs ... With great camera work"; docs/INTROS-GENERIC.md): Cloudbreak (the new
-    /// default), Whiteout, Slipstream, Waygate and Flashbulb. Weapon-agnostic: empty hands, the body keyed on the intro rig (Keys and
+    /// default), Whiteout, Slipstream, Threshold and Flashbulb. Weapon-agnostic: empty hands, the body keyed on the intro rig (Keys and
     /// Steps) and drawn on the model. Each has its own modelled set in the local bank ChipArenaIntroGeneric (tools/intros/generic_sets.py,
     /// never committed), authored in Unity space with the hero mark at the origin: <see cref="U"/> and the turn helpers carry its
     /// coordinates into the source frame the set is drawn in. Without the bank each falls back to the dark lit void, tinted to it.

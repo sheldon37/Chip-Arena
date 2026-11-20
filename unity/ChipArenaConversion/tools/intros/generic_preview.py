@@ -25,7 +25,7 @@ import generic_kit as kit  # noqa: E402
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 views, out = argv[0], argv[1]
-only = argv[2].split(',') if len(argv) > 2 and argv[2] else ['cloudbreak', 'whiteout', 'slipstream', 'waygate', 'flashbulb']
+only = argv[2].split(',') if len(argv) > 2 and argv[2] else ['cloudbreak', 'whiteout', 'slipstream', 'threshold', 'flashbulb']
 step_arg = argv[3] if len(argv) > 3 else '4'
 step = int(step_arg.split('@')[0])
 start = float(step_arg.split('@')[1]) if '@' in step_arg else 0.0   # STEP@FROM: from that age on (the closing frames)

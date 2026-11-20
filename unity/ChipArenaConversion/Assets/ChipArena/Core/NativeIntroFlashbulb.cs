@@ -89,14 +89,9 @@ namespace ChipArena.UnityConversion
         public static float Walk(float t)=>-6.4f+6.4f*(NativeEntranceMath.Clamp01((t-WalkAt)/(MarkAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(MarkAt-WalkAt)));
         /// <summary>The doors' swing (radians open).</summary>
         public static float Doors(float t)=>1.35f*NativeEntranceMath.EaseOut((t-DoorsAt)/.5f)*(t>DoorsAt?1:0)-.08f*(float)(Math.Exp(-6*Math.Max(0,t-DoorsAt-.5f))*Math.Sin(Math.Max(0,t-DoorsAt-.5f)*14))*(t>DoorsAt+.5f?1:0);
-        /// <summary>The stride on the model: the motion bank's walk, quickened to the carpet's pace (2.67 m/s against its 2.01); the
-        /// keyed rig carries the rest (the poses, the cover).</summary>
-        public override bool Clip(float t,out string clip,out float time)
-        {
-            if(t>=WalkAt+.04f&&t<MarkAt-.12f){clip="Armed-Walk";time=(t-WalkAt)*1.33f;return true;}
-            clip=null;time=0;return false;
-        }
-        public override float Fade(float t)=>.22f;
+        // The stride is the keyed rig's own (planned steps on the carpet): the motion bank's Armed-Walk is the sword's guarded combat
+        // walk, hips side-on to the chest, and walking at the lens its legs read as kicking and crossing sideways (the owner's
+        // report, 2026-11-20); no clip plays.
         public override float Solid(float t,int bone)=>t<DoorsAt+.05f?0:1;
         public override string AccentAt(float t)=>t<DoorsAt?"#1a0a14":"#ff5aa8";
         protected override Vector3 Focus(float t,Vector3 chest)=>chest;

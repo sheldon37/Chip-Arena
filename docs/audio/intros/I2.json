@@ -467,7 +467,7 @@
       "prompt": "A split-flap departure board clattering over, a rapid run of small plastic flaps flipping, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.drone",
+      "key": "intro2.threshold.rumble",
       "category": "boss",
       "priority": 2,
       "count": 1,
@@ -479,25 +479,25 @@
       },
       "levelDb": -16,
       "fadeOutMs": 800,
-      "prompt": "A low ancient drone in a desert canyon, a soft deep hum with dry wind, isolated, no reverb, no music, no background noise"
+      "prompt": "A low rumble deep inside ancient standing stones in a desert canyon, a dry wind over it, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.lock",
+      "key": "intro2.threshold.crack",
       "category": "boss",
       "priority": 1,
-      "count": 2,
+      "count": 3,
       "space": "2d",
       "generateSeconds": 1.0,
       "targetSeconds": {
         "min": 0.4,
         "max": 0.8
       },
-      "levelDb": -8,
+      "levelDb": -9,
       "fadeOutMs": 250,
-      "prompt": "A massive stone and metal ring locking into place, a heavy deep clunk with a grinding click, isolated, no reverb, no music, no background noise"
+      "prompt": "A crack running up a huge standing stone, a sharp stony snap with grit trickling down, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.charge",
+      "key": "intro2.threshold.charge",
       "category": "boss",
       "priority": 1,
       "count": 2,
@@ -509,10 +509,10 @@
       },
       "levelDb": -11,
       "fadeOutMs": 300,
-      "prompt": "Ancient machinery charging with energy, a rising resonant hum climbing in pitch, isolated, no reverb, no music, no background noise"
+      "prompt": "Light building inside a stone seam, a warm rising resonant hum with a faint crackle, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.open",
+      "key": "intro2.threshold.split",
       "category": "boss",
       "priority": 1,
       "count": 2,
@@ -522,12 +522,12 @@
         "min": 1.2,
         "max": 1.8
       },
-      "levelDb": -8,
+      "levelDb": -7,
       "fadeOutMs": 500,
-      "prompt": "A portal of light opening, a deep whoomp into a swirling rushing roar, isolated, no reverb, no music, no background noise"
+      "prompt": "Two massive standing stones grinding apart, a deep stone-on-stone grind and a rush of bright air, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.through",
+      "key": "intro2.threshold.through",
       "category": "boss",
       "priority": 1,
       "count": 2,
@@ -539,40 +539,10 @@
       },
       "levelDb": -11,
       "fadeOutMs": 400,
-      "prompt": "Stepping through a shimmering field of light, a soft sweeping shimmer with a gentle rush, isolated, no reverb, no music, no background noise"
+      "prompt": "Stepping out of a sheet of warm light, a soft sweeping shimmer with a gentle rush of dust, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.touch",
-      "category": "boss",
-      "priority": 2,
-      "count": 1,
-      "space": "2d",
-      "generateSeconds": 0.8,
-      "targetSeconds": {
-        "min": 0.3,
-        "max": 0.6
-      },
-      "levelDb": -13,
-      "fadeOutMs": 150,
-      "prompt": "Feet touching down lightly on sandy stone, a soft scuff with a little sand, isolated, no reverb, no music, no background noise"
-    },
-    {
-      "key": "intro2.waygate.close",
-      "category": "boss",
-      "priority": 1,
-      "count": 2,
-      "space": "2d",
-      "generateSeconds": 1.5,
-      "targetSeconds": {
-        "min": 0.7,
-        "max": 1.2
-      },
-      "levelDb": -8,
-      "fadeOutMs": 300,
-      "prompt": "A portal collapsing to a point, a reverse swelling rush ending in a deep thud, isolated, no reverb, no music, no background noise"
-    },
-    {
-      "key": "intro2.waygate.step",
+      "key": "intro2.threshold.step",
       "category": "boss",
       "priority": 3,
       "count": 1,
@@ -584,10 +554,25 @@
       },
       "levelDb": -15,
       "fadeOutMs": 100,
-      "prompt": "A single calm footstep on worn stone, isolated, no reverb, no music, no background noise"
+      "prompt": "A single calm footstep on worn stone with a little sand, isolated, no reverb, no music, no background noise"
     },
     {
-      "key": "intro2.waygate.name",
+      "key": "intro2.threshold.seal",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "Two huge stones grinding shut, a heavy stone grind ending in a deep thud and settling dust, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.threshold.name",
       "category": "boss",
       "priority": 1,
       "count": 2,
@@ -599,7 +584,7 @@
       },
       "levelDb": -9,
       "fadeOutMs": 400,
-      "prompt": "A grand mystical stinger, a deep resonant gong-like swell rising into a bright shimmering hit, isolated, no reverb, no music, no background noise"
+      "prompt": "A grand mystical stinger, a deep resonant swell rising into a warm bright hit, isolated, no reverb, no music, no background noise"
     },
     {
       "key": "intro2.flashbulb.crowd",

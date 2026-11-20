@@ -33,11 +33,11 @@ namespace ChipArena.UnityConversion
                 NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Sp,.1f,0,0);NativeEntranceKeys.Set(v,C,.06f,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);
                 NativeEntranceKeys.Set(v,LL,-1.35f,0,.15f);NativeEntranceKeys.Set(v,LK,1.65f,0,0);NativeEntranceKeys.Set(v,RL,.3f,0,-.08f);NativeEntranceKeys.Set(v,RK,1.75f,0,0);
                 NativeEntranceKeys.Set(v,LA,-.75f,0,.25f);NativeEntranceKeys.Set(v,LE,-1.15f,0,0);NativeEntranceKeys.Set(v,RA,-.15f,0,-.12f);NativeEntranceKeys.Set(v,RE,-.35f,0,0);});
-            k.Key(0,kneel(.55f,.34f));
-            k.Key(HeatAt,kneel(.5f,.32f));
+            k.Key(0,kneel(.24f,.34f));
+            k.Key(HeatAt,kneel(.22f,.32f));
             // The frost breaks: a shudder, the head lifts.
-            k.Key(CrackAt-.04f,kneel(.48f,.33f));
-            k.Key(CrackAt+.08f,kneel(.2f,.26f)).J(C,-.04f).ImpactKey();
+            k.Key(CrackAt-.04f,kneel(.2f,.33f));
+            k.Key(CrackAt+.08f,kneel(.05f,.26f)).J(C,-.04f).ImpactKey();
             k.Key(RiseAt,kneel(-.08f,.22f)).J(RA,-.25f,0,-.25f).J(RE,-.6f);
             // The rise: the trailing leg comes under, up through the knees.
             k.Key(RiseAt+.55f,stand).Root(0,.88f,.18f,Facing).Planted(1,.6f).Drop(-.3f).J(B,.28f).J(Sp,.08f).J(Hd,-.05f).J(LA,-.45f,0,.35f).J(LE,-.8f).J(RA,-.3f,0,-.3f).J(RE,-.6f).PassKey();
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             // The camera: telephoto into the storm, a close insert on the frost, a tilt up with the rise, the pulse low and wide, the
             // reveal pulling out as the storm parts, the hero.
             Rig.Dolly(0,new Vector3(1.3f,.62f,13.5f),new Vector3(.75f,.72f,7.4f),new Vector3(0,.72f,.1f),new Vector3(0,.8f,.1f),17,19).Ease(NativeIntroEase.InOut).Focus(0,0,.6f).Handheld(.35f)
-               .Dolly(HeatAt,new Vector3(.85f,.95f,1.85f),new Vector3(.72f,.92f,1.62f),new Vector3(0,.3f,0),new Vector3(0,.32f,0),33,30).Follow(NativeEntranceAnchor.Chest).Focus(0,0,.5f)
+               .Dolly(HeatAt,new Vector3(.4f,.95f,1.95f),new Vector3(.32f,.92f,1.72f),new Vector3(0,.3f,0),new Vector3(0,.32f,0),33,30).Follow(NativeEntranceAnchor.Chest).Focus(0,0,.5f)
                .Crane(CrackAt+.2f,new Vector3(1.7f,.45f,3.1f),new Vector3(1.45f,.55f,2.7f),.35f,new Vector3(0,.05f,0),new Vector3(0,.26f,0),34,38).Follow(NativeEntranceAnchor.Chest,.06f)
                .Dolly(PulseAt-.25f,new Vector3(-1.85f,.34f,3.05f),new Vector3(-2.05f,.37f,3.35f),new Vector3(0,1.0f,.2f),new Vector3(0,1.05f,.2f),48,50)
                .Crane(PartAt+.05f,new Vector3(-2.05f,.37f,3.35f),new Vector3(-4.0f,.9f,8.2f),1.1f,new Vector3(0,1.1f,.1f),new Vector3(-.8f,2.6f,-6),54,50).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.45f);

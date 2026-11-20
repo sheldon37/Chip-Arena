@@ -5,7 +5,7 @@ using System.Numerics;
 using ChipArena.UnityConversion;
 
 // The five generic intros (docs/INTROS-GENERIC.md; owner 2026-11-20: "5 new intros ... great animations and effects, non-block based
-// background and designs ... great camera work"): Cloudbreak (the new default), Whiteout, Slipstream, Waygate and Flashbulb. Each
+// background and designs ... great camera work"): Cloudbreak (the new default), Whiteout, Slipstream, Threshold and Flashbulb. Each
 // is registered with its own length and name beat, is deterministic under a scrub, allocates nothing per frame, keeps inside the
 // v2 budgets with and without its bank, flashes no faster than 3 Hz in Reduced effects, lays every long streak on its head's camera
 // plane, and plays its cues on its beats with sounds that exist. Presentation only.
@@ -16,7 +16,7 @@ internal static class IntroGenericChecks
     /// <summary>The five, as registered (the default is Cloudbreak).</summary>
     public static NativeIntroGenericScript[] Make()=>new NativeIntroGenericScript[]
     {
-        new NativeIntroCloudbreak(),new NativeIntroWhiteout(),new NativeIntroSlipstream(),new NativeIntroWaygate(),new NativeIntroFlashbulb(),
+        new NativeIntroCloudbreak(),new NativeIntroWhiteout(),new NativeIntroSlipstream(),new NativeIntroThreshold(),new NativeIntroFlashbulb(),
     };
     public static void Run(string root)
     {

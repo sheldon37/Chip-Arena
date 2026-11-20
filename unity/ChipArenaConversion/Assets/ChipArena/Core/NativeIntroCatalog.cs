@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Generic("slipstream","Slipstream",NativeIntroSlipstream.Total,NativeIntroSlipstream.CardAt,()=>new NativeIntroSlipstream(),"I2"),
             //
-            NativeIntroEntry.Generic("waygate","Waygate",NativeIntroWaygate.Total,NativeIntroWaygate.CardAt,()=>new NativeIntroWaygate(),"I2"),
+            NativeIntroEntry.Generic("threshold","Threshold",NativeIntroThreshold.Total,NativeIntroThreshold.CardAt,()=>new NativeIntroThreshold(),"I2"),
             //
             NativeIntroEntry.Generic("flashbulb","Flashbulb",NativeIntroFlashbulb.Total,NativeIntroFlashbulb.CardAt,()=>new NativeIntroFlashbulb(),"I2"),
             //

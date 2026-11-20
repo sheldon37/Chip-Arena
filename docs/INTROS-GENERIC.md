@@ -13,7 +13,7 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 | **Cloudbreak** | awe, dawn gold | from above: a re-entry streak, a flip and a thruster-braked touchdown | a summit relay station above a sea of cloud | vertical: a look up, a long-lens fall-follow, a slow-motion touchdown, a low hero |
 | **Whiteout** | cold mystery, then warmth | out of the white: a frosted figure kneeling in a blizzard thaws and rises | a polar outpost at night, its floodlights in the snow | telephoto: one slow push into the storm, a close insert, a reveal as the storm parts |
 | **Slipstream** | speed, neon | travel: riding a maglev's roof out of a tunnel, a leap and a sliding stop | an underground maglev station | kinetic: on the roof and beside the train keeping pace, a cut to the platform for the leap, a slide into the lens |
-| **Waygate** | ceremony, dusk | a summons: an ancient ring gate wakes, opens, and the pilot floats out of it | a canyon plaza with a carved stone ring gate | formal: a centred push-in, an arc round it as it comes through, a centred hero framed by the ring |
+| **Threshold** | ceremony, dusk | a summons: a seam of light splits two leaning standing stones and the pilot steps out through the slit | a canyon plaza with two standing stones meeting in a cleft | formal: a centred push-in on the cleft, an arc in front as it steps out, a centred hero under the stones |
 | **Flashbulb** | glamour, swagger | a showstopper: a stride down a red carpet, three poses frozen by photographers' flashes | a theatre's red carpet at night under a chasing marquee | the dolly ahead of a walk, then three photographs (held poses from three angles, each lit by its flash) and a cover shot |
 
 **The default:** Cloudbreak (see "The default" below).
@@ -31,12 +31,14 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 - **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
 - **Body:** keyed on the intro rig (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are) and drawn on the model;
   where a pack clip fits the beat the model plays it from the motion bank, retimed in code (`Clip`, docs/INTROS-V2.md section 2):
-  Flashbulb's stride is `Armed-Walk` at 1.33x and Slipstream's run along the roof `Unarmed-Sprint` at 1.45x. The keyed rig stays
-  the camera's and the effects' anchors and the Classic body's pose. No new pack clips were needed.
+  Slipstream's run along the roof is `Unarmed-Sprint` at 1.45x. Flashbulb's and Threshold's walks are the keyed rig's own (planned
+  steps): the bank's `Armed-Walk` is the sword's guarded combat walk, its hips side-on to the chest, and walking at the lens its legs
+  read as kicking and crossing sideways (the owner's report). The keyed rig stays the camera's and the effects' anchors and the
+  Classic body's pose. No new pack clips were needed.
 - **Sets:** each modelled in Blender 5.2.3 (headless) by its own script (`tools/intros/generic_<set>.py`, run by
   `tools/intros/generic_sets.py`, shapes from `generic_kit.py` on stagekit), two tiers (Fine, `/low`), into the local bank
-  `ChipArenaIntroGeneric.bytes` (6.7 MB; never committed). Nothing in them is a placeholder shape: the sun has a limb, the gate's
-  light is a vortex, the thaw is wet ground and slush, the aurora is rays. Every far piece (sky domes, peaks, clouds, canyon) lies inside the
+  `ChipArenaIntroGeneric.bytes` (7.7 MB; never committed). Nothing in them is a placeholder shape: the sun has a limb, the pad is
+  square and painted, the far ranges are ridged, the thaw is wet ground and slush, the aurora is rays. Every far piece (sky domes, peaks, clouds, canyon) lies inside the
   game's 200 m far plane. Without the bank each intro draws its own plain fallback (a floor far wider than its fog, a soft pool,
   a horizon glow) in its own light, never blocks.
 - **Effects:** `NativeVfxDraw` (glows, streaks, smoke); a streak longer than 1 m is laid on its head's camera plane
@@ -50,8 +52,8 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 ## Where it lives
 | Part | Files |
 | --- | --- |
-| The intros | `Core/NativeIntroGeneric.cs` (the shared base: the set's frame, long streaks, the plain fallback), `Core/NativeIntroCloudbreak.cs`, `NativeIntroWhiteout.cs`, `NativeIntroSlipstream.cs`, `NativeIntroWaygate.cs`, `NativeIntroFlashbulb.cs` |
-| Registry | `Core/NativeIntroCatalog.cs`: Cloudbreak on the default's slot (`intro2-default`), the other four on generic slots 1-4 (`intro2-whiteout`, `intro2-slipstream`, `intro2-waygate`, `intro2-flashbulb`) |
+| The intros | `Core/NativeIntroGeneric.cs` (the shared base: the set's frame, long streaks, the plain fallback), `Core/NativeIntroCloudbreak.cs`, `NativeIntroWhiteout.cs`, `NativeIntroSlipstream.cs`, `NativeIntroThreshold.cs`, `NativeIntroFlashbulb.cs` |
+| Registry | `Core/NativeIntroCatalog.cs`: Cloudbreak on the default's slot (`intro2-default`), the other four on generic slots 1-4 (`intro2-whiteout`, `intro2-slipstream`, `intro2-threshold`, `intro2-flashbulb`) |
 | Sets | `tools/intros/generic_sets.py` and its modules; the bank's master copy in `F:/Chip Arena Development/scratch/intro-generic/bank/` |
 | Sound | `docs/audio/intros/I2.json`, `Core/NativeIntroSoundKeys.cs` (the I2 slot) |
 | Framing preview | `tools/intros/generic_preview.py` (Blender Workbench, no Editor): renders each intro's camera, set pieces, a mannequin on the keyed anchors and its effects marked, from the views `CoreTests --intro-generic` writes with `INTRO_GENERIC_VIEWS` set |
@@ -67,10 +69,12 @@ of the sky on a contrail: the pilot in a head-first dive, glowing from the re-en
 thrusters fire a braking burn and it settles onto the summit's pad in slow motion; the wash blows grit and snow across the pad and
 snaps the windsocks out. It rises as the sun breaks the cloud line behind it and floods the pad with gold.
 
-**The set (summit relay):** a craggy faceted rock summit falling away to the cloud sea, snow on its ledges; an octagonal concrete
-landing pad with a hazard-striped edge, a ring, three chevrons, a touchdown mark and eight edge lights; a red-and-white lattice relay
+**The set (summit relay):** a craggy faceted rock summit falling away to the cloud sea, snow on its ledges; a square concrete
+landing pad (no circles: a painted H, hazard-striped corners, scuffs and thruster scorch, twelve edge lights); a red-and-white lattice relay
 mast with two dish antennas, platforms and a red beacon; a corrugated equipment hut with a door, a vent and a stack; a solar array on
-the slope; a yellow railing; two windsock poles (their socks turn in the wind); four far snow peaks; the cloud sea and far cumulus;
+the slope; a yellow railing; two windsock poles (their socks turn in the wind); far mountain ranges in three layers either side of the sun (ridged
+crests, snow on the heights and steep faces, each farther layer paler into the dawn haze; open cloud toward the sun); the cloud sea
+and far cumulus;
 the dawn sky and the sun (its face white-hot at the core, darkening to gold at the limb, a halo glow round it).
 
 | Time | Beat | Camera |
@@ -144,32 +148,32 @@ middle car the pilot rides, a nose at the tail), its windows lit.
 **Motion:** keyed: the crouch on the moving roof (the feet planted in the car's frame), the leap, the slide (the feet moving with
 it), the glance and the hero hold; the run along the roof is the motion bank's `Unarmed-Sprint` at 1.45x on the model.
 
-## Waygate (8.2 s, the name at 6.4 s)
-Dusk in a canyon. An ancient ring gate of carved stone with three fins stands on a stepped dais at the end of a ruined plaza. Its
-inner ring turns and locks five times with heavy clunks, each lighting a lamp in the outer ring; light races round its channels; the
-gate opens on a turning vortex of light that pulls the sand toward it. A figure takes shape in the light and floats out, arms spread,
-glides over the dais and settles on the plaza; the disc collapses to a point behind it and the gate goes dark; it steps forward
-under the ring's afterglow as the plaza's inlay lights round it.
+## Threshold (8.2 s, the name at 6.4 s)
+Dusk in a canyon. At the end of a ruined plaza two leaning standing stones meet in a cleft. A crack of light runs up the seam between
+them in three jolts, dust shaken from it; the seam brightens and the runes cut beside it wake; the stones grind apart and light floods
+out of the widening slit in a sheet, dust pouring along the ground; the pilot steps out through the slit and walks down the plaza to
+the mark as the stones grind shut behind it, the seam a fading line. (It replaces Waygate, whose ring gate, lamps lit round it and
+vortex read as an existing film's gate: no ring, no circles, no vortex.)
 
-**The set (canyon plaza):** the ring gate (a carved outer ring with three fins, six lamps and lit channels, a turning inner ring of
-glyphs; its light a vortex, a funnel recessed into the ring with three spiral arms, so its turning reads) on its feet and plinth; a three-step half-round dais; rings of worn flagstones with a dark inlay and a lit channel round the
-mark; six broken fluted columns and fallen drums; two obelisks with glyph bands; sand and dunes; the canyon's banded cliff walls; the
-dusk sky.
+**The set (canyon plaza):** two leaning standing stones (rough outer faces, broken slanted tops, worn runes cut up beside the seam,
+their tops touching at rest; each its own piece, parted by Core); rubble at their feet; a plaza of flagstones laid in a grid, some
+lost to sand; six broken fluted columns and fallen drums; two obelisks with glyph bands framing the stones; sand and dunes; the
+canyon's banded cliff walls with a saddle worn into the far one; the dusk sky.
 
 | Time | Beat | Camera |
 | --- | --- | --- |
-| 0.00 | The plaza at dusk, the gate dormant, sand blowing | centred and wide, pushing in |
-| 0.50 | The inner ring turns and locks (and at 1.1, 1.6, 2.0, 2.3), a lamp lighting each time | (the push) |
-| 2.40 | The channels race alight; motes spiral into the ring | (the push) |
-| 3.00 | The gate opens: a turning vortex of light, sand pulled toward it | (the push) |
-| 3.60 | A figure takes shape in the light and floats out, arms spread, light shed off it | an arc from its left side round to the front |
-| 4.65 | It settles on the plaza | a cut low and centred |
-| 5.20 | The disc collapses to a point; a white blink; a gust of sand; the inlay lights | (holds) |
-| 5.55 | It steps forward | (holds) |
-| 6.40 | **The name** (rising). Small and centred under the whole ring, motes rising off the channels | the closing: wide, low and centred |
+| 0.00 | The plaza at dusk, the stones dark, sand blowing | centred and wide, pushing in on the cleft |
+| 0.60 | A crack of light runs a third of the way up the seam, dust shaken off (and at 1.20, 1.75) | (the push) |
+| 2.40 | The seam brightens, the runes wake | (the push) |
+| 3.00 | The stones grind apart: light floods out of the slit, dust bursts along the ground, rays fan out | (the push) |
+| 3.40 | The pilot steps out of the light | an arc in front, from its left round to its front |
+| 3.50 | It walks down the plaza toward the lens | (the arc) |
+| 4.90 | The stones grind shut behind it, dust squeezed out, a last flare up the seam | low and centred, the stones towering |
+| 5.85 | It reaches the mark | (holds) |
+| 6.40 | **The name** (rising). Small and centred under the stones | the closing: wide, low and centred |
 
-**Motion:** keyed: the float (arms spread, legs together and soft, the head lifting) on a path out of the gate and down to the plaza,
-the settle, two steps, the hero hold. Cyan afterimages as it comes through.
+**Motion:** keyed: upright in the light, the walk out (planned steps, the arms swinging), the arrival, the hero hold. Warm
+afterimages as it steps out.
 
 ## Flashbulb (7.8 s, the name at 6.0 s)
 A premiere at night. A red carpet runs from a theatre's doors between velvet ropes; the marquee's bulbs chase round it and two
@@ -194,8 +198,8 @@ blade sign with neon stars and stripes; two lit poster cases; four lamp posts; t
 | 5.65 | (the storm goes on) | a cut to the cover: low, straight down the carpet |
 | 6.00 | **The name** (slammed) on the carpet: the cover shot | (a slow push in) |
 
-**Motion:** keyed: the doorway, the three poses and the cover's stance; the stride is the motion bank's `Armed-Walk` at 1.33x on the
-model (the walk's own swing; the keyed rig walks under it for the anchors).
+**Motion:** keyed: the doorway, the stride (planned steps down the carpet, the arms swinging), the three poses and the cover's
+stance.
 
 ## The default
 Cloudbreak is the new default (the intro any pilot without an equipped intro gets, and the fallback where an archived pick has no

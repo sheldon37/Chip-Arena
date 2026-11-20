@@ -28,7 +28,7 @@ import generic_cloudbreak  # noqa: E402
 BANK = 'ChipArenaIntroGeneric'
 SMOOTH_MAX = .35
 SETS = {'cloudbreak': generic_cloudbreak}
-for _name in ('whiteout', 'slipstream', 'waygate', 'flashbulb'):
+for _name in ('whiteout', 'slipstream', 'threshold', 'flashbulb'):
     try:
         SETS[_name] = __import__('generic_' + _name)
     except ImportError:

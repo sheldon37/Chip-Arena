@@ -1,5 +1,5 @@
 """Cloudbreak's set: a summit relay station above a sea of cloud at dawn (docs/INTROS-GENERIC.md "Cloudbreak"). Unity space; the pad's
-centre is the hero mark (the origin), a flat side of the octagon facing +z (the camera). Pieces (generic_sets.py writes them):
+centre is the hero mark (the origin), a side of the square pad facing +z (the camera). Pieces (generic_sets.py writes them):
   cloudbreak/summit     the pad, its paint, the rock, the boulders, the mast and its dishes, the hut, the solar array, the railing,
                         the windsock poles, the conduit (world frame)
   cloudbreak/padlights  the pad's eight edge-light lenses (glow; world frame)
@@ -16,7 +16,7 @@ from stagekit import Geo, _add, _sub, _norm, _cross
 from generic_kit import (PI, TAU, V, mul, lerp, M, place, noise2, polar_field, rockball, mound, hash01, dome, disc, ribbed, lattice_tower, dish,
                          flipped, sky_fn, mix_hex, Piece, smoothstep, ang_diff)
 
-CB_R = 3.9                       # the pad's vertex radius
+CB_R = 3.9                       # the pad's half width (a square pad, a side to the camera)
 CB_MAST = (3.9, -.62, -4.9)      # the mast's foot (its shelf)
 CB_HUT = (-4.9, -.62, -3.7)
 CB_SOCKS = ((3.95, 1.52), (-3.95, 1.52))   # the windsock poles (x, z)
@@ -25,9 +25,9 @@ CB_BEACON_Y = 15.72
 CB_SUN_DIR = (0.0, -1.0)         # the sun's azimuth (Unity x, z), low behind the pilot (behind its shoulder in the hero frame)
 
 
-def octo(th):
-    a = (th - PI / 8) % (PI / 4) - PI / 8
-    return CB_R * math.cos(PI / 8) / math.cos(a)
+def sq(th):
+    """The square pad's edge distance at heading th (its sides face +-x and +-z)."""
+    return CB_R / max(abs(math.cos(th)), abs(math.sin(th)))
 
 
 def build(T):
@@ -61,55 +61,71 @@ def build(T):
     )
     fine = T.i == 0
     g = Geo()
-    # ---- the pad: an octagon of concrete, a flat side to the camera ----
-    seg = 3 if fine else 1
-    nth = 8 * seg
-    rhos = (0, .3, .55, .75, .9, 1.0) if fine else (0, .6, 1.0)
-    ths = [PI / 8 + TAU * k / nth for k in range(nth)]
+    # ---- the pad: a square of concrete, a side to the camera (no circles anywhere: a painted H, hazard-striped corners, edge lights
+    # along the sides, scuffs and thruster scorch) ----
     Y = .012
+    R = CB_R
+    nq = 8 if fine else 2
 
-    def pp(rho, th, y=Y):
-        r = rho * octo(th)
-        return V(math.cos(th) * r, y, math.sin(th) * r)
-    for i in range(len(rhos) - 1):
-        for k in range(nth):
-            t0, t1 = ths[k], ths[(k + 1) % nth]
-            if rhos[i] == 0:
-                g.face((V(0, Y, 0), pp(rhos[i + 1], t0), pp(rhos[i + 1], t1)), F['concrete'], normal=(0, 1, 0))
-            else:
-                g.face((pp(rhos[i], t0), pp(rhos[i + 1], t0), pp(rhos[i + 1], t1), pp(rhos[i], t1)), F['concrete'], normal=(0, 1, 0))
+    def pp(u, v, y=Y):
+        return V(u * R, y, v * R)
+    for i in range(nq):
+        for j in range(nq):
+            u0, u1 = -1 + 2 * i / nq, -1 + 2 * (i + 1) / nq
+            v0, v1 = -1 + 2 * j / nq, -1 + 2 * (j + 1) / nq
+            g.face((pp(u0, v0), pp(u0, v1), pp(u1, v1), pp(u1, v0)), F['concrete'], normal=(0, 1, 0))
     # the skirt: the pad's sides down into the rock, leaning out a little
-    for k in range(nth):
-        t0, t1 = ths[k], ths[(k + 1) % nth]
-        a, b = pp(1, t0), pp(1, t1)
-        c, d = pp(1.04, t1, -.75), pp(1.04, t0, -.75)
-        out = _norm((math.cos((t0 + t1) / 2), 0, math.sin((t0 + t1) / 2)))
-        g.face((a, b, c, d), F['skirt'], normal=out)
-    # paint (lifted clear of the slab): the hazard band round the edge, the white ring, three chevrons, the touchdown ring
+    corners = ((-1, -1), (1, -1), (1, 1), (-1, 1))
+    for k in range(4):
+        (u0, v0), (u1, v1) = corners[k], corners[(k + 1) % 4]
+        a, b = pp(u0, v0), pp(u1, v1)
+        c, d = pp(u1 * 1.04, v1 * 1.04, -.75), pp(u0 * 1.04, v0 * 1.04, -.75)
+        out = _norm(((u0 + u1) / 2, 0, (v0 + v1) / 2))
+        g.face((a, d, c, b), F['skirt'], normal=out)
+    # paint, lifted clear of the slab
     lift = .016
-    stripes = nth * (2 if fine else 1) * 2
-    for k in range(stripes):
-        t0 = PI / 8 + TAU * k / stripes
-        t1 = PI / 8 + TAU * (k + 1) / stripes
-        f = F['yellow'] if k % 2 == 0 else F['black']
-        g.face((pp(.905, t0, lift), pp(.985, t0, lift), pp(.985, t1, lift), pp(.905, t1, lift)), f, normal=(0, 1, 0))
-    disc(g, V(0, lift, 0), 2.42, F['white'], n=48 if fine else 16, r_in=2.18)
-    disc(g, V(0, lift, 0), .62, F['yellow'], n=32 if fine else 12, r_in=.48)
-    for k in range(3):
-        a = PI / 2 + TAU * k / 3
-        tip = V(math.cos(a) * 1.1, lift + .001, math.sin(a) * 1.1)
-        tang = (-math.sin(a), 0, math.cos(a))
-        for side in (-1, 1):
-            outer = _add(_add(tip, (math.cos(a) * .42, 0, math.sin(a) * .42)), tang, side * .5)
-            nrm = _norm(_cross(_norm(_sub(outer, tip)), (0, 1, 0)))
-            g.face((_add(tip, nrm, -.09), _add(tip, nrm, .09), _add(outer, nrm, .09), _add(outer, nrm, -.09)), F['yellow'], normal=(0, 1, 0))
-    # the edge lights' housings (their lenses are cloudbreak/padlights)
+
+    def quad(x0, z0, x1, z1, fin, y=lift):
+        g.face((V(x0, y, z0), V(x0, y, z1), V(x1, y, z1), V(x1, y, z0)), fin, normal=(0, 1, 0))
+    # the H (its crossbar under the hero mark), facing the camera
+    quad(-.95, -1.15, -.63, 1.15, F['white'])
+    quad(.63, -1.15, .95, 1.15, F['white'])
+    quad(-.63, -.16, .63, .16, F['white'])
+    # hazard-striped corners: a square patch of diagonal yellow and black stripes in each corner
+    nstr = 6 if fine else 3
+    for cu, cv in corners:
+        x0, z0 = cu * R, cv * R
+        x1, z1 = cu * (R - 1.0), cv * (R - 1.0)
+        for k in range(nstr):
+            # stripes across the patch along its diagonal: trapezoids between lines x+z = c (in the corner's own frame)
+            for half in range(2):
+                a0, a1 = k / nstr, (k + 1) / nstr
+                f = F['yellow'] if (k + half) % 2 == 0 else F['black']
+                if half == 0:
+                    pts = [(a0, 0), (a1, 0), (0, a1), (0, a0)]
+                else:
+                    pts = [(1 - a1, 1), (1 - a0, 1), (1, 1 - a0), (1, 1 - a1)]
+                q = [V(x0 + (x1 - x0) * p, lift + .0005, z0 + (z1 - z0) * r) for p, r in pts]
+                g.face(q, f, normal=(0, 1, 0))
+    # scuffs and scorch: dark irregular marks from landings, thickest round the H
+    for i in range(14 if fine else 6):
+        cx = (hash01('sx', i) - .5) * 4.6
+        cz = (hash01('sz', i) - .5) * 4.6
+        w, d = .25 + .55 * hash01('sw', i), .08 + .14 * hash01('sd', i)
+        a = TAU * hash01('sa', i)
+        ca, sa = math.cos(a), math.sin(a)
+        q = [V(cx + ca * x - sa * z, lift + .0008, cz + sa * x + ca * z) for x, z in ((-w, -d), (-w, d), (w, d * .6), (w, -d * .6))]
+        g.face(q, F['black'], normal=(0, 1, 0))
+    # the edge lights along the four sides (housings here, their lenses are cloudbreak/padlights)
     lights = Geo()
-    for k in range(8):
-        th = PI / 8 + TAU * k / 8
-        c = pp(.95, th, Y)
-        sk.lathe(g, [(.11, -.01), (.11, .02), (.085, .03)], c, F['steel'], 10 if fine else 6, cap1=True)
-        sk.lathe(lights, [(.075, .03), (.068, .055), (.04, .075), (.001, .082)], c, F['padlight'], 10 if fine else 6)
+    edge_pts = []
+    for t in (-.7, 0.0, .7):
+        edge_pts += [(t, -1), (t, 1), (-1, t), (1, t)]
+    edge_pts += [(-1, -1), (1, -1), (1, 1), (-1, 1)]
+    for u, v in edge_pts:
+        c = pp(u * .95, v * .95, Y)
+        sk.box(g, c[0] - .11, c[0] + .11, Y - .01, Y + .03, c[2] - .11, c[2] + .11, F['steel'], None, .01, cell=0)
+        sk.box(lights, c[0] - .07, c[0] + .07, Y + .03, Y + .065, c[2] - .07, c[2] + .07, F['padlight'], None, .008, cell=0)
 
     # ---- the summit: a faceted rock falling away to the clouds, ridged, with shelves for the mast and the hut ----
     ridges = ((.45, 2.6, .34), (2.15, 3.6, .3), (3.75, 2.2, .42), (5.15, 3.2, .3))
@@ -208,7 +224,7 @@ def build(T):
     place(g, sol, M((sx, rock_h(math.hypot(sx, sz), math.atan2(sz, sx), sx, sz) + 1.0, sz), yaw=PI + .3))
 
     # ---- the railing round the pad's back, the windsock poles ----
-    rail = [pp(.975, PI / 8 + TAU * k / 8, Y) for k in range(4, 8)]
+    rail = [pp(-.985, .1, Y), pp(-.985, -.985, Y), pp(.985, -.985, Y), pp(.985, .1, Y)]
     pts = []
     for i in range(len(rail) - 1):
         pts += [rail[i], lerp(rail[i], rail[i + 1], .5)]
@@ -235,21 +251,54 @@ def build(T):
     sk.tube(sock, [V(.2 * math.cos(TAU * k / 12), .2 * math.sin(TAU * k / 12), 0) for k in range(12)], .012, F['steel'], 4, closed=True)
     sk.cylinder(sock, V(0, -.2, 0), V(0, -.32, -.08), .015, F['steel'], 4)
 
-    # ---- far peaks out of the clouds ----
+    # ---- far ranges out of the clouds: layered ridgelines (ridged noise along each crest, snow on the heights and the steep
+    # faces), each farther range paler toward the dawn haze; an open gap of cloud sea toward the sun so it rises from the clouds ----
     peaks = Geo()
-    for i, (px, pz, H, Rb) in enumerate(((-60, -108, 46, 52), (40, -112, 58, 50), (105, -62, 38, 45), (-118, -25, 34, 40))):
-        base = -24.0
+    sun_a = math.atan2(CB_SUN_DIR[1], CB_SUN_DIR[0])
+    haze = 0xc8b4c4
+    RANGES = (  # (from, to: angles off the sun's azimuth; distance; depth half-width; crest height; haze share; seed)
+        (-1.55, -.34, 96.0, 13.0, 44.0, .12, 1), (.34, 1.45, 100.0, 13.0, 48.0, .14, 2),
+        (-1.95, -.28, 128.0, 15.0, 58.0, .36, 3), (.28, 1.9, 132.0, 15.0, 56.0, .38, 4),
+        (-2.3, -.22, 160.0, 12.0, 70.0, .6, 5), (.22, 2.2, 162.0, 12.0, 72.0, .62, 6))
+    base = -26.0
+    crest_cache = {}
 
-        def ph(r, t, x, z, H=H, Rb=Rb, i=i):
-            u = min(1.0, r / Rb)
-            y = base + H * (1 - u) ** 1.5
-            y += (noise2(x, z, .045, 40 + i) - .5) * H * .35 * (1 - u) * (.3 + u)
-            y += math.sin(t * 3 + i) * H * .06 * u * (1 - u) * 4
-            return y
+    def crest(t, k):
+        """The crest's height above the base at angle t on range k: ridged noise (sharp peaks, saddles), tapered at the ends."""
+        key = (k, round(t, 4))
+        if key in crest_cache:
+            return crest_cache[key]
+        a0, a1, d, w, H, hz, seed = RANGES[k]
+        u = (t - sun_a - a0) / (a1 - a0)
+        x = (t - sun_a) * d * .055
+        r, amp, tot = 0.0, 1.0, 0.0
+        for o in range(4):
+            nv = noise2(x * (2 ** o), seed * 7.0 + o, 1.0, 60 + seed * 4 + o, octaves=1)
+            r += amp * (1 - abs(2 * nv - 1))
+            tot += amp
+            amp *= .5
+        r /= tot
+        taper = smoothstep(0, .12, u) * smoothstep(1, .88, u)
+        v = H * (.3 + .7 * r ** 1.7) * (.35 + .65 * taper)
+        crest_cache[key] = v
+        return v
+    for k, (a0, a1, d, w, H, hz, seed) in enumerate(RANGES):
+        rockk = sk.fin('cb-range-rock%d' % k, int(''.join('%02x' % round(c * 255) for c in mix_hex(0x6c6772, haze, hz)), 16),
+                       smooth=.05, dirt=.1)
+        snowk = sk.fin('cb-range-snow%d' % k, int(''.join('%02x' % round(c * 255) for c in mix_hex(0xf3f2f6, haze, hz * .8)), 16),
+                       smooth=.3, dirt=0)
 
-        def pf(x, y, z, n, H=H):
-            return F['peaksnow'] if (y > base + H * .5 or (n[1] > .62 and y > base + H * .28)) else F['peakrock']
-        polar_field(peaks, (px, pz), 0.0, Rb, 10 if fine else 5, 26 if fine else 12, ph, pf, smooth=False, rpow=1.0)
+        def rh(r, t, x, z, k=k, d=d, w=w):
+            across = abs(r - d) / w
+            y = base + crest(t, k) * max(0.0, 1 - across ** 1.6)
+            return y + (noise2(x, z, .09, 80 + k) - .5) * 3.0 * (1 - across)
+
+        def rf(x, y, z, n, k=k, rockk=rockk, snowk=snowk):
+            c = crest(math.atan2(z, x), k)
+            hgt = y - base
+            return snowk if (hgt > c * .66 or (n[1] > .72 and hgt > c * .42)) else rockk
+        polar_field(peaks, (0, 0), d - w, d + w, 7 if fine else 3, 120 if fine else 36, rh, rf, smooth=False, rpow=1.0,
+                    theta0=sun_a + a0, theta1=sun_a + a1)
 
     # ---- the cloud sea, and towers of cumulus far off ----
     clouds = Geo()
