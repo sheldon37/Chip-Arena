@@ -1,0 +1,23 @@
+fileFormatVersion: 2
+guid: 3df68127f9b24ba3aaa425dd695773e4
+AudioImporter:
+  externalObjects: {}
+  serializedVersion: 7
+  defaultSettings:
+    serializedVersion: 2
+    loadType: 1
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 1
+    quality: 1
+    conversionMode: 0
+    preloadAudioData: 1
+  platformSettingOverrides: {}
+  forceToMono: 0
+  normalize: 0
+  loadInBackground: 0
+  ambisonic: 0
+  3D: 1
+  userData: Obey - owner supplied 2026-11-20 (DEV Architect of Reality intro; song 5.17-20.92 s, faded 15.30-15.70)
+  assetBundleName:
+  assetBundleVariant:

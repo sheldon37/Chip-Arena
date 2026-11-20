@@ -836,6 +836,12 @@
       "source": "Owner-supplied NOCTIEL song committed on shared Unity branch d20ef450"
     },
     {
+      "path": "Assets/ChipArena/Resources/Audio/music/architect-obey.wav",
+      "bytes": 3024044,
+      "gitBlob": "0c03f6f9919105ca22489c562d76fb554af0a1b1",
+      "source": "Owner-supplied song Obey (Suno), trimmed for the DEV Architect of Reality intro on claude/intro-dev-architect"
+    },
+    {
       "path": "Assets/StreamingAssets/BootIntro.mp4",
       "bytes": 5266834,
       "gitBlob": "9e8e99337ab9a65270cf7e1a01c999a3e39a6212",
