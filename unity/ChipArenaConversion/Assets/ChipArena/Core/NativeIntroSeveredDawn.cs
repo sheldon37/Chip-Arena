@@ -86,9 +86,9 @@ namespace ChipArena.UnityConversion
                  .Key(RibbonAt,V(.26f,1.12f,.28f),V(.88f,.15f,.45f))
                  .Key(RibbonHit,V(-.04f,1.14f,.5f),V(-.05f,.1f,1)).Pass()
                  .Key(RibbonHit+.3f,V(-.36f,1.1f,.24f),V(-.9f,.12f,-.4f))
-                 .Key(StanceAt+.25f,V(-.1f,1.18f,.3f),V(.05f,.98f,-.12f)).Pass()
-                 .Key(StanceAt+.6f,V(-.08f,1.2f,.3f),V(.05f,.98f,-.15f))
-                 .Key(Total,V(-.08f,1.2f,.3f),V(.05f,.98f,-.15f));
+                 .Key(StanceAt+.25f,V(-.2f,1.1f,.3f),V(-.04f,.98f,-.12f)).Pass()
+                 .Key(StanceAt+.6f,V(-.21f,1.1f,.3f),V(-.05f,.98f,-.15f))
+                 .Key(Total,V(-.21f,1.1f,.3f),V(-.05f,.98f,-.15f));// (beside the face: before it, the hilt hid the visor under the name)
             // The camera: down the shaft from the vault; close on the hand at the grip; the visor as the light reaches it; the cut seen wide
             // from the side (begun and ended, nothing between), slowed; round the severed light; the backhand from the front; the hero.
             Rig.Crane(0,V(.5f,7.6f,3.2f),V(.95f,1.5f,3.65f),0,V(0,4.2f,.6f),V(0,1.15f,.2f),46,40).Ease(NativeIntroEase.InOut)

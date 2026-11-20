@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>How hot the quarry's cracks and seam run at `t` (the glow sub-mesh's level: the seam, the faults and the light under the disc).</summary>
         private float Heat(float t)=>(.55f+.15f*(float)Math.Sin(t*1.7f)*(Context.Reduced?0:1)+2.6f*NativeEntranceMath.Pulse(t,SlamAt,.06f,.9f)+.9f*NativeEntranceMath.Ramp(t,SlamAt,SlamAt+.6f))
-            *(1-.45f*NativeEntranceMath.Ramp(t,RiseAt+.2f,CardAt+.2f));// (cooling under the name: the seam ran as a bright bar through its band)
+            *(1-.72f*NativeEntranceMath.Ramp(t,RiseAt+.2f,CardAt));// (cooling under the name: the seam ran as a bright bar through its band)
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)

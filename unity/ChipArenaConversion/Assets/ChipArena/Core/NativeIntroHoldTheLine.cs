@@ -127,7 +127,9 @@ namespace ChipArena.UnityConversion
 
         // ---- the body: keyed (no match clips), the right arm solved onto the shield's way ----
         private readonly NativeIntroWield Shield=new NativeIntroWield();
-        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)=>Wield(Shield,t,pose,root,rotation,false);
+        // (carried and at rest the shield's face hangs below the fist; raised against the barrage and in the bash it rides above it, over the head)
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)=>
+            Wield(Shield,t,pose,root,rotation,false,0,(1-NativeEntranceMath.Smooth((t-PlantAt+.35f)/.35f))+NativeEntranceMath.Smooth((t-StanceAt+.2f)/.45f));
 
         // ---- the barrage ----
         /// <summary>Bolt `i`'s head at `t` (false: not in flight): launched Flight s before its hit, on an arc from the ridge to the shield.</summary>

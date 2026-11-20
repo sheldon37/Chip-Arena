@@ -153,7 +153,25 @@ namespace ChipArena.UnityConversion
 
         // ---- the hands as drawn (handed in before Props, Set and Effects; a checker never hands them in) ----
         private NativeIntroHand handR,handL;private float handsAt=-100;
-        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;Record(t,0,right);Record(t,1,left);}
+        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;Learn(t,0,right);Learn(t,1,left);Record(t,0,right);Record(t,1,left);}
+        // ---- the blade's axis in the drawn hand's frame ----
+        // The Standard blades are drawn along the keyed wrist's +z; the blade classes' (the Katana's, the Fangs') on their palm grip, along
+        // another axis (the first keyed capture drew Still Rain's cut pointing up). It is learnt from the blade the runtime hands in
+        // (NativeBladeIntro.Held) against the drawn hand's frame, once, and the wield aims that axis; +z until then and in a checker.
+        private Vector3 axisR=Vector3.UnitZ,axisL=Vector3.UnitZ;private bool learntR,learntL;
+        private void Learn(float t,int hand,in NativeIntroHand h)
+        {
+            if((hand==0?learntR:learntL)||!h.Model||!Held(t,hand,out var r,out var p))return;var d=p-r;if(d.LengthSquared()<1e-4f||!float.IsFinite(h.Turn.W))return;
+            var a=Vector3.Normalize(Vector3.Transform(Vector3.Normalize(d),Quaternion.Inverse(h.Turn)));if(hand==0){axisR=a;learntR=true;}else{axisL=a;learntL=true;}
+        }
+        /// <summary>The wrist's turn that lays the blade (its axis in the hand's frame) along `z`, the hand's +y as near `y` as it allows.</summary>
+        private Quaternion Aim(Vector3 x,Vector3 y,Vector3 z,bool left)
+        {
+            var turn=CapturedRig.Basis(x,y,z);var a=left?axisL:axisR;if(a.Z>.9999f)return turn;
+            // (the turn taking +z onto the blade's axis, undone under the aimed frame)
+            var axis=Vector3.Cross(Vector3.UnitZ,a);float s=axis.Length();var q=s<1e-5f?Quaternion.CreateFromAxisAngle(Vector3.UnitX,(float)Math.PI):Quaternion.CreateFromAxisAngle(axis/s,(float)Math.Atan2(s,a.Z));
+            return Quaternion.Normalize(turn*Quaternion.Inverse(q));
+        }
         /// <summary>The drawn wrist (0 the right, 1 the left) this frame: false when none was handed in for `t` (then the keyed anchor).</summary>
         protected bool Hand(float t,int hand,out Vector3 at)
         {
@@ -187,7 +205,7 @@ namespace ChipArena.UnityConversion
             if(t<drawnClock-1e-4f)drawnCount[0]=drawnCount[1]=0;// (a clock that runs back, a replay, starts the trails over)
             drawnClock=t;
             if(!h.Model||!float.IsFinite(h.At.X)||!float.IsFinite(h.Turn.W)){drawnCount[hand]=0;return;}
-            float len=TipLength(hand==1);var axis=Vector3.Transform(Vector3.UnitZ,h.Turn);var root=h.At+axis*Math.Min(.18f,len*.2f);var tip=h.At+axis*len;
+            float len=TipLength(hand==1);var axis=Vector3.Transform(hand==1?axisL:axisR,h.Turn);var root=h.At+axis*Math.Min(.18f,len*.2f);var tip=h.At+axis*len;
             int c=drawnCount[hand],k=drawnHead[hand],o=hand*DrawnMax;
             if(c>0&&t-drawnAt[o+k]<1/240f){drawnRoot[o+k]=root;drawnTip[o+k]=tip;return;}
             k=(k+1)%DrawnMax;drawnRoot[o+k]=root;drawnTip[o+k]=tip;drawnAt[o+k]=t;drawnHead[hand]=k;drawnCount[hand]=Math.Min(DrawnMax,c+1);
@@ -266,28 +284,29 @@ namespace ChipArena.UnityConversion
         /// lift off the floor), the blade along the hand's +z, the hand rolled toward the shoulder (the forearm's way) so the wrist stays
         /// natural. `offset` slides the hand along the blade (a second hand lower on a two-handed grip).
         /// </summary>
-        protected static void Wield(NativeIntroWield path,float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float offset=0)
+        protected void Wield(NativeIntroWield path,float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float offset=0,float hang=0)
         {
+            // (`hang`: how far the hand's +y leans down instead of toward the shoulder: a shield's face hangs below the fist at rest)
             path.At(t,out var grip,out var blade,out float weight);if(weight<=.001f)return;
             var f=Vector3.Transform(Vector3.UnitZ,rotation);float yaw=(float)Math.Atan2(f.X,f.Z);
             var origin=new Vector3(root.X,root.Y-.88f+NativeEntranceStage.FloorY,root.Z);
             var z=NativeEntranceMath.RotateY(blade,yaw);var at=origin+NativeEntranceMath.RotateY(grip,yaw)+z*offset;
             pose.World();var shoulder=NativeEntrancePose.Point(pose,root,rotation,left?CapturedRig.LArm:CapturedRig.RArm,Vector3.Zero);
-            var y=shoulder-at;y-=z*Vector3.Dot(y,z);
+            var y=shoulder-at;if(hang>0)y=Vector3.Lerp(y.LengthSquared()>1e-8f?Vector3.Normalize(y):Vector3.UnitY,-Vector3.UnitY,hang);y-=z*Vector3.Dot(y,z);
             if(y.LengthSquared()<1e-4f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-4f)y=Vector3.UnitZ;}
             y=Vector3.Normalize(y);var x=Vector3.Cross(y,z);
-            NativeEntrancePose.Reach(pose,root,rotation,left,at,CapturedRig.Basis(x,y,z),weight);
+            NativeEntrancePose.Reach(pose,root,rotation,left,at,Aim(x,y,z,left),weight);
         }
 
         /// <summary>Solves arm `left` so its wrist is at `at` (world, source frame) with the blade along `blade`, rolled toward the shoulder.</summary>
-        protected static void WieldAt(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 blade,float weight)
+        protected void WieldAt(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 blade,float weight)
         {
             if(weight<=.001f)return;var z=Vector3.Normalize(blade);
             pose.World();var shoulder=NativeEntrancePose.Point(pose,root,rotation,left?CapturedRig.LArm:CapturedRig.RArm,Vector3.Zero);
             var y=shoulder-at;y-=z*Vector3.Dot(y,z);
             if(y.LengthSquared()<1e-4f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-4f)y=Vector3.UnitZ;}
             y=Vector3.Normalize(y);var x=Vector3.Cross(y,z);
-            NativeEntrancePose.Reach(pose,root,rotation,left,at,CapturedRig.Basis(x,y,z),weight);
+            NativeEntrancePose.Reach(pose,root,rotation,left,at,Aim(x,y,z,left),weight);
         }
 
         // ---- this frame's camera (the rig at `t`, as Camera draws it), for streaks laid onto their head's camera plane ----
