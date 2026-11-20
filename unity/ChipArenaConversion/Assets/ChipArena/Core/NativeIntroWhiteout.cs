@@ -219,7 +219,7 @@ namespace ChipArena.UnityConversion
         }
         private static readonly NativeIntroCue[] cues=
         {
-            new NativeIntroCue(0,"intro2.whiteout.storm","field.storm","dash",.5f,.8f),
+            new NativeIntroCue(0,"intro2.whiteout.storm","structure.whoosh","dash",.55f,.7f),
             new NativeIntroCue(VisorAt,"intro2.whiteout.visor","ui.install.surge","install",.5f),
             new NativeIntroCue(HeatAt,"intro2.whiteout.heat","chip.delayed.charge","electric-hook",.5f),
             new NativeIntroCue(CrackAt,"intro2.whiteout.crack","status.frost-shatter","stone",.85f),

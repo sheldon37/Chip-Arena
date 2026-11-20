@@ -91,7 +91,8 @@ internal static class IntroGenericChecks
             Check(c.At>=last&&c.At>=0&&c.At<=s.Length,n+": cue "+c.Key+" is in order inside the intro");last=c.At;
             Check(c.Key!=null&&c.Key.StartsWith("intro2."+slug+"."),n+": cue "+c.Key+" is named for its intro");
             Check(c.Alt==null||keys.Contains(c.Alt),n+": cue "+c.Key+"'s stand-in "+c.Alt+" is an effects-bank key");
-            Check(c.Clip!=null&&(File.Exists(Path.Combine(clips,c.Clip+".mp3"))||File.Exists(Path.Combine(clips,c.Clip+".wav"))||File.Exists(Path.Combine(clips,c.Clip+".ogg"))),n+": cue "+c.Key+"'s built-in clip "+c.Clip+" ships");
+            Check(c.Clip==null||File.Exists(Path.Combine(clips,c.Clip+".mp3"))||File.Exists(Path.Combine(clips,c.Clip+".wav"))||File.Exists(Path.Combine(clips,c.Clip+".ogg")),n+": cue "+c.Key+"'s built-in clip "+c.Clip+" ships");
+            if(c.Alt==null&&c.Clip==null)Check(c.Key=="intro2.flashbulb.cheer",n+": only the crowd's cheer waits silent for its generated take ("+c.Key+")");
             Check(c.Gain>0&&c.Gain<=1.2f&&c.Rate>.4f&&c.Rate<2,n+": cue "+c.Key+" has a sane gain and rate");
         }
         Check(Array.Exists(cues,c=>Math.Abs(c.At-s.IntroNameAt)<.02f),n+" has a cue on its name beat");

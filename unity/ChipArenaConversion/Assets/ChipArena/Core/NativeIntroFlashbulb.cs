@@ -217,19 +217,19 @@ namespace ChipArena.UnityConversion
         {
             var l=new System.Collections.Generic.List<NativeIntroCue>
             {
-                new NativeIntroCue(0,"intro2.flashbulb.crowd","ui.round-won","win",.25f),
+                new NativeIntroCue(DoorsAt+.05f,"intro2.flashbulb.crowd","ui.round-won","win",.35f),
                 new NativeIntroCue(BulbsAt,"intro2.flashbulb.bulbs","ui.toggle","ui",.5f),
                 new NativeIntroCue(DoorsAt,"intro2.flashbulb.doors","structure.creak","wood",.55f),
-                new NativeIntroCue(WalkAt+.1f,"intro2.flashbulb.cheer","ui.round-won","win",.45f),
-                new NativeIntroCue(Photos[0],"intro2.flashbulb.photo","blast.transient","ui",.85f),
-                new NativeIntroCue(Photos[1],"intro2.flashbulb.photo","blast.transient","ui",.85f,1.04f),
-                new NativeIntroCue(Photos[2],"intro2.flashbulb.photo","blast.transient","ui",.85f,.96f),
+                new NativeIntroCue(WalkAt+.1f,"intro2.flashbulb.cheer",null,null,.45f),
+                new NativeIntroCue(Photos[0],"intro2.flashbulb.photo","gun.dryfire","reload-end",.85f),
+                new NativeIntroCue(Photos[1],"intro2.flashbulb.photo","gun.dryfire","reload-end",.85f,1.04f),
+                new NativeIntroCue(Photos[2],"intro2.flashbulb.photo","gun.dryfire","reload-end",.85f,.96f),
                 new NativeIntroCue(StormAt,"intro2.flashbulb.burst","gun.dryfire","reload-end",.7f),
                 new NativeIntroCue(StormAt+.05f,"intro2.flashbulb.confetti","death.style.confetti","win",.5f),
                 new NativeIntroCue(CardAt,"intro2.flashbulb.name","chip.critical","install",.75f),
             };
             // A shutter for every third photographer's flash through the walk (the rest are the crowd's bed).
-            for(int i=0;i<FlashT.Length;i+=3)if(FlashT[i]<StormAt)l.Add(new NativeIntroCue(FlashT[i],"intro2.flashbulb.shutter","gun.dryfire","reload-end",.35f,.9f+.2f*NativeEntranceMath.Rand(25950,i)));
+            for(int i=0;i<FlashT.Length;i+=FlashT[i]<StormAt?3:2)l.Add(new NativeIntroCue(FlashT[i],"intro2.flashbulb.shutter","gun.dryfire","reload-end",.35f,.9f+.2f*NativeEntranceMath.Rand(25950,i)));
             l.Sort((x,y)=>x.At.CompareTo(y.At));return l.ToArray();
         }
         public override NativeIntroCue[] Cues=>cues;
