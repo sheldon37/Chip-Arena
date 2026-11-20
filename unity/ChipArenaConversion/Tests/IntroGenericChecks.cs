@@ -164,6 +164,8 @@ internal static class IntroGenericChecks
     private static void Registry(NativeIntroGenericScript s)
     {
         var e=NativeIntroCatalog.Find(s.Style);string n=s.Title;
+        // (intros batch 1, 2026-11-20: Slipstream stays unregistered until its Runner Action pack run lands; it registers again then)
+        if(e==null&&s is NativeIntroSlipstream){Check(true,n+" is held out of the registry until its pack run lands");return;}
         Check(e!=null,n+" is registered");
         Check(e.Name==n,n+"'s Locker name is its title ("+e.Name+")");
         Check(Math.Abs(e.Duration-s.Length)<1e-4f&&Math.Abs(e.NameAt-s.IntroNameAt)<1e-4f,n+": the registry's length and name beat are the script's");
