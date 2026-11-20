@@ -26,6 +26,7 @@ import generic_kit as kit  # noqa: E402
 import generic_cloudbreak  # noqa: E402
 
 BANK = 'ChipArenaIntroGeneric'
+SMOOTH_MAX = .35
 SETS = {'cloudbreak': generic_cloudbreak}
 for _name in ('whiteout', 'slipstream', 'waygate', 'flashbulb'):
     try:
@@ -52,6 +53,10 @@ def main():
         for key in keys:
             mod = SETS[key]
             pieces = [p for p in mod.build(T) if p.g.faces]
+            # No finish glossier than SMOOTH_MAX: the stage shader reflects the arena's own probe, so a glossy intro set would mirror
+            # whatever map the match is on (Cyber City's magenta neon on water and ice; I5's finding in the first captures).
+            for f in sk.FINS:
+                f.smooth = min(f.smooth, SMOOTH_MAX)
             aos = [None] * len(pieces)
             idx = [i for i, p in enumerate(pieces) if p.ao]
             if idx and not args.no_ao:
