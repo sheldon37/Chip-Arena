@@ -45,6 +45,13 @@ namespace ChipArena.UnityConversion
             Start=Stance(.13f,.05f,.08f,-.14f,-.06f,-.36f);
             BuildKeys();BuildKit();BuildCamera();
         }
+        /// <summary>The rig's camera, jolted by the strike and the drop (a short decaying shake; none in Reduced effects).</summary>
+        public override void Camera(float age,out NativeEntranceView view)
+        {
+            base.Camera(age,out view);if(Context.Reduced)return;float t=Clock(Math.Min(age,SettleAt));
+            float s=NativeEntranceMath.Pulse(t,Strike,.004f,.12f)*.035f+NativeEntranceMath.Pulse(t,Drop,.004f,.16f)*.05f+NativeEntranceMath.Pulse(t,Body,.004f,.1f)*.012f;if(s<1e-4f)return;
+            var j=new Vector3((float)Math.Sin(t*71)*s,(float)Math.Sin(t*83+1)*s,(float)Math.Sin(t*59+2)*s);view.Eye+=j;view.Look+=j*.6f;
+        }
         public override string SetBank=>BankId;
         public override string Music=>SongId;
         public override NativeIntroCue[] Cues=>CueSheet;
@@ -397,7 +404,7 @@ namespace ChipArena.UnityConversion
         private NativeEntranceView view;
         /// <summary>The camera this frame (the runtime's own: the rig at the presentation clock, held after SettleAt), for laying the
         /// long streaks onto their heads' camera planes.</summary>
-        private void ViewAt(float t){Rig.Evaluate(this,Math.Min(t,SettleAt),Context.Reduced,out view);if(view.Eye.Y<NativeEntranceStage.FloorY+.06f)view.Eye.Y=NativeEntranceStage.FloorY+.06f;}
+        private void ViewAt(float t)=>Camera(t,out view);
         /// <summary>A line of light from `tail` to `head` (its head the bright end), laid onto the head's camera plane when over 1 m.</summary>
         private void Line(INativeEntranceFx fx,Vector3 head,Vector3 tail,Vector3 color,float width,float taper,int seed)
         {
@@ -440,7 +447,31 @@ namespace ChipArena.UnityConversion
             if(t>=Gather&&t<Drop+.1f)Trails(fx,t,thin);
             if(t>=Drop-.02f)DropFx(fx,t,thin,floor);
             if(t>=CardAt)NameFx(fx,t,thin,right,up);
+            if(t>=Body-.05f)Aura(fx,t,thin,right,up);
             if(t>=Drop)NativeIntroVoid.Motes(fx,t,q,Gold*.8f,4300);
+        }
+        // The architect's own light: glyph-light circling the body while it floats (it alone moves through the stillness), and
+        // after the drop a soft gold glow at the back of the head and a cool one at the feet.
+        private void Aura(INativeEntranceFx fx,float t,float thin,Vector3 right,Vector3 up)
+        {
+            var chest=Anchor(NativeEntranceAnchor.Chest,t);float on=NativeEntranceMath.Ramp(t,Body,Body+.6f)*(1-NativeEntranceMath.Ramp(t,Drop-.05f,Drop+.25f));
+            if(on>.01f)
+            {
+                int n=(int)(12*thin+.5f);
+                for(int i=0;i<n;i++)
+                {
+                    int seed=11000+i*7;float a=R(seed,1)*6.2831853f+t*(.55f+.3f*R(seed,2))*(i%2==0?1:-1),r=.55f+.35f*R(seed,3),h=-.95f+1.6f*R(seed,4)+.08f*(float)Math.Sin(t*1.3f+i);
+                    var p=new Vector3(chest.X+(float)Math.Sin(a)*r,chest.Y+h,chest.Z+(float)Math.Cos(a)*r);float lvl=on*(.5f+.5f*(float)Math.Sin(t*1.7f+i*2.1f));
+                    if(i%3==0)fx.Glow(p,Ice*(1.2f*lvl),0,.04f,0,0,seed);else DrawGlyph(fx,(int)(R(seed,5)*16),p,.07f,GlyphTint*(1.3f*lvl),right,up,seed);
+                }
+            }
+            float after=NativeEntranceMath.Ramp(t,Drop+.05f,Drop+.6f)*(1-NativeEntranceMath.Ramp(t,FadeFrom,Total));
+            if(after>.01f)
+            {
+                var head=Anchor(NativeEntranceAnchor.Head,t);var f=ForwardOf(t);fx.Glow(head-f*.32f+new Vector3(0,.12f,0),Gold*(.55f*after),0,1.1f,0,0,11200);
+                var feet=(Anchor(NativeEntranceAnchor.LeftFoot,t)+Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;fx.Glow(new Vector3(feet.X,NativeEntranceStage.FloorY+.05f,feet.Z),Cyan*(.5f*after),0,1.4f,0,0,11201);
+            }
+            else if(t>=Still&&t<Drop)fx.Glow(new Vector3(0,GridY+.03f,0),Cyan*(.35f*NativeEntranceMath.Ramp(t,Still,Still+1)),0,2.4f,0,0,11202);
         }
         // The strike: a column of light out of the dark onto the dais; sparks thrown over the deck; a thread of light until the break.
         private void StrikeFx(INativeEntranceFx fx,float t,float q,float thin)
@@ -633,7 +664,7 @@ namespace ChipArena.UnityConversion
         // =====================================================================================================================
         /// <summary>Where the name hangs: above and behind the architect, facing the hero camera; its letters' height.</summary>
         public static readonly Vector3 NameCentre=new Vector3(0,4.3f,-3.6f);
-        public const float LetterHeight=.62f,NameMaxWidth=9.5f;
+        public const float LetterHeight=.8f,NameMaxWidth=11f;
         /// <summary>When letter `i` of `n` starts and how long one takes to write.</summary>
         public const float LetterStep=.05f,LetterTime=.24f,NameStart=CardAt+.04f;
         public static float LetterAt(int i)=>NameStart+i*LetterStep;
@@ -689,7 +720,7 @@ namespace ChipArena.UnityConversion
         }
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.084f;
+            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.084f;card.Y=.87f;
             // EffectA: how far the build has run (s since the name beat); EffectB: the distortion left (1 at the beat .. 0 settled)
             card.EffectA=Math.Max(0,t-CardAt);card.EffectB=(float)Math.Exp(-Math.Max(0,t-CardAt-.3f)*2.2f);card.Exit=NativeEntranceMath.Ramp(t,FadeFrom,Total-.05f);
         }

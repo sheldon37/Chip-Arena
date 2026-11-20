@@ -1,43 +1,70 @@
 # DEV · Architect of Reality (the owner's dev intro)
 
 Owner, 2026-11-20: "a new dev intro for myself. The dev intro id like to be even better, with name effects and everything.
-Essentially something 'bad-ass, godlike' really show the authority of the dev." Theme chosen: **Architect of reality**: the arena
-dissolves into code and light, and the dev rebuilds it around them; the world obeys. The name shown is the live account display
-name, with its own name effects. Presentation only (no rule, wire, save or timing change beyond the intro's own length).
+Essentially something 'bad-ass, godlike' really show the authority of the dev." The theme they chose: **Architect of
+reality**: the arena dissolves into code and light and the dev rebuilds it around them; the world obeys. The name shown is the
+live account display name, with its own name effects. Then the owner chose its music, "Obey", their own track: "maybe start
+around 5-6 secs. It drops at about 18 seconds (allow the intro to be slightly longer if this is normally a constraint)".
 
-- **Id:** `dev-architect`. **Shown as:** "DEV · Architect of Reality". **Gate:** a developer account, as the Sheldon Intro.
-- **Length:** 9.5 s. **Name beat:** 7.5 s.
-- **Code:** Core `NativeDevArchitectIntro.cs` (the script: pose, camera, light, set, effects, name strokes, cues), Core
-  `NativeArchitectGlyphs.cs` (the stroke font the name is written in), the set bank script `tools/stages/intro_dev_architect.py`
-  (scripted Blender into the local bank `ChipArenaIntroDev.bytes`, never committed).
+- **Id:** `dev-architect` (registered `NativeIntroEntry.Dev("architect", …)`). **Shown as:** "DEV · Architect of Reality".
+  **Who:** live DEV access only (the framework's Dev kind).
+- **Length:** 15.7 s. **Name beat:** 12.63 s, the song's drop. Presentation only: the match reads the registry's length.
+- **Code:** Core `NativeIntroArchitect.cs` (the script and `NativeArchitectFont`, the stroke font the name is written in),
+  Runtime `NativeIntroArchitectCard.cs` (the name card's `"architect"` effect), the set's scripted Blender
+  `tools/stages/intro_dev_architect.py`, checks `Tests/IntroArchitectChecks.cs` (`--intro-architect`), sounds
+  `docs/audio/intros/dev-architect.md`.
+
+## The music
+`Resources/Audio/music/architect-obey.wav` is the owner's track from 5.17 s to 20.92 s (intro time = song time − 5.17 s),
+faded over 15.30–15.70 s, the cover art stripped. It is a WAV, not an MP3, so the drop lands on its sample: an MP3's encoder
+delay would put it 25–50 ms late on the picture. It plays as the intro's bed (`Music`), and while it plays the intro is drawn
+on its playback time, so the picture follows what is heard on every machine. Reduced effects keeps it. Imported compressed in
+memory and preloaded, at the track's own level (no normalise).
+
+The beats below are the song's transients as measured from the file (5 ms envelopes of the full band and of the sub under
+120 Hz); each visual beat is keyed to the same number.
 
 ## The story in beats
 
-The music beats the owner was given (0-3 s dissolve, glitch and drone; 3-6.5 s rebuild, rising; 6.5-7.5 s stillness, a near-silent
-sub-drop; 7.5-9.5 s the name, the big hit and a choir chord) are the intro's own.
+| Time (s) | Song | Beat | What happens | Camera |
+| --- | --- | --- | --- | --- |
+| 0.00 | the hit at 5.17 | The strike | A column of white light slams down out of the dark onto the old arena's dais (the entrance stage every intro used, modelled: steel deck plates with the 1 m grid, the hexagonal dais in six wedges, twelve neon pylons, the dark skyline). Light cracks race out over the deck. | Inside the pylon ring, wide, settling. |
+| 0.06–1.86 | the glitch stutters | The world glitches | On each stutter a band of the world is thrown sideways and snaps back, split in colour; the neon stutters. | 1.07: low across the cracking deck. |
+| 1.97 | the drop-out | It lets go | The arena comes apart from the centre out: every plate, wedge, pylon and tower lifts and turns; its stone falls in on itself to its wireframe of light; the wire breaks into code glyphs that rise and fade to light. Beneath: the void and its grid. | A crane up and back over the whole unmaking. |
+| 2.97 | a soft hit | A tear | A rift of light runs across the world. | (the crane) |
+| 3.505 | the sub returns | The presence | Before any body: a point of light, chest-high over the centre, its flare and halo; glyphs pour into it on spirals; the old world's shards orbit it. 3.74 and 3.90 pulse it. | Orbiting the light. |
+| 5.035 | the sub cuts | The draft | The body is traced in lines of light along its bones, pens running out from the chest; its outline shimmers. | Close on the forming figure. |
+| 6.38–6.66 | the sub ramps to a hit | The body | It condenses from the core out (chest, then limbs, hands and feet last), light pouring into every part; at 6.66 the visor ignites and a shell of light throws the shards back. It floats, head bowed. | Low, looking up at it. |
+| 8.03 | the sub cuts: the long riser | Stillness | It hangs perfectly still while pens of light draw the new world's plan in the void: the floor's seams from the centre out, eight monoliths' edges up out of the dark, their capstones, the axis to where the crown will hang. Time stops for the glyphs: they hang where they are. The arms open, slowly. | Far out: a tiny figure in the void. |
+| 10.50–11.69 | the riser, its five stutters | The gathering | The arms rise and the new world comes in from the void as wireframes, light streaming behind: the floor up out of the abyss, the monoliths in from the horizon, the crown down out of the sky, a step nearer on each stutter. | Low, looking up, pushing in. |
+| 11.82 | the pre-hit | The inhale | Everything holds just short of its place; the light draws in. | The visor, close. |
+| 12.27, 12.50 | the dips | The hands close | The world trembles; the hands close and draw in. | (the close-up) |
+| 12.62 | **the drop** | **The world obeys** | Everything snaps into place at once, solid: a floating platform of obsidian, eight monoliths with gold capstones, the crown 13 m up, far spires rising. Light floods out along every seam and climbs the monoliths. The architect lands on the dais. | The hero frame, low and wide. |
+| 12.67–13.6 | the drop's sustain | The name | The live name is written into the sky above and behind, in light, a letter at a time, each traced by its own pen, flashing as it closes, its colour split and a slice of it slipping, both settling; on the card the same letters decode and lock. | A slow push and boom down. |
+| 13.9–15.3 | | Authority | A light sweeps the name; the crown turns; gold embers rise from the seams. | Settling to still. |
+| 15.30–15.70 | the fade | | The song fades; the picture goes to black with it. | |
 
-| Time (s) | Beat | What happens | Camera |
-| --- | --- | --- | --- |
-| 0.00 | The arena | A stone and steel arena in the dark: a round floor of slabs in three rings, eight pylons, light in their seams. A low drone. | Low and wide at the floor's edge, creeping in. |
-| 0.40 | First tear | Reality glitches: bands of the world slip sideways and snap back; the lights stutter. | (held) |
-| 0.90-2.40 | Coming apart | The arena comes apart from the outside in: each slab and pylon segment lifts off, its stone falls away to its wireframe (light along every edge), the wire breaks into code glyphs, and the glyphs into light. Underneath: the void, a blueprint grid running to the horizon. | Crane up and back to a high wide frame: the whole arena unmade. |
-| 1.10 | The presence | Before any body: one point of white light at the centre, chest-high. The glyph streams bend toward it and wind round it. | (the crane) |
-| 2.40-3.00 | The body | The point opens into the body's outline in light lines; the body condenses from the core outwards, glyphs pouring into each limb. Floating 0.35 m over the grid, head bowed. | Close and low on the chest, pushing in. |
-| 3.00 | Ignition | The visor ignites. | (cut on it) |
-| 3.40 | "The floor" | The right hand sweeps out and presses down. Light lines race out over the grid drawing the floor's seams; the slabs fly up out of the void and lock into place in a wave from the feet outward, each lock a flash on its seams. | Low behind the shoulder, the floor racing away. |
-| 4.20 | "Rise" | Both hands lift, palms up. Light lines climb out of the floor drawing eight monoliths three times the pylons' height; their stone segments fly in from the dark on curved paths and lock bottom to top, round the ring. | Floor level, looking up: the tiny figure, the towering stone. |
-| 5.20 | "The crown" | The right arm rises overhead, the hand opens. A pen of light draws a vast ring high above; its arcs fall in from the sky and lock; the far architecture (spires on the horizon) lights in a wave. | Top-down through the ring, craning down. |
-| 5.90-6.40 | The descent | The arms fall to the sides; the architect sinks the last 0.35 m. The centre disc locks under the feet as they touch (6.40): every seam flares. | Craning down to a wide frontal frame. |
-| 6.50-7.50 | Stillness | Everything stops. The glyph motes hang frozen in the air; the seams breathe slowly; near silence. The head rises to look into the lens. | Locked off, symmetrical; a slow push from 7.0. |
-| 7.50 | The name | Two fingers rise. The frozen glyphs rush to a line above and behind the architect and the name is written there in light: each letter traced stroke by stroke by its own pen, flashing as it closes, its colour split and sliced, the distortion settling. The monoliths and the ring flare with it; a wave of light runs out across the floor. | Low and a little wide, the name above the head. |
-| 7.50-9.50 | Authority | The name settles into a steady, heavy light; glyph embers rise off it; the ring turns once and stops. | A slow push and boom down to the hero frame. |
+## The set (`ChipArenaIntroDev.bytes`, 5.0 MB; never committed)
+Every piece is modelled in its own frame by `tools/stages/intro_dev_architect.py` (the stage kit's geometry, finishes, baked
+occlusion and colour) and placed, flown, dissolved and built by Core (its layout numbers are the script's). Fine as `<prop>`,
+Low as `<prop>/low`; every solid that dissolves or is built has a `<prop>.wire` twin (its edges as glowing bars).
+- The old arena: `old-plate` (4 m), `old-dais-wedge`, `old-pylon`, `old-skyline-0..3` (six towers each).
+- The architect's: `dais` (a sixteen-rayed sigil, a keel hanging into the void), `tile-1..3` (8, 12 and 16 round it to
+  7.4 m, a seam of light between each), `mono-plinth` and `mono-obelisk` (eight, 9.3 m out, 12 m tall, gold capstones, veins
+  and columns of code), `crown-arc` (eight, an 11.5 m ring 13.2 m up), `spire-a..c` (far), `shard-a..d`, `grid` (the void's,
+  to 80 m).
+Build: `blender -b --factory-startup --python-exit-code 1 --python tools/stages/intro_dev_architect.py -- --out <dir> --bank <file>`.
+Without the bank the intro draws the dark lit void (`NativeIntroVoid`) under the same effects: never the old blocks.
 
-## The set (`ChipArenaIntroDev.bytes`)
-A modelled kit, every piece in its own frame; the script places them (one layout, in Core). Original work, scripted in Blender
-5.2.3 (`tools/stages/intro_dev_architect.py`), finished with the stage kit's baked occlusion and colour. Without the bank the
-intro draws a dark lit void: the grid, the light lines, the glyphs and the name, never the old blocks.
+## Budgets (the framework's dev limits) and Reduced effects
+Peak effects calls 460 High (at the presence) and 206 Low; set pieces 129 High (round the drop: the new world solid and its
+wires fading) and 80 Low (Low keeps wires on the obelisks only); 8 lights. Reduced effects: no camera shake (the handheld is
+dropped), every flash widened and dimmed (`Flash`), the tremble slow and small, the card's letters fade in without cycling.
 
 ## Checks
-`Tests/` managed checks (`--intro-dev`): determinism, the length and name beat, no per-frame allocation, the budgets at peak, Reduced
-effects (no flash above 3 Hz, no camera shake), the streak rule (no streak over 1 m left off its head's camera plane), the cues on
-their beats, and every glyph of the stroke font closed and inside its cell.
+`Tests/IntroArchitectChecks.cs` (`--intro-architect`), beside the framework's `IntroV2Checks`: the registry (15.7 s, the name at
+the drop), the song in the build, the beats in order, a cue on every beat and stutter (each with a key, an existing sound and a
+clip), every frame finite on High and Low with and without the bank, the peaks, every streak over 1 m on its head's camera
+plane, determinism under a scrub, no allocation per frame, Reduced effects (the same camera twice; no light or glow flash
+faster than 3 Hz), the body's build, and the stroke font (every letter, digit and mark inside its cell; accents fold; other
+scripts are left to the card; a 20-letter name fits).
