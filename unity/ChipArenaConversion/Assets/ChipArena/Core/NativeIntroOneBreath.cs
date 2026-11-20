@@ -59,8 +59,8 @@ namespace ChipArena.UnityConversion
             var flyFrom=muzzle+AimDir*.6f+Right*.5f+Up*.22f;var flyTo=Drone-AimDir*4.5f+Right*1.4f+Up*.6f;
             Rig.Spline(0,new[]{L(-3.6f,8.2f,-9.4f),L(-2.7f,5.2f,-6.2f),L(-1.5f,2.3f,-3.1f)},L(0,.9f,3),L(0,1.25f,9),46,40).Ease(NativeIntroEase.InOut).Focus(0,0,.25f)
                .Dolly(LensAt,scope+Right*.34f+AimDir*.42f+Up*.05f,scope+Right*.3f+AimDir*.36f+Up*.05f,scope,scope,20,18).Focus(0,0,.8f)
-               .Dolly(2.0f,Drone-AimDir*3.5f+Right*1.2f+Up*.3f,Drone-AimDir*3.6f+Right*1.1f+Up*.3f,scope,scope+new Vector3(0,.04f,0),3.6f,3.0f).Focus(0,0,.15f)
-               .Dolly(BreathFrom,L(-1.5f,1.2f,.18f),L(-1.36f,1.19f,.3f),L(-.08f,1.1f,.48f),L(-.06f,1.11f,.5f),30,27).Focus(0,0,.6f)
+               .Dolly(2.0f,Drone-AimDir*3.5f+Right*1.2f+Up*.3f,Drone-AimDir*3.6f+Right*1.1f+Up*.3f,scope+new Vector3(0,2.2f,0),scope+new Vector3(0,2.25f,0),3.6f,3.0f).Focus(0,0,.15f)
+               .Dolly(BreathFrom,L(-1.45f,1.22f,.62f),L(-1.32f,1.2f,.68f),L(-.05f,1.12f,.42f),L(-.04f,1.13f,.44f),30,27).Focus(0,0,.6f)
                .Dolly(ShotAt-.03f,muzzle+Right*1.25f+AimDir*1.4f+Up*.25f,muzzle+Right*1.2f+AimDir*1.32f+Up*.28f,muzzle-AimDir*.4f,muzzle-AimDir*.35f,40,38)
                .Dolly(ShotAt+.06f,flyFrom,flyTo,flyFrom+AimDir*6,Drone,48,30).Ease(NativeIntroEase.Linear)
                .Dolly(HitAt+.02f,L(-.95f,1.78f,-1.65f),L(-.9f,1.76f,-1.55f),Drone,Drone-new Vector3(0,9,0),7,9.5f).Focus(0,0,.1f)
@@ -196,8 +196,8 @@ namespace ChipArena.UnityConversion
             float lens=NativeEntranceMath.Bump(t,LensAt-.05f,2.0f);
             if(lens>.01f){fx.Glow(scope+bore*.12f,Red*(1.1f*lens),0,.025f,1,0,8600);for(int i=0;i<(q<.5f?3:6);i++){var p=scope+bore*.125f+Right*(NativeEntranceMath.Signed(8610,i)*.018f)+Up*(NativeEntranceMath.Signed(8611,i)*.018f-.02f*((t*.6f+i*.3f)%1f));fx.Glow(p,Ice*(.6f*lens),0,.006f,0,0,8610+i);}}
             float glint=Flash(t,GlintAt,.03f,.28f);if(glint>.02f)Star(fx,eye,fwd,scope+bore*.13f,NativeEntranceFx.Hex(0xe8f6ff,3.4f*glint),(t>2.0f&&t<BreathFrom?.75f:.25f)*glint+.05f,.6f,8650);
-            // the breath: a faint plume as the hold breaks (after the shot)
-            {var head=Anchor(NativeEntranceAnchor.Head,t);float b=NativeEntranceMath.Bump(t,ShotAt+.25f,ShotAt+1.1f);if(b>.02f)for(int i=0;i<3;i++){float u=(t*.8f+i/3f)%1f;fx.Smoke(head+bore*(.12f+.2f*u)+new Vector3(0,-.04f+.06f*u,0),new Vector3(.75f,.8f,.88f),.12f*b*(1-u),.06f+.12f*u,u,8700+i,floor);}}
+            // the breath: a faint plume from the visor's mouth (the head anchor is the skull's pivot: lifted) as the hold breaks after the shot
+            {var head=Anchor(NativeEntranceAnchor.Head,t);float b=NativeEntranceMath.Bump(t,ShotAt+.25f,ShotAt+1.1f);if(b>.02f)for(int i=0;i<3;i++){float u=(t*.8f+i/3f)%1f;fx.Smoke(head+new Vector3(0,ModelHeadLift-.1f+.06f*u,0)+bore*(.16f+.2f*u),new Vector3(.75f,.8f,.88f),.12f*b*(1-u),.06f+.12f*u,u,8700+i,floor);}}
             // the shot: the flash, the brake's side jets, the round and its vapour line across the avenue, the casing's steam
             if(t>=ShotAt-.01f&&t<ShotAt+.12f)Muzzle(fx,t,ShotAt,muzzle,bore,.24f,NativeEntranceFx.Hex(0xffd8a0),8800,q,.1f);
             for(int s=-1;s<=1;s+=2)NativeEntranceFx.Jet(fx,t,ShotAt,ShotAt+.08f,muzzle,Right*s+bore*.15f,90,2.4f,1.2f,.22f,NativeEntranceFx.Hex(0xa8b0c0),.4f,8820+s*10,q,floor,.15f,.2f);
@@ -257,7 +257,7 @@ namespace ChipArena.UnityConversion
         public override NativeIntroCue[] Cues=>cues;
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Type;card.Ink=NativeEntranceFx.Hex(0xe8f4ff);card.Glow=NativeEntranceFx.Hex(0x7fc8ff,1.1f);
+            base.Card(t,ref card);card.Y=.85f;card.Style=NativeIntroCardStyle.Type;card.Ink=NativeEntranceFx.Hex(0xe8f4ff);card.Glow=NativeEntranceFx.Hex(0x7fc8ff,1.1f);
         }
     }
 }

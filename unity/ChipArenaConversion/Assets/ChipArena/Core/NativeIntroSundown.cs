@@ -88,8 +88,10 @@ namespace ChipArena.UnityConversion
         {
             float w=NativeEntranceMath.Ramp(t,BlowFrom,BlowFrom+.3f)*(1-NativeEntranceMath.Ramp(t,BlowTo,Rest));if(w<=.001f)return;
             var fwd=Vector3.Transform(Vector3.UnitZ,rotation);var left=Vector3.Cross(Vector3.UnitY,fwd);pose.World();
-            var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);
-            var at=head+fwd*.2f-left*.1f-new Vector3(0,.12f,0);var barrel=Vector3.Normalize(Vector3.UnitY*1.2f+fwd*.25f+left*.35f);
+            // The head joint is the skull's pivot, ModelHeadLift below the eyes: the muzzle goes just in front of the mouth and a little to
+            // the right (the barrel upright beside the visor, never across it), so the wrist sits a barrel's length below, by the chest.
+            var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);var barrel=Vector3.Normalize(Vector3.UnitY+fwd*.08f+left*.12f);
+            var muzzle=head+new Vector3(0,ModelHeadLift-.1f,0)+fwd*.3f-left*.07f;var at=muzzle-barrel*NativeWeaponDressing.MuzzleZ("pistol");
             NativeEntrancePose.Reach(pose,root,rotation,false,at,Look(barrel,-fwd),w);
         }
         public override bool Clip(float t,out string clip,out float time)
@@ -303,7 +305,7 @@ namespace ChipArena.UnityConversion
         public override NativeIntroCue[] Cues=>cues;
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Wipe;card.Ink=NativeEntranceFx.Hex(0xfff2dc);card.Glow=NativeEntranceFx.Hex(0xffa850,1.2f);
+            base.Card(t,ref card);card.X=.26f;card.Y=.82f;card.Style=NativeIntroCardStyle.Wipe;card.Ink=NativeEntranceFx.Hex(0xfff2dc);card.Glow=NativeEntranceFx.Hex(0xffa850,1.2f);
         }
     }
 }

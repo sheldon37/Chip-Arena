@@ -11,6 +11,10 @@ background and designs, etc. With great camera work as well!" These four replace
 | Machine gun | **Brass Storm** (`intro2-weapon-machinegun`) | 7.8 s / 6.0 s | a freight depot's yard at night under sodium floodlights | Slam, sodium |
 | Bow | **Lightfall** (`intro2-weapon-bow`) | 8.0 s / 6.2 s | an old shrine in a moonlit forest clearing | Assemble, gold |
 
+Each name card sits in clean space beside or below the pilot (`card.X`/`Y`): Sundown low on the left over the street, One Breath on
+the parapet's brick band below the pilot, Brass Storm beside the pilot in the dark over the containers, Lightfall beside the pilot in
+the night sky under the moon.
+
 Presentation only: no wire, save or rule change. Each is a pure function of the presentation clock (scrub-safe), allocation-free
 per frame, and passes `Tests/IntroV2Checks.cs` (determinism, allocation, budgets, Reduced effects, the streak rule, cues).
 
@@ -58,7 +62,9 @@ palette.
 | 6.0 | The name (Wipe), the bell rocking at the boots; its last ring |
 
 Motion: the model plays `Armed-Walk-Slow`, `Armed-Unsheath-R-FromArmed-Hips`, `Armed-Idle-Pistol-R` and `Pistol-Attack-R1`; the keyed
-rig drives the stillness, the smoke blow and the rest. No gun spin: the framework has no held-weapon turn (I0, 2026-11-20).
+rig drives the stillness, the smoke blow and the rest. No gun spin: the framework has no held-weapon turn (I0, 2026-11-20). The blow
+reaches the gun hand so the muzzle stands just in front of the mouth, beside the visor: the head joint is the skull's pivot, so the
+mouth is placed from it lifted by `NativeRangedIntro.ModelHeadLift` (0.16 m to the eyes, as I5 measured).
 
 ## One Breath (rifle)
 

@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
                .Dolly(2.92f,L(-2.25f,.1f,.95f),L(-2.1f,.12f,.78f),L(-.5f,.62f,.3f),L(-.5f,.66f,.28f),52,50).Focus(0,0,.4f)
                .Dolly(3.45f,L(7.6f,2.4f,3.0f),L(7.3f,2.5f,3.4f),L(0,1.4f,4.5f),L(-.2f,1.35f,4.2f),56,54).Handheld(.6f).Focus(0,0,.15f)
                .Dolly(Dry+.04f,L(.25f,1.32f,9.7f),L(.45f,1.26f,4.5f),L(0,1.25f,0),L(0,1.22f,0),40,36).Ease(NativeIntroEase.Out).Focus(0,0,.35f)
-               .Dolly(Lower+.25f,L(1.58f,.62f,3.28f),L(1.26f,.66f,2.86f),L(0,1.08f,0),L(0,1.13f,0),35,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
+               .Dolly(Lower+.25f,L(1.58f,.62f,3.28f),L(1.26f,.66f,2.86f),L(-.23f,1.08f,.1f),L(-.23f,1.13f,.1f),35,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(Flood1-.02f,.55f).Black(Flood2,0);
             // The brass waterfall slowed; repaid as the burst runs on.
             Ramps.Ramp(2.52f,.3f,1.0f,1.3f);
@@ -240,8 +240,8 @@ namespace ChipArena.UnityConversion
                         int r=i*2+s;float ray=glow*haze*(.55f+.45f*NativeEntranceMath.Rand(6702,r));
                         if(ray>.02f)
                         {
-                            var far=h+Vector3.Normalize(h-Lamp)*(8+4*NativeEntranceMath.Rand(6704,r));var c=Work*(.26f*ray);float w=.07f+.08f*NativeEntranceMath.Rand(6705,r);
-                            if(Vector3.Dot(h-eye,fwd)>.4f)Line(fx,eye,fwd,h,far,c,w,.8f,0,6900+r);else Line(fx,eye,fwd,far,h,c,w,0,0,6900+r);
+                            var far=h+Vector3.Normalize(h-Lamp)*(8+4*NativeEntranceMath.Rand(6704,r));var c=Work*(.15f*ray);float w=.12f+.12f*NativeEntranceMath.Rand(6705,r);
+                            if(Vector3.Dot(h-eye,fwd)>.4f)Line(fx,eye,fwd,h,far,c,w,.85f,0,6900+r);else Line(fx,eye,fwd,far,h,c,w,.45f,0,6900+r);
                         }
                     }
                     holes++;
@@ -283,7 +283,7 @@ namespace ChipArena.UnityConversion
         public override NativeIntroCue[] Cues=>cues;
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Slam;card.Ink=NativeEntranceFx.Hex(0xfff0dc);card.Glow=NativeEntranceFx.Hex(0xff9a30,1.2f);
+            base.Card(t,ref card);card.X=.26f;card.Y=.36f;card.Style=NativeIntroCardStyle.Slam;card.Ink=NativeEntranceFx.Hex(0xfff0dc);card.Glow=NativeEntranceFx.Hex(0xff9a30,1.2f);
         }
     }
 }

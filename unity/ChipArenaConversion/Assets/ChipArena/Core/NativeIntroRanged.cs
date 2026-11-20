@@ -13,6 +13,9 @@ namespace ChipArena.UnityConversion
     public abstract class NativeRangedIntro:NativeIntroV2Script,INativeIntroHands
     {
         public const string Bank="ChipArenaIntroRanged";
+        /// <summary>The model's eyes above the head anchor (NativeEntranceAnchor.Head and the keyed head joint are the skull's pivot at
+        /// its base; I5 measured it in captures, integrator 2026-11-20): anything at the eyes or the mouth lifts by this along the head's up.</summary>
+        protected const float ModelHeadLift=.16f;
         public override string SetBank=>Bank;
         protected NativeRangedIntro(string id,float total,float cardAt,float hit,int accent):base(id,total,cardAt,hit,accent){}
 

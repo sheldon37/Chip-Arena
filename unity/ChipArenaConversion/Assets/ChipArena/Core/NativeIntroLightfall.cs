@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
                .Dolly(3.6f,L(3.3f,1.0f,-3.1f),L(3.1f,1.1f,-2.9f),sky,sky+new Vector3(0,-2,0),60,58).Focus(0,0,.05f)
                .Spline(RainFrom-.06f,new[]{L(5.6f,11.2f,-7.2f),L(5.0f,10.2f,-6.4f),L(4.5f,9.4f,-5.7f)},L(0,0,1.0f),L(0,.2f,.6f),56,54).Focus(0,0,.1f)
                .Dolly(LowerFrom,L(-2.25f,1.2f,1.2f),L(-2.05f,1.26f,1.42f),L(0,1.2f,.2f),L(0,1.22f,.2f),34,33).Focus(0,0,.45f)
-               .Dolly(LowerTo+.2f,L(1.62f,.56f,3.45f),L(1.25f,.62f,2.95f),L(0,1.18f,0),L(0,1.22f,0),34,30).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
+               .Dolly(LowerTo+.2f,L(1.62f,.56f,3.45f),L(1.25f,.62f,2.95f),L(.23f,1.26f,-.1f),L(.23f,1.3f,-.1f),34,30).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(.1f,0);
             Ramps.Ramp(3.12f,.3f,1.0f,1.25f);
         }
@@ -250,7 +250,7 @@ namespace ChipArena.UnityConversion
         public override NativeIntroCue[] Cues=>cues;
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Assemble;card.Ink=NativeEntranceFx.Hex(0xfff6e0);card.Glow=NativeEntranceFx.Hex(0xffd070,1.2f);
+            base.Card(t,ref card);card.X=.72f;card.Y=.56f;card.Style=NativeIntroCardStyle.Assemble;card.Ink=NativeEntranceFx.Hex(0xfff6e0);card.Glow=NativeEntranceFx.Hex(0xffd070,1.2f);
         }
     }
 }
