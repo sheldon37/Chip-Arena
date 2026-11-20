@@ -27,7 +27,7 @@ internal static class IntroGenericChecks
         foreach(var s in Make())
         {
             string n=s.Title;Check(names.Add(n)&&ids.Add(s.Style),n+" has its own name and id");
-            Registry(s);Timeline(s,root);Determinism(s);Budgets(s);Reduced(s);Streaks(s);
+            Registry(s);Timeline(s,root);Determinism(s);Budgets(s);Reduced(s);Streaks(s);Closing(s);
         }
         Check(NativeIntroCatalog.Find(NativeIntroCatalog.DefaultId)?.Make() is NativeIntroCloudbreak,"the new default is Cloudbreak");
         Console.WriteLine("PASS generic intros ("+count+" checks)");
@@ -104,6 +104,32 @@ internal static class IntroGenericChecks
         // The clock: ramps repay before the name, so the name lands on its age.
         Check(Math.Abs(s.Clock(s.IntroNameAt)-s.IntroNameAt)<.01f,n+": the clock is back on time at the name ("+s.Clock(s.IntroNameAt)+")");
         float prev=-1;for(float a=0;a<=s.Length+.5f;a+=1/120f){float t=s.Clock(a);Check(t>=prev-1e-5f,n+": the clock never runs back");prev=t;}
+    }
+
+    // The name in a band under the feet: from the card's arrival to the end, on a 16:9 screen, the whole figure (the crown .3 m over
+    // the head anchor, the skull's base; the soles .06 m under the foot anchors) sits above the kicker's top (the name centred at
+    // card.Y, .075 of the height tall in a box 1.2 times that, the kicker 24 px above it at 1080) and below the top letterbox.
+    private static void Closing(NativeIntroGenericScript s)
+    {
+        string n=s.Title;var card=default(NativeIntroCardState);s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};
+        float kicker=NativeIntroGenericScript.CardY-.6f*.075f-24f/1080f,worst=0,crown=1;
+        for(float age=s.IntroNameAt;age<=s.Length-.25f;age+=1/30f)
+        {
+            float t=s.Clock(age);s.Card(t,ref card);if(!card.Shown)continue;
+            Check(Math.Abs(card.Y-NativeIntroGenericScript.CardY)<1e-4f,n+": the name sits in the band under the feet");
+            s.Camera(age,out var v);
+            float Y(Vector3 p)
+            {
+                var f=Vector3.Normalize(v.Look-v.Eye);var r=Vector3.Normalize(Vector3.Cross(f,Vector3.UnitY));var u=Vector3.Cross(r,f);
+                var d=p-v.Eye;float z=Vector3.Dot(d,f);if(z<.05f)return 2;
+                return .5f-.5f*Vector3.Dot(d,u)/(z*(float)Math.Tan(v.Fov*Math.PI/360));
+            }
+            var head=s.Anchor(NativeEntranceAnchor.Head,t);
+            float soles=Math.Max(Y(s.Anchor(NativeEntranceAnchor.LeftFoot,t)-new Vector3(0,.06f,0)),Y(s.Anchor(NativeEntranceAnchor.RightFoot,t)-new Vector3(0,.06f,0)));
+            worst=Math.Max(worst,soles);crown=Math.Min(crown,Y(head+new Vector3(0,.3f,0)));
+        }
+        Check(worst<kicker-.02f,n+": the closing frame's soles ("+worst.ToString("0.000")+") sit above the name's band ("+kicker.ToString("0.000")+")");
+        Check(crown>.07f,n+": the closing frame keeps the crown ("+crown.ToString("0.000")+") under the top letterbox");
     }
 
     // ---- fakes ----

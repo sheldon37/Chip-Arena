@@ -20,6 +20,12 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 
 ## Shared rules
 - **Timing:** 7.4-8.2 s each, the name beat between 5.6 and 6.4 s; the pilot holds a hero pose under the name.
+- **The closing frame and the name:** the name sits in a band under the feet (`card.Y` 0.855 of the height, `CardY` in the base),
+  never on the legs: each closing shot shows the whole figure above it (the crown near 0.2 of the height, the soles near 0.71,
+  settled before the card arrives; `NativeIntroGenericScript.Closing`, a slow push in from a low front three-quarter). The
+  kicker and the line stay centred (the runtime centres them whatever `card.X` says), so no intro moves the name sideways.
+- **The head:** the framework's head anchor is the head joint's pivot at the skull's base; anything placed at the eyes or framed
+  by them lifts `HeadLift` (0.16 m) along the neck (Whiteout's visor glow and its eye-level insert).
 - **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
 - **Body:** keyed on the intro rig (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are) and drawn on the model;
   where a pack clip fits the beat the model plays it from the motion bank, retimed in code (`Clip`, docs/INTROS-V2.md section 2):
@@ -27,13 +33,15 @@ the story, the set, the camera's language, the beats, the motion, the effects an
   the camera's and the effects' anchors and the Classic body's pose. No new pack clips were needed.
 - **Sets:** each modelled in Blender 5.2.3 (headless) by its own script (`tools/intros/generic_<set>.py`, run by
   `tools/intros/generic_sets.py`, shapes from `generic_kit.py` on stagekit), two tiers (Fine, `/low`), into the local bank
-  `ChipArenaIntroGeneric.bytes` (6.4 MB; never committed). Every far piece (sky domes, peaks, clouds, canyon) lies inside the
+  `ChipArenaIntroGeneric.bytes` (6.7 MB; never committed). Nothing in them is a placeholder shape: the sun has a limb, the gate's
+  light is a vortex, the thaw is wet ground and slush, the aurora is rays. Every far piece (sky domes, peaks, clouds, canyon) lies inside the
   game's 200 m far plane. Without the bank each intro draws its own plain fallback (a floor far wider than its fog, a soft pool,
   a horizon glow) in its own light, never blocks.
 - **Effects:** `NativeVfxDraw` (glows, streaks, smoke); a streak longer than 1 m is laid on its head's camera plane
   (`NativeIntroGenericScript.Line`); no ring outlines (shockwaves are dust, snow and steam); nothing flashes faster than 3 Hz in
   Reduced effects and there is no camera shake there.
-- **Sound:** each intro has a cue timeline on its beats, every cue with an existing bank key and a built-in clip as stand-ins.
+- **Sound:** each intro has a cue timeline on its beats, every cue with an existing bank key and a built-in clip as stand-ins; a
+  stand-in key is always a filled one-shot (the bank will not play a loop key or an empty one as a cue, and the checks refuse both).
   The generated sounds are requested in `docs/audio/intros/I2.json` (49 keys, 82 takes, 128 s of generation), their contract
   lines in `Core/NativeIntroSoundKeys.cs`; the framework compiles every author's rows into the builder's queue.
 
@@ -61,7 +69,7 @@ snaps the windsocks out. It rises as the sun breaks the cloud line behind it and
 landing pad with a hazard-striped edge, a ring, three chevrons, a touchdown mark and eight edge lights; a red-and-white lattice relay
 mast with two dish antennas, platforms and a red beacon; a corrugated equipment hut with a door, a vent and a stack; a solar array on
 the slope; a yellow railing; two windsock poles (their socks turn in the wind); four far snow peaks; the cloud sea and far cumulus;
-the dawn sky and the sun.
+the dawn sky and the sun (its face white-hot at the core, darkening to gold at the limb, a halo glow round it).
 
 | Time | Beat | Camera |
 | --- | --- | --- |
@@ -75,7 +83,7 @@ the dawn sky and the sun.
 | 3.12 | Touchdown in a deep crouch, arms out low; grit and snow blown out over the pad, the windsocks snap out | (holds, slowing) |
 | 4.40 | It rises; the thrusters sputter three times and cool | a low orbit round it |
 | 5.05 | The sun breaks the cloud line: gold floods the pad; it looks to the sun | (orbit ends) |
-| 5.70 | **The name** (a wipe). The hero, chin up | low three-quarter from its left, the sun behind its shoulder |
+| 5.70 | **The name** (a wipe). The hero, chin up | the closing: the whole figure from a low three-quarter, the sun beside it, the name on the pad |
 | 6.45 | One last puff of the thrusters | (holds) |
 
 **Motion:** keyed: the dive (root pitched over, arms back), the flare, the tuck and the feet-first brake (the root on a Hermite path
@@ -91,18 +99,19 @@ round it in a dome of steam, the ground left dark and wet. The storm parts: the 
 **The set (polar outpost):** a snowfield with drifts and wind-carved sastrugi, far plains and ice ridges; a corrugated half-round hut
 with red end walls, a door, two lit windows, a caged lamp, snow on its back and drifts at its foot; a floodlight mast with four lamps
 aimed at the pilot; a red-and-white radio mast with guy wires and a beacon; fuel drums; flag-stake markers; a loaded sled; ice
-blocks; the aurora's three curtains; the night sky. The thaw is a wet disc the pulse grows.
+blocks; the aurora's three curtains of rays (ragged tops, each fading where its light ends); the night sky. The thaw the pulse grows
+is melted ground: dark and wet at the heart, grey slush, a low rim of packed snow fading into the field.
 
 | Time | Beat | Camera |
 | --- | --- | --- |
 | 0.00 | White: snow driving across, backlit; a dim kneeling shape emerging from the fog, frosted white | telephoto, low, one slow push into the storm |
 | 1.40 | Its visor lights | (the push goes on) |
-| 2.00 | Heat lines glow up its suit, steam rises | close insert on the shoulder and visor |
+| 2.00 | Heat lines glow up its suit, steam rises | close insert on the shoulder and visor (framed by the eyes) |
 | 2.80 | The frost cracks and falls away; a burst of steam; the head lifts | (holds) |
 | 3.40 | It rises from the kneel, steam pouring off | a cut wider, tilting up with it |
 | 4.50 | It clenches a fist: the heat pulse (slow motion 0.42x for 0.3 s) | low and close |
 | 5.00 | The storm parts: the fog draws back, the outpost, the masts, the aurora | pulling out and up |
-| 6.20 | **The name** (assembled from shards). The hero in the thawed ground, steam curling | three-quarter hero |
+| 6.20 | **The name** (assembled from shards). The hero in the thawed ground, steam curling | the closing from its right: the hut behind it, the radio mast beside it |
 
 **Motion:** keyed: the kneel (the left foot planted forward, the right knee down, the head bowed), the shudder, the rise through the
 knees with a step, the fist drawn in and the arms thrown open for the pulse, the hero hold. The frost coat is a pale ghost of the
@@ -128,7 +137,7 @@ middle car the pilot rides, a nose at the tail), its windows lit.
 | 3.30 | It lands in a slide: sparks off the boots and the dragging hand, a scorch on the floor, the train's wake | low on the platform as it slides at the lens |
 | 4.30 | It stops on the mark and stands; a glance after the train (4.45); the tail lights fade into the tunnel | a low orbit |
 | 5.00 | The station chime | (holds) |
-| 5.60 | **The name** (typed). The departure board clatters over | three-quarter hero, the board and the empty track behind |
+| 5.60 | **The name** (typed). The departure board clatters over | the closing from its right, the hall receding behind it |
 
 **Motion:** keyed: the crouch on the moving roof (the feet planted in the car's frame), the leap, the slide (the feet moving with
 it), the glance and the hero hold; the run along the roof is the motion bank's `Unarmed-Sprint` at 1.45x on the model.
@@ -136,12 +145,12 @@ it), the glance and the hero hold; the run along the roof is the motion bank's `
 ## Waygate (8.2 s, the name at 6.4 s)
 Dusk in a canyon. An ancient ring gate of carved stone with three fins stands on a stepped dais at the end of a ruined plaza. Its
 inner ring turns and locks five times with heavy clunks, each lighting a lamp in the outer ring; light races round its channels; the
-gate opens on a turning disc of light that pulls the sand toward it. A figure takes shape in the light and floats out, arms spread,
+gate opens on a turning vortex of light that pulls the sand toward it. A figure takes shape in the light and floats out, arms spread,
 glides over the dais and settles on the plaza; the disc collapses to a point behind it and the gate goes dark; it steps forward
 under the ring's afterglow as the plaza's inlay lights round it.
 
 **The set (canyon plaza):** the ring gate (a carved outer ring with three fins, six lamps and lit channels, a turning inner ring of
-glyphs) on its feet and plinth; a three-step half-round dais; rings of worn flagstones with a dark inlay and a lit channel round the
+glyphs; its light a vortex, a funnel recessed into the ring with three spiral arms, so its turning reads) on its feet and plinth; a three-step half-round dais; rings of worn flagstones with a dark inlay and a lit channel round the
 mark; six broken fluted columns and fallen drums; two obelisks with glyph bands; sand and dunes; the canyon's banded cliff walls; the
 dusk sky.
 
@@ -155,7 +164,7 @@ dusk sky.
 | 4.65 | It settles on the plaza | a cut low and centred |
 | 5.20 | The disc collapses to a point; a white blink; a gust of sand; the inlay lights | (holds) |
 | 5.55 | It steps forward | (holds) |
-| 6.40 | **The name** (rising). Centred under the ring like a halo, motes rising off the channels | low and centred, closer |
+| 6.40 | **The name** (rising). Small and centred under the whole ring, motes rising off the channels | the closing: wide, low and centred |
 
 **Motion:** keyed: the float (arms spread, legs together and soft, the head lifting) on a path out of the gate and down to the plaza,
 the settle, two steps, the hero hold. Cyan afterimages as it comes through.
@@ -180,7 +189,8 @@ blade sign with neon stars and stripes; two lit poster cases; four lamp posts; t
 | 3.95 | Pose two, a hand on the hip, chin up, held | photograph two, from its right |
 | 4.58 | Pose three, two fingers to the brow, then flicked out | photograph three, centred and low |
 | 5.25 | A storm of flashes (Reduced: at most 2.5 a second, softer) and confetti | a crane back to the marquee |
-| 6.00 | **The name** (slammed): the cover shot | centred and low, the marquee above |
+| 5.65 | (the storm goes on) | a cut to the cover: low, straight down the carpet |
+| 6.00 | **The name** (slammed) on the carpet: the cover shot | (a slow push in) |
 
 **Motion:** keyed: the doorway, the three poses and the cover's stance; the stride is the motion bank's `Armed-Walk` at 1.33x on the
 model (the walk's own swing; the keyed rig walks under it for the anchors).
