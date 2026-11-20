@@ -29,9 +29,8 @@ namespace ChipArena.UnityConversion
         // ---- the one presentation adapter (A2) ----------------------------------------------------------------------------
         /// <summary>A cache offer's tier: the offer's tier field, missing (or unknown) as standard; null reads standard.</summary>
         public static NativeCacheTier Of(ExpeditionChestOffer o)=>Parse(TierField(o));
-        /// <summary>The offer's tier field. Astra's A2 adds <c>ExpeditionChestOffer.tier</c>; until then there is none, so every
-        /// cache reads standard. When the field lands this one line becomes <c>=&gt;o?.tier;</c>.</summary>
-        private static string TierField(ExpeditionChestOffer o)=>null;
+        /// <summary>The offer's tier field: Astra's A2 <c>ExpeditionChestOffer.tier</c> (PR #425, 2026-11-19).</summary>
+        private static string TierField(ExpeditionChestOffer o)=>o?.tier;
         /// <summary>The contract's tier id (standard, rare, epic, legendary; any case); anything else, or none, is standard.</summary>
         public static NativeCacheTier Parse(string id)
         {

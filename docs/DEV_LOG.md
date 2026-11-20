@@ -41,6 +41,11 @@ Branch `claude/cache-openings` from shared `8790610c`. Owner: "an effect when op
 4. *Overhangs:* the columns are drawn through anything above; keep cache spots out from under overhangs deeper than 0.3 m (the design's note, already in A2's paste).
 5. *An Expedition chip machine's tier:* its offers are private and chosen later, so it opens STANDARD; a machine tier would be a rule.
 
+**Follow-up (integrator, 2026-11-19 evening).**
+- *The LEGENDARY beam* (owner: "the beam from the legendary crate starts to move away from the crate"): the shared streak lies in the camera's plane through its middle, so the 40 m pillar's foot slid about 0.7 m off its locker under a downward camera. Since `ff7a8292` the effects pass lays every streak over 1 m onto its head's camera plane (`NativeCacheOpenFx.OntoHeadPlane`); the shader is unchanged. `CacheOpeningChecks.OnItsLine` emulates the shader from four views (0.047 px off; uncorrected, the watcher's foot missed by 32 px). Clips: `F:/Chip Arena Development/scratch/cache-openings/look/clips/5_legendary_beam_fix_*`.
+- *A2 landed* (Astra's PR #425 on shared `821d75c4`): `TierField` now reads `o?.tier`, and the steel locker stands on A2's solid block on the live run. The block's own box is left undrawn under the locker (`NativeArenaDressing.Hidden`; its collider stays).
+- *MapStyleChecks:* the draw-line pin Astra's `a15e1183` rewrote is re-pinned here, with the same line as `claude/meridian-dress`.
+
 **Risks.** Not seen on two clients. The look is the board's starting values; the generated city is not yet the dark night (W1), so the openings read softer in its light. The late joiner sees an opened cache shut, never mid-opening. The cartridges dock on the local pilot wherever it stands. The tier colour now tints today's hologram (STANDARD near-white instead of amber). LEGENDARY's lamp-face strobe (faces only) is the board's; Reduced effects has none.
 
 **Next.** The owner reviews the clips and sheets; Astra's A2 (the field's one line, the block); the sounds when the owner approves a batch. Pushed, not merged.
