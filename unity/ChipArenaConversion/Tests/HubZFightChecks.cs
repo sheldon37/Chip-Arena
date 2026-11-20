@@ -13,10 +13,11 @@ namespace ChipArena.UnityConversion
     /// in the hub (the camp, its fence and gates, out to the gates' outside points) is gathered: the greybox boxes the arena dressing
     /// draws (Runtime NativeArenaDressing: NativeBlockLit, the map's face lifts, minus the blocks the dress hides on this map), the
     /// dress's generated surfaces (ChipArena/StageLit, at their layers) and, with the city bank (CHIPARENA_MERIDIAN_BANK), its
-    /// modules, and the hub gates at rest (NativeExpeditionHubDraw). No two faces turned the same way may share a plane (4 mm; floors
-    /// 30 mm, where a pilot's grazing view parts layers millimetres apart) and overlap, unless StageLit's layers part them
-    /// (tools/stages/zfight.py's rules). `--hub-zfight-probe` lists the hub's blocks and every pair, as shared drew them and as this
-    /// branch draws them.
+    /// modules, and the hub gates at rest (NativeExpeditionHubDraw); the probe adds the landmarks' pieces with their bank
+    /// (CHIPARENA_LANDMARKS_BANK). No two faces turned the same way may share a plane (4 mm; floors 30 mm, where a pilot's grazing
+    /// view parts layers millimetres apart; two NativeBlockLit faces 2 mm, the step of the greybox's own lifts) and overlap where they
+    /// can be seen, unless StageLit's layers part them (tools/stages/zfight.py's rules). `--hub-zfight-probe` lists the hub's blocks
+    /// and every pair, as shared drew them (the greybox kept under the dress) and as this branch draws them.
     /// </summary>
     internal static class HubZFightChecks
     {
@@ -342,6 +343,9 @@ namespace ChipArena.UnityConversion
                 // across the whole city: every generated surface lies on a covered block's face, which shared's greybox drew too
                 double doubled=dress.Quads.Sum(q=>(double)NativeMeridianDress.Cross(q.U,q.V).Length);
                 Console.WriteLine(string.Format(inv,"  the dress's generated surfaces over the whole map: {0:F0} m2 (each on a covered block's face: shared drew the greybox's face under every one)",doubled));
+                // the bleed draws near the dealt doors: how near the camp its nearest piece stands
+                var bleedPieces=NativeCityBleedDress.ForWalk(live.World.City,live.World.Bleed,live.World.Blueprint.worldSeed).Pieces;
+                Console.WriteLine(string.Format(inv,"  the bleed's nearest piece stands {0:F0} m from the camp's centre ({1} pieces)",bleedPieces.Count==0?float.NaN:bleedPieces.Min(p=>(float)Math.Sqrt(p.At.x*p.At.x+p.At.z*p.At.z)),bleedPieces.Count));
                 var solids=new NativeMeridianDress.Solids(map.blocks);
                 foreach(var (label,hide) in new[]{("SHARED (the greybox kept under the dress)",false),("BRANCH (the dress's blocks left out)",true)})
                 {
