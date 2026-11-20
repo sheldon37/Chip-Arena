@@ -94,17 +94,14 @@ namespace ChipArena.UnityConversion
             authored.compatibility=NativeExpeditionLayout.Compatibility(json,content);
             var room=new ExpeditionDeploymentRoom("load-fixture","p1",17,"black-siren",authored,content);
             if(!room.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances))throw new InvalidOperationException("Load fixture roll failed");
-            Bundle=ExpeditionRunBundle.Build(room.Ticket,content,json);
-            var simulationContent = Bundle.Content;
-            NativeLayeredCityWalk walk = null;
-            if (candidate != null)
-            {
-                var generation = Stopwatch.StartNew();
-                walk = Survey = new NativeLayeredCityWalk(candidate,Bundle.World.Blueprint.worldSeed);
-                NativeExpeditionGeneratedWorld.PopulateMeridian(Bundle.World, walk);
-                simulationContent = simulationContent.WithGeneratedMap(walk.Map);
-                CandidateGenerationMs = generation.Elapsed.TotalMilliseconds;
-            }
+            var ticket=room.Ticket;
+            if(candidate!=null)ticket.cityPlan=NativeCityLayout.Plans.ToList().IndexOf(candidate);
+            var generation=Stopwatch.StartNew();
+            Bundle=ExpeditionRunBundle.Build(ticket,content,json);
+            CandidateGenerationMs=generation.Elapsed.TotalMilliseconds;
+            var simulationContent=Bundle.Content;
+            var walk=Bundle.World.City;
+            if(candidate!=null)Survey=walk;
             var layout=Bundle.Layout;
             var run=NativeExpedition.Create("load-fixture",layout.world,"p1","pistol",17,layout.instances.Select(id=>new ExpeditionInstance{id=id,target=12}).ToArray());
             for(int id=2;id<=pilots;id++)if(!run.Join("p"+id,"pistol"))throw new InvalidOperationException("Load fixture seat refused");

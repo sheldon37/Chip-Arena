@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 namespace ChipArena.UnityConversion
 {
+// Build the camp-connected two-metre lattice at every street elevation.
 internal static class NativeMeridianNavigation
 {
     private sealed class Surface
@@ -15,7 +16,7 @@ internal static class NativeMeridianNavigation
             if (Ramp == null) return Top;
             var a = Ramp.low;
             var d = Ramp.high-a;
-            float t = Math.Clamp(((x-a.x)*d.x+(z-a.z)*d.z)/(d.x*d.x+d.z*d.z),0,1);
+            float t = Math.Max(0,Math.Min(1,((x-a.x)*d.x+(z-a.z)*d.z)/(d.x*d.x+d.z*d.z)));
             return a.y+t*d.y;
         }
     }
@@ -104,15 +105,18 @@ internal static class NativeMeridianNavigation
                 if(!nodes.TryGetValue((x,z),out var levels)) continue;
                 foreach(float y in levels)
                 {
-                    if(Math.Abs(n.y-y)>1.01f || (visited.Contains((x,y,z)) && Node(n)>=Node((x,y,z)))) continue;
+                    var next=(x,y,z);
+                    if(Math.Abs(n.y-y)>1.01f)continue;
+                    if(ids.TryGetValue(next,out int existing)&&Node(n)>=existing)continue;
                     int mx=n.x+dx/2,mz=n.z+dz/2;
                     var surfaces=bins[(Bin(mx),Bin(mz))];
                     float mid=(y+n.y)/2;
-                    if(!surfaces.Any(s=>s.Street && Inside(s,mx,mz) && Math.Abs(s.At(mx,mz)-mid)<.3f
-                        && Room(surfaces,mx,s.At(mx,mz),mz))) continue;
+                    var surface=surfaces.FirstOrDefault(s=>s.Street && Inside(s,mx,mz) && Math.Abs(s.At(mx,mz)-mid)<.3f
+                        && Room(surfaces,mx,s.At(mx,mz),mz));
+                    if(surface==null)continue;
                     int a=Node(n),b=Node((x,y,z));
                     graphLinks.Add(new MapNavLink{id="e"+graphLinks.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        a=graphNodes[a].id,b=graphNodes[b].id,kind=y==n.y?"walk":"ramp"});
+                        a=graphNodes[a].id,b=graphNodes[b].id,kind=y==n.y?"walk":surface.Ramp?.kind??"ramp"});
                     if(visited.Add((x,y,z)))queue.Enqueue((x,y,z));
                 }
             }

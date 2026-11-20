@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
         {
             if(!crowdRoutes.TryGetValue(goal,out var flow))
             {
-                flow=new CrowdRoute{search=new NativeNavSearch(Map.nav),building=new NativeNavSearch(Map.nav),at=float.NegativeInfinity};
+                flow=new CrowdRoute{search=new NativeNavSearch(navSearch),building=new NativeNavSearch(navSearch),at=float.NegativeInfinity};
                 crowdRoutes.Add(goal,flow);
             }
             bool changed=flow.revision!=NavigationRevision;

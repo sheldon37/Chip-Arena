@@ -1,3 +1,9 @@
+## 2026-11-20 — Astra: live Meridian deployment (PR #432)
+
+Branch `codex/playable-meridian`, based on shared `8d56f015`. A station ticket carries one of the five approved plans. The live run rebuilds its street geometry, navigation at multiple elevations, caches, encounter exits, instance entrances and final court from the deal. The existing Meridian art and spawn-themed outfits use those records. Per-search state is separate while crowd navigation shares its map topology. The previous grid is retained as a test fixture for its art suite.
+
+Managed checks exercised all five city startups, Hulk clearance and routes, deployment reconstruction, host migration, and cache interactions. Windows native physics, the four-pilot load gate and test-channel publication require the builder receipt.
+
 ## 2026-11-20 — Claude: release 2 of the expedition overhaul: the caches on A2, the LEGENDARY beam, the Meridian look (integrator)
 Owner: "Release them" (the caches) and "Looks good" (the Meridian look at night). Shared `c181c819`, the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`, 376.6 MiB).
 - **Merged:** `claude/cache-openings` (`eba02d3a`: the presentation on Astra's A2, its adapter reading `tier`, the locker standing on A2's block with the block's box undrawn, the LEGENDARY beam laid on its head's camera plane), `claude/meridian-bleed` (`8befbda3`: D1, D2 and D3), `claude/cache-locker-column` (`c181c819`: the beacon's tube stands down where the steel locker stands, board 3).

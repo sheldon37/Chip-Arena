@@ -56,12 +56,13 @@ namespace ChipArena.UnityConversion
         {
             if(Map.nav==null)return false;
             if(!ReferenceEquals(probeGraph,Map.nav)){
-                probeGraph=Map.nav;probeSearch=new NativeNavSearch(probeGraph);
-                probeNodes=probeGraph.nodes.ToDictionary(n=>n.id);
+                PrepareNavigation();
+                probeGraph=Map.nav;probeSearch=new NativeNavSearch(navSearch);
+                probeNodes=navNodes;
             }
             var search=probeSearch;
             bool Clear(MapNavNode n){string key=radius+":"+height+":"+n.id;if(!expeditionNavClear.TryGetValue(key,out var ok))expeditionNavClear[key]=ok=ExpeditionSupported(n.pos-new V3(0,NativeLocomotionRules.HalfHeight,0),radius,height);return ok;}
-            var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.Nearest(from+offset,Clear);var b=search.Nearest(to+offset,Clear);
+            var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.NearestLocal(from+offset,Clear,4,int.MaxValue);var b=search.NearestLocal(to+offset,Clear,4,int.MaxValue);
             if(a==null||b==null||(a.pos-from-offset).Length>4||(b.pos-to-offset).Length>4)return false;
             var nodes=probeNodes;var path=new List<string>();
             bool Active(MapNavLink l)

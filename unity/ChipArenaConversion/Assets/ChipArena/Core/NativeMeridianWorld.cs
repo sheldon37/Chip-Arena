@@ -61,6 +61,40 @@ namespace ChipArena.UnityConversion
             var spawnRows = new System.Collections.Generic.List<ExpeditionSpawnLayout>();
             var zones = new System.Collections.Generic.List<ExpeditionHubZone>();
             string[] kinds = { "shambler", "runner", "spitter", "brute", "hulk" };
+            // Use camp-connected navigation positions for encounter exits, including elevated streets.
+            var floorNodes=walk.Map.nav.nodes.Select(n=>n.pos-new V3(0,.9f,0)).ToArray();
+            var treadIds=new HashSet<string>(walk.Map.ramps.SelectMany(r=>r.blocks));
+            var ready=new Dictionary<V3,bool>();
+            bool OpenApron(V3 foot)
+            {
+                if(ready.TryGetValue(foot,out var result))return result;
+                bool floor=false;
+                foreach(var b in walk.Map.blocks){
+
+                    float dx=Math.Abs(foot.x-b.pos.x), dz=Math.Abs(foot.z-b.pos.z);
+                    float hx=b.size.x/2,hz=b.size.z/2;
+                    if(b.rotation!=null&&Math.Abs(2*b.rotation.y*b.rotation.w)>.5f)(hx,hz)=(hz,hx);
+                    if(dx>hx+3||dz>hz+3)continue;
+                    float top=b.pos.y+b.size.y/2;
+                    if(!treadIds.Contains(b.id)&&Math.Abs(top-foot.y)<.03f&&dx+3<=hx&&dz+3<=hz)floor=true;
+                    if(top>foot.y+.04f&&b.pos.y-b.size.y/2<foot.y+3.3f)return ready[foot]=false;
+                }
+                foreach(var ramp in walk.Map.ramps){
+                    if(foot.y+3.3f<=ramp.bottom||foot.y>ramp.high.y+.1f)continue;
+                    var a=ramp.low;var b=ramp.high;
+                    float wx=a.x==b.x?ramp.width*.5f:0,wz=a.z==b.z?ramp.width*.5f:0;
+                    if(foot.x>=Math.Min(a.x,b.x)-wx-3&&foot.x<=Math.Max(a.x,b.x)+wx+3&&
+                       foot.z>=Math.Min(a.z,b.z)-wz-3&&foot.z<=Math.Max(a.z,b.z)+wz+3)return ready[foot]=false;
+                }
+                return ready[foot]=floor&&!NearCache(foot);
+            }
+            V3 NearestExit(V3 opening)
+            {
+                // Only probe the map's collision boxes for nearby floor nodes.
+                foreach(var foot in floorNodes.OrderBy(p=>V3.Dot(p-opening,p-opening)))
+                    if(OpenApron(foot))return foot;
+                throw new InvalidOperationException("No clear spawn apron in "+walk.Map.name);
+            }
             foreach (var route in walk.Routes)
             {
                 // Sample the gate-to-hall centre line at measured distances.
@@ -72,13 +106,13 @@ namespace ChipArena.UnityConversion
                         var a = route.Points[j-1];
                         var d = route.Points[j] - a;
                         if (remaining > d.Length) { remaining -= d.Length; continue; }
-                        var pos = a + d * (remaining / d.Length);
+                        var pos = NearestExit(a + d * (remaining / d.Length));
                         if(NearCache(pos))break;
                         int id = spawnRows.Count;
                         var point = new PvePoint { x=pos.x, y=pos.y, z=pos.z };
                         spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
-                            e=id, id="survey-entry-"+id, kind="door", from=point, @exit=point, clear=3, allowed=kinds } });
-                        zones.Add(new ExpeditionHubZone { Id="survey-zone-"+id, Ring=station<55?"near":station<95?"mid":"far",
+                            e=id, id="meridian-street-"+id, kind="door", from=point, @exit=point, clear=3, allowed=kinds } });
+                        zones.Add(new ExpeditionHubZone { Id="meridian-zone-"+id, Ring=station<55?"near":station<95?"mid":"far",
                             Near=station-5, Far=station+5, Spawns=new[] { id },
                             Volume=new ExpeditionVolume { x=pos.x, y=pos.y+2, z=pos.z, sx=11, sy=6, sz=11 } });
                         break;
@@ -87,12 +121,13 @@ namespace ChipArena.UnityConversion
             }
             foreach (var roof in walk.RoofHatches.Where(p=>!NearCache(p)))
             {
+                var landing=NearestExit(roof);
                 var zone = zones.OrderBy(z => (new V3(z.Volume.x,z.Volume.y,z.Volume.z)-roof).Length).First();
                 int id = spawnRows.Count;
                 zone.Spawns = zone.Spawns.Concat(new[] { id }).ToArray();
-                var point = new PvePoint { x=roof.x, y=roof.y, z=roof.z };
+                var point = new PvePoint { x=landing.x, y=landing.y, z=landing.z };
                 spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
-                    e=id, id="survey-hatch-"+id, kind="hatch", from=point, @exit=point, clear=3, allowed=kinds } });
+                    e=id, id="meridian-roof-"+id, kind="drop", surface="roof", height=6.5f, from=new PvePoint{x=landing.x,y=landing.y+6.5f,z=landing.z}, @exit=point, clear=3, allowed=kinds } });
             }
             world.Hub.Zones = zones.ToArray();
             var court = walk.Routes[0].Points.Last();

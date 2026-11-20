@@ -74,8 +74,7 @@ namespace ChipArena.UnityConversion
                 {
                     var room=new ExpeditionDeploymentRoom("landing-sweep","pilot",seed,"black-siren",layout,content);
                     Check(room.Execute("pilot",0,ExpeditionDeploymentIntent.RollInstances),seed,"roll");
-                    // Build runs NativeExpeditionGeneratedWorld.Validate, which floods from
-                    // slot zero and proves the entire Hulk-clear nav graph is connected.
+                    // The live graph floods camp-connected surfaces. Check independently that each gameplay point attaches.
                     var world=NativeExpeditionGeneratedWorld.Build(room);
                     var map=world.Map;
                     bool Supported(string id,V3 p,float r,float h)=>ExpeditionLayoutChecks.Supported(map,p,r,h);

@@ -22,10 +22,7 @@ namespace ChipArena.UnityConversion
     public static partial class NativeExpeditionGeneratedWorld
     {
         public const string Version="deployment-world-blockout-4";
-        /// <summary>Each instance's building behind its entrance frame, and the walls closing any street at the floor's edge.</summary>
-        public const float HallHeight=18,EdgeHeight=6;
         public const string MapId="expedition-generated-city";
-        private const float NavStep=2;
         internal static V3 CacheForward(float yaw)
         {
             double angle=yaw*Math.PI/180;
@@ -68,8 +65,7 @@ namespace ChipArena.UnityConversion
         private static ExpeditionVolume Volume(float x,float z,float sx,float sz,float h=4)=>new ExpeditionVolume{x=x,z=z,y=h/2,sx=sx,sy=h,sz=sz};
         private static string I(int value)=>value.ToString(CultureInfo.InvariantCulture);
         private static string Key(int x,int z)=>x.ToString(CultureInfo.InvariantCulture)+":"+z.ToString(CultureInfo.InvariantCulture);
-        private static ContentBlock Block(string id,float x,float z,float sx,float sz,float h,string material="stone",float bottom=0)=>
-            new ContentBlock{id=MapId+"-"+id,role="static",material=material,pos=new V3(x,bottom+h/2,z),size=new V3(sx,h,sz),rotation=new ContentRotation()};
+
 
         // Only a room reconstructed against its locally validated catalog can supply this roll.
         public static ExpeditionGeneratedWorld Build(ExpeditionDeploymentRoom room)
@@ -93,7 +89,7 @@ namespace ChipArena.UnityConversion
                 var d=direction;string id="generated-gate-"+d.side;var ids=new List<string>();
                 foreach(int sign in new[]{-1,1})
                 {
-                    string block="camp-fence-"+gates.Count+"-"+sign;
+                    string block="camp-fence-"+I(gates.Count)+"-"+I(sign);
                     ids.Add(block);fences.Add(new ExpeditionHubFence{Block=block,Kind="metal",Side=d.side,Gate=id});
                 }
                 gates.Add(new ExpeditionHubGate{Id=id,Kind="metal",Motion="slide",Side=d.side,X=d.x*25,Z=d.z*25,Yaw=d.yaw,Width=10,Height=3.2f,
@@ -133,98 +129,6 @@ namespace ChipArena.UnityConversion
             layout.revision=Version;layout.compatibility=NativeMapRules.Revision(authoredJson+"\n"+world.Compatibility);
             return layout;
         }
-        // Axis-aligned, ground-level generator only. Runtime must also validate in its real physics scene.
-        public static bool Supported(ContentMap map,V3 p,float radius,float height)
-        {
-            var b=map.bounds;
-            if(!NativeMapRules.Finite(p)||!MathUtil.Finite(radius)||!MathUtil.Finite(height)||radius<=0||height<=0||Math.Abs(p.y)>.01f||
-                p.x-radius<b.minX||p.x+radius>b.maxX||p.z-radius<b.minZ||p.z+radius>b.maxZ||height>b.ceiling)return false;
-            bool floor=false;
-            foreach(var block in map.blocks)
-            {
-                if(Math.Abs(block.pos.y+block.size.y/2-p.y)<=.01f&&Math.Abs(p.x-block.pos.x)+radius<=block.size.x/2&&Math.Abs(p.z-block.pos.z)+radius<=block.size.z/2)floor=true;
-                if(block.pos.y+block.size.y/2<=.01f||block.pos.y-block.size.y/2>=height)continue;
-                float bx=Math.Abs(p.x-block.pos.x),bz=Math.Abs(p.z-block.pos.z);
-                // Generated lockers are cardinal, including quarter turns on the east/west facades.
-                if(block.rotation!=null&&Math.Abs(2*block.rotation.y*block.rotation.w)>.5f)(bx,bz)=(bz,bx);
-                float dx=Math.Max(0,bx-block.size.x/2),dz=Math.Max(0,bz-block.size.z/2);
-                if(dx*dx+dz*dz<radius*radius)return false;
-            }
-            return floor;
-        }
-        private static bool Clear(ContentMap map,V3 a,V3 b,float radius,float height)
-        {
-            int steps=Math.Max(1,(int)Math.Ceiling((b-a).Length/.25));
-            for(int i=0;i<=steps;i++)if(!Supported(map,a+(b-a)*(i/(float)steps),radius,height))return false;
-            return true;
-        }
-        private static MapNav Navigation(ContentMap map)
-        {
-            var nodes=new Dictionary<(int x,int z),MapNavNode>();
-            for(int x=-62;x<=62;x++)for(int z=-47;z<=47;z++)
-            {
-                var p=new V3(x*NavStep,0,z*NavStep);
-                // One graph is navigable even by the largest actor; smaller pilots also have the full streets.
-                if(Supported(map,p,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))nodes.Add((x,z),new MapNavNode{id="g:"+Key(x,z),pos=p+new V3(0,.9f,0)});
-            }
-            var links=new List<MapNavLink>();
-            foreach(var pair in nodes.OrderBy(p=>p.Key.x).ThenBy(p=>p.Key.z))foreach(var d in new[]{(1,0),(0,1)})
-                if(nodes.TryGetValue((pair.Key.x+d.Item1,pair.Key.z+d.Item2),out var to)&&
-                    Clear(map,pair.Value.pos-new V3(0,.9f,0),to.pos-new V3(0,.9f,0),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))
-                    links.Add(new MapNavLink{id="l:"+I(links.Count),a=pair.Value.id,b=to.id});
-            return new MapNav{nodes=nodes.Values.OrderBy(n=>n.id,StringComparer.Ordinal).ToArray(),links=links.ToArray()};
-        }
-        private static void Routes(ExpeditionGeneratedWorld world)
-        {
-            var nodes=world.Map.nav.nodes.ToDictionary(n=>n.id);var adj=nodes.Keys.ToDictionary(k=>k,k=>new List<string>());
-            foreach(var l in world.Map.nav.links){adj[l.a].Add(l.b);adj[l.b].Add(l.a);}
-            string Near(V3 p)=>nodes.Values.Where(n=>(n.pos-new V3(0,.9f,0)-p).Length<=3&&Clear(world.Map,p,n.pos-new V3(0,.9f,0),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))
-                .OrderBy(n=>(n.pos-new V3(0,.9f,0)-p).Length).ThenBy(n=>n.id,StringComparer.Ordinal).First().id;
-            var distances=new Dictionary<string,float>();var routes=new List<ExpeditionHubRoute>();
-            foreach(var gate in world.Hub.Gates)
-            {
-                string start=Near(gate.Outside.Position);var seen=new Dictionary<string,string>{{start,null}};
-                var dist=new Dictionary<string,float>{{start,0}};var q=new Queue<string>();q.Enqueue(start);
-                while(q.Count>0){string from=q.Dequeue();foreach(string to in adj[from])if(!seen.ContainsKey(to)){seen[to]=from;dist[to]=dist[from]+NavStep;q.Enqueue(to);}}
-                foreach(var pair in dist)if(!distances.TryGetValue(pair.Key,out var old)||pair.Value<old)distances[pair.Key]=pair.Value;
-                foreach(var district in world.Blueprint.districts.Where(d=>d.side==gate.Side))
-                {
-                    var door=world.Area.doors.Single(d=>d.anchor=="exp-city:door:"+district.instance);string end=Near(door.approach.Position);
-                    var path=new List<ExpeditionPoint>();for(string n=end;n!=null;n=seen[n])path.Add(Point(nodes[n].pos.x,nodes[n].pos.z));path.Reverse();
-                    var turns=new List<ExpeditionPoint>();for(int i=1;i<path.Count-1;i++)if((path[i].Position-path[i-1].Position).x!=(path[i+1].Position-path[i].Position).x||
-                        (path[i].Position-path[i-1].Position).z!=(path[i+1].Position-path[i].Position).z)turns.Add(path[i]);
-                    float length=dist[end]+(nodes[start].pos-new V3(0,.9f,0)-gate.Outside.Position).Length+(nodes[end].pos-new V3(0,.9f,0)-door.approach.Position).Length;
-                    routes.Add(new ExpeditionHubRoute{To=district.instance,Gate=gate.Id,Path=length,Straight=(door.approach.Position-gate.Outside.Position).Length,Run=length/6.8f,Sprint=length/(6.8f*1.35f),Approach=door.approach,X=door.approach.x,Z=door.approach.z,Via=turns.ToArray()});
-                }
-            }
-            world.Hub.Routes=routes.ToArray();
-            foreach(var zone in world.Hub.Zones)
-            {
-                var at=world.Area.spawns.Single(s=>s.entry.e==zone.Spawns[0]).entry.@exit.Position();float d=distances[Near(at)];
-                zone.Near=d;zone.Far=d+9;zone.Ring=d<35?"near":d<65?"mid":"far";
-            }
-        }
-        public static void Validate(ExpeditionGeneratedWorld world)
-        {
-            var m=world.Map;var a=world.Area;var nodes=m.nav.nodes.ToDictionary(n=>n.id);var adj=nodes.Keys.ToDictionary(k=>k,k=>new List<string>());
-            foreach(var l in m.nav.links){adj[l.a].Add(l.b);adj[l.b].Add(l.a);}
-            string Near(V3 p)
-            {
-                var n=nodes.Values.Where(v=>(v.pos-new V3(0,.9f,0)-p).Length<=3&&Clear(m,p,v.pos-new V3(0,.9f,0),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))
-                    .OrderBy(v=>(v.pos-new V3(0,.9f,0)-p).Length).FirstOrDefault();
-                return n?.id??throw new InvalidOperationException("Generated navigation cannot attach at "+p.x+", "+p.z);
-            }
-            string start=Near(a.slots[0].Position);var seen=new HashSet<string>{start};var queue=new Queue<string>();queue.Enqueue(start);
-            while(queue.Count>0)foreach(var id in adj[queue.Dequeue()])if(seen.Add(id))queue.Enqueue(id);
-            if(seen.Count!=nodes.Count)throw new InvalidOperationException("Generated world has an isolated navigation pocket.");
-            var points=a.slots.Concat(a.bossPoints).Concat(a.doors.SelectMany(d=>d.returns.Concat(new[]{d.approach,Point(d.join.x,d.join.z)})))
-                .Concat(a.anchors.Where(c=>c.kind=="chest").Select(CacheApproach)).Concat(a.spawns.Select(s=>Point(s.entry.@exit.x,s.entry.@exit.z)))
-                .Concat(world.Hub.Gates.SelectMany(g=>new[]{g.Inside,g.Outside}));
-            foreach(var p in points)if(!Supported(m,p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)||!seen.Contains(Near(p.Position)))
-                throw new InvalidOperationException("Generated world has an unsupported or unreachable gameplay point.");
-            if(a.spawns.Length==0||a.spawns.Length>256||a.spawns.Any(s=>a.sanctuary.Any(v=>v.Contains(s.entry.@exit.Position()))))
-                throw new InvalidOperationException("Generated encounter placement is invalid.");
-        }
         private static string Digest(ExpeditionDeploymentTicket ticket,ExpeditionGeneratedWorld world)
         {
             var text=new StringBuilder(Version).Append('\n').Append(ticket.compatibility).Append('\n').Append(world.Blueprint.worldSeed.ToString(CultureInfo.InvariantCulture));
@@ -233,6 +137,17 @@ namespace ChipArena.UnityConversion
             foreach(var b in world.Map.blocks){text.Append('\n').Append(b.id).Append('|').Append(b.material);F(b.pos.x);F(b.pos.y);F(b.pos.z);F(b.size.x);F(b.size.y);F(b.size.z);F(b.rotation.y);F(b.rotation.w);}
             text.Append('|').Append(NativeCityLayout.Version).Append('|').Append(I(ticket.cityPlan));
             foreach(var ramp in world.Map.ramps){text.Append(ramp.id).Append('|').Append(ramp.kind);F(ramp.low.x);F(ramp.low.y);F(ramp.low.z);F(ramp.high.x);F(ramp.high.y);F(ramp.high.z);F(ramp.width);F(ramp.bottom);}
+            foreach(var column in world.Map.pilotBlocks){
+                text.Append(column.id);F(column.center.x);F(column.center.y);F(column.center.z);
+                F(column.size.x);F(column.size.y);F(column.size.z);F(column.bottom);
+            }
+            foreach(var slot in world.HallSlots)text.Append('|').Append(slot);
+            foreach(var route in world.City.Routes){
+                text.Append(route.Name);
+                foreach(var point in route.Points){F(point.x);F(point.y);F(point.z);}
+                foreach(var width in route.Widths)F(width);
+                foreach(var kind in route.Kinds)text.Append('|').Append(kind);
+            }
             foreach(var n in world.Map.nav.nodes){text.Append('\n').Append(n.id);F(n.pos.x);F(n.pos.y);F(n.pos.z);text.Append('|').Append(I(n.layer));}
             foreach(var l in world.Map.nav.links)text.Append('\n').Append(l.id).Append('|').Append(l.a).Append('|').Append(l.b).Append('|').Append(l.kind);
             foreach(var d in world.Blueprint.districts)text.Append('\n').Append(d.instance).Append('|').Append(d.theme).Append('|').Append(d.side);
@@ -245,7 +160,7 @@ namespace ChipArena.UnityConversion
             foreach(var door in a.doors){text.Append("\ndoor|").Append(door.anchor);V(door.interact);V(door.closure);P(door.approach);F(door.join.x);F(door.join.y);F(door.join.z);F(door.join.r);F(door.join.h);foreach(var p in door.returns)P(p);}
             foreach(var g in a.gates){text.Append("\ngate|").Append(g.id).Append('|').Append(g.opens);V(g.closure);}
             foreach(var i in a.interactions){text.Append("\ninteract|").Append(i.anchor);F(i.x);F(i.y);F(i.z);F(i.range);}
-            foreach(var spawn in a.spawns){var e=spawn.entry;text.Append("\nspawn|").Append(e.id).Append('|').Append(e.kind).Append('|').Append(I(e.e));F(e.from.x);F(e.from.y);F(e.from.z);F(e.@exit.x);F(e.@exit.y);F(e.@exit.z);F(e.clear);foreach(var k in spawn.allow)text.Append('|').Append(k);}
+            foreach(var spawn in a.spawns){var e=spawn.entry;text.Append("\nspawn|").Append(e.id).Append('|').Append(e.kind).Append('|').Append(I(e.e));F(e.from.x);F(e.from.y);F(e.from.z);F(e.@exit.x);F(e.@exit.y);F(e.@exit.z);F(e.clear);F(e.height);text.Append(e.surface).Append(I(e.level));foreach(var k in spawn.allow)text.Append('|').Append(k);}
             foreach(var g in hub.Gates){text.Append("\nhub-gate|").Append(g.Id);V(g.Closure);V(g.Interact);V(g.Sensor);P(g.Inside);P(g.Outside);}
             foreach(var z in hub.Zones){text.Append("\nzone|").Append(z.Id).Append('|').Append(z.Ring);V(z.Volume);F(z.Near);F(z.Far);foreach(int e in z.Spawns)text.Append('|').Append(I(e));}
             foreach(var r in hub.Routes){text.Append("\nroute|").Append(r.To).Append('|').Append(r.Gate);F(r.Path);P(r.Approach);foreach(var p in r.Via)P(p);}

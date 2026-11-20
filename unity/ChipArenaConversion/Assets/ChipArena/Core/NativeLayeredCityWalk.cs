@@ -6,7 +6,7 @@ using static ChipArena.UnityConversion.NativeCityLayout;
 namespace ChipArena.UnityConversion
 {
     // The A4 scale walk. Geometry uses the same ContentBlock/MapRamp collision path as shipped arenas.
-    // This map never enters deployment tickets, the PvP rotation, or the shared map catalogue.
+    // The live generator adds the camp-connected navigation graph to the plan chosen in the ticket.
     public sealed partial class NativeLayeredCityWalk
     {
         public readonly ContentMap Map;
@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
             // The gate openings and ring stay the same dimensions in both options.
             for (int side = 0; side < 4; side++)
                 foreach (int sign in new[] { -1, 1 })
-                    Slab(side, "camp-fence-" + side + "-" + sign, 24.8f, 25, sign * 15, 20, 0, 3.2f);
+                    Slab(side, "camp-fence-" + side.ToString(System.Globalization.CultureInfo.InvariantCulture) + "-" + sign.ToString(System.Globalization.CultureInfo.InvariantCulture), 24.8f, 25, sign * 15, 20, 0, 3.2f);
 
             MapBounds bounds;
             if (plan != null)

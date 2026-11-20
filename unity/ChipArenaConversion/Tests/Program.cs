@@ -12,7 +12,14 @@ internal static class Program
             if(args.Length==1&&args[0]=="--instance-cache-routes")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--cache-startup")LandingFieldChecks.WorldSweep(ProjectRoot(),1817385654u,1971730609u);
             if(args.Length==1&&args[0]=="--cache-startup")return 0;
-            if(args.Length==1&&args[0]=="--live-meridian"){LandingFieldChecks.WorldSweep(ProjectRoot(),Enumerable.Range(0,64).Select(i=>(uint)i).GroupBy(i=>NativeCityLayout.Choose(i,-1)).Select(g=>g.First()).ToArray());return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--live-meridian")
+            {
+                var liveSeeds=Enumerable.Range(0,64).Select(i=>unchecked((uint)i*2654435761u))
+                    .GroupBy(seed=>NativeCityLayout.Choose(seed,-1)).Select(group=>group.First()).ToArray();
+                if(liveSeeds.Length!=NativeCityLayout.Plans.Count)throw new Exception("Missing Meridian layout coverage.");
+                LandingFieldChecks.WorldSweep(ProjectRoot(),liveSeeds);
+                if(args.Length==1)return 0;
+            }
             if(args.Length==1&&args[0]=="--landing-world-sweep"){LandingFieldChecks.WorldSweep(ProjectRoot());return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--landing-field")LandingFieldChecks.Fields();
             if(args.Length==1&&args[0]=="--landing-field")return 0;
