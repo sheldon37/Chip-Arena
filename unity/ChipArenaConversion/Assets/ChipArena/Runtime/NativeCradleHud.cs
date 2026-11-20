@@ -29,17 +29,24 @@ namespace ChipArena.UnityConversion
 
         // ---- the night map (built on a worker per state, uploaded on the main thread) ----
         public const int MapWidth=200,MapHeight=152;
-        private static Texture2D map;private static Task<int[]> mapJob;private static ulong mapAsked=ulong.MaxValue,mapShown=ulong.MaxValue;
-        private static Texture2D MapOf(ExpeditionDeploymentState s)
+        private static Texture2D map;private static Task<int[]> mapJob;private static (string city,ulong roll) mapAsked,mapShown;
+        private static Texture2D MapOf(ExpeditionDeploymentState s,ExpeditionGeneratedWorld world)
         {
-            if(s!=null&&s.worldRolled)
+            if(s==null||!s.worldRolled)return null;
+            var key=(world?.Compatibility,((ulong)s.worldSeed<<32)|(uint)s.revision);
+            if(key!=mapAsked&&mapJob==null)
             {
-                ulong key=((ulong)s.worldSeed<<32)|(uint)s.revision;
-                if(key!=mapAsked&&mapJob==null){mapAsked=key;var copy=s.Copy();mapJob=Task.Run(()=>NativeCradleCard.NightMap(copy,MapWidth,MapHeight));}
+                mapAsked=key;
+                if(world?.City!=null)mapJob=Task.Run(()=>NativeCradleCard.CityNightMap(world,MapWidth,MapHeight));
+                else
+                {
+                    var copy=s.Copy();
+                    mapJob=Task.Run(()=>NativeCradleCard.NightMap(copy,MapWidth,MapHeight));
+                }
             }
             if(mapJob!=null&&mapJob.IsCompleted)
             {
-                if(mapJob.Status==TaskStatus.RanToCompletion&&mapAsked!=mapShown)
+                if(mapJob.Status==TaskStatus.RanToCompletion&&mapAsked==key)
                 {
                     var px=mapJob.Result;var c=new Color32[MapWidth*MapHeight];
                     // the map's row 0 is the north edge, the texture's row 0 the south
@@ -49,7 +56,7 @@ namespace ChipArena.UnityConversion
                 }
                 mapJob=null;
             }
-            return mapShown==mapAsked?map:null;
+            return mapShown==key?map:null;
         }
 
         /// <summary>
@@ -58,7 +65,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Draw(NativeCradleCard card,ExpeditionDeploymentState s,string title,string step,float W,float Hh,float a,float lift,float now,bool reduced)
         {
-            if(Event.current.type!=EventType.Repaint||a<=0||card==null)return;var tex=MapOf(s);
+            if(Event.current.type!=EventType.Repaint||a<=0||card==null)return;var tex=MapOf(s,card.World);
             float rise=reduced?0:lift*lift*Hh*.55f;U.PushAffine(new Vector2(0,-rise),Vector2.right,Vector2.up);
             try
             {
@@ -117,7 +124,7 @@ namespace ChipArena.UnityConversion
             H.Panel(new Rect(r.x-10,r.y-26,r.width+20,r.height+36),a,X(Red,1),10,H.Corners.Diagonal,true,.86f);
             U.Text(new Rect(r.x,r.y-22,r.width,14),NativeCradleCard.SquadDrop,10,X(Red,.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.22f);
             if(tex!=null)U.Image(r,tex,new Color(1,1,1,a));else U.Fill(r,X(0x060a14,a));
-            if(s?.districts!=null)for(int d=0;d<3&&d<s.districts.Length;d++)
+            if(card.World?.City==null&&s?.districts!=null)for(int d=0;d<3&&d<s.districts.Length;d++)
             {
                 var dd=s.districts[d];if(dd==null)continue;var uv=NativeCradleCard.MapUv(dd.x*NativeDeployPresentation.CellMetres,dd.z*NativeDeployPresentation.CellMetres);
                 var at=new Vector2(r.x+uv.X*r.width,r.y+uv.Y*r.height);float b=NativeCradleCard.Breath(d,now,reduced),glow=r.width*.12f*(.8f+.4f*b);
@@ -125,7 +132,7 @@ namespace ChipArena.UnityConversion
             }
             for(int i=0;i<card.Count;i++)
             {
-                var spot=card.Spots[i];if(float.IsNaN(spot.X))continue;var to=NativeCradleCard.MapUv(spot.X,spot.Y);var end=new Vector2(r.x+to.X*r.width,r.y+to.Y*r.height);
+                var spot=card.Spots[i];if(float.IsNaN(spot.X))continue;var to=NativeCradleCard.MapUv(spot.X,spot.Y,card.World?.Map?.bounds);var end=new Vector2(r.x+to.X*r.width,r.y+to.Y*r.height);
                 var dir=NativeCradleCard.StreakFrom(i);var from=end+new Vector2(dir.X,-dir.Y)*r.width*.32f;float head=reduced?1:Mathf.Repeat(now*.45f+i*.23f,1.25f);
                 var col=card.You[i]?X(0xfff0d8,1):X(0xffb48a,1);
                 for(int k=0;k<14;k++){float u=k/13f;if(u>head)break;var p=Vector2.Lerp(from,end,u);float sz=1.2f+1.6f*u;U.Fill(new Rect(p.x-sz/2,p.y-sz/2,sz,sz),U.A(col,(.25f+.65f*u)*a));}

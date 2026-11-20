@@ -30,8 +30,8 @@ namespace ChipArena.UnityConversion
         }
         private void StartSplitAreas(ExpeditionSession initial,NativeSeat[] seats)
         {
-            // The validated loader has already checked each map's native geometry.
-            arena.Dispose();arena=null;match=null;splitRun=initial.Run;splitSeats=seats;splitTick=splitReturn=0;splitLoop=0;deploymentInitialReady=deploymentBundle==null;
+            // Generated deployments validate the actual isolated scenes before combat starts.
+            arena?.Dispose();arena=null;match=null;splitRun=initial.Run;splitSeats=seats;splitTick=splitReturn=0;splitLoop=0;deploymentInitialReady=deploymentBundle==null;
             splitRun.EnableAreas();
             splitCohorts=new ExpeditionCohorts(splitRun.PartySnapshot().run,splitRun.PartySnapshot().epoch,expeditionM1Layout.compatibility,expeditionM1Layout.areas.Select(a=>a.id));
             foreach(var seat in seats)splitCohorts.Add(seat.access.AccountId,expeditionM1Layout.world);
@@ -45,6 +45,23 @@ namespace ChipArena.UnityConversion
                     m.Seats.Add(new NativeSeat{id=900,name="Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
                 });
             });
+            if(deploymentBundle!=null)
+            {
+                var scenes=new Dictionary<string,NativeArena>();
+                var looks=JsonUtility.FromJson<MapLookSet>(Resources.Load<TextAsset>("MapLooks").text);
+                foreach(var area in expeditionM1Layout.areas)
+                {
+                    if(!looks.maps.Any(l=>l.look==content.Map(area.map).look))
+                        throw new InvalidOperationException("Missing generated run look: "+area.map);
+                    var sim=splitAreas.Acquire(area.id).Arena;
+                    sim.GeneratedRun=deploymentBundle;
+                    scenes[area.map]=sim;
+                }
+                NativeExpeditionLayout.ValidateGeometry(expeditionM1Layout,content,expeditionHorde,
+                    (map,p,r,h)=>scenes[map].ExpeditionSupported(p,r,h),
+                    (map,a,b,r,h)=>scenes[map].ExpeditionReachable(a,b,r,h));
+                foreach(var scene in scenes.Values)scene.ReleaseExpeditionProbes();
+            }
             foreach(var area in expeditionM1Layout.areas)
             {
                 var runtime=splitAreas.Acquire(area.id);var sim=runtime.Arena;sim.GeneratedRun=deploymentBundle;sim.LocalId=1;
