@@ -1,0 +1,104 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Numerics;
+using System.Text.RegularExpressions;
+
+namespace ChipArena.UnityConversion
+{
+    /// <summary>
+    /// The elemental intros' own checks (docs/INTROS-ELEMENTAL.md), beside the framework's IntroV2Checks: the set script and the
+    /// Core scripts keep the same numbers (the vent, the lava rings, the rivers, the hall, the spires, the monoliths); the staff
+    /// is where its grip track puts it (the left arm reaches it); each intro draws its whole modelled set through a fake bank
+    /// and the void without one; every streak over 1 m is laid on its head's camera plane; the cue keys are the generator's
+    /// pattern; Reduced effects keeps the lights' flicker slow. `--intro-elemental-probe` prints the anchors for tuning.
+    /// </summary>
+    internal static class IntroElementalChecks
+    {
+        private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Elemental intros: "+what);count++;}
+        internal static NativeIntroElementalScript[] Scripts()=>new NativeIntroElementalScript[]{new NativeIntroForgeborn(),new NativeIntroStillTide(),new NativeIntroStrikePoint(),new NativeIntroBlackSun()};
+        private sealed class Set:INativeIntroSet
+        {
+            public bool Bank;public readonly HashSet<string> Asked=new HashSet<string>();public int Pieces,Primitives;public readonly List<string> Drawn=new List<string>();
+            public bool Ready=>Bank;public bool Has(string prop){Asked.Add(prop);return Bank;}
+            public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){Pieces++;Drawn.Add(prop);if(!float.IsFinite(glow.X)||glow.X<0)throw new Exception("glow "+prop);}
+            public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){Primitives++;if(shape==WeaponShape.Ring)throw new Exception("a ring primitive");}
+        }
+        private sealed class Fx:INativeEntranceFx
+        {
+            public int Calls;public NativeEntranceView View;public float Worst;public int Long;
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){Calls++;if(profile==2)throw new Exception("a ring glow");}
+            public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed)
+            {
+                Calls++;var axis=velocity*blur;if(axis.Length()<=1.0001f)return;Long++;
+                // on its head's camera plane: the tail's depth along the view equals the head's
+                var f=Vector3.Normalize(View.Look-View.Eye);float zh=Vector3.Dot(head-View.Eye,f);if(zh<=.2f)return;var tail=head-axis;float zt=Vector3.Dot(tail-View.Eye,f);
+                float off=Math.Abs(zh-zt)/Math.Max(.01f,axis.Length());Worst=Math.Max(Worst,off);
+            }
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){Calls++;}
+        }
+        public static void Run(string root)
+        {
+            count=0;
+            SetScript(root);
+            foreach(var s in Scripts())
+            {
+                var entry=NativeIntroCatalog.Find(s.Style);
+                Check(entry==null||Math.Abs(entry.Duration-s.IntroTotal)<1e-4f&&Math.Abs(entry.NameAt-s.IntroNameAt)<1e-4f,s.Style+" registry length and name beat");
+                Check(s.IntroTotal>=6&&s.IntroTotal<=8.5f,s.Style+" 6-8.5 s");
+                Check(s.SetBank=="ChipArenaIntroElemental",s.Style+" bank");
+                // the set: every piece through the bank, the void without it
+                var set=new Set{Bank=true};
+                for(float t=0;t<=s.IntroTotal;t+=.25f){set.Pieces=0;s.Set(t,set);Check(set.Pieces>=4&&set.Pieces<=80,s.Style+" set pieces "+set.Pieces+" at "+t);Check(set.Primitives==0,s.Style+" no primitives over the bank");}
+                var none=new Set{Bank=false};s.Set(1,none);Check(none.Pieces==0&&none.Primitives>0,s.Style+" the void without the bank");
+                // cue keys: the generator's pattern (letters, digits, dots), sorted, inside the intro
+                float last=-1;foreach(var c in s.Cues){Check(c.Key==null||Regex.IsMatch(c.Key,"^intro2\\.[a-z0-9.]+$"),s.Style+" cue key "+c.Key);Check(c.At>=last&&c.At>=0&&c.At<=s.IntroTotal,s.Style+" cue order");last=c.At;Check(c.Alt!=null&&c.Clip!=null,s.Style+" cue fallbacks");}
+                // streaks on their camera plane, within budget, at every 1/30 s
+                foreach(bool reduced in new[]{false,true})foreach(bool low in new[]{false,true})
+                {
+                    s.Context=new NativeIntroContext{Reduced=reduced,Low=low,Quality=low?.6f:1,Name="Pilot"};var fx=new Fx();int peak=0;
+                    for(float age=0;age<=s.IntroTotal;age+=1/30f)
+                    {
+                        float t=s.Clock(age);s.Camera(age,out fx.View);fx.Calls=0;s.Effects(t,fx,s.Context.Quality);peak=Math.Max(peak,fx.Calls);
+                    }
+                    Check(fx.Worst<.035f,s.Style+" long streaks off their head's plane by "+fx.Worst.ToString("0.000",CultureInfo.InvariantCulture));
+                    Check(peak<=(low?300:600),s.Style+" FX calls at peak "+peak+(low?" (low)":""));
+                    Console.WriteLine("  "+s.Style+(reduced?" reduced":"")+(low?" low":"")+": peak "+peak+" FX calls, "+fx.Long+" long streaks");
+                }
+                s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};
+                // the staff where its track puts it: the left wrist on the grip within 4 cm wherever the arm can reach
+                var pose=new CapturedRig.Pose();int reached=0,tried=0;
+                for(float t=0;t<=s.IntroTotal;t+=.1f){s.Pose(t,pose,out _,out _);tried++;if(Finite(s.Anchor(NativeEntranceAnchor.LeftTip,t)))reached++;}
+                Check(reached==tried,s.Style+" staff anchors finite");
+            }
+            Console.WriteLine("PASS elemental intros ("+count+" checks)");
+        }
+        private static bool Finite(Vector3 v)=>float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z);
+        /// <summary>The set script's numbers are the Core scripts'.</summary>
+        private static void SetScript(string root)
+        {
+            var path=Path.Combine(root,"tools","intros","elemental_set.py");Check(File.Exists(path),"tools/intros/elemental_set.py");var text=File.ReadAllText(path);
+            float[] Tuple(string name){var m=Regex.Match(text,"^"+name+@"\s*=\s*\(([^)]*)\)",RegexOptions.Multiline);Check(m.Success,"set script "+name);var parts=m.Groups[1].Value.Split(',');var o=new List<float>();foreach(var p in parts){var q=p.Trim();if(q.Length>0)o.Add(float.Parse(q,CultureInfo.InvariantCulture));}return o.ToArray();}
+            var vent=Tuple("FIRE_VENT");Check(Math.Abs(vent[0]-NativeIntroForgeborn.Vent.X)<.002f&&Math.Abs(vent[1]-NativeIntroForgeborn.Vent.Z)<.002f,"FIRE_VENT is Forgeborn's vent");
+            var rings=Tuple("FIRE_RINGS");Check(rings.Length==NativeIntroForgeborn.Rings.Length,"FIRE_RINGS count");for(int i=0;i<rings.Length;i++)Check(Math.Abs(rings[i]-NativeIntroForgeborn.Rings[i])<1e-4f,"FIRE_RINGS "+i);
+            var rivers=Tuple("FIRE_RIVERS");for(int i=0;i<rivers.Length;i++)Check(Math.Abs(rivers[i]-NativeIntroForgeborn.Rivers[i])<1e-4f,"FIRE_RIVERS "+i);
+        }
+        /// <summary>`--intro-elemental-probe [id] [t...]`: the anchors (hands, the staff's tip, the head, the root) at sampled times.</summary>
+        public static void Probe(string[] args)
+        {
+            var pose=new CapturedRig.Pose();
+            foreach(var s in Scripts())
+            {
+                if(args.Length>1&&!s.Style.Contains(args[1]))continue;Console.WriteLine(s.Style);
+                for(float t=0;t<=s.IntroTotal+.01f;t+=.25f)
+                {
+                    s.Pose(t,pose,out var root,out var rot);string F(Vector3 v)=>"("+v.X.ToString("0.00",CultureInfo.InvariantCulture)+","+v.Y.ToString("0.00",CultureInfo.InvariantCulture)+","+v.Z.ToString("0.00",CultureInfo.InvariantCulture)+")";
+                    var lh=s.Anchor(NativeEntranceAnchor.LeftHand,t);var tip=s.Anchor(NativeEntranceAnchor.LeftTip,t);var d=Vector3.Normalize(tip-lh);
+                    s.Camera(t,out var v);
+                    Console.WriteLine($"  t {t:0.00} root {F(root)} head {F(s.Anchor(NativeEntranceAnchor.Head,t))} lhand {F(lh)} tip {F(tip)} axis {F(d)} rhand {F(s.Anchor(NativeEntranceAnchor.RightHand,t))} feet {F(s.Anchor(NativeEntranceAnchor.LeftFoot,t))}{F(s.Anchor(NativeEntranceAnchor.RightFoot,t))} eye {F(v.Eye)} look {F(v.Look)} fov {v.Fov:0}");
+                }
+            }
+        }
+    }
+}

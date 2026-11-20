@@ -121,6 +121,10 @@ internal static class Program
             if(args.Length==1&&args[0]=="--technique-rules"){TechniqueRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-sounds"){DeploySoundChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-mutators"){ExpeditionMutatorChecks.Run(ProjectRoot());return 0;}
+            // The elemental weapons' v2 intros (docs/INTROS-ELEMENTAL.md): their own checks beside the framework's.
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-elemental")IntroElementalChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--intro-elemental")return 0;
+            if(args.Length>=1&&args[0]=="--intro-elemental-probe"){IntroElementalChecks.Probe(args);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--intro-performance")IntroPerformanceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--intro-performance")return 0;
             if(args.Length==1&&args[0]=="--deploy-performance"){DeployPerformanceChecks.Run(ProjectRoot());return 0;}
