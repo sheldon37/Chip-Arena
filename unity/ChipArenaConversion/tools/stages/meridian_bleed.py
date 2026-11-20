@@ -11,6 +11,7 @@ counts), `/1` (Mid, sharing LOD0's mesh) and `/2` (LOD1, stagekit's Low), group 
             frame, facing -z with +x to the viewer's right, and turned half round);
   Span      from the cable's start, x across the street (scaled to the span by the planner), y about the cable;
   Overhead  hung pieces from their hanging point (y 0 down), the ceiling's cells from their underside (y 0 up).
+The themed module variants for the street planner are `module/<key>@<theme>/<tier>` (group "module"; see VARIANT_KEYS).
 Each piece is checked against its kind's envelope, read from the Core source (the one table both sides keep), so a piece can
 never stand prouder or lower than the planner placed it for. Finishes follow the approved board's (art bible 4.2: the city's
 common finishes and each instance's own); glowing parts go on the glow sub-mesh, white where the runtime tints a lamp.
@@ -122,6 +123,9 @@ def finishes():
     a('cable', 0x18181C, N, .40, .2, .3, 0, 0)
     # Level 0 (THE HUM)
     a('veneer', 0xA9814F, W, .40, 0, .5, 0, .10)
+    a('stucco-beige', 0xCBB88A, P, .10, 0, .6, 0, 0)
+    a('stucco-joint', 0x8E7F5C, N, .10, 0, .6, 0, 0)
+    a('glass-brown', 0x2E2418, N, .90, 0, .2, 0, 0)
     a('kickplate', 0xB9BEC2, N, .65, .85, .4, 0, .25)
     a('alu', 0xB4BAC0, N, .55, .8, .4, 0, .10)
     a('carpet', 0x8C7A44, CL, .05, 0, .9, .10, 0)
@@ -1127,6 +1131,259 @@ def check(key, env, g):
         raise SystemExit('%s: outside its envelope on %s: %s..%s against %s..%s' % (key, 'xyz'[bad[0]], a.round(3), b.round(3), lo, hi))
 
 
+# ---------------------------------------------------------------------------------------------------------------------------
+# Themed module variants for the street planner (Core NativeMeridianDress.ThemeAt: a module key plus "@" and the theme). The
+# drift band's skins (R3/R12): Level 0's beige stucco offices with ribbon windows lit flat yellow, the Poolrooms' white tile
+# and glass block, Ward Zero's white cladding and teal band, the Station's cream and green tile, the Ironworks' buff brick and
+# roller doors. In the planner's module frame (the bay's foot and centre on the face, x along it, y up, z out); the ground
+# and the hugging upper bays keep every vertex between 0.25 m in and 6 cm out of the face, so they may stand in the actor band.
+# Four shapes per theme (a ground bay, a door bay, an upper bay, a roof-line band), each shared by every key of its family:
+# the keys are the street planner's (claude/meridian-dress at b56b3e2b: refresh VARIANT_KEYS when its families change).
+# ---------------------------------------------------------------------------------------------------------------------------
+THEMES = ('level0', 'poolrooms', 'wardzero', 'station', 'ironworks')
+TRADES = ('BAKERY', 'GROCER', 'NEWS', 'CHEMIST', 'COBBLER', 'CAFE', 'BUTCHER', 'DAIRY', 'LAUNDRY', 'TAILOR')
+_UP = ['u.win.%d.%d' % (v, s) for v in (0, 1) for s in range(3)] + ['u.ten.%d' % s for s in range(3)] + ['u.stair'] + \
+    ['u.ware.%d' % s for s in range(2)] + ['u.civic.%d' % s for s in range(2)] + ['u.plain'] + ['u.blind.%d' % s for s in range(2)]
+VARIANT_KEYS = {
+    'ground': ['g.window.%d.%d' % (v, s) for v in (0, 1) for s in range(3)] + ['g.shop.' + t for t in TRADES] + ['g.shutter', 'g.flats.0',
+               'g.flats.1', 'g.ware', 'g.civic.0', 'g.civic.1'] + ['g.blind.%d' % k for k in range(3)],
+    'door': ['g.door.%d.%d' % (v, s) for v in (0, 1) for s in range(3)] + ['g.entry', 'g.load'],
+    'upper': _UP + [k + '.h' for k in _UP] + ['u.oriel'],
+    'top': ['t.brick', 't.render', 't.ten', 't.ware', 't.civic'],
+}
+# the shapes' envelopes in the module frame (x, y, z): ground and upper bays hug their face, the band hangs from the roof line
+VARIANT_BOX = {'ground': ((-1.25, 0, -.25), (1.25, 4.0, .06)), 'door': ((-1.25, 0, -.25), (1.25, 4.0, .06)),
+               'upper': ((-1.25, 0, -.25), (1.25, 3.0, .06)), 'top': ((-1.25, -.95, -.25), (1.25, 0, .35))}
+
+
+def facade(g, T, x0, x1, y0, y1, f, holes=(), z=0.0):
+    """A flat wall face (kit frame, facing -z) from x0..x1, y0..y1 with rectangular holes (x0, x1, y0, y1) cut out."""
+    ys = sorted({y0, y1} | {h[2] for h in holes} | {h[3] for h in holes})
+    ys = [y for y in ys if y0 <= y <= y1]
+    for ya, yb in zip(ys, ys[1:]):
+        if yb - ya < 1e-4:
+            continue
+        cuts = sorted((h[0], h[1]) for h in holes if h[2] <= ya + 1e-4 and h[3] >= yb - 1e-4)
+        x = x0
+        for (a, b) in cuts + [(x1, x1)]:
+            if a - x > 1e-4:
+                wall_rect(g, T, x, a, ya, yb, z, f, -1)
+            x = max(x, b)
+
+
+def recess(g, T, h, depth, f_reveal, f_back, glow_back=None):
+    """A rectangular hole (x0, x1, y0, y1) recessed `depth` into the wall: its four reveals and its back pane."""
+    x0, x1, y0, y1 = h
+    for (a, b, n) in (((x0, y0), (x1, y0), (0, 1, 0)), ((x1, y1), (x0, y1), (0, -1, 0))):
+        g.face(((a[0], a[1], 0), (b[0], b[1], 0), (b[0], b[1], depth), (a[0], a[1], depth)), f_reveal, n)
+    for (x, n) in ((x0, (1, 0, 0)), (x1, (-1, 0, 0))):
+        g.face(((x, y0, 0), (x, y1, 0), (x, y1, depth), (x, y0, depth)), f_reveal, n)
+    wall_rect(g, T, x0, x1, y0, y1, depth, glow_back if glow_back is not None else f_back, -1, 0)
+
+
+def mullions(g, T, h, n, f, depth=.03, w=.04):
+    x0, x1, y0, y1 = h
+    for k in range(1, n):
+        x = x0 + (x1 - x0) * k / n
+        bx(g, T, x - w / 2, x + w / 2, y0, y1, -.0 + .0, depth, f, bevel=0)
+
+
+def variant(theme, shape, g, T):
+    if theme == 'level0':
+        st, al = F['stucco-beige'], F['alu']
+        room = glow(0xE8D070, 1.1)
+        if shape == 'ground':
+            h = (-1.2, 1.2, 1.0, 2.5)
+            facade(g, T, -1.25, 1.25, 0, 4.0, st, [h])
+            recess(g, T, h, .14, al, F['glass-brown'], room)
+            mullions(g, T, h, 4, al, depth=.1)
+            panel(g, T, -1.25, 1.25, 0, .3, .03, F['stucco-joint'], cell=0)
+        elif shape == 'door':
+            d, w = (-.5, .5, 0, 2.3), (-1.2, 1.2, 2.7, 3.6)
+            facade(g, T, -1.25, 1.25, 0, 4.0, st, [d, w])
+            recess(g, T, d, .1, al, F['veneer'])
+            recess(g, T, w, .14, al, F['glass-brown'], room)
+            mullions(g, T, w, 4, al, depth=.1)
+        elif shape == 'upper':
+            h = (-1.2, 1.2, .7, 2.3)
+            facade(g, T, -1.25, 1.25, 0, 3.0, st, [h])
+            recess(g, T, h, .14, al, F['glass-brown'], room)
+            mullions(g, T, h, 4, al, depth=.1)
+            panel(g, T, -1.25, 1.25, 2.9, 3.0, .02, F['stucco-joint'], cell=0)
+        else:
+            facade(g, T, -1.25, 1.25, -.95, 0, st)
+            bx(g, T, -1.25, 1.25, -.12, 0, -.3, .0, al, bevel=0)
+    elif theme == 'poolrooms':
+        tile, aqua = F['tile-pool'], F['tile-aqua']
+        gb = glow(0x60D8F0, .9)
+        if shape in ('ground', 'upper'):
+            top = 4.0 if shape == 'ground' else 3.0
+            h = (-.8, .8, 1.0, 2.6) if shape == 'ground' else (-.8, .8, .7, 2.1)
+            facade(g, T, -1.25, 1.25, 0, top, tile, [h])
+            recess(g, T, h, .06, tile, gb)
+            if T.lod == 0:
+                n = 6
+                for k in range(1, n):
+                    x = h[0] + (h[1] - h[0]) * k / n
+                    bx(g, T, x - .012, x + .012, h[2], h[3], .0, .055, tile, bevel=0)
+                    y = h[2] + (h[3] - h[2]) * k / n
+                    bx(g, T, h[0], h[1], y - .012, y + .012, .0, .055, tile, bevel=0)
+            band = (3.2, 3.45) if shape == 'ground' else (2.55, 2.8)
+            panel(g, T, -1.25, 1.25, band[0], band[1], .04, aqua, cell=0)
+            if shape == 'ground':
+                panel(g, T, -1.25, 1.25, 0, .15, .04, F['tile-teal'], cell=0)
+        elif shape == 'door':
+            d = (-.6, .6, 0, 2.5)
+            facade(g, T, -1.25, 1.25, 0, 4.0, tile, [d])
+            recess(g, T, d, .22, aqua, F['void'])
+            panel(g, T, -1.25, 1.25, 3.2, 3.45, .04, aqua, cell=0)
+        else:
+            facade(g, T, -1.25, 1.25, -.95, 0, tile)
+            bx(g, T, -1.25, 1.25, -.5, -.3, -.12, 0, aqua, bevel=0)
+            bx(g, T, -1.25, 1.25, -.08, 0, -.2, 0, F['coping'], bevel=0)
+    elif theme == 'wardzero':
+        clad, teal, joint = F['cladding-white'], F['cladding-teal'], F['cladding-joint']
+        if shape in ('ground', 'upper', 'door'):
+            top = 3.0 if shape == 'upper' else 4.0
+            holes = []
+            if shape == 'ground':
+                holes = [(-1.0, 1.0, 1.2, 1.9)]
+            elif shape == 'upper':
+                holes = [(-1.0, 1.0, 1.0, 1.7)]
+            else:
+                holes = [(-.55, .55, 0, 2.3)]
+            facade(g, T, -1.25, 1.25, 0, top, joint, holes, z=.0)
+            # the panels, a hair proud of their joints
+            for hh in holes:
+                recess(g, T, hh, .12, F['steel-white'], F['glass-dark'] if shape != 'door' else F['steel-white'])
+            band = (2.6, 2.9) if shape != 'upper' else (2.6, 2.85)
+            panel(g, T, -1.25, 1.25, band[0], band[1], .045, teal, cell=0)
+            for x in (-1.25, 0.0):
+                for (y0, y1) in ((0.02, band[0] - .02), (band[1] + .02, top - .02)):
+                    segs = [(y0, y1)]
+                    for hh in holes:
+                        if x + 1.25 > hh[0] and x < hh[1]:
+                            segs = [(a, b) for (a, b) in segs for (a, b) in ((a, min(b, hh[2])), (max(a, hh[3]), b)) if b - a > .05]
+                    for (a, b) in segs:
+                        xs = [(x + .01, x + 1.24)]
+                        for hh in holes:
+                            if a < hh[3] and b > hh[2]:
+                                xs = [(c, d) for (c, d) in xs for (c, d) in ((c, min(d, hh[0])), (max(c, hh[1]), d)) if d - c > .05]
+                        for (c, d) in xs:
+                            panel(g, T, c, d, a, b, .025, clad, cell=1.0 if T.lod == 0 else 0)
+        else:
+            facade(g, T, -1.25, 1.25, -.95, 0, clad)
+            bx(g, T, -1.25, 1.25, -.15, 0, -.2, 0, F['steel-white'], bevel=0)
+            bx(g, T, -1.25, 1.25, -.7, -.55, -.05, 0, teal, bevel=0)
+    elif theme == 'station':
+        cream, green = F['tile-cream'], F['tile-green']
+        if shape in ('ground', 'door', 'upper'):
+            top = 3.0 if shape == 'upper' else 4.0
+            base = 0.0 if shape == 'upper' else 1.2
+            if shape == 'door':
+                h = (-.6, .6, 0, 2.6)
+            elif shape == 'ground':
+                h = (-.85, .85, 1.3, 3.0)
+            else:
+                h = (-.7, .7, .8, 2.3)
+            facade(g, T, -1.25, 1.25, 0, top, F['brick-glazed'] if shape == 'upper' else cream, [h])
+            if shape != 'upper':
+                lo = [(-1.25, h[0]), (h[1], 1.25)] if h[2] < 1.2 else [(-1.25, 1.25)]
+                for (a, b) in lo:
+                    panel(g, T, a, b, 0, min(1.2, h[2]) if h[2] >= 1.2 else 1.2, .03, green, cell=0)
+            recess(g, T, h, .15, cream, F['glass-dark'] if shape != 'door' else F['void'])
+            # the arch's head: a cream tile ring over the opening, flat
+            n = 8 if T.lod == 0 else 4
+            r0, r1 = (h[1] - h[0]) / 2, (h[1] - h[0]) / 2 + .14
+            cx, cy = (h[0] + h[1]) / 2, h[3]
+            for k in range(n):
+                a0, a1 = PI * k / n, PI * (k + 1) / n
+                p = [(cx + math.cos(a0) * r1, cy + math.sin(a0) * r1 * .5, -.03), (cx + math.cos(a1) * r1, cy + math.sin(a1) * r1 * .5, -.03),
+                     (cx + math.cos(a1) * r0, cy + math.sin(a1) * r0 * .5, -.03), (cx + math.cos(a0) * r0, cy + math.sin(a0) * r0 * .5, -.03)]
+                if max(q[1] for q in p) <= top:
+                    g.face(p, green, (0, 0, -1))
+        else:
+            facade(g, T, -1.25, 1.25, -.95, 0, F['brick-glazed'])
+            bx(g, T, -1.25, 1.25, -.4, -.25, -.1, 0, green, bevel=0)
+            bx(g, T, -1.25, 1.25, -.06, 0, -.16, 0, cream, bevel=0)
+    else:
+        brick, iron = F['brick-buff'], F['iron-black']
+        if shape == 'ground':
+            h = (-1.05, 1.05, 0, 3.2)
+            facade(g, T, -1.25, 1.25, 0, 4.0, brick, [h])
+            recess(g, T, h, .12, iron, F['galv'])
+            if T.lod == 0:
+                for k in range(16):
+                    y = .1 + k * .19
+                    bx(g, T, h[0], h[1], y, y + .03, .1, .12, F['steel-dark'], bevel=0)
+            panel(g, T, -1.25, 1.25, 3.25, 3.5, .04, F['brick-soot'], cell=0)
+        elif shape == 'door':
+            d = (-.5, .5, 0, 2.2)
+            facade(g, T, -1.25, 1.25, 0, 4.0, brick, [d])
+            recess(g, T, d, .1, iron, F['steel-dark'])
+            panel(g, T, -.65, .65, 2.2, 2.4, .04, iron, cell=0)
+        elif shape == 'upper':
+            h = (-.8, .8, .6, 2.4)
+            facade(g, T, -1.25, 1.25, 0, 3.0, brick, [h])
+            recess(g, T, h, .12, iron, F['glass-dark'])
+            if T.lod == 0:
+                for k in range(1, 4):
+                    x = h[0] + (h[1] - h[0]) * k / 4
+                    bx(g, T, x - .015, x + .015, h[2], h[3], .08, .11, iron, bevel=0)
+                for k in range(1, 5):
+                    y = h[2] + (h[3] - h[2]) * k / 5
+                    bx(g, T, h[0], h[1], y - .015, y + .015, .08, .11, iron, bevel=0)
+            panel(g, T, -1.25, 1.25, 2.5, 3.0, .03, F['brick-soot'], cell=0)
+        else:
+            facade(g, T, -1.25, 1.25, -.95, 0, brick)
+            bx(g, T, -1.25, 1.25, -.1, 0, -.18, 0, iron, bevel=0)
+
+
+def build_variants(sb, args):
+    """Every theme's four shapes at both tiers, each checked against its envelope, and a prop per planner key sharing them."""
+    count = 0
+    for theme in THEMES:
+        for shape in ('ground', 'door', 'upper', 'top'):
+            for lod, ti in ((0, 0), (1, 2)):
+                T = tier(lod)
+                g = Geo()
+                variant(theme, shape, g, T)
+                g = g.transformed(TURN)
+                lo, hi = VARIANT_BOX[shape]
+                P, _, _, _ = g.arrays()
+                a, b = P.min(axis=0), P.max(axis=0)
+                if any(a[i] < lo[i] - 2e-3 or b[i] > hi[i] + 2e-3 for i in range(3)):
+                    raise SystemExit('%s@%s: outside its envelope: %s..%s' % (shape, theme, a.round(3), b.round(3)))
+                bk = sk.Bake(g, None, floors=(0.0,) if shape in ('ground', 'door') else (-50.0,), seed=int(h01(theme, shape) * 1000))
+                om = sk.to_mesh('variant/%s.%s/%d' % (theme, shape, ti), g, bk)
+                mi = sb.mesh(om)
+                for key in VARIANT_KEYS[shape]:
+                    sb.share('module/%s@%s/%d' % (key, theme, ti), 'module', mi)
+                    if ti == 0:
+                        sb.share('module/%s@%s/1' % (key, theme), 'module', mi)
+                    count += 1
+    print('variants: %d themed keys over %d themes' % (count // 2, len(THEMES)))
+
+
+def variant_sheet(out):
+    """Each theme's skins as a little facade (three bays: a ground bay, a door bay, a ground bay; two storeys; the band),
+    side by side, facing the camera."""
+    T = tier(0)
+    laid = []
+    for n, theme in enumerate(THEMES):
+        g = Geo()
+        for bay, shape in enumerate(('ground', 'door', 'ground')):
+            x = n * 9.0 + (bay - 1) * 2.5
+            for (sh, y) in ((shape, 0.0), ('upper', 4.0), ('upper', 7.0), ('top', 10.0)):
+                sub = Geo()
+                variant(theme, sh, sub, T)
+                g.extend(sub.transformed([1.0, 0, 0, x, 0, 1.0, 0, y, 0, 0, 1.0, 0]))
+        laid.append((g, sk.Bake(g, None, floors=(0.0,), seed=n)))
+    views = [('variants-%s' % t, (n * 9.0, 5.5, -13.0), (n * 9.0, 5.0, 0.0), 50) for n, t in enumerate(THEMES)]
+    views.append(('variants-all', (18.0, 6.0, -40.0), (18.0, 5.0, 0.0), 50))
+    sk.preview(laid, views, out, size=(900, 900))
+
+
 def main():
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     ap = argparse.ArgumentParser()
@@ -1173,6 +1430,10 @@ def main():
         print('tier %d: %d pieces, %d faces, %.1f s' % (ti, len(keys), sum(g.faces for g in geos), time.time() - t0))
         if args.preview and lod == 0:
             sheet(pv, keys, K, args.preview)
+            if not args.only:
+                variant_sheet(args.preview)
+    if not args.only:
+        build_variants(sb, args)
     if args.out:
         sb.write(args.out, BANK)
     print('done in %.1f s' % (time.time() - t0))
