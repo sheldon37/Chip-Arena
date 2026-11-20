@@ -1,3 +1,5 @@
+2026-11-19 Astra: A2 Expedition startup fix on `codex/cache-startup-fix` from shared `821d75c4`. Both incident seeds reproduce on the parent and clear managed layout validation with the fix. The M3 integrator's Windows Editor launch check is pending.
+
 2026-11-19 Astra: A2 cache rules on `codex/a2-civil-defence` from shared `8790610c`. Four grid caches, five candidate-3 caches per plan and two authored interior bays per cache. M3 integration with A1, Claude’s locker presentation and Windows co-op acceptance are pending.
 
 2026-11-19 Astra: Meridian candidate 3 implements the five approved street plans in the Developer walk. Native Core checks pass for all 190 exit pairs and all 20 Hulk destinations. The Windows test channel published revision `639307261968786427`. All five held four pilots and 88 zombies through the native comparison, and all 60 rendered views passed both tier budgets. The per-layout counts and frame timings are in `docs/MERIDIAN-B-WALK.md`.
