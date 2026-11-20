@@ -35,7 +35,8 @@ namespace ChipArena.UnityConversion
         }
         public NativeIntroCloudbreak():base(NativeIntroCatalog.DefaultId,Total,CardAt,TouchAt,0x7fd4ff)
         {
-            Start=Stance(.2f,.08f,.15f,-.2f,-.06f,-.4f);
+            // (The landing's stance: the left foot forward, the right knee down behind it; the rise brings the right foot up beside it.)
+            Start=Stance(.2f,.45f,.15f,-.2f,-.4f,-.4f);
             Steps=new[]{Step(false,RiseAt+.25f,RiseAt+.55f,-.17f,-.06f,-.38f,.06f),Step(true,RiseAt+.45f,RiseAt+.75f,.17f,.07f,.12f,.05f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The dive: head first, body pitched over, arms swept back along the sides, legs together, looking down the drop.
@@ -48,13 +49,18 @@ namespace ChipArena.UnityConversion
             k.Key(FlipAt+.24f,stand).Root(0,.88f,0,Facing).Spin(.62f,0).Planted(0).J(B,.15f).J(Hd,.25f).J(LA,-1.1f,0,.55f).J(LE,-.7f).J(RA,-1.1f,0,-.55f).J(RE,-.7f).J(LL,-1.35f,0,.12f).J(LK,2.0f).J(RL,-1.3f,0,-.12f).J(RK,1.95f).PassKey();
             // Feet first under the burn: legs reaching down, arms out for balance, head down on the pad.
             k.Key(FlipAt+.42f,stand).Root(0,.88f,0,Facing).Spin(.08f,0).Planted(0).J(Hd,.38f).J(LA,-.45f,0,1.05f).J(LE,-.25f).J(RA,-.45f,0,-1.05f).J(RE,-.25f).J(LL,-.3f,0,.1f).J(LK,.45f).J(RL,-.18f,0,-.1f).J(RK,.3f);
-            k.Key(TouchAt-.1f,stand).Root(0,.88f,0,Facing).Spin(0,0).Planted(.4f).Drop(-.04f).J(Hd,.32f).J(LA,-.5f,0,1.15f).J(LE,-.25f).J(RA,-.5f,0,-1.15f).J(RE,-.25f).J(LL,-.42f,0,.12f).J(LK,.7f).J(RL,-.38f,0,-.12f).J(RK,.65f);
-            // Touchdown: the three-point landing, deep in the knees, the right hand slammed down on the pad in front, the left arm swept
-            // back and out, head down (the impact key rings out); it holds, then the head comes up to the lens before it rises.
-            k.Key(TouchAt,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.48f).J(B,.45f).J(Sp,.16f).J(Hd,.32f).J(LA,.7f,0,.85f).J(LE,-.2f).J(RA,-.75f,0,-.18f).J(RE,-.15f).ImpactKey();
-            k.Key(TouchAt+.3f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.5f).J(B,.47f).J(Sp,.17f).J(Hd,.28f).J(LA,.6f,0,.75f).J(LE,-.25f).J(RA,-.78f,0,-.18f).J(RE,-.18f);
-            k.Key(RiseAt-.45f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.5f).J(B,.44f).J(Sp,.16f).J(Hd,.26f).J(LA,.55f,0,.7f).J(LE,-.28f).J(RA,-.78f,0,-.18f).J(RE,-.2f);
-            k.Key(RiseAt-.15f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.47f).J(B,.36f).J(Sp,.12f).J(Hd,-.2f).J(LA,.3f,0,.6f).J(LE,-.35f).J(RA,-.55f,0,-.3f).J(RE,-.3f);
+            k.Key(TouchAt-.1f,stand).Root(0,.88f,0,Facing).Spin(0,0).Planted(.4f,0).Drop(-.04f).J(Hd,.32f).J(LA,-.5f,0,1.15f).J(LE,-.25f).J(RA,-.5f,0,-1.15f).J(RE,-.25f).J(LL,-.42f,0,.12f).J(LK,.7f).J(RL,-.38f,0,-.12f).J(RK,.65f);
+            // Touchdown: the superhero landing, down on the right knee with the left foot planted out in front, the right hand slammed
+            // flat on the pad, the left arm swept back and out, head down (the impact key rings out); it holds, then the head comes up to
+            // the lens before it rises. (The right leg is keyed, kneeling, as Whiteout's is; the left is planted.)
+            k.Key(TouchAt,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.5f).J(B,.32f).J(Sp,.14f).J(Hd,.3f).J(LA,.7f,0,.85f).J(LE,-.2f).J(RA,-.75f,0,-.15f).J(RE,-.12f)
+                .J(RL,.3f,0,-.08f).J(RK,1.75f).ImpactKey();
+            k.Key(TouchAt+.3f,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.52f).J(B,.34f).J(Sp,.15f).J(Hd,.26f).J(LA,.6f,0,.75f).J(LE,-.25f).J(RA,-.78f,0,-.15f).J(RE,-.15f)
+                .J(RL,.3f,0,-.08f).J(RK,1.75f);
+            k.Key(RiseAt-.45f,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.52f).J(B,.32f).J(Sp,.14f).J(Hd,.24f).J(LA,.55f,0,.7f).J(LE,-.28f).J(RA,-.78f,0,-.15f).J(RE,-.18f)
+                .J(RL,.3f,0,-.08f).J(RK,1.75f);
+            k.Key(RiseAt-.15f,stand).Root(0,.88f,0,Facing).Planted(1,0).Drop(-.5f).J(B,.28f).J(Sp,.1f).J(Hd,-.2f).J(LA,.3f,0,.6f).J(LE,-.35f).J(RA,-.55f,0,-.3f).J(RE,-.3f)
+                .J(RL,.3f,0,-.08f).J(RK,1.75f);
             // The rise: up through the knees, chest open, chin up; it looks to the sun as it breaks.
             k.Key(RiseAt+.55f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(B,.02f).J(C,-.06f).J(Hd,-.12f,.18f,0).J(LA,-.12f,0,.22f).J(LE,-.3f).J(RA,-.12f,0,-.22f).J(RE,-.3f).PassKey();
             k.Key(SunAt+.15f,stand).Root(0,.88f,0,Facing+.08f).Planted(1).Drop(-.02f).J(C,-.1f,.1f,0).J(Hd,-.2f,.42f,0).J(LA,-.1f,0,.2f).J(LE,-.32f).J(RA,-.1f,0,-.2f).J(RE,-.32f);

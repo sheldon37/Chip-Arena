@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         public NativeIntroWhiteout():base(Id,Total,CardAt,PulseAt,0x7fe8ff)
         {
             // Kneeling: the left foot forward, the right knee in the snow; then standing on the mark.
-            Start=Stance(.2f,.42f,.12f,-.2f,-.35f,-.45f);
+            Start=Stance(.2f,.5f,.12f,-.2f,-.35f,-.45f);
             Steps=new[]{Step(false,RiseAt+.35f,RiseAt+.8f,-.19f,.18f,-.42f,.1f),Step(true,UpAt+.05f,UpAt+.35f,.18f,.24f,.1f,.05f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             float[] kneel(float head,float lean)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=.88f;v[NativeEntranceKeys.RootZ]=.12f;v[NativeEntranceKeys.Yaw]=Facing;v[NativeEntranceKeys.BodyY]=-.5f;

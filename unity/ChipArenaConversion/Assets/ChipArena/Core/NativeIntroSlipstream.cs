@@ -35,6 +35,8 @@ namespace ChipArena.UnityConversion
             float d=StopAt-LandAt,s=NativeEntranceMath.Clamp01((t-LandAt)/d);float x=LandOn.X+(0-LandOn.X)*(1-(1-s)*(1-s));
             return new Vector3(x,.88f,LandOn.Z+(0-LandOn.Z)*NativeEntranceMath.Smooth(s));
         }
+        /// <summary>The sprint's i-th foot strike (0..5, left first): every .13 s, the last (the right foot's take-off plant) just before the leap.</summary>
+        public static float Strike(int i)=>RunAt+.17f+i*.13f;
         /// <summary>The root's path: riding the roof, flying, sliding (the keys hold the root after the stop).</summary>
         public static Vector3 Ride(float t)
         {
@@ -46,18 +48,25 @@ namespace ChipArena.UnityConversion
         public NativeIntroSlipstream():base(Id,Total,CardAt,LeapAt,0x16d6ff)
         {
             // Feet: on the roof in the car's frame while riding (shifted with the car each frame), then on the platform.
-            Start=Stance(.2f,.12f,.1f,-.2f,-.1f,-.4f,(float)(Math.PI/2),-23.7f-V0*LeapAt-3+.0f,RideZ);
+            Start=Stance(.2f,.3f,.1f,-.2f,-.1f,-.4f,(float)(Math.PI/2),-23.7f-V0*LeapAt-3+.0f,RideZ);
             // (Each foot's steps in time order: the sprint on the roof in the car's frame, a jump to where the slide leaves it (the stance
             // is the slide's own from the leap to the stop: Pose), then a step to the mark.)
             var run=new NativeEntrancePose.Step[10];float x0=-23.7f-V0*LeapAt;
-            for(int i=0;i<6;i++){float at=RunAt+.04f+i*.15f;float along=Along(at+.12f);run[i]=new NativeEntrancePose.Step(i%2==0,at,at+.13f,x0+along+.35f,RideZ+(i%2==0?.12f:-.12f),(float)(Math.PI/2),.3f);}
+            // The sprint's strikes (Strike(i)): each foot lands .32 m ahead of the hips and is off again .05 s later (a sprinter's short
+            // contact: the body runs on about 1.3 m a step, so a longer one left the foot far behind the hips), swinging through high for
+            // the knee drive; the left foot on the pilot's left (-z: it faces +x). The last strike is the right foot's take-off plant; the
+            // left leg leaves the plan there and is keyed, tucking and driving its knee up into the leap.
+            for(int i=0;i<6;i++){float land=Strike(i);run[i]=new NativeEntrancePose.Step(i%2==0,land-.21f,land,x0+Along(land)+.32f,RideZ+(i%2==0?-.12f:.12f),(float)(Math.PI/2),.22f);}
             run[6]=new NativeEntrancePose.Step(true,LeapAt,LeapAt+.001f,.32f,.14f,Facing+.25f,0);run[7]=new NativeEntrancePose.Step(false,LeapAt,LeapAt+.001f,-.42f,-.12f,Facing+.25f,0);
             run[8]=Step(false,StopAt+.12f,StopAt+.42f,-.19f,-.06f,-.42f,.07f);run[9]=Step(true,StopAt+.3f,StopAt+.6f,.18f,.08f,.12f,.06f);
             Steps=run;
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();float side=(float)(Math.PI/2);
             // Crouched on the roof, facing the way it runs: low, the left hand near the roof, the right arm out for balance.
-            k.Key(0,stand).Root(0,.88f,0,side).Planted(1).Drop(-.42f).J(B,.4f).J(Sp,.12f).J(Hd,-.3f).J(LA,-.85f,0,.35f).J(LE,-.5f).J(RA,-.4f,0,-1.0f).J(RE,-.3f);
-            k.Key(StandAt-.2f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.44f).J(B,.42f).J(Sp,.12f).J(Hd,-.32f).J(LA,-.8f,0,.4f).J(LE,-.55f).J(RA,-.45f,0,-1.05f).J(RE,-.3f);
+            k.Key(0,stand).Root(0,.88f,0,side).Planted(1).Drop(-.42f).J(B,.34f).J(Sp,.12f).J(Hd,-.3f).J(LA,-.85f,0,.35f).J(LE,-.5f).J(RA,-.4f,0,-1.0f).J(RE,-.3f);
+            // Riding it out: the body swaying over its feet with the car, the balancing arm working against it.
+            k.Key(.5f,stand).Root(0,.88f,0,side).Spin(0,.05f).Planted(1).Drop(-.43f).J(B,.35f).J(Sp,.12f).J(Hd,-.3f,0,-.04f).J(LA,-.85f,0,.33f).J(LE,-.5f).J(RA,-.42f,0,-1.12f).J(RE,-.28f);
+            k.Key(1f,stand).Root(0,.88f,0,side).Spin(0,-.04f).Planted(1).Drop(-.42f).J(B,.34f).J(Sp,.12f).J(Hd,-.31f,0,.03f).J(LA,-.82f,0,.37f).J(LE,-.52f).J(RA,-.38f,0,-.92f).J(RE,-.32f);
+            k.Key(StandAt-.2f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.44f).J(B,.36f).J(Sp,.12f).J(Hd,-.32f).J(LA,-.8f,0,.4f).J(LE,-.55f).J(RA,-.45f,0,-1.05f).J(RE,-.3f);
             // Up, and running: arms pumping, leaning into it.
             k.Key(RunAt,stand).Root(0,.88f,0,side).Planted(1).Drop(-.12f).J(B,.2f).J(Hd,-.1f).J(LA,-.5f,0,.2f).J(LE,-1.2f).J(RA,.3f,0,-.2f).J(RE,-1.3f);
             // The sprint: leaning into it, two keys a stride (the feet are the planned steps, lifted high for the knee drive): in the
@@ -66,14 +75,18 @@ namespace ChipArena.UnityConversion
             // other thrown back). (s: +1 when the left foot strikes; the source frame's left is +x.)
             for(int i=0;i<5;i++)
             {
-                float lift=RunAt+.04f+i*.15f;float s=i%2==0?1:-1;
+                float lift=Strike(i)-.13f;float s=i%2==0?1:-1;
                 k.Key(lift+.065f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.05f).J(B,.3f).J(Sp,.06f).J(Hd,-.2f)
                     .J(LA,-.15f,0,.2f).J(LE,-1.45f).J(RA,-.15f,0,-.2f).J(RE,-1.45f).PassKey();
                 k.Key(lift+.13f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.15f).J(B,.33f).J(Sp,.06f).J(P,0,-s*.14f,0).J(C,0,s*.2f,0).J(Hd,-.22f,-s*.08f,0)
                     .J(LA,s>0?.8f:-1.05f,0,.22f).J(LE,s>0?-1.1f:-1.65f).J(RA,s>0?-1.05f:.8f,0,-.22f).J(RE,s>0?-1.65f:-1.1f).PassKey();
             }
-            // The gather: one last strike low and loaded, arms swung back, before the launch.
-            k.Key(LeapAt-.07f,stand).Root(0,.88f,0,side).Planted(1).Drop(-.26f).J(B,.45f).J(Sp,.1f).J(Hd,-.3f).J(LA,.75f,0,.25f).J(LE,-.45f).J(RA,.7f,0,-.25f).J(RE,-.45f).J(LK,.6f).J(RK,.5f);
+            // Off the last left strike the left leg is keyed (the plan holds only the right foot's take-off plant): the heel tucks up
+            // behind in the flight...
+            k.Key(Strike(5)-.065f,stand).Root(0,.88f,0,side).Planted(0,1).Drop(-.05f).J(B,.3f).J(Sp,.06f).J(Hd,-.2f)
+                .J(LA,-.15f,0,.2f).J(LE,-1.45f).J(RA,-.15f,0,-.2f).J(RE,-1.45f).J(LL,.1f,0,.05f).J(LK,1.55f).PassKey();
+            // ...and the gather: the last strike low and loaded on the right foot, the left knee driving up, arms swung back, before the launch.
+            k.Key(LeapAt-.07f,stand).Root(0,.88f,0,side).Planted(0,1).Drop(-.26f).J(B,.45f).J(Sp,.1f).J(Hd,-.3f).J(LA,.75f,0,.25f).J(LE,-.45f).J(RA,.7f,0,-.25f).J(RE,-.45f).J(LL,-1.0f,0,.1f).J(LK,1.35f).J(RK,.5f);
             // The leap: thrown out over the platform, arms up and back, legs gathering.
             k.Key(LeapAt,stand).Root(0,.88f,0,side).Planted(0).Drop(-.05f).J(B,.25f).J(Hd,-.15f).J(LA,-1.9f,0,.6f).J(LE,-.4f).J(RA,-1.7f,0,-.7f).J(RE,-.4f).J(LL,-.9f,0,.1f).J(LK,1.1f).J(RL,.2f,0,-.1f).J(RK,.9f);
             // Its top: a running leap split wide (the left leg reaching forward, the right trailing behind), arms in opposition.
@@ -126,7 +139,7 @@ namespace ChipArena.UnityConversion
             NativeEntrancePose.Feet(t,Start,Steps,stance);
             if(t<LeapAt){float dx=CarX(t)-CarX(0);stance[0]+=dx;stance[4]+=dx;stance[3]+=RoofY-NativeEntranceStage.FloorY;stance[7]+=RoofY-NativeEntranceStage.FloorY;}
             else if(t<StopAt){var s=Slide(Math.Max(t,LandAt));stance[0]=s.X+.32f;stance[1]=s.Z+.14f;stance[4]=s.X-.42f;stance[5]=s.Z-.12f;}
-            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,stance,HeroAt,RootPath);Arms(t,pose,root,rotation);
+            NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,stance,HeroAt,RootPath,HingedLegs);Arms(t,pose,root,rotation);
         }
         // The sprint, the leap and the slide are all keyed on the intro rig (no motion-bank clip: the owner wants these intros' own
         // animation, as the Top Dog's and the Bombadier's are).
@@ -259,9 +272,9 @@ namespace ChipArena.UnityConversion
         {
             new NativeIntroCue(0,"intro2.slipstream.rush","structure.rumble","dash",.6f),
             new NativeIntroCue(BurstAt-.08f,"intro2.slipstream.burst","structure.whoosh","dash",.7f),
-            new NativeIntroCue(RunAt+.15f,"intro2.slipstream.run","move.step.metal","metal",.45f),
-            new NativeIntroCue(RunAt+.45f,"intro2.slipstream.run","move.step.metal","metal",.45f,1.05f),
-            new NativeIntroCue(RunAt+.75f,"intro2.slipstream.run","move.step.metal","metal",.45f,.95f),
+            new NativeIntroCue(Strike(0),"intro2.slipstream.run","move.step.metal","metal",.45f),
+            new NativeIntroCue(Strike(2),"intro2.slipstream.run","move.step.metal","metal",.45f,1.05f),
+            new NativeIntroCue(Strike(4),"intro2.slipstream.run","move.step.metal","metal",.45f,.95f),
             new NativeIntroCue(LeapAt,"intro2.slipstream.leap","move.jump","jump",.6f),
             new NativeIntroCue(LandAt,"intro2.slipstream.slide","hazard.saw","saw-cut",.65f),
             new NativeIntroCue(LandAt+.08f,"intro2.slipstream.pass","structure.whoosh","dash",.6f,.8f),

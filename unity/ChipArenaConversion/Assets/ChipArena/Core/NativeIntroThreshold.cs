@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
             for(int i=0;i<Paces;i++){float lift=WalkAt+.02f+i*Cadence;bool l=i%2==1;steps.Add(Step(l,lift,lift+Cadence-.03f,l?.12f:-.12f,From+Stride*(i+1),l?.1f:-.1f,.1f,0));}
             // Onto the mark: the left foot, then the right brought up beside it (the hero stance).
-            steps.Add(Step(true,ArriveAt+.02f,ArriveAt+.26f,.17f,.06f,.12f,.06f));
+            steps.Add(Step(true,ArriveAt-.02f,ArriveAt+.22f,.17f,.06f,.12f,.06f));
             steps.Add(Step(false,ArriveAt+.2f,ArriveAt+.44f,-.18f,-.1f,-.42f,.06f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                     .J(P,0,0,-s*.035f).J(C,-.06f,Glance(a)*.24f,0).J(Hd,chin,Glance(a)*.9f,0).J(LA,s*.04f,0,.16f).J(LE,-.35f).J(RA,-s*.04f,0,-.16f).J(RE,-.35f).PassKey();
                 k.Key(b,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.05f)
                     .J(P,0,-s*.1f,0).J(Sp,0,s*.05f,0).J(C,-.05f,s*.1f+Glance(b)*.24f,0).J(Hd,chin+.02f,-s*.04f+Glance(b)*.9f,0)
-                    .J(LA,s*.38f,0,.16f).J(LE,s>0?-.22f:-.6f).J(RA,-s*.4f,0,-.16f).J(RE,s>0?-.6f:-.22f).PassKey();
+                    .J(LA,s>0?.26f:-.42f,0,.16f).J(LE,s>0?-.24f:-.55f).J(RA,s>0?-.42f:.26f,0,-.16f).J(RE,s>0?-.55f:-.24f).PassKey();
             }
             // The stop on the mark: the left foot lands with its weight (a settle that rings out), the right brought up beside it.
             k.Key(ArriveAt+.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.06f).J(C,-.04f).J(Hd,-.08f).J(LA,-.1f,0,.3f).J(LE,-.35f).J(RA,-.1f,0,-.3f).J(RE,-.35f).ImpactKey();

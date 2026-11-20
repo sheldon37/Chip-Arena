@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             Start=Stance(.13f,-6.3f,.1f,-.13f,-6.5f,-.12f,0);
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
             // On the cut both feet are put down halfway along the carpet (an instant step each), then the strut: left, right, ...
-            steps.Add(Step(true,CutAt,CutAt+.001f,.12f,OnCarpet+.1f,.1f,0,0));steps.Add(Step(false,CutAt,CutAt+.001f,-.12f,OnCarpet-.1f,-.1f,0,0));
+            steps.Add(Step(true,CutAt-.0005f,CutAt,.12f,OnCarpet+.1f,.1f,0,0));steps.Add(Step(false,CutAt-.0005f,CutAt,-.12f,OnCarpet-.1f,-.1f,0,0));
             for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*Cadence;bool l=i%2==1;steps.Add(Step(l,lift,lift+Cadence-.03f,l?.12f:-.12f,OnCarpet+Stride*(i+1),l?.1f:-.1f,.1f,0));}
             // Onto the mark and through the three poses, the feet stepping and pivoting with the body each time (the hips never twist
             // over planted feet): turned to its left for the look back, square with the weight on one hip, then the hero stance.
@@ -67,6 +67,9 @@ namespace ChipArena.UnityConversion
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The silhouette in the doorway, then the stride: arms swinging, chin up, a little swagger in the shoulders.
             k.Key(0,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).J(Hd,-.08f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
+            // As the doors swing open it rolls its shoulders back and lifts its chin.
+            k.Key(DoorsAt,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).J(C,.03f).J(Hd,-.06f).J(LA,-.14f,0,.2f).J(LE,-.32f).J(RA,-.14f,0,-.2f).J(RE,-.32f);
+            k.Key(DoorsAt+.2f,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).Drop(.01f).J(C,-.07f).J(Hd,-.17f).J(LA,.05f,0,.21f).J(LE,-.28f).J(RA,.05f,0,-.21f).J(RE,-.28f);
             k.Key(CutAt,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).Drop(-.02f).J(Hd,-.1f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
             k.Key(WalkAt,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.03f).J(Hd,-.11f).J(LA,-.1f,0,.18f).J(LE,-.3f).J(RA,-.1f,0,-.18f).J(RE,-.3f);
             // The strut down the carpet, two keys a step (the feet are the planned steps above): at the swing's passing the body rides
@@ -77,11 +80,11 @@ namespace ChipArena.UnityConversion
             {
                 float lift=WalkAt+.02f+i*Cadence;float s=i%2==1?1:-1;
                 k.Key(lift+.17f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.012f)
-                    .J(P,0,0,-s*.055f).J(Sp,0,0,s*.025f).J(C,-.02f,0,0).J(Hd,-.12f,0,0)
-                    .J(LA,s*.05f,0,.15f).J(LE,-.32f).J(RA,-s*.05f,0,-.15f).J(RE,-.32f).PassKey();
+                    .J(P,0,0,-s*.085f).J(Sp,0,0,s*.035f).J(C,-.03f,0,s*.02f).J(Hd,-.12f,0,-s*.015f)
+                    .J(LA,s*.06f,0,.14f).J(LE,-.38f).J(RA,-s*.06f,0,-.14f).J(RE,-.38f).PassKey();
                 k.Key(lift+Cadence-.03f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.05f)
-                    .J(P,0,-s*.11f,0).J(Sp,0,s*.06f,0).J(C,0,s*.13f,0).J(Hd,-.1f,-s*.05f,0)
-                    .J(LA,s*.34f,0,.17f).J(LE,s>0?-.16f:-.52f).J(RA,-s*.36f,0,-.17f).J(RE,s>0?-.52f:-.16f).PassKey();
+                    .J(P,0,-s*.13f,s*.02f).J(Sp,0,s*.07f,0).J(C,0,s*.15f,-s*.03f).J(Hd,-.1f,-s*.06f,0)
+                    .J(LA,s>0?.36f:-.5f,0,s>0?.19f:.11f).J(LE,s>0?-.2f:-.64f).J(RA,s>0?-.5f:.36f,0,s>0?-.11f:-.19f).J(RE,s>0?-.64f:-.2f).PassKey();
             }
             // Each pose is hit on its flash (an impact key: it snaps in and rings out) after a little sink and unwind out of the last.
             // Pose one: turned away, looking back over the shoulder.
