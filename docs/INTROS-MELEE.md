@@ -103,5 +103,8 @@ daggers.
 Low still strip.
 
 ## Status
-Implemented on `claude/intro-melee`; not merged. The Glaive's Orrery is designed and its set modelled (`melee_observatory.py`), not
-built: its ring has no capture of the game's to set the hold from, and its match hold is a keyed solver on the model.
+Implemented on `claude/intro-melee` as a first pass of the bespoke keyed animation; not merged. **Paused for batch 2** (owner,
+2026-11-20: the intros in batches for quality): the six are re-posed with the framework's pose tools (every-bone mapping, joint
+limits, two-handed grip IK, canonical poses) before they are captured again. Known issues per intro: the notes'
+`intro-melee-status.md`. The Glaive's Orrery is designed and its set modelled (`melee_observatory.py`), not built: its ring needs
+its own wield path and catches, and the Glaive keeps Crescent Return until it registers.

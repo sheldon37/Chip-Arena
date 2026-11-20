@@ -1,28 +1,69 @@
 ## 2026-11-20 — Claude: intros v2, the melee weapon intros: Still Rain, Apex, Faultline, Severed Dawn, Hold the Line, Afterimage (owner request; presentation only)
 
-Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" I3, the melee family of the intros v2 work, on I0's contract (`docs/INTROS-V2.md`). Design and status: `docs/INTROS-MELEE.md`.
+Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" Then, the same morning: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these". I3, the melee family of the intros v2 work, on I0's contract (`docs/INTROS-V2.md`). Design and status: `docs/INTROS-MELEE.md`.
 
-**Branch and status:** `claude/intro-melee` from shared `8d56f015`, with `claude/intro-framework` (`2da9c7fc`) merged in. Pushed, not merged.
+**Branch and status:** `claude/intro-melee` from shared `8d56f015`, with `claude/intro-framework` merged in (last at `17380adb`). Pushed (head `b25e8047` and the docs commit after it). Not merged, not released.
 
 **What changed:**
-- **Six new weapon intros**, each registered on its weapon's slot (`intro2-weapon-<spec>`): Still Rain (Katana: the rain stops in the air for the one cut), Apex (Fangs: a pounce off a temple lintel), Faultline (greatsword: a plunging slam breaks the quarry floor into heaving slabs), Severed Dawn (sword: the cut severs a shaft of dawn light), Hold the Line (shield: a barrage breaks on the planted shield), Afterimage (daggers: two echoes cut a beat behind). The Glaive's Orrery is designed and its set modelled, but not built: it keeps Crescent Return.
-- **Sets:** six modelled sets (`tools/intros/melee_*.py` on `melee_kit.py` and the stage kit), banked locally as `ChipArenaIntroMelee.bytes` (never committed; master in `F:/Chip Arena Development/scratch/intro-melee/bank/`).
-- **Bodies:** the pack clips on the model through the blade entrances' path. For the sword, daggers, shield and greatsword the keyed rig plays the game's own capture of the same clip, so the weapon hold is the match's (the visual body takes it on the clip's first frame).
-- **Sound:** cue timelines on existing keys and built-in clips; 59 generated-sound requests in `docs/audio/intros/I3.json` with their contract lines in `Core/NativeIntroSoundKeys.cs`.
+- **Six new weapon intros**, each registered on its weapon's slot (`intro2-weapon-<spec>`):
+  - Still Rain (Katana): an iai in the rain; the rain stops in the air for the one cut.
+  - Apex (Fangs): a predator's leap off a temple lintel, both fangs into the earth.
+  - Faultline (greatsword): a leaping blow that breaks the quarry floor into heaving slabs.
+  - Severed Dawn (sword): one cut severs a shaft of dawn light; a salute.
+  - Hold the Line (shield): a barrage breaks on the planted shield; the bash.
+  - Afterimage (daggers): a walk up a lantern lane; two echoes cut a beat behind.
+- **Glaive:** its Orrery is designed and its set modelled, but not built; it keeps Crescent Return.
+- **Bodies: bespoke keyed animation, no match clips** (the owner's direction):
+  - Each intro keys its own choreography on `NativeEntranceKeys`, with planted feet and `Steps` for foot contacts, impact and pass keys.
+  - The weapon moves on its own keyed path (`NativeIntroWield`: the grip and the blade's or shield's way in the pilot's frame). The arm is solved onto it (`Wield`), and the match's grip holds the weapon on the drawn hand.
+  - Still Rain's hilt and sheathing are solved against the saya on the keyed pelvis. Apex's feet stand on the lintel by leg IK.
+  - The living hold breathes under every key.
+- **Effects and shots on the body as drawn:**
+  - Blade effects follow the drawn hand joint's frame: the sweeps are Catmull-Rom arcs, and the sword holds the light.
+  - The shield's hits and heat ride the drawn shield.
+  - Two shots follow the drawn head or hand: Severed Dawn's visor and Still Rain's grab.
+  - Helpers in `NativeIntroMelee.cs`: DrawnBlade, BladeSweep, DrawnFrame, DrawnHand, Eyes, Frame and NearFade.
+- **Sets:** six modelled sets (`tools/intros/melee_*.py` on `melee_kit.py` and the stage kit), banked locally as `ChipArenaIntroMelee.bytes` (never committed; master in `F:/Chip Arena Development/scratch/intro-melee/bank/`, 10.2 MB).
+- **Sound:** cue timelines on filled one-shot keys and built-in clips. The 59 generated-sound requests are in `docs/audio/intros/I3.json`, their contract lines in `Core/NativeIntroSoundKeys.cs`.
 
-**Systems touched:** Core only (six intro files and the shared `NativeIntroMelee.cs`, one registry line each, the sound key lines), the set scripts, docs. No Runtime change.
+**Systems touched:** Core only: the six intro files, the shared `NativeIntroMelee.cs`, one registry line each and the sound key lines. Also the set scripts and docs. No Runtime change.
 
-**Voxel dependency:** `Core/NativeIntroMelee.cs` author 0 -> 1: `CapturedRig.Sample` poses the keyed rig with the game's capture of the clip the model plays, so the model's weapon hold is the match's (no grip table yet for these weapons; I0's follow-up). A grip table for every weapon (I0's `NativeBladeGrip` route) removes it. Pinned in `Tests/voxel-ratchet.txt`.
+**Voxel dependency:** none. The capture-driven keyed rig, and its `CapturedRig.Sample` pin in `Tests/voxel-ratchet.txt`, went with the clips.
 
-**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; the registry's Duration and NameAt are what the match reads, all within 6-8.2 s).
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. This is intro presentation only; the match reads the registry's Duration and NameAt, all within 7.2-8.2 s.
 
-**Checks:** CHECKS_PENDING
+**Checks:**
+- `CoreTests --intros-v2` (IntroV2Checks): PASS at `b25e8047`. It covers the seven registered intros: entry, determinism, allocation, budgets, Reduced effects, streaks and cues; 3643 checks.
+- `--voxel` (ratchet, style, draw): PASS.
+- Full CoreTests suite, the relgen5 way: 1080 groups PASS, exit 0, at `0a015455`; on the framework merge `17380adb` and the last fixes `--intros-v2` PASS (4652 checks), the full suite not re-run. It runs in a separate LF worktree, with `CHIPARENA_STAGE_BANKS` at the Editor's LocalAssets and one local uncommitted path fix in `ExpeditionEndingChecks` for that Windows worktree.
+- `tools/check_unity_compile.py` against the installed 6000.3.24f1: Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor PASS.
+- `git diff --check` clean.
+- `tools/intros/compile_sound_requests.py --check`: the 59 keys are valid against the contract. The merged manifest and the job are the integrator's.
+- Offline: the keyed poses were drawn as stick figures (front, side and the intro's camera) for every beat.
+- Editor holds, each under the lock with the checkout put back and the stage and motion banks checked before and after: hold 1 05:59-06:18 (`c5fcb8ff`, the clip version); hold 2 07:24-07:43 (`9775e4cf`, the clip version); hold 4 08:44-09:08 (`7b7f74d3`: the six archived signatures every 0.1 s, five keyed intros at High); hold 5 09:36-09:50 (`97206313`: five keyed intros at High; ended early for batch 2).
+- Clips: `F:/Chip Arena Development/scratch/intro-melee/clips/<spec>-old-vs-new-high.mp4` (keyed pass 1 beside the archived signature; no Low strips yet).
 
-**Not checked:** NOTCHECKED
+**Not checked:**
+- A Windows player build or package.
+- Multiplayer, and a late joiner's view.
+- Low graphics on a low-end GPU.
+- Sound in a capture: none is generated yet, so cue timing rests on the managed checks.
+- The Katana's +y fix (`7a253f69`), the dressed ghosts and the hidden map (`17380adb`) in the Editor; Low strips.
 
-**Risks:** RISKS
+**Risks:**
+- The keyed weapon paths assume the drawn weapon lies along the keyed wrist's +z, as the match's grip holds it. Check the captures, the Fangs' and the Katana's palm grips most of all.
+- The shield's face point in its frame is estimated from the match's block socket.
+- The shots that follow the drawn head or hand fall back to the keyed rig where no model is drawn.
+- Afterimage's echoes are the runtime's live ghosts. They draw the pilot's base body without its outfit, so the hair shows and they read as a different figure.
+- The bank is local and not committed. Without it each intro draws its plain lit floor.
 
-**Next:** NEXT
+**Status: paused for batch 2** (the owner, 2026-11-20: the intros in batches "if this will improve the quality (Hopefully dramatically)"; the melee intros are batch 2, after the framework's pose tools). The keyed choreography here is a first pass; batch 2 re-poses it with the framework's every-bone mapping, joint limits, two-handed grip IK and canonical poses. Per-intro state and known issues are in the notes' `intro-melee-status.md`.
+
+**Next:**
+- Batch 2: re-pose the six intros, capture them again with Low strips, finish the clips.
+- Then the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-melee/clips/`), merges after the framework, packs `ChipArenaIntroMelee.bytes` into the LocalAssets zip, and compiles the one sound job (`I3.json`, 59 keys).
+- Left for I0, written up in the notes' framework requests: dressed, clip-free ghosts (the echoes in the pilot's outfit), and a `Line` virtual (the drawn blade handed in for every weapon).
+- Left to build: the Glaive's Orrery (designed, its set modelled in `tools/intros/melee_observatory.py`, not banked or built).
 
 ## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
 
