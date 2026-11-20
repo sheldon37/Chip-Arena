@@ -135,7 +135,6 @@ namespace ChipArena.UnityConversion
                     for(int k=0;k<8;k++){double a=k*Math.PI/4;Check(new V3(j.x+(float)Math.Cos(a)*j.r,j.y,j.z+(float)Math.Sin(a)*j.r),.45f,1.8f);}
                 }
                 foreach(var p in area.slots)if(!area.sanctuary.Any(v=>v.Contains(p.Position)))throw new FormatException("Expedition layout: sanctuary slot outside sanctuary.");
-                foreach(var anchor in area.anchors)Check(new V3(anchor.x,anchor.y,anchor.z),.45f,1.8f);
                 var origin=slots.FirstOrDefault()??throw new FormatException("Expedition layout: no navigation origin.");
                 foreach(var d in area.doors.Where(d=>d.join!=null))
                     if(!reachable(area.map,origin.Position,new V3(d.join.x,d.join.y,d.join.z),.45f,1.8f))throw new FormatException("Expedition layout: unreachable join cylinder.");
@@ -145,12 +144,21 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<group.Length;i++)for(int j=0;j<i;j++)if((group[i].Position-group[j].Position).Length<1)throw new FormatException("Expedition layout: overlapping party slots.");
                 foreach(var p in area.bossPoints)Check(p.Position,routeRadius,routeHeight);
                 foreach(var machine in area.machines){Check(machine.front.Position(),.45f,1.8f);Check(machine.dispense.Position(),.45f,1.8f);if(!reachable(area.map,origin.Position,machine.front.Position(),.45f,1.8f))throw new FormatException("Expedition layout: unreachable machine "+machine.id);}
-                foreach(var cache in area.anchors.Where(a=>a.kind=="chest"&&(layout.revision==NativeExpeditionGeneratedWorld.Version&&area.CacheCandidates.ContainsKey(a.id)||map.blocks?.Any(b=>b.id==a.id+"-block")==true)))
+                foreach(var anchor in area.anchors)
                 {
-                    var at=NativeExpeditionGeneratedWorld.CacheApproach(cache).Position;
-                    Check(at,routeRadius,routeHeight);
-                    if(!reachable(area.map,origin.Position,at,routeRadius,routeHeight))
-                        throw new FormatException("Unreachable cache approach: "+cache.id);
+                    // A placed cache's anchor locates the locker or its wall-backed hologram.
+                    // Actors stand in front of it. Legacy free-standing anchors still require clearance.
+                    bool placedCache=anchor.kind=="chest"&&
+                        ((layout.revision==NativeExpeditionGeneratedWorld.Version&&area.CacheCandidates.ContainsKey(anchor.id))||
+                         map.blocks?.Any(b=>b.id==anchor.id+"-block")==true);
+                    if(placedCache)
+                    {
+                        var at=NativeExpeditionGeneratedWorld.CacheApproach(anchor).Position;
+                        Check(at,routeRadius,routeHeight);
+                        if(!reachable(area.map,origin.Position,at,routeRadius,routeHeight))
+                            throw new FormatException("Unreachable cache approach: "+anchor.id);
+                    }
+                    else Check(new V3(anchor.x,anchor.y,anchor.z),.45f,1.8f);
                 }
                 foreach(var p in area.interactions)Check(new V3(p.x,p.y,p.z),.45f,1.8f);
                 foreach(var d in area.doors)Check(d.approach.Position,.45f,1.8f);
