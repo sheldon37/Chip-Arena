@@ -694,12 +694,58 @@ def water_hall(T):
     return hall, vault, far
 
 
+def ear_clip(poly):
+    """Triangles (index triples) of a simple polygon [(x, y)] by ear clipping."""
+    idx = list(range(len(poly)))
+    area = sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1] for i in range(len(poly)))
+    sgn = 1 if area > 0 else -1
+    out = []
+
+    def inside(p, a, b, c):
+        def cr(o, u, v):
+            return (u[0] - o[0]) * (v[1] - o[1]) - (u[1] - o[1]) * (v[0] - o[0])
+        d1, d2, d3 = cr(a, b, p), cr(b, c, p), cr(c, a, p)
+        return (d1 * sgn > 0) and (d2 * sgn > 0) and (d3 * sgn > 0)
+    guard = 0
+    while len(idx) > 3 and guard < 2000:
+        guard += 1
+        n = len(idx)
+        for k in range(n):
+            i0, i1, i2 = idx[(k - 1) % n], idx[k], idx[(k + 1) % n]
+            a, b, c = poly[i0], poly[i1], poly[i2]
+            if ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) * sgn <= 1e-9:
+                continue
+            if any(inside(poly[j], a, b, c) for j in idx if j not in (i0, i1, i2)):
+                continue
+            out.append((i0, i1, i2))
+            idx.pop(k)
+            break
+        else:
+            break
+    if len(idx) == 3:
+        out.append(tuple(idx))
+    return out
+
+
+def wave_colours(bk, g):
+    """A liquid wall's colour as a gradient: deep at its foot, lighter up its face and under its lip (the light through it),
+    foam white along its crest (smooth, where finishes alone would band)."""
+    P, N, S_, F_ = g.arrays()
+    y = P[:, 1].astype(np.float64)
+    deep, mid, light, foam = np.array(sk.srgb(0x0b3a58)), np.array(sk.srgb(0x1a78a0)), np.array(sk.srgb(0x52c4ea)), np.array(sk.srgb(0xe2f8ff))
+    u = np.clip((y + .2) / 4.4, 0, 1)
+    col = np.where(u[:, None] < .55, deep + (mid - deep) * (u[:, None] / .55), mid + (light - mid) * ((u[:, None] - .55) / .45))
+    up = np.clip(N[:, 1].astype(np.float64), -1, 1)
+    col = col + (light - col) * np.clip(-up, 0, 1)[:, None] * .6 * (y > 2.4)[:, None]
+    f = np.clip((y - 4.3) / .35, 0, 1)
+    col = col + (foam - col) * f[:, None]
+    bk.colour[:, :3] = np.round(np.clip(col, 0, 1) * 255).astype(np.uint8)
+
+
 def wave_env(u):
     """A half's height along its length: near full at the parting end (u 0, where the two halves meet as one wall), tapering
     into the water at the outer end."""
-    inner = .82 + .18 * min(1.0, u / .15)
-    outer = max(0.0, math.sin(math.pi / 2 * min(1.0, (1.0 - u) / .32))) ** .6
-    return inner * outer
+    return max(0.0, math.sin(math.pi / 2 * min(1.0, (1.0 - u) / .32))) ** .6
 
 
 def water_half(T, frozen):
@@ -707,8 +753,8 @@ def water_half(T, frozen):
     the left is its mirror). Liquid: smooth water with a foam crest; frozen: faceted ice, icicles off the lip, a lit vein."""
     F = water_finishes()
     g = Geo()
-    prof = [(-.95, -.4), (-.85, .6), (-.68, 1.8), (-.48, 3.0), (-.22, 4.05), (.12, 4.62), (.55, 4.8), (.98, 4.66), (1.32, 4.3), (1.46, 3.82), (1.36, 3.34),
-            (1.08, 3.12), (.76, 3.24), (.5, 2.9), (.38, 2.2), (.42, 1.3), (.6, .5), (.82, -.4)]
+    prof = [(-1.6, -.4), (-1.35, .5), (-1.0, 1.6), (-.62, 2.7), (-.25, 3.6), (.08, 4.25), (.5, 4.62), (.95, 4.68), (1.45, 4.48), (1.85, 4.05),
+            (2.02, 3.5), (1.92, 3.0), (1.62, 2.82), (1.25, 3.05), (.92, 3.25), (.66, 3.1), (.5, 2.7), (.48, 2.0), (.58, 1.2), (.8, .5), (1.05, -.4)]
     nz = (22, 12, 7)[T.i]
     P = np.zeros((nz + 1, len(prof), 3))
     for i in range(nz + 1):
@@ -719,6 +765,9 @@ def water_half(T, frozen):
         for j, (x, y) in enumerate(prof):
             wob = .06 * math.sin(u * 7 + j * .9) * (y / 4.8) if not frozen else .05 * S(i, j, 7) * (y / 4.8)
             P[i, j] = (x * sx + wob, y * sy + (.0 if y > 0 else 0), z)
+    end = [tuple(P[0, j]) for j in range(len(prof))]
+    for tri in ear_clip([(q[0], q[1]) for q in end]):
+        g.face([end[k] for k in tri], F['ice-deep'] if frozen else F['wave-deep'], normal=(0, 0, -1))
     if frozen:
         pick = lambda nn, cc: F['frost'] if cc[1] > 4.2 else (F['ice'] if nn[0] < .2 else F['ice-deep'])
         grid(g, P, F['ice'], flat=True, inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
@@ -728,7 +777,7 @@ def water_half(T, frozen):
                 continue
             u = i / nz
             sy = wave_env(u)
-            base = (1.3 * (.75 + .25 * sy), 3.25 * sy, WATER_HALF * u)
+            base = (1.92 * (.75 + .25 * sy), 3.0 * sy, WATER_HALF * u)
             L = (.25 + .45 * H(i, 4)) * sy
             if L > .08:
                 cone = Geo()
@@ -737,12 +786,12 @@ def water_half(T, frozen):
         vein = Geo()
         for i in range(nz):
             u0, u1 = i / nz, (i + 1) / nz
-            a = [(1.18 * (.75 + .25 * wave_env(u)), 3.55 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
-            b = [(.62 * (.75 + .25 * wave_env(u)), 2.7 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
+            a = [(1.55 * (.75 + .25 * wave_env(u)), 2.88 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
+            b = [(.95 * (.75 + .25 * wave_env(u)), 3.2 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
             vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(1, -.6, 0))
         g.extend(vein)
     else:
-        pick = lambda nn, cc: F['foam'] if cc[1] > 4.4 else (F['wave-light'] if cc[1] > 2.9 or (nn[0] > .3 and cc[1] > 2.0) else (F['wave'] if cc[1] > 1.2 else F['wave-deep']))
+        pick = lambda nn, cc: F['foam'] if cc[1] > 4.5 else F['wave']
         grid(g, P, F['wave'], inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
     return g
 
@@ -1113,7 +1162,11 @@ def bake(geos, ao, floors):
     keys = [k for k, g in geos.items() if g.faces]
     statics = [k for k in keys if k.count('/') == 1]
     aos = dict(zip(statics, sk.bake_ao([geos[k] for k in statics], distance=1.4, samples=16))) if ao and statics else {}
-    return {k: sk.Bake(geos[k], aos.get(k), floors=floors, seed=sum(map(ord, k)) & 1023) for k in keys}
+    out = {k: sk.Bake(geos[k], aos.get(k), floors=floors, seed=sum(map(ord, k)) & 1023) for k in keys}
+    for k in keys:
+        if k.startswith('water/wave/'):
+            wave_colours(out[k], geos[k])
+    return out
 
 
 def build(sets, ao, preview_dir=None, out=None, stats=False):

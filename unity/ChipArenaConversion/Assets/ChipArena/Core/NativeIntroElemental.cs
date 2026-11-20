@@ -326,6 +326,8 @@ namespace ChipArena.UnityConversion
                     var tint=u<.3f?Vector3.Lerp(Flame0*1.4f,Flame0,u/.3f):Vector3.Lerp(Orange,Deep,(u-.3f)/.7f);Flame(fx,p,tint,col*(1-u*u)*(.8f+.2f*NativeEntranceMath.Rand(7605,i)),(.55f+.7f*u)*(.8f+.2f*col),u,7600+i,floor);
                 }
                 fx.Glow(Vent+new Vector3(0,1.4f,0),Flame0*(1.6f*col),0,1.6f,1,0,7690);fx.Glow(Vent+new Vector3(0,4.5f,0),Orange*(.9f*col),0,3.2f,0,0,7691);
+                // its white-hot heart: a core of light up the middle, wavering
+                {var foot=Vent+new Vector3(0,.2f,0);var head=Vent+new Vector3((float)Math.Sin(t*2.3f)*.12f,.2f+top*.8f,(float)Math.Cos(t*1.9f)*.12f);Beam(fx,view,head,foot,Flame0*(1.1f*col),.16f,.7f,0,7692);Beam(fx,view,head+new Vector3(0,.4f,0),foot,Orange*(.5f*col),.42f,.85f,0,7693);}
                 for(int i=0,m=N(18,q);i<m;i++){float u=((t-EruptAt)*.55f+i/(float)m)%1;var p=Vent+new Vector3(NativeEntranceMath.Signed(7700,i)*1.4f*u,top+.4f+2.5f*u,NativeEntranceMath.Signed(7701,i)*1.4f*u);fx.Smoke(p,new Vector3(.09f,.06f,.05f),.55f*col*(1-u),1.2f+2.6f*u,u,7700+i,floor);}
                 for(int i=0,m=N(14,q);i<m;i++){float u=((t*1.1f+i/(float)m)%1),a=i*2.4f+u*4;float y=.4f+top*.85f*u,rr=.62f*(1-.3f*u);var head=Vent+new Vector3((float)Math.Cos(a)*rr,y,(float)Math.Sin(a)*rr);var tail=Vent+new Vector3((float)Math.Cos(a-.35f)*rr,y-.38f,(float)Math.Sin(a-.35f)*rr);Beam(fx,view,head,tail,Vector3.Lerp(Flame0,Orange,u)*(1.3f*col*(1-u)),.05f,.85f,u,7720+i);}
             }
@@ -403,7 +405,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The water over the floor (m) before and after the tide (tools/intros/elemental_set.py WATER_*).</summary>
         public const float Shallow=.14f,Tide=.22f;
         /// <summary>The halves: their length, how far out to each side they end, how far behind the mark they rear and end.</summary>
-        public const float HalfLength=5f,Apart=2.15f,BehindRear=3.4f,BehindFinal=3.6f,Overlap=.3f;
+        public const float HalfLength=5f,Apart=2.6f,BehindRear=3.4f,BehindFinal=3.6f,Overlap=.02f;
         /// <summary>The frost's rings round the mark (rig water/ice/k: from the previous radius to this one).</summary>
         public static readonly float[] IceRings={1.6f,3.2f,5.5f,8.5f,14f};
         /// <summary>The hall's skylights (hall frame: x across, z along; tools/intros/elemental_set.py WATER_SKYLIGHTS) and its height.</summary>
@@ -470,7 +472,7 @@ namespace ChipArena.UnityConversion
             turn=Quaternion.Normalize(NativeEntranceMath.Yaw(yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,-lean));
         }
         /// <summary>A point on half `left`'s crest (u 0..1 along it) at `t`.</summary>
-        private static Vector3 Crest(bool left,float t,float u,float height=4.55f,float reach=1.05f){Half(left,t,out var at,out var q);return at+Vector3.Transform(new Vector3((left?-1:1)*reach,height,HalfLength*u),q);}
+        private static Vector3 Crest(bool left,float t,float u,float height=4.62f,float reach=.75f){Half(left,t,out var at,out var q);return at+Vector3.Transform(new Vector3((left?-1:1)*reach,height,HalfLength*u),q);}
         /// <summary>How far the frost has spread from the tap (m).</summary>
         public static float Frost(float t)=>t<FreezeAt?0:18*NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-FreezeAt)/.7f));
         protected override Vector3 Focus(float t,Vector3 chest)=>t<SweepAt?Mark+new Vector3(0,2.2f*Reared(t)+.8f,-1.4f*Reared(t)):chest;
@@ -536,8 +538,8 @@ namespace ChipArena.UnityConversion
             {
                 bool left=h==0;
                 for(int i=0,n=N(22,q);i<n;i++){float u=(i+.5f)/n;var c=Crest(left,t,u)+new Vector3(0,.05f+.1f*NativeEntranceMath.Rand(9301+h,i),0);fx.Smoke(c,Foam,.42f*liquid,.24f+.16f*NativeEntranceMath.Rand(9300+h,i),((t*1.5f+i*.17f)%1),9300+h*40+i,floor);}
-                for(int i=0,n=N(14,q);i<n;i++){float u=NativeEntranceMath.Rand(9350+h,i),age=((t*1.8f+i*.11f)%1)*.55f;var c=Crest(left,t-age,u,4.3f,1.4f);var v=(Crest(left,t,u,4.3f,1.4f)-Crest(left,t-.05f,u,4.3f,1.4f))*20+new Vector3(0,1.4f,0)+Fwd*1.6f;var p=c+v*age+new Vector3(0,-4.9f*age*age,0);if(p.Y<level)continue;var vel=v+new Vector3(0,-9.8f*age,0);Beam(fx,view,p,p-vel*.035f,Foam*(.9f*liquid*(1-age/.55f)),.018f,.6f,age,9350+h*40+i);}
-                for(int i=0,n=N(14,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.2f+i*.31f)%1);var top=Crest(left,t,u,3.7f-3.1f*a,.95f-.5f*a);var bot=Crest(left,t,u,3.2f-3.1f*a,.82f-.5f*a);Beam(fx,view,bot,top,Hex(0xbff0ff)*(.5f*liquid*(1-a)),.02f,.6f,a,9420+h*20+i);}
+                for(int i=0,n=N(14,q);i<n;i++){float u=NativeEntranceMath.Rand(9350+h,i),age=((t*1.8f+i*.11f)%1)*.55f;var c=Crest(left,t-age,u,4.05f,1.85f);var v=(Crest(left,t,u,4.05f,1.85f)-Crest(left,t-.05f,u,4.05f,1.85f))*20+new Vector3(0,1.4f,0)+Fwd*1.6f;var p=c+v*age+new Vector3(0,-4.9f*age*age,0);if(p.Y<level)continue;var vel=v+new Vector3(0,-9.8f*age,0);Beam(fx,view,p,p-vel*.035f,Foam*(.9f*liquid*(1-age/.55f)),.018f,.6f,age,9350+h*40+i);}
+                for(int i=0,n=N(14,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.2f+i*.31f)%1);var top=Crest(left,t,u,2.9f-2.4f*a,.52f+.1f*a);var bot=Crest(left,t,u,2.45f-2.4f*a,.5f+.12f*a);Beam(fx,view,bot,top,Hex(0xbff0ff)*(.5f*liquid*(1-a)),.02f,.6f,a,9420+h*20+i);}
             }
             // The parting: a crash of spray from the middle, its droplets stopping in the air at the freeze and hanging there.
             if(t>=SweepAt-.05f)
