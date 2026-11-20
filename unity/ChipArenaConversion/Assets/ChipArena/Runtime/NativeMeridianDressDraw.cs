@@ -149,11 +149,11 @@ namespace ChipArena.UnityConversion
                 slotPos[s*4]=l.Bowl.x;slotPos[s*4+1]=l.Bowl.y-.2f;slotPos[s*4+2]=l.Bowl.z;slotPos[s*4+3]=l.Radius*1.25f;slotRgb[s*3]=c.r*k;slotRgb[s*3+1]=c.g*k;slotRgb[s*3+2]=c.b*k;
             }
             NativeLighting.PickedLights(slotPos,slotRgb);NativeLighting.ActorLights(true);
-            Pools(e,time,tier);
+            DrawPools(e,time,tier);
             Heads(time);
             if(tier==NativeGraphicsTier.High)Beams(cam,time);
         }
-        private void Pools(Vector3 e,float time,NativeGraphicsTier tier)
+        private void DrawPools(Vector3 e,float time,NativeGraphicsTier tier)
         {
             if(poolMat==null)return;var lamps=plan.Lamps;float far=NativeMeridianDress.Far(tier);int max=lamps.Count*2+8;
             if(poolV==null||poolV.Length<max*4){poolV=new Vector3[max*4];poolC=new Color32[max*4];poolUv=new Vector2[max*4];poolT=new int[max*6];poolMesh=new Mesh{name="Meridian pools"};poolMesh.MarkDynamic();}

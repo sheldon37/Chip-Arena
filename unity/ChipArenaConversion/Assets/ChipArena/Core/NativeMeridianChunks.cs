@@ -111,14 +111,18 @@ namespace ChipArena.UnityConversion
             into.Clear();
             if(bank!=null&&placements!=null)foreach(int pi in placements)
             {
-                var pl=plan.Placements[pi];if(pl.Dynamic||!modules.TryGetValue(pl.Key,out var props))continue;AddModule(bank,props[tier],pl.M,into);
+                var pl=plan.Placements[pi];if(pl.Dynamic||!modules.TryGetValue(pl.Key,out var props))continue;AddModule(bank,props[tier],pl.M,into,pl.Paint?PaintLayers:0);
             }
             if(quads!=null)foreach(int qi in quads)AddQuad(plan.Quads[qi],tier,into);
         }
+        /// <summary>The layers a piece of paint (road marks, puddles, ghost signs, plates, hatches) draws up over the surface it lies
+        /// on (ChipArena/StageLit's layers: nearer the eye along its ray, so a mark 6 mm over the street never fights it).</summary>
+        public const int PaintLayers=3;
         /// <summary>One module prop placed by 3 x 4 rows into the mesh: positions through the place, normals through its inverse
         /// transpose (the facades' stretch), every other channel as banked.</summary>
-        public static void AddModule(NativePackBank.Bank bank,int prop,float[] M,NativeMeridianMesh into)
+        public static void AddModule(NativePackBank.Bank bank,int prop,float[] M,NativeMeridianMesh into,int layers=0)
         {
+            float lift=layers/32f;
             if(prop<0||prop>=bank.Props.Count)return;var pr=bank.Props[prop];
             foreach(var part in pr.Parts)
             {
@@ -137,7 +141,7 @@ namespace ChipArena.UnityConversion
                     var nn=m.Normals[i];float nx=c00*nn.X+c01*nn.Y+c02*nn.Z,ny=c10*nn.X+c11*nn.Y+c12*nn.Z,nz=c20*nn.X+c21*nn.Y+c22*nn.Z;float l=(float)Math.Sqrt(nx*nx+ny*ny+nz*nz);if(l<1e-8f)l=1;
                     into.N[v*3]=nx/l;into.N[v*3+1]=ny/l;into.N[v*3+2]=nz/l;
                     into.Uv0[v*2]=m.Uv0[i].X;into.Uv0[v*2+1]=m.Uv0[i].Y;
-                    into.Uv1[v*2]=uv1?m.Uv1[i].X:0;into.Uv1[v*2+1]=uv1?m.Uv1[i].Y:0;
+                    into.Uv1[v*2]=(uv1?m.Uv1[i].X:0)+lift;into.Uv1[v*2+1]=uv1?m.Uv1[i].Y:0;
                     if(col){into.C[v*4]=m.Colors[i*4];into.C[v*4+1]=m.Colors[i*4+1];into.C[v*4+2]=m.Colors[i*4+2];into.C[v*4+3]=m.Colors[i*4+3];}
                     else{into.C[v*4]=into.C[v*4+1]=into.C[v*4+2]=into.C[v*4+3]=255;}
                 }

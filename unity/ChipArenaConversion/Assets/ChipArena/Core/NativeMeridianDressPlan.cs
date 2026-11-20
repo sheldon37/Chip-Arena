@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
             public Input In;public Plan P;public Solids S;public ContentBlock[] Blocks;public Func<string,bool> Has;public Dictionary<string,string> Lots;
             public string[] Roles;public Dictionary<string,MapRamp> TreadRamp=new Dictionary<string,MapRamp>(StringComparer.Ordinal);
             public uint Seed;public readonly List<Mount> Mounts=new List<Mount>();
+            public bool IsDressed(int i)=>Dressed(Roles[i])&&Roles[i]!=RLot;
             public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false)
             {
                 var p=new Placement{Key=Pick(key,at,Has),Block=block,Face=face,U0=u0,U1=u1,V0=v0,V1=v1,Floor=floor,Hugs=hugs,Paint=paint,Dynamic=dynamic};
@@ -86,11 +87,16 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<5&&!seen;k++)
                 {
                     float su=k==0?.5f:(k&1)==1?.08f:.92f,sv=k==0?.5f:k<3?.08f:.92f;var p=o+u*((i+su)/nu)+v*((j+sv)/nv)+n*.05f;
-                    seen=!b.S.Inside(p.x,p.y,p.z,bi);
+                    seen=!b.S.Inside(p.x,p.y,p.z,bi)&&!b.S.Shared(p.x-n.x*.05f,p.y-n.y*.05f,p.z-n.z*.05f,f,bi,b.IsDressed);
                 }
                 e[i+j*nu]=seen;
             }
             return e;
+        }
+        private static bool OutOfBounds(Builder b,int bi,int f)
+        {
+            var mb=b.In.Map.bounds;var B=b.S.B;int o=bi*6;const float e=.05f;
+            return f==0&&B[o+1]>=mb.maxX-e||f==1&&B[o]<=mb.minX+e||f==4&&B[o+5]>=mb.maxZ-e||f==5&&B[o+4]<=mb.minZ+e;
         }
         /// <summary>Greedy rectangles over a grid's set cells: (i0, j0, i1, j1) exclusive ends.</summary>
         private static List<(int,int,int,int)> Rects(bool[] e,int nu,int nv)
@@ -108,6 +114,8 @@ namespace ChipArena.UnityConversion
         private static void Surface(Builder b,int bi,int f,int fin,int layer,float cell,int bandFin=-1,float band=0)
         {
             FaceFrame(b.S.B,bi*6,f,out var o0,out var u0,out var v0);float lu=u0.Length,lv=v0.Length;if(lu<.01f||lv<.01f)return;
+            // a face on the map's bounds turned out of it is never seen (beyond the Cordon): it is left out
+            if(OutOfBounds(b,bi,f))return;
             int nu=Math.Max(1,(int)Math.Ceiling(lu/cell)),nv=Math.Max(1,(int)Math.Ceiling(lv/cell));
             var e=Exposed(b,bi,f,nu,nv,out var o,out var u,out var v);float floor=b.S.B[bi*6+2];
             if(f==2||f==3)floor=b.S.B[bi*6+(f==2?3:2)];

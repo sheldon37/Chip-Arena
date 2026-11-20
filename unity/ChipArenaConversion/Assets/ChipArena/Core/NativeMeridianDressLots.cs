@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             float sx=B[o+1]-B[o],sz=B[o+5]-B[o+4];
             for(int f=0;f<6;f++)
             {
-                if(f==2||f==3)continue;
+                if(f==2||f==3||OutOfBounds(b,bi,f))continue;
                 FaceFrame(B,o,f,out var fo,out var fu,out var fv);float L=fu.Length;if(L<.5f)continue;var uh=fu/L;var N=NormalOf(f);
                 int n=Math.Max(1,(int)Math.Round(L/Bay));float w=L/n;uint faceSeed=Mix(lotSeed,(uint)f+101);
                 bool gable=(style=='r'||style=='v')&&L<12.6f&&L<Math.Max(sx,sz)-1;bool blind=gable||(style=='w'||style=='h')&&L<Math.Max(sx,sz)-1;
@@ -103,9 +103,11 @@ namespace ChipArena.UnityConversion
                         bool open=true;foreach(float d in new[]{.5f,1.5f,2.2f}){var q=col+N*d;if(b.S.Inside(q.x,bottom+.1f,q.z,-1)||Math.Abs(b.S.Floor(q.x,q.z,bottom+.1f)-bottom)>.05f){open=false;break;}}
                         if(open)
                         {
-                            int layer=f<2?1:2;var po=fo+uh*ua+N*0;po.y=bottom;
+                            // each face's pavement its own layer (1..4) and kerb (5..8): where two streets' pavements meet or a narrow
+                            // lane's two pavements overlap, neither fights the other
+                            int layer=f==0?1:f==1?2:f==4?3:4;var po=fo+uh*ua;po.y=bottom;
                             b.QuadUp(po,uh*w,N*2.0f,NativeMeridianSurfaces.Paving,layer,-1,bottom);
-                            b.QuadUp(po+N*2.0f,uh*w,N*.28f,NativeMeridianSurfaces.Kerb,layer+2,-1,bottom);
+                            b.QuadUp(po+N*2.0f,uh*w,N*.28f,NativeMeridianSurfaces.Kerb,layer+4,-1,bottom);
                             if(i%2==0&&L>=9)b.Mounts.Add(new Mount{At=new V3(col.x,bottom,col.z),N=N,Floor=bottom,Block=bi});
                         }
                     }

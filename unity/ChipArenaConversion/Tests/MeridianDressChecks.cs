@@ -92,6 +92,76 @@ internal static class MeridianDressChecks
         Console.WriteLine("PASS meridian dress: "+count+" checks over the five layouts"+(bank==null?" (no bank: the modules' own checks and the budgets need CHIPARENA_MERIDIAN_BANK)":" with the bank"));
     }
 
+    /// <summary>A look without Unity (--meridian-export LAYOUT X Z RADIUS OUT.ply, CHIPARENA_MERIDIAN_BANK set): the LOD0 chunks
+    /// within RADIUS of (X, Z) and the greybox boxes the dress leaves, as one PLY with vertex colours, for a Blender check render.</summary>
+    public static void Export(string root,int layout,float x,float z,float radius,string path)
+    {
+        var bank=NativePackBank.Read(File.ReadAllBytes(Environment.GetEnvironmentVariable("CHIPARENA_MERIDIAN_BANK")));var modules=NativeMeridianDress.Modules(bank);
+        var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);var plan=NativeMeridianDress.Build(InputOf(walk,info.Seed,77),modules.ContainsKey);
+        NativeMeridianDress.ByChunk(plan,out var pl,out var qs);var mesh=new NativeMeridianMesh();
+        var P=new List<float>();var C=new List<byte>();var I=new List<int>();
+        for(int c=0;c<plan.Nx*plan.Nz;c++)
+        {
+            float cx=plan.MinX+(c%plan.Nx+.5f)*NativeMeridianDress.ChunkSize,cz=plan.MinZ+(c/plan.Nx+.5f)*NativeMeridianDress.ChunkSize;
+            if((cx-x)*(cx-x)+(cz-z)*(cz-z)>radius*radius)continue;NativeMeridianDress.Combine(plan,c,0,bank,modules,pl[c],qs[c],mesh);int b=P.Count/3;
+            for(int i=0;i<mesh.Vertices;i++){P.Add(mesh.P[i*3]);P.Add(mesh.P[i*3+1]);P.Add(mesh.P[i*3+2]);bool glow=false;C.Add(mesh.C[i*4]);C.Add(mesh.C[i*4+1]);C.Add(mesh.C[i*4+2]);C.Add(glow?(byte)255:mesh.C[i*4+3]);}
+            foreach(int k in mesh.Solid)I.Add(b+k);foreach(int k in mesh.Glow)I.Add(b+k);
+        }
+        // the boxes left greybox (halls, the court, landmarks), mid grey
+        foreach(var blk in walk.Map.blocks)
+        {
+            if(plan.Covers.Contains(blk.id))continue;if((blk.pos.x-x)*(blk.pos.x-x)+(blk.pos.z-z)*(blk.pos.z-z)>radius*radius*1.5f)continue;
+            int b=P.Count/3;float hx=blk.size.x/2,hy=blk.size.y/2,hz=blk.size.z/2;
+            for(int k=0;k<8;k++){P.Add(blk.pos.x+((k&1)==1?hx:-hx));P.Add(blk.pos.y+((k&2)==2?hy:-hy));P.Add(blk.pos.z+((k&4)==4?hz:-hz));C.Add(120);C.Add(120);C.Add(128);C.Add(255);}
+            int[] f={0,2,3,0,3,1,4,5,7,4,7,6,0,1,5,0,5,4,2,6,7,2,7,3,0,4,6,0,6,2,1,3,7,1,7,5};foreach(int k in f)I.Add(b+k);
+        }
+        using(var w=new BinaryWriter(File.Create(path)))
+        {
+            var head=string.Join("\n",new[]{"ply","format binary_little_endian 1.0","element vertex "+P.Count/3,"property float x","property float y","property float z","property uchar red","property uchar green","property uchar blue","property uchar alpha","element face "+I.Count/3,"property list uchar int vertex_indices","end_header",""});
+            w.Write(System.Text.Encoding.ASCII.GetBytes(head));
+            for(int i=0;i<P.Count/3;i++){w.Write(P[i*3]);w.Write(P[i*3+1]);w.Write(P[i*3+2]);w.Write(C[i*4]);w.Write(C[i*4+1]);w.Write(C[i*4+2]);w.Write(C[i*4+3]);}
+            for(int i=0;i<I.Count;i+=3){w.Write((byte)3);w.Write(I[i]);w.Write(I[i+1]);w.Write(I[i+2]);}
+        }
+        Console.WriteLine("wrote "+path+": "+P.Count/3+" vertices, "+I.Count/3+" triangles; lamps "+plan.Lamps.Count);
+        foreach(var l in plan.Lamps)if((l.Bowl.x-x)*(l.Bowl.x-x)+(l.Bowl.z-z)*(l.Bowl.z-z)<radius*radius)Console.WriteLine(FormattableString.Invariant($"LAMP {l.Bowl.x:F2} {l.Bowl.y:F2} {l.Bowl.z:F2} {l.State} {l.Kind}"));
+    }
+
+    /// <summary>zfight.py's input for a layout (--meridian-zfight LAYOUT DIR, CHIPARENA_MERIDIAN_BANK set): the combined chunks at
+    /// LOD0 and LOD1 as a stage bank (static/&lt;chunk&gt;/0 and /2, cover/&lt;block&gt; for every covered block) and the walk's map.</summary>
+    public static void ZFightExport(int layout,string dir)
+    {
+        var bank=NativePackBank.Read(File.ReadAllBytes(Environment.GetEnvironmentVariable("CHIPARENA_MERIDIAN_BANK")));var modules=NativeMeridianDress.Modules(bank);
+        var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);var plan=NativeMeridianDress.Build(InputOf(walk,info.Seed,77),modules.ContainsKey);
+        NativeMeridianDress.ByChunk(plan,out var pl,out var qs);var mesh=new NativeMeridianMesh();Directory.CreateDirectory(dir);
+        var meshes=new List<(string name,float[] p,float[] n,float[] uv0,float[] uv1,byte[] c,int[] solid,int[] glow,float[] lo,float[] hi)>();
+        for(int c=0;c<plan.Nx*plan.Nz;c++)foreach(int tier in new[]{0,2})
+        {
+            if(pl[c]==null&&qs[c]==null)continue;NativeMeridianDress.Combine(plan,c,tier,bank,modules,pl[c],qs[c],mesh);if(mesh.Vertices==0)continue;int n=mesh.Vertices;
+            meshes.Add(("static/"+c+"/"+tier,mesh.P.Take(n*3).ToArray(),mesh.N.Take(n*3).ToArray(),mesh.Uv0.Take(n*2).ToArray(),mesh.Uv1.Take(n*2).ToArray(),mesh.C.Take(n*4).ToArray(),mesh.Solid.ToArray(),mesh.Glow.ToArray(),
+                new[]{mesh.MinX,mesh.MinY,mesh.MinZ},new[]{mesh.MaxX,mesh.MaxY,mesh.MaxZ}));
+        }
+        using(var w=new BinaryWriter(File.Create(Path.Combine(dir,"meridian-"+layout+".bytes"))))
+        {
+            void S(string t){var b=System.Text.Encoding.UTF8.GetBytes(t);w.Write(b.Length);w.Write(b);}
+            w.Write(System.Text.Encoding.ASCII.GetBytes("CAPB"));w.Write(1);w.Write(0);
+            w.Write(2);foreach(var m in new[]{"stage","stage-glow"}){S(m);w.Write(-1);w.Write(-1);for(int k=0;k<4;k++)w.Write(1f);for(int k=0;k<3;k++)w.Write(0f);w.Write((byte)0);}
+            w.Write(meshes.Count);
+            foreach(var m in meshes)
+            {
+                S(m.name);foreach(var f in m.lo)w.Write(f);foreach(var f in m.hi)w.Write(f);int n=m.p.Length/3;w.Write(n);w.Write((byte)(NativePackBank.AttrNormal|NativePackBank.AttrUv0|NativePackBank.AttrUv1|NativePackBank.AttrColor));
+                foreach(var f in m.p)w.Write(f);foreach(var f in m.n)w.Write(f);foreach(var f in m.uv0)w.Write(f);foreach(var f in m.uv1)w.Write(f);w.Write(m.c);
+                var subs=m.glow.Length>0?new[]{m.solid,m.glow}:new[]{m.solid};w.Write(subs.Length);
+                for(int s2=0;s2<subs.Length;s2++){w.Write(s2);w.Write(subs[s2].Length);foreach(int ix in subs[s2])if(n>65535)w.Write(ix);else w.Write((ushort)ix);}
+            }
+            var covers=plan.Covers.OrderBy(x=>x,StringComparer.Ordinal).ToList();w.Write(meshes.Count+covers.Count);
+            for(int i=0;i<meshes.Count;i++){var m=meshes[i];S(m.name);S("static");foreach(var f in m.lo)w.Write(f);foreach(var f in m.hi)w.Write(f);w.Write(1);w.Write(i);foreach(var f in new float[]{1,0,0,0,0,1,0,0,0,0,1,0})w.Write(f);}
+            foreach(var id in covers){S("cover/"+id);S("cover");for(int k=0;k<6;k++)w.Write(0f);w.Write(0);}
+        }
+        var blocks=walk.Map.blocks.Select(b=>new Dictionary<string,object>{{"id",b.id},{"pos",new Dictionary<string,float>{{"x",b.pos.x},{"y",b.pos.y},{"z",b.pos.z}}},{"size",new Dictionary<string,float>{{"x",b.size.x},{"y",b.size.y},{"z",b.size.z}}},{"rotation",new Dictionary<string,float>{{"x",0},{"y",0},{"z",0},{"w",1}}}}).ToList();
+        File.WriteAllText(Path.Combine(dir,"meridian-"+layout+"-maps.json"),JsonSerializer.Serialize(new Dictionary<string,object>{{"maps",new[]{new Dictionary<string,object>{{"id",walk.Map.id},{"blocks",blocks}}}}}));
+        Console.WriteLine("zfight input "+walk.Map.id+": "+meshes.Count+" chunk meshes, "+plan.Covers.Count+" covers");
+    }
+
     // The art on the colliders, over a layout's plan.
     private static void Rules(string name,NativeLayeredCityWalk walk,NativeMeridianDress.Plan plan)
     {

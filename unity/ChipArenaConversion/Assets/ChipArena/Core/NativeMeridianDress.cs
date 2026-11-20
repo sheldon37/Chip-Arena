@@ -178,6 +178,20 @@ namespace ChipArena.UnityConversion
                 foreach(int i in c){if(i==skip)continue;int o=i*6;if(x>B[o]+eps&&x<B[o+1]-eps&&y>B[o+2]+eps&&y<B[o+3]-eps&&z>B[o+4]+eps&&z<B[o+5]-eps)return true;}
                 return false;
             }
+            /// <summary>Whether a block before `bi` (in the map's order) has its face `f` in the same plane over the point: two
+            /// overlapping coplanar faces are drawn once (by the first), so they never fight.</summary>
+            public bool Shared(float x,float y,float z,int f,int bi,Func<int,bool> drawn)
+            {
+                var c=cells[CX(x)+CZ(z)*nx];if(c==null)return false;int a=f>>1,side=f&1;int o0=bi*6;float plane=B[o0+(a==0?(side==0?1:0):a==1?(side==0?3:2):(side==0?5:4))];
+                // (the faces' order: 0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z: axis f / 2, the low side when f is odd)
+                foreach(int i in c)
+                {
+                    if(i>=bi||drawn!=null&&!drawn(i))continue;int o=i*6;float pl=B[o+(a==0?(side==0?1:0):a==1?(side==0?3:2):(side==0?5:4))];if(Math.Abs(pl-plane)>.01f)continue;
+                    bool inX=a==0||x>B[o]-.001f&&x<B[o+1]+.001f,inY=a==1||y>B[o+2]-.001f&&y<B[o+3]+.001f,inZ=a==2||z>B[o+4]-.001f&&z<B[o+5]+.001f;
+                    if(inX&&inY&&inZ)return true;
+                }
+                return false;
+            }
             /// <summary>The highest block top at (x, z) at or below `below` (float.MinValue: none).</summary>
             public float Floor(float x,float z,float below)
             {
