@@ -307,6 +307,17 @@ namespace ChipArena.UnityConversion
         {
             int k=KindOf(key);if(k<0)throw new InvalidOperationException("No bleed kind "+key);
             var piece=new Piece{Kind=k,At=at,Yaw=yaw,Scale=scale,Door=(byte)d,Band=band,Lamp=lamp,Light=light==0?Kinds[k].Light:light,Seed=NativeCityBleed.Hash(rs^(uint)i*2246822519u^(uint)k*3266489917u)};
+            if(Kinds[k].Mount==Mount.Floor)
+            {
+                // paint never lies on paint: two decals in one plane would fight (the 2 m grid parts the tiles; this parts the
+                // lines from them and from one another)
+                Bounds(piece,out var flo,out var fhi);
+                foreach(var o in plan.Pieces)
+                {
+                    if(Kinds[o.Kind].Mount!=Mount.Floor||Math.Abs(o.At.y-piece.At.y)>.05f)continue;Bounds(o,out var olo,out var ohi);
+                    if(Math.Min(fhi.x,ohi.x)-Math.Max(flo.x,olo.x)>.01f&&Math.Min(fhi.z,ohi.z)-Math.Max(flo.z,olo.z)>.01f)return false;
+                }
+            }
             if(Kinds[k].Mount!=Mount.Floor&&fitWorld!=null)
             {
                 Bounds(piece,out var lo,out var hi);var ins=new V3(.012f,.012f,.012f);lo=lo+ins;hi=hi-ins;
@@ -721,6 +732,25 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<=n;k++)best=Math.Min(best,FlatDistance(box,a+ab*((float)k/n)));
             return best;
         }
+
+        /// <summary>Whether the plan's facade skins (the warp's and the threshold's, ground storey and upper) cover a point on a
+        /// collider's face whose outward normal is `normal`: the street planner leaves its own module out there (the bleed
+        /// substitutes; it does not add). Within 2 cm of the skin's plane and inside its bay.</summary>
+        public static bool Covers(Plan plan,V3 at,V3 normal)
+        {
+            foreach(var p in plan.Pieces)
+            {
+                var k=Kinds[p.Kind];if(k.Mount!=Mount.Wall||!Skin(k.Key))continue;
+                float c=(float)Math.Cos(p.Yaw),s=(float)Math.Sin(p.Yaw);var n=new V3(s,0,c);if(V3.Dot(n,normal)<.99f)continue;
+                var o=at-p.At;float z=V3.Dot(o,n);if(Math.Abs(z)>.02f)continue;
+                float x=o.x*c-o.z*s,y=o.y;
+                if(x>=k.Min.x*p.Scale.x-1e-3f&&x<=k.Max.x*p.Scale.x+1e-3f&&y>=k.Min.y*p.Scale.y-1e-3f&&y<=k.Max.y*p.Scale.y+1e-3f)return true;
+            }
+            return false;
+        }
+        /// <summary>Whether a kind is a facade skin (it stands in for the facade, rather than hanging on it).</summary>
+        public static bool Skin(string key)=>key=="level0.wallpaper"||key=="wardzero.growth"||key=="station.brick"||key=="ironworks.plate"||key=="wardzero.sheet"||
+            key.EndsWith(".threshold",StringComparison.Ordinal)||key.EndsWith(".threshold.upper",StringComparison.Ordinal)||key.StartsWith("wardzero.cladding",StringComparison.Ordinal)||key.StartsWith("ironworks.furnace",StringComparison.Ordinal);
 
         /// <summary>The five instances a door can lead to, by the walk's names (the Developer walk's door-deal picker).</summary>
         public static readonly string[] Instances={"Level 0","The Poolrooms","Ward Zero","Central Station","City Ironworks"};

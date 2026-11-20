@@ -47,7 +47,7 @@ internal static class BleedChecks
                 Along(walk,bleed);
                 var plan=NativeCityBleedDress.ForWalk(walk,bleed,seed);var again=NativeCityBleedDress.ForWalk(walk,NativeCityBleed.ForWalk(walk,slots),seed);
                 Same(plan,again,map.name+" "+string.Join("/",Deals[deal]));
-                Rules(map,bleed,plan);
+                Rules(map,bleed,plan);Paint(map,plan);Covers(map,plan);
                 Coverage(map,bleed,plan,perTheme);
                 int view=View(walk,plan),draws=Draws(plan);
                 if(plan.Pieces.Count>MaxPieces)throw new Exception(map.name+": "+plan.Pieces.Count+" bleed pieces, over "+MaxPieces);
@@ -203,6 +203,29 @@ internal static class BleedChecks
                     break;
                 }
             }
+        }
+    }
+    // The street planner's question (NativeCityBleedDress.Covers): a skin's own bay is covered, a point 0.3 m off its face is not.
+    private static void Covers(ContentMap map,NativeCityBleedDress.Plan plan)
+    {
+        int n=0;
+        foreach(var p in plan.Pieces)
+        {
+            var k=NativeCityBleedDress.Kinds[p.Kind];if(!NativeCityBleedDress.Skin(k.Key)||n++>40)continue;
+            var nrm=new V3((float)Math.Sin(p.Yaw),0,(float)Math.Cos(p.Yaw));var mid=NativeCityBleedDress.Local(p,new V3(0,(k.Min.y+k.Max.y)/2,0));
+            if(!NativeCityBleedDress.Covers(plan,mid,nrm))throw new Exception(map.name+": "+k.Key+" at "+Show(p.At)+" does not cover its own bay");
+            if(NativeCityBleedDress.Covers(plan,mid+nrm*.3f,nrm))throw new Exception(map.name+": a skin covers a point off its face");
+        }
+    }
+    // No two pieces of paint lie on one another (they would fight in the depth buffer).
+    private static void Paint(ContentMap map,NativeCityBleedDress.Plan plan)
+    {
+        var floors=plan.Pieces.Where(p=>NativeCityBleedDress.Kinds[p.Kind].Mount==NativeCityBleedDress.Mount.Floor).Select(p=>{NativeCityBleedDress.Bounds(p,out var lo,out var hi);return (p,lo,hi);}).ToArray();
+        for(int i=0;i<floors.Length;i++)for(int j=i+1;j<floors.Length;j++)
+        {
+            var a=floors[i];var b=floors[j];if(Math.Abs(a.p.At.y-b.p.At.y)>.05f)continue;
+            if(Math.Min(a.hi.x,b.hi.x)-Math.Max(a.lo.x,b.lo.x)>.01f&&Math.Min(a.hi.z,b.hi.z)-Math.Max(a.lo.z,b.lo.z)>.01f)
+                throw new Exception(map.name+": "+NativeCityBleedDress.Kinds[a.p.Kind].Key+" at "+Show(a.p.At)+" lies on "+NativeCityBleedDress.Kinds[b.p.Kind].Key+" at "+Show(b.p.At));
         }
     }
     // A span's end sample may stand over the wall it is anchored on (inside that wall's footprint, below its top).
