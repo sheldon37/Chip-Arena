@@ -36,8 +36,9 @@ change. Without the city bank the walk draws its greybox exactly as before.
   put within it (`NativeMeridianDress.SeamTable`): within a 32 m cell at the tier it draws, across cells at both tiers (a cell at
   LOD0 stands beside one at LOD1). A cell whose side gains vertices is fanned. Shared vertices are snapped to one canonical
   coordinate per axis, so they are bitwise the same. The floor runs on under the camp fence (the greybox draws it chamfered, and
-  its foot's groove showed the void). The views cost 4-13% more triangles; the load 10-26 ms more offline and 0.3-0.5 s more
-  in the Editor (the seam table sweeps each shared line once, the lines in parallel).
+  its foot's groove showed the void). The views cost 4-13% more triangles; the load about 0.04 s more in the Editor (the seam
+  table sweeps each shared line once, the lines in parallel, and allocates almost nothing: Mono's GC makes allocating threads
+  wait for each other).
 - Coplanar meetings never fight: a face of the dress in the plane of a face the greybox or the landmarks draw is left to them;
   roof copings butt at the corners; the bank trims each shopfront to its 2.5 m bay, so the bays of a storey butt; the rest part
   by a few ChipArena/StageLit layers (kept few: the shader's offset grows with each): the ground storey 0 (a shopfront's fascia
