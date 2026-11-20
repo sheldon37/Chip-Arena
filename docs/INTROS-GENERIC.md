@@ -23,7 +23,7 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 - **The closing frame and the name:** the name sits in a band under the feet (`card.Y` 0.855 of the height, `CardY` in the base),
   never on the legs: each closing shot shows the whole figure above it (the crown near 0.2 of the height, the soles near 0.71,
   settled before the card arrives; `NativeIntroGenericScript.Closing`, a slow push in from a low front three-quarter). The
-  kicker and the line stay centred (the runtime centres them whatever `card.X` says), so no intro moves the name sideways.
+  name, its kicker and its line stay centred (`card.X` unset), on the floor in front of the pilot.
 - **The head:** the framework's head anchor is the head joint's pivot at the skull's base; anything placed at the eyes lifts
   `HeadLift` (0.16 m) along the neck. Whiteout's visor rides the head as drawn (`INativeIntroHead`), since the model's kneel
   carries its head off the keyed one (seen in the first captures); its insert is framed by the chest for the same reason.
