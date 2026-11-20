@@ -190,8 +190,9 @@ namespace ChipArena.UnityConversion
         public override void Lights(float t,NativeEntranceLights l)
         {
             WarmAnchors(t);l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x0d0c14);l.FogNear=6;l.FogFar=30;l.DriveProbe=true;
-            l.Sky=NativeEntranceFx.Hex(0x2a2440,.3f);l.Ground=NativeEntranceFx.Hex(0x120c10,.3f);
-            l.Directional(new Vector3(.3f,1,.2f),NativeEntranceFx.Hex(0x8090c0,.18f));
+            l.Sky=NativeEntranceFx.Hex(0x2a2440,.38f);l.Ground=NativeEntranceFx.Hex(0x120c10,.32f);
+            // (the set takes only directionals and the ambient: the night sky's cold strip over the lane, the lanterns' warm wash from above)
+            l.Directional(new Vector3(.3f,1,.2f),NativeEntranceFx.Hex(0x8090c0,.22f));l.Directional(new Vector3(-.1f,1,.45f),Lamp*.2f);
             // The lanterns overhead (the near ones), the shop signs' neon either side, the echoes' own glow.
             for(int k=1;k<=3;k++){Lantern(k,t,out _,out _,out var mid);float lit=1-.7f*NativeEntranceMath.Ramp(t,CutAt(k)+.6f,CutAt(k)+1.4f);mid.Y=Math.Max(mid.Y,NativeEntranceStage.FloorY+.15f);l.Add(mid,Lamp*(2.2f*lit),5.5f);}
             l.Add(new Vector3(2.1f,2.4f,-1.5f),Magenta*1.6f,6);l.Add(new Vector3(-2.1f,2.4f,1.5f),Teal*1.4f,6);

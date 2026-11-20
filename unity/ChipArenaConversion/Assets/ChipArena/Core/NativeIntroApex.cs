@@ -142,7 +142,9 @@ namespace ChipArena.UnityConversion
         public override void Lights(float t,NativeEntranceLights l)
         {
             WarmAnchors(t);l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x07100b);l.FogNear=5;l.FogFar=27;l.DriveProbe=true;
-            l.Sky=NativeEntranceFx.Hex(0x1b2a24,.32f);l.Ground=NativeEntranceFx.Hex(0x0a0c08,.28f);
+            l.Sky=NativeEntranceFx.Hex(0x1b2a24,.4f);l.Ground=NativeEntranceFx.Hex(0x0a0c08,.3f);
+            // (the set takes only directionals and the ambient: the moon's shaft down through the canopy's gap, a cold rim from the gate)
+            l.Directional(new Vector3(.25f,1,.35f),Moon*.5f);l.Directional(new Vector3(-.3f,.45f,-1),Moon*.22f);
             // No sky through the canopy: a shaft of moonlight onto the lintel and the floor, a cold rim from behind the gate, the venom's glow.
             l.Add(new Vector3(.4f,6.5f,-.8f),Moon*4.2f,10);
             l.Add(new Vector3(-.8f,4.6f,-5.2f),Moon*2.0f,7.5f);

@@ -209,7 +209,7 @@ namespace ChipArena.UnityConversion
             l.Sky=NativeEntranceFx.Hex(0x2a3550,.34f+.5f*bolt);l.Ground=NativeEntranceFx.Hex(0x0e0f14,.3f);
             // Moonlight from behind and above the gate, cold; the veranda's paper behind the lens, warm and low.
             l.Directional(new Vector3(.4f,1.0f,-.85f),Moon*(.42f+1.6f*bolt));
-            l.Directional(new Vector3(-.15f,.35f,1),Paper*.12f);
+            l.Directional(new Vector3(-.15f,.35f,1),Paper*.16f);// (the paper's warmth on the set: points no longer reach it)
             // (the flame stands still in the freeze, as the rain does)
             float r=RainTime(t),fl=Context.Reduced?1:.93f+.07f*(float)Math.Sin(r*9.1f)*(float)Math.Sin(r*4.3f+.7f);
             l.Add(U(2.55f,1.2f,-1.9f),Lamp*(2.3f*fl),5.5f);

@@ -135,6 +135,8 @@ namespace ChipArena.UnityConversion
             l.Sky=NativeEntranceFx.Hex(0x3a2c22,.18f+.1f*lvl);l.Ground=NativeEntranceFx.Hex(0x120c08,.25f);
             // The dawn: a sun straight down through the cleft (the vault's shadow makes the shaft on the floor), its bounce off the lit stones.
             l.Directional(new Vector3(0,1,-.012f),Dawn*(1.25f*lvl));
+            // (the set takes only directionals and the ambient: the aisle windows' cold daylight across the hall)
+            l.Directional(new Vector3(-.55f,.35f,-.75f),Cool*.22f);
             l.Add(U(0,.35f,.8f),Dawn*(2.4f*lvl),5.5f);
             l.Add(new Vector3(-5,3.2f,-2),Cool*1.0f,10);
             l.Add(new Vector3(0,4.2f,-10),Cool*2.0f,14);

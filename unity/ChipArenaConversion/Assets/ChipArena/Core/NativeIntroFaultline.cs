@@ -154,6 +154,8 @@ namespace ChipArena.UnityConversion
             float heat=Heat(t),blow=Flash(t,SlamAt,.02f,.35f),after=NativeEntranceMath.Ramp(t,SlamAt,SlamAt+.5f);
             l.Sky=NativeEntranceFx.Hex(0x3a2a22,.24f+.1f*after);l.Ground=NativeEntranceFx.Hex(0x1a0e08,.3f+.4f*after);
             l.Directional(new Vector3(-.5f,1,-.4f),Moon*.32f);
+            // (the set takes only directionals and the ambient: the molten light welling up from the broken floor lights the walls from below)
+            l.Directional(new Vector3(.15f,-.55f,.8f),(Molten*.6f+Ember*.4f)*(.12f+.3f*after+.4f*blow));
             // The seam in the back corner, the light welling up through the broken disc, the blow, a warm rim behind, the name.
             l.Add(U(4.6f,1.6f,-9.6f),Molten*(4.5f*heat),10);
             l.Add(U(0,.15f,0),(Molten*1.5f+Ember)*(3.2f*after+6*blow),7);
