@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             // reveal pulling out as the storm parts, the hero.
             Rig.Dolly(0,new Vector3(1.3f,.62f,13.5f),new Vector3(.75f,.72f,7.4f),new Vector3(0,.72f,.1f),new Vector3(0,.8f,.1f),17,19).Ease(NativeIntroEase.InOut).Focus(0,0,.6f).Handheld(.35f)
                .Dolly(HeatAt,new Vector3(.85f,.95f,1.85f),new Vector3(.72f,.92f,1.62f),new Vector3(0,.3f,0),new Vector3(0,.32f,0),33,30).Follow(NativeEntranceAnchor.Chest).Focus(0,0,.5f)
-               .Crane(CrackAt+.2f,new Vector3(1.7f,.45f,3.1f),new Vector3(1.45f,.55f,2.7f),.35f,new Vector3(0,.05f,0),new Vector3(0,.15f,0),34,37).Follow(NativeEntranceAnchor.Chest,.06f)
+               .Crane(CrackAt+.2f,new Vector3(1.7f,.45f,3.1f),new Vector3(1.45f,.55f,2.7f),.35f,new Vector3(0,.05f,0),new Vector3(0,.26f,0),34,38).Follow(NativeEntranceAnchor.Chest,.06f)
                .Dolly(PulseAt-.25f,new Vector3(-1.85f,.34f,3.05f),new Vector3(-2.05f,.37f,3.35f),new Vector3(0,1.0f,.2f),new Vector3(0,1.05f,.2f),48,50)
                .Crane(PartAt+.05f,new Vector3(-2.05f,.37f,3.35f),new Vector3(-4.0f,.9f,8.2f),1.1f,new Vector3(0,1.1f,.1f),new Vector3(-.8f,2.6f,-6),54,50).Ease(NativeIntroEase.InOut).In(NativeIntroCut.Blend,.45f);
             Closing(CardAt-.6f,-1.2f,5.4f,.5f,.78f,36,.55f);
