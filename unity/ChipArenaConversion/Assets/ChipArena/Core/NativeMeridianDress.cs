@@ -179,6 +179,14 @@ namespace ChipArena.UnityConversion
                 foreach(int i in c){if(i==skip)continue;int o=i*6;if(x>B[o]+eps&&x<B[o+1]-eps&&y>B[o+2]+eps&&y<B[o+3]-eps&&z>B[o+4]+eps&&z<B[o+5]-eps)return true;}
                 return false;
             }
+            private readonly HashSet<int> near=new HashSet<int>();private readonly List<int> nearList=new List<int>();
+            /// <summary>The blocks whose buckets meet an xz range (each once; the list is reused).</summary>
+            public List<int> Near(float x0,float x1,float z0,float z1)
+            {
+                near.Clear();nearList.Clear();
+                for(int z=CZ(z0);z<=CZ(z1);z++)for(int x=CX(x0);x<=CX(x1);x++){var c=cells[x+z*nx];if(c==null)continue;foreach(int i in c)if(near.Add(i))nearList.Add(i);}
+                return nearList;
+            }
             /// <summary>Whether a block before `bi` (in the map's order) has its face `f` in the same plane over the point: two
             /// overlapping coplanar faces are drawn once (by the first), so they never fight.</summary>
             public bool Shared(float x,float y,float z,int f,int bi,Func<int,bool> drawn)

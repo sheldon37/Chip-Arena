@@ -24,6 +24,8 @@ namespace ChipArena.UnityConversion
             public string[] Roles;public Dictionary<string,MapRamp> TreadRamp=new Dictionary<string,MapRamp>(StringComparer.Ordinal);
             public uint Seed;public readonly List<Mount> Mounts=new List<Mount>();
             public bool IsDressed(int i)=>Dressed(Roles[i])&&Roles[i]!=RLot;
+            // (a lot's roof is a generated surface too: a top two blocks share is drawn by the first, lot or not)
+            public bool DrawsTop(int i)=>Dressed(Roles[i])&&Roles[i]!=RTread&&Roles[i]!=RParapet&&Roles[i]!=RRail&&Roles[i]!=RPost&&Roles[i]!=RWagon;
             public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false)
             {
                 var p=new Placement{Key=Pick(key,at,Has),Block=block,Face=face,U0=u0,U1=u1,V0=v0,V1=v1,Floor=floor,Hugs=hugs,Paint=paint,Dynamic=dynamic};
@@ -76,20 +78,45 @@ namespace ChipArena.UnityConversion
         // ------------------------------------------------------------------------------------------------------------------
         // Exposure: which cells of a face can be seen (the point just outside them is in no block)
         // ------------------------------------------------------------------------------------------------------------------
-        private static bool[] Exposed(Builder b,int bi,int f,int nu,int nv,out V3 o,out V3 u,out V3 v)
+        /// <summary>The face's grid lines along its two edges (0..1): every neighbouring box's edges that cross it, then cuts so no cell
+        /// is wider than `cell` m. A cell between them lies wholly in or wholly out of each axis-aligned neighbour, so its centre decides
+        /// it exactly: no part of a face is drawn twice (a coplanar neighbour's) or left bare (a hiding neighbour's).</summary>
+        private static void Lines(Builder b,int bi,int f,float cell,out float[] us,out float[] vs,out V3 o,out V3 u,out V3 v)
         {
-            FaceFrame(b.S.B,bi*6,f,out o,out u,out v);var n=NormalOf(f);var e=new bool[nu*nv];
+            FaceFrame(b.S.B,bi*6,f,out o,out u,out v);float lu=u.Length,lv=v.Length;var n=NormalOf(f);var B=b.S.B;
+            var lu0=new List<float>{0,1};var lv0=new List<float>{0,1};
+            var c0=o-n*.1f;var c1=o+u+v+n*.1f;
+            foreach(int j in b.S.Near(Math.Min(c0.x,c1.x),Math.Max(c0.x,c1.x),Math.Min(c0.z,c1.z),Math.Max(c0.z,c1.z)))
+            {
+                if(j==bi)continue;int q=j*6;
+                // the neighbour must reach the face's plane (within 0.1 m either side)
+                float plane=V3.Dot(o,n),lo=n.x!=0?B[q]:n.y!=0?B[q+2]:B[q+4],hi=n.x!=0?B[q+1]:n.y!=0?B[q+3]:B[q+5];
+                if(n.x+n.y+n.z>0){if(lo*(n.x+n.y+n.z)>plane+.1f||hi<plane-.1f)continue;}else{if(-hi>plane+.1f||-lo<plane-.1f)continue;}
+                foreach(var (axis,list,len,origin) in new[]{(u,lu0,lu,o),(v,lv0,lv,o)})
+                {
+                    var d=axis/len;int ax=Math.Abs(d.x)>.5f?0:Math.Abs(d.y)>.5f?1:2;float sgn=ax==0?d.x:ax==1?d.y:d.z;float org=ax==0?origin.x:ax==1?origin.y:origin.z;
+                    foreach(float edge in new[]{B[q+ax*2],B[q+ax*2+1]}){float t=(edge-org)*sgn/len;if(t>.0005f&&t<.9995f)list.Add(t);}
+                }
+            }
+            us=Cut(lu0,lu,cell);vs=Cut(lv0,lv,cell);
+        }
+        private static float[] Cut(List<float> lines,float len,float cell)
+        {
+            lines.Sort();var r=new List<float>{0};
+            for(int i=1;i<lines.Count;i++)
+            {
+                float a=r[r.Count-1],c=lines[i];if((c-a)*len<.02f)continue;int k=Math.Max(1,(int)Math.Ceiling((c-a)*len/cell));
+                for(int s=1;s<=k;s++)r.Add(a+(c-a)*s/k);
+            }
+            if(r[r.Count-1]<1)r[r.Count-1]=1;return r.ToArray();
+        }
+        private static bool[] Exposed(Builder b,int bi,int f,float[] us,float[] vs,V3 o,V3 u,V3 v)
+        {
+            var n=NormalOf(f);int nu=us.Length-1,nv=vs.Length-1;var e=new bool[nu*nv];
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
             {
-                // a cell is drawn when any of its centre and four inset corners can be seen (a part hidden behind a neighbour is
-                // drawn inside it, never left bare)
-                bool seen=false;
-                for(int k=0;k<5&&!seen;k++)
-                {
-                    float su=k==0?.5f:(k&1)==1?.08f:.92f,sv=k==0?.5f:k<3?.08f:.92f;var p=o+u*((i+su)/nu)+v*((j+sv)/nv)+n*.05f;
-                    seen=!b.S.Inside(p.x,p.y,p.z,bi)&&!b.S.Shared(p.x-n.x*.05f,p.y-n.y*.05f,p.z-n.z*.05f,f,bi,b.IsDressed);
-                }
-                e[i+j*nu]=seen;
+                var p=o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f);
+                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed);
             }
             return e;
         }
@@ -116,15 +143,15 @@ namespace ChipArena.UnityConversion
             FaceFrame(b.S.B,bi*6,f,out var o0,out var u0,out var v0);float lu=u0.Length,lv=v0.Length;if(lu<.01f||lv<.01f)return;
             // a face on the map's bounds turned out of it is never seen (beyond the Cordon): it is left out
             if(OutOfBounds(b,bi,f))return;
-            int nu=Math.Max(1,(int)Math.Ceiling(lu/cell)),nv=Math.Max(1,(int)Math.Ceiling(lv/cell));
-            var e=Exposed(b,bi,f,nu,nv,out var o,out var u,out var v);float floor=b.S.B[bi*6+2];
+            Lines(b,bi,f,cell,out var us,out var vs,out var o,out var u,out var v);int nu=us.Length-1,nv=vs.Length-1;
+            var e=Exposed(b,bi,f,us,vs,o,u,v);float floor=b.S.B[bi*6+2];
             if(f==2||f==3)floor=b.S.B[bi*6+(f==2?3:2)];
             foreach(var (i0,j0,i1,j1) in Rects(e,nu,nv))
             {
-                var ro=o+u*((float)i0/nu)+v*((float)j0/nv);var ru=u*((float)(i1-i0)/nu);var rv=v*((float)(j1-j0)/nv);
+                var ro=o+u*us[i0]+v*vs[j0];var ru=u*(us[i1]-us[i0]);var rv=v*(vs[j1]-vs[j0]);
                 if(bandFin>=0&&f!=2&&f!=3&&band>0)
                 {
-                    float top=(float)j1/nv*lv,bot=(float)j0/nv*lv,cut=lv-band;
+                    float top=vs[j1]*lv,bot=vs[j0]*lv,cut=lv-band;
                     if(top>cut+.01f&&bot<cut-.01f){var vb=v*((cut-bot)/lv);b.Quad(ro,ru,vb,fin,layer,bi,floor);b.Quad(ro+vb,ru,rv-vb,bandFin,layer,bi,floor);continue;}
                     if(bot>=cut-.01f){b.Quad(ro,ru,rv,bandFin,layer,bi,floor);continue;}
                 }
