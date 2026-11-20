@@ -106,7 +106,10 @@ namespace ChipArena.UnityConversion
             IntroTotal=total;IntroNameAt=cardAt;SlowRate=1;SlowHold=0;SlowRecover=0;SlowCatchUp=0;
             Context=new NativeIntroContext{Quality=1,Name="Pilot"};
         }
-        public override float Length=>IntroTotal;public override float SettleAt=>IntroTotal-.25f;protected override float HeroAt=>IntroNameAt;
+        public override float Length=>IntroTotal;public override float SettleAt=>IntroTotal-.25f;
+        /// <summary>The living hold (breath, weight shift, a drifting head: NativeEntrancePose.Idle) from the first moments, under every key:
+        /// the keyed holds before the action breathe too.</summary>
+        protected override float HeroAt=>.25f;
         public override float Clock(float age){if(!(age>0))return 0;return Ramps.Any?Ramps.Map(Math.Min(age,IntroTotal+1),IntroTotal+1):Math.Min(age,IntroTotal+1);}
         public override void Camera(float age,out NativeEntranceView view)
         {
