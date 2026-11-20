@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         {
             count=0;
             Adapter(root);Words();Beats();Ladder();FloorAndRings();Blooms();Pulses();Budget();Reduced();Determinism();Sounds();Locker();Clock();Hologram();Preview();NoAllocation();Sources(root);
-            Console.WriteLine("PASS Cache openings ("+count+" checks)");
+            Console.WriteLine("PASS Cache openings ("+count+" checks; the locker's triangles a tier "+string.Join(", ",Tiers.Select(t=>NativeCacheLockerModels.Triangles(t)))+"; FX quads at peak "+string.Join(", ",Tiers.Select(t=>Peak(O(t))))+"; particles "+string.Join(", ",Tiers.Select(t=>O(t).ParticleCount))+")");
         }
 
         // 1. The tier through one adapter: A2's ExpeditionChestOffer.tier, missing reads standard; the chip rarities' mapping.
