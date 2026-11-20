@@ -1,3 +1,29 @@
+## 2026-11-20 — Claude: intros v2, the melee weapon intros: Still Rain, Apex, Faultline, Severed Dawn, Hold the Line, Afterimage (owner request; presentation only)
+
+Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" I3, the melee family of the intros v2 work, on I0's contract (`docs/INTROS-V2.md`). Design and status: `docs/INTROS-MELEE.md`.
+
+**Branch and status:** `claude/intro-melee` from shared `8d56f015`, with `claude/intro-framework` (`2da9c7fc`) merged in. Pushed, not merged.
+
+**What changed:**
+- **Six new weapon intros**, each registered on its weapon's slot (`intro2-weapon-<spec>`): Still Rain (Katana: the rain stops in the air for the one cut), Apex (Fangs: a pounce off a temple lintel), Faultline (greatsword: a plunging slam breaks the quarry floor into heaving slabs), Severed Dawn (sword: the cut severs a shaft of dawn light), Hold the Line (shield: a barrage breaks on the planted shield), Afterimage (daggers: two echoes cut a beat behind). The Glaive's Orrery is designed and its set modelled, but not built: it keeps Crescent Return.
+- **Sets:** six modelled sets (`tools/intros/melee_*.py` on `melee_kit.py` and the stage kit), banked locally as `ChipArenaIntroMelee.bytes` (never committed; master in `F:/Chip Arena Development/scratch/intro-melee/bank/`).
+- **Bodies:** the pack clips on the model through the blade entrances' path. For the sword, daggers, shield and greatsword the keyed rig plays the game's own capture of the same clip, so the weapon hold is the match's (the visual body takes it on the clip's first frame).
+- **Sound:** cue timelines on existing keys and built-in clips; 59 generated-sound requests in `docs/audio/intros/I3.json` with their contract lines in `Core/NativeIntroSoundKeys.cs`.
+
+**Systems touched:** Core only (six intro files and the shared `NativeIntroMelee.cs`, one registry line each, the sound key lines), the set scripts, docs. No Runtime change.
+
+**Voxel dependency:** `Core/NativeIntroMelee.cs` author 0 -> 1: `CapturedRig.Sample` poses the keyed rig with the game's capture of the clip the model plays, so the model's weapon hold is the match's (no grip table yet for these weapons; I0's follow-up). A grip table for every weapon (I0's `NativeBladeGrip` route) removes it. Pinned in `Tests/voxel-ratchet.txt`.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; the registry's Duration and NameAt are what the match reads, all within 6-8.2 s).
+
+**Checks:** CHECKS_PENDING
+
+**Not checked:** NOTCHECKED
+
+**Risks:** RISKS
+
+**Next:** NEXT
+
 ## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
 
 Owner: "I need to redo essentially all of them (except top dog and Bombardier ones ...) ... "archive" them, so theyre no longer visible in the customization screen ... great animations and effects, non-block based background and designs ... great camera work". I0, the framework for the five intro authors (I1 dev, I2 generic, I3 melee, I4 ranged, I5 elemental).

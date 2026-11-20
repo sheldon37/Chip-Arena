@@ -212,7 +212,7 @@ def roof(g, T, at, half_x, half_z, rise, lift, f=F_TILE, tiles=True, under=True,
                     g.face((d, c, b, a), F_WOOD_H, normal=(-n[0], -n[1], -n[2]))
         # the rolled tiles: a ridge every 0.24 m down the slope
         if T.detail and tiles:
-            k = int(half_x * 2 / .3)
+            k = int(half_x * 2 / .36)
             for i in range(k + 1):
                 u = -1 + 2 * i / k
                 path = [surf(u, v, side) for v in np.linspace(0, 1, (5, 4, 3)[T.i])]
@@ -244,7 +244,7 @@ def walls(g, T):
         if along_x:
             lo, hi = sorted((x0, x1))
             sk.box(g, lo, hi, -.1, .55, z0 - th - .04, z0 + th + .04, F_PLINTH, T, bevel=.02, cell=(1.6, 4.0, 0)[T.i])
-            sk.box(g, lo, hi, .55, H, z0 - th, z0 + th, F_PLASTER, T, bevel=.015, cell=(1.2, 3.0, 0)[T.i])
+            sk.box(g, lo, hi, .55, H, z0 - th, z0 + th, F_PLASTER, T, bevel=.015, cell=(2.0, 4.0, 0)[T.i])
             # timber posts in the plaster every 1.8 m
             n = int((hi - lo) / 1.8)
             for k in range(n + 1):
@@ -254,7 +254,7 @@ def walls(g, T):
         else:
             lo, hi = sorted((z0, z1))
             sk.box(g, x0 - th - .04, x0 + th + .04, -.1, .55, lo, hi, F_PLINTH, T, bevel=.02, cell=(1.6, 4.0, 0)[T.i])
-            sk.box(g, x0 - th, x0 + th, .55, H, lo, hi, F_PLASTER, T, bevel=.015, cell=(1.2, 3.0, 0)[T.i])
+            sk.box(g, x0 - th, x0 + th, .55, H, lo, hi, F_PLASTER, T, bevel=.015, cell=(2.0, 4.0, 0)[T.i])
             n = int((hi - lo) / 1.8)
             inner = -math.copysign(1, x0)
             for k in range(n + 1):
@@ -356,7 +356,7 @@ def stalk(g, T, base, height, r, lean, seed, top_leaves=True, f=F_BAMBOO, from_h
             sk.lathe(g, [(r * 1.14, -.01), (r * 1.14, .01)], p, F_NODE, sides)
     if top_leaves:
         rr = mk.rng(seed)
-        nl = ((9, 5, 2) if nodes else (6, 3, 1))[T.i] if leaves is None else leaves[T.i]
+        nl = ((8, 4, 2) if nodes else (4, 2, 1))[T.i] if leaves is None else leaves[T.i]
         top = pts[-1]
         for k in range(nl):
             h = float(rr.uniform(.55, 1.0))
@@ -448,11 +448,11 @@ def veranda(g, T):
             # the shoji between: warm paper, a lattice of thin bars
             sk.box(g, x + .1, x1 - .1, .5, 2.6, z0 + 1.2, z0 + 1.22, F_SHOJI, T, bevel=0, cell=0)
             if T.detail:
-                for c in range(1, 4):
-                    xx = x + .1 + (x1 - x - .2) * c / 4
+                for c in range(1, 3):
+                    xx = x + .1 + (x1 - x - .2) * c / 3
                     sk.box(g, xx - .012, xx + .012, .5, 2.6, z0 + 1.18, z0 + 1.2, F_WOOD, T, bevel=0, cell=0)
-                for c in range(1, 6):
-                    yy = .5 + 2.1 * c / 6
+                for c in range(1, 4):
+                    yy = .5 + 2.1 * c / 4
                     sk.box(g, x + .1, x1 - .1, yy - .012, yy + .012, z0 + 1.18, z0 + 1.2, F_WOOD, T, bevel=0, cell=0)
     sk.box(g, -SIDE_X, SIDE_X, 2.6, 3.0, z0 + 1.1, z0 + 1.3, F_WOOD_H, T, bevel=.015, cell=0)
     sk.box(g, -SIDE_X - .5, SIDE_X + .5, 3.0, 3.12, z0 - .5, z0 + 1.6, F_WOOD_H, T, bevel=.015, cell=0)
