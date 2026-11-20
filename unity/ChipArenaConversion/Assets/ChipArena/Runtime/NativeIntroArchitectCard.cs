@@ -5,19 +5,21 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// The dev intro's name card, the "architect" effect (Core NativeIntroArchitect.Card; docs/INTRO-DEV-ARCHITECT.md "The name").
-    /// The live name is built a letter at a time in step with the letters written into the sky: each letter's slot first runs
-    /// through code (characters cycling, a cursor under it), then locks to the letter in a white flash that cools to gold, its
-    /// colour split and a slice of it thrown sideways, both settling to nothing; a light sweeps the finished name and two ticks
-    /// close round it. Reduced effects: no cycling and no fast flashes (each letter fades in from a soft blur, the split and the
-    /// slice stay small). Drawn in place of the plain name; allocation-free.
+    /// The sky's forged name is the hero; the card is its small caption under the architect (Core sets its size). The live name is
+    /// built a letter at a time in step with the letters forged in the sky: each letter's slot first runs through code (characters
+    /// cycling, a cursor under it), then locks to the letter in a white flash that cools to gold, its colour split and a slice of
+    /// it thrown sideways, both settling to nothing; a light sweeps the finished name and two ticks close round it. Reduced
+    /// effects: no cycling and no fast flashes (each letter fades in from a soft blur, the split and the slice stay small). Drawn in
+    /// place of the plain name; allocation-free.
     /// </summary>
     public sealed class NativeArchitectCard:INativeIntroCardEffect
     {
         private static readonly string[] Code={"0","1","<",">","/","\\","[","]","#","=","+","*","%","&","$","{","}","7","4","X"};
         private static readonly Color Ink=new Color(1f,.96f,.86f),Hot=new Color(1,1,1),Gold=new Color(1f,.8f,.42f),Cyan=new Color(.55f,.95f,1f),Rose=new Color(1f,.36f,.52f),Shadow=new Color(0,0,0,.75f);
-        /// <summary>When letter `i`'s slot starts to decode and when it locks (card age, s): the sky's letters' pace.</summary>
-        public static float Start(int i)=>.04f+NativeIntroArchitect.LetterStep*i;
-        public static float Lock(int i)=>Start(i)+.18f;
+        /// <summary>When letter `i`'s slot starts to decode and when it locks (card age, s): the sky's pens' pace (letter i is written
+        /// from NativeIntroArchitect.LetterAt(i) for LetterTime).</summary>
+        public static float Start(int i)=>NativeIntroArchitect.NameStart-NativeIntroArchitect.CardAt+NativeIntroArchitect.LetterStep*i;
+        public static float Lock(int i)=>Start(i)+NativeIntroArchitect.LetterTime;
         private static float Hash(int a,int b){uint h=(uint)a*0x9E3779B1u^(uint)b*0x85EBCA77u;h^=h>>15;h*=0x2C1B3C6Du;h^=h>>12;return (h&0xffff)/65536f;}
         public bool Draw(in NativeIntroCardFrame f,bool before)
         {
@@ -57,7 +59,7 @@ namespace ChipArena.UnityConversion
             }
             // after the name: a scan line riding the letters as they decode; the sweep of light over the finished name; the ticks
             float last=Lock(n-1);
-            if(a<last+.12f){float x=box.x+Mathf.Clamp(f.X[Mathf.Clamp((int)((a-.04f)/NativeIntroArchitect.LetterStep),0,n-1)]+f.Widths[Mathf.Clamp((int)((a-.04f)/NativeIntroArchitect.LetterStep),0,n-1)],0,box.width);U.Fill(new Rect(x,box.y+box.height*.12f,Mathf.Max(2,size*.04f),box.height*.76f),U.A(Cyan,.85f*alpha));}
+            if(a<last+.12f){int at=Mathf.Clamp((int)((a-Start(0))/NativeIntroArchitect.LetterStep),0,n-1);float x=box.x+Mathf.Clamp(f.X[at]+f.Widths[at],0,box.width);U.Fill(new Rect(x,box.y+box.height*.12f,Mathf.Max(2,size*.04f),box.height*.76f),U.A(Cyan,.85f*alpha));}
             float sweep=Mathf.Clamp01((a-(last+.55f))/.7f);
             if(sweep>0&&sweep<1){float sx=box.x-40+(box.width+80)*sweep;U.HGradient(new Rect(sx-70,box.y,70,box.height),new Color(1,1,1,0),U.A(new Color(1,.95f,.8f),.32f*alpha*Mathf.Sin(sweep*Mathf.PI)));}
             float ticks=Mathf.Clamp01((a-last)/.35f)*alpha;

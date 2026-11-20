@@ -1,6 +1,6 @@
 """DEV · Architect of Reality's set (docs/INTRO-DEV-ARCHITECT.md "The set"): the owner's dev intro's modelled kit, every piece
-in its own frame, written into the local bank ChipArenaIntroDev.bytes (never committed). Core NativeDevArchitectIntro places,
-flies, dissolves and builds the pieces (its Kit layout is this file's numbers: keep the two in step).
+in its own frame, written into the local bank ChipArenaIntroDev.bytes (never committed). Core NativeIntroArchitect places,
+flies, dissolves and builds the pieces (its kit layout is this file's numbers: keep the two in step).
 
 Run inside Blender 5.x, headless:
   blender -b --factory-startup --python-exit-code 1 --python tools/stages/intro_dev_architect.py -- --out <dir> [--preview <dir>]
@@ -10,19 +10,26 @@ names a file to copy it to as well.
 Two worlds share the kit:
 - the old arena (the entrance stage every intro plays on, modelled): deck plates on a 2 m grid, the hexagonal dais in six wedges,
   twelve neon pylons 7.5 m out, the dark skyline's towers. It comes apart.
-- the architect's: a floating platform of obsidian (the round dais and three rings of tiles to 7.4 m), eight monoliths 9.3 m
-  out on floating plinths, the crown (a ring of sixteen arcs 15 m up), the far spires, shards, and the void's grid. It is built.
+- the architect's: a floating platform of black glass-smooth obsidian (a sixteen-sided dais and sixteen wedges to 7.4 m, each
+  cut once across at a staggered radius, so no seam runs round the floor: owner, no ring outlines), its sixteen radial seams lit
+  from cyan at the dais to gold at the rim and carried into the dais's sigil as one sunburst; eight monoliths 9.3 m out on
+  floating plinths; the crown (eight gold spires leaning in over the platform toward one point: rays, not a ring), the far
+  spires, shards, and the void's grid. It is built.
 Every solid piece has a `.wire` twin: its edges as thin glowing bars (the wireframe a piece falls away to, and is drawn in).
+The obsidian's baked occlusion is pressed low (OCCLUDED) so the arena's reflection probe, which the intro's set reads wherever the
+match is staged, cannot wash the black glass grey: its gloss is the intro's own lights' highlights.
 
 Frames (Unity space: metres, +y up; a piece's frame is where Core places it):
   old-plate          a 2 m deck plate's top centre                 old-dais-wedge   the hexagon's centre at its top; the wedge
                                                                                      toward +z (corners at +-30 degrees)
   old-pylon-base     the base's bottom centre                      old-pylon-shaft  the shaft's bottom centre (its neon on -z)
-  old-tower-a/b/c    the tower's foot (its windows face -z)        dais             the round dais's top centre (its keel below)
-  tile-1/2/3         the tile's top at its middle radius (the ring's centre at z = -rm; the tile toward +z)
+  old-tower-a/b/c    the tower's foot (its windows face -z)        dais             the dais's top centre (its keel below; its
+                                                                                     corners on the seams, at +-11.25 degrees)
+  slab-P S           a floor slab's top at its middle apothem: P 0 the inner slab, 1 the outer; S the cut (0 at SPLITS[0],
+                     1 at SPLITS[1]); the platform's centre at z = -rm, the wedge toward +z, its seams at +-11.25 degrees
   mono-base          the plinth's top centre (a shaft stands on it) mono-shaft-0..3 the segment's bottom centre
-  mono-cap           the capstone's bottom centre                  crown-arc        the arc's middle on its 11.5 m radius, at the
-                                                                                     section's centre (the axis at z = -11.5)
+  mono-cap           the capstone's bottom centre                  crown-spire      the spire's root (its point SPIRE_L up +y,
+                                                                                     its ridges toward +-z)
   spire-a/b/c        the foot                                      shard-a..d       the middle (about 1 m across)
   grid               the void's grid plane (y 0)
 """
@@ -42,28 +49,62 @@ from stagekit import Geo  # noqa: E402
 
 BANK = 'ChipArenaIntroDev'
 
-# ---- the layout's numbers (Core NativeDevArchitectIntro.Kit) ----------------------------------------------------------
+# ---- the layout's numbers (Core NativeIntroArchitect's kit) -----------------------------------------------------------
 PLATE = 4.0
 PLATE_T = .12
 HEX_R = 2.6                      # the old dais's circumradius (NativeEntranceStage.DaisRadius)
 DAIS_H = .132                    # FloorY - GroundY
 PYLON_H = 3.6
-DAIS_NEW_R = 1.40
-TILE_T = .40
-RINGS = ((1.44, 3.20, 8), (3.24, 5.20, 12), (5.24, 7.40, 16))
-SEAM = .04
+# the floor: sixteen wedges round a sixteen-sided dais; each wedge cut once across at SPLITS (apothems), alternating round the
+# floor, so no cut lines up with its neighbours' into a ring (owner: no ring outlines)
+WEDGES = 16
+WEDGE_HALF = math.pi / WEDGES     # 11.25 degrees: the seams lie at (k + .5) x 22.5 degrees
+DAIS_R = 1.50                     # the dais's circumradius (its corners on the seams)
+FLOOR_R = 7.40                    # the rim's circumradius (its corners on the seams)
+SPLITS = (3.50, 4.60)
+SLAB_T = .40
+SEAM = .04                        # a radial seam's width (lit: its strip fills it)
+CUT = .016                        # the cuts' and the dais's joints (dark)
+SEAM_STEPS = 12                   # the seam's colour from cyan at the dais to gold at the rim, in this many steps
 MONO_W = (1.10, 1.00, .90, .80, .70)
 MONO_SEG = 2.4
 CAP_H = 1.6
-HALO_R, HALO_ARCS, HALO_W, HALO_H, HALO_GAP = 11.5, 8, 1.1, .8, .3
-CROWN_Y = 13.2
+# the crown: eight gold spires, each rooted above a monolith and leaning in toward one point over the platform (Core places them)
+SPIRE_L, SPIRE_W, SPIRE_D = 9.0, .46, .17
+# the black glass's occlusion scale: the env reflection (the arena's probe) is occluded by the vertex alpha, the lights' highlights
+# are not, so the obsidian stays black and glossy on every map (the gold keeps some of the probe: a metal needs a reflection)
+OCCLUDED = {'obsidian': .06, 'obsidian-dark': .06, 'basalt': .2, 'basalt-dark': .25, 'gold': .55}
 
 FIN = {}
+
+
+def apothem(r):
+    return r * math.cos(WEDGE_HALF)
+
+
+def slab_span(part, split):
+    """A slab's inner and outer apothems: part 0 the inner slab (the dais to the cut), 1 the outer (the cut to the rim)."""
+    hs = SPLITS[split]
+    return (apothem(DAIS_R), hs) if part == 0 else (hs, apothem(FLOOR_R))
+
+
+def _hexlerp(a, b, u):
+    ca, cb = sk.srgb(a), sk.srgb(b)
+    c = [ca[i] + (cb[i] - ca[i]) * u for i in range(3)]
+    return (int(round(c[0] * 255)) << 16) | (int(round(c[1] * 255)) << 8) | int(round(c[2] * 255))
+
+
+def seam_colour(u):
+    """The seams' light at share u of the way from the dais (0) to the rim (1): cyan, through white light, to gold."""
+    u = max(0.0, min(1.0, u))
+    return _hexlerp(0x6feaff, 0xeefaff, u / .45) if u < .45 else _hexlerp(0xeefaff, 0xffc25a, (u - .45) / .55)
 
 
 def finishes():
     f = sk.fin
     D = sk
+    for k in range(SEAM_STEPS):
+        FIN['seam-%d' % k] = f('seam-%d' % k, seam_colour(k / (SEAM_STEPS - 1)), D.DETAIL_GLOW, glow=2.6)
     FIN.update({
         # the old arena: the entrance stage's dark steel and its neon
         'deck': f('deck', 0x182030, D.DETAIL_IRON, smooth=.38, metal=.55, dirt=.7, wear=.35),
@@ -80,11 +121,11 @@ def finishes():
         'window-warm': f('window-warm', 0xff8a3a, D.DETAIL_GLOW, glow=.7),
         'window-cool': f('window-cool', 0x5a8cff, D.DETAIL_GLOW, glow=.6),
         'beacon': f('beacon', 0xff2a18, D.DETAIL_GLOW, glow=1.6),
-        # the architect's: obsidian, basalt, gold, and light
-        'obsidian': f('obsidian', 0x0e1015, D.DETAIL_MARBLE, smooth=.5, metal=.05, dirt=.15, wear=.25),
-        'obsidian-dark': f('obsidian-dark', 0x08090c, D.DETAIL_MARBLE, smooth=.6, metal=.05, dirt=.15),
-        'basalt': f('basalt', 0x1a1d24, D.DETAIL_CARVED, smooth=.4, metal=.05, dirt=.3, wear=.35),
-        'basalt-dark': f('basalt-dark', 0x0d0f14, D.DETAIL_CARVED, smooth=.3, dirt=.2),
+        # the architect's: black glass-smooth obsidian (its gloss the lights' highlights: OCCLUDED), basalt, gold, and light
+        'obsidian': f('obsidian', 0x08090c, D.DETAIL_NONE, smooth=.66, metal=0.0, dirt=.04, wear=0.0),
+        'obsidian-dark': f('obsidian-dark', 0x040405, D.DETAIL_NONE, smooth=.72, metal=0.0, dirt=.04),
+        'basalt': f('basalt', 0x0c0d11, D.DETAIL_CARVED, smooth=.34, metal=.05, dirt=.2, wear=.08),
+        'basalt-dark': f('basalt-dark', 0x07080b, D.DETAIL_CARVED, smooth=.28, dirt=.15),
         'gold': f('gold', 0xc9a253, D.DETAIL_BRASS, smooth=.78, metal=.95, dirt=.1, wear=.5),
         'vein': f('vein', 0xc8f6ff, D.DETAIL_GLOW, glow=2.6),
         'vein-soft': f('vein-soft', 0x7fe2ff, D.DETAIL_GLOW, glow=1.2),
@@ -200,82 +241,64 @@ def box_wire(g, x0, x1, y0, y1, z0, z1, w, f):
                 bar(g, c[i], c[j], w, f)
 
 
-def sector(g, r0, r1, ah, y0, y1, f, T, rm, bevel=.025, gap_m=0.0, rings=2, top_f=None, side_f=None, bot_f=None):
-    """An annular sector slab about the ring's centre (z = -rm): radius r0..r1, angles -ah..ah less half the seam gap_m at
-    each radial edge (as an arc length at each radius), its top at y1 and bottom at y0, the top and bottom edges chamfered."""
-    n = max(2, int(math.ceil(2 * ah / (math.pi / T.arc) * 1.0)))
+def inset2(poly, dists):
+    """A convex outline [(x, z)] moved in by dists[i] along each edge i (from corner i to corner i + 1): its new corners."""
+    m = len(poly)
+    cx = sum(p[0] for p in poly) / m
+    cz = sum(p[1] for p in poly) / m
+    lines = []
+    for i in range(m):
+        a, b = poly[i], poly[(i + 1) % m]
+        dx, dz = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dz)
+        nx, nz = -dz / L, dx / L
+        if (cx - a[0]) * nx + (cz - a[1]) * nz < 0:
+            nx, nz = -nx, -nz
+        lines.append(((a[0] + nx * dists[i], a[1] + nz * dists[i]), (dx / L, dz / L)))
+    out = []
+    for i in range(m):
+        (p0, d0), (p1, d1) = lines[i - 1], lines[i]
+        den = d0[0] * d1[1] - d0[1] * d1[0]
+        if abs(den) < 1e-12:
+            out.append(p1)
+            continue
+        t = ((p1[0] - p0[0]) * d1[1] - (p1[1] - p0[1]) * d1[0]) / den
+        out.append((p0[0] + d0[0] * t, p0[1] + d0[1] * t))
+    return out
+
+
+def _bilerp(q, u, v):
+    """A point in the quad q (corners 0 inner-left, 1 inner-right, 2 outer-right, 3 outer-left): u across, v out."""
+    a = (q[0][0] + (q[1][0] - q[0][0]) * u, q[0][1] + (q[1][1] - q[0][1]) * u)
+    b = (q[3][0] + (q[2][0] - q[3][0]) * u, q[3][1] + (q[2][1] - q[3][1]) * u)
+    return (a[0] + (b[0] - a[0]) * v, a[1] + (b[1] - a[1]) * v)
+
+
+def quad_slab(g, q, y0, y1, top_f, side_f, bot_f, T, bevel=.025, sub=(2, 3)):
+    """A slab over the convex quad q [(x, z)] (0 inner-left, 1 inner-right, 2 outer-right, 3 outer-left): its top at y1 split into
+    sub[0] x sub[1] cells (the colours' and occlusion's resolution), its top edge chamfered by `bevel`, sides down to y0, a floor."""
     b = bevel if T.bevel else 0.0
-    top_f = f if top_f is None else top_f
-    side_f = f if side_f is None else side_f
-    bot_f = f if bot_f is None else bot_f
-
-    def edge(r, d):
-        return ah - (gap_m * .5 + d) / r
-
-    def outline(d, y):
-        pts = []
-        ea = edge(r1 - d, d)
-        for i in range(n + 1):
-            pts.append(polar(r1 - d, -ea + 2 * ea * i / n, y, rm))
-        ea = edge(r0 + d, d)
-        for i in range(n + 1):
-            pts.append(polar(r0 + d, ea - 2 * ea * i / n, y, rm))
-        return pts
-    levels = [(b, y1), (0.0, y1 - b), (0.0, y0 + b), (b, y0)] if b > 0 else [(0.0, y1), (0.0, y0)]
-    loops = [outline(d, y) for d, y in levels]
-    m = len(loops[0])
-    # bands between the loops: smooth round the arcs, flat on the radial edges
-    for k in range(len(loops) - 1):
-        L0, L1 = loops[k], loops[k + 1]
-        ff = side_f
-        for i in range(m):
-            j = (i + 1) % m
-            radial = i == n or j == 0
-            pts = (L0[i], L0[j], L1[j], L1[i])
-            if radial:
-                # the radial edge's outward normal: along the arc's tangent at its angle (+ at +ah, - at -ah)
-                a = ah if i == n else -ah
-                tn = (math.cos(a), 0.0, -math.sin(a)) if i == n else (-math.cos(a), 0.0, math.sin(a))
-                tilt = 1.0 if (b > 0 and k == 0) else -1.0 if (b > 0 and k == 2) else 0.0
-                g.face(pts, ff, _n((tn[0], tilt, tn[2])))
-            else:
-                # outward horizontal normals at each corner (outer arc out, inner arc in), tilted for the chamfers
-                def nrm(p, outer):
-                    h = _n((p[0], 0.0, p[2] + rm))
-                    h = h if outer else (-h[0], 0.0, -h[2])
-                    if b > 0 and k == 0:
-                        return _n((h[0], 1.0, h[2]))
-                    if b > 0 and k == 2:
-                        return _n((h[0], -1.0, h[2]))
-                    return h
-                outer = i < n
-                g.face(pts, ff, normals=(nrm(L0[i], outer), nrm(L0[j], outer), nrm(L1[j], outer), nrm(L1[i], outer)))
-    # caps: a grid between the inner and outer arcs
-    for (d, y, nrm, cf, flip) in ((levels[0][0], levels[0][1], (0, 1, 0), top_f, False), (levels[-1][0], levels[-1][1], (0, -1, 0), bot_f, True)):
-        rr = [r0 + d + (r1 - r0 - 2 * d) * k / rings for k in range(rings + 1)]
-        for k in range(rings):
-            ra, rb = rr[k], rr[k + 1]
-            ea, eb = edge(ra, d), edge(rb, d)
-            for i in range(n):
-                a0 = -ea + 2 * ea * i / n
-                a1 = -ea + 2 * ea * (i + 1) / n
-                b0 = -eb + 2 * eb * i / n
-                b1 = -eb + 2 * eb * (i + 1) / n
-                g.face((polar(ra, a0, y, rm), polar(ra, a1, y, rm), polar(rb, b1, y, rm), polar(rb, b0, y, rm)), cf, nrm)
-
-
-def sector_wire(g, r0, r1, ah, y0, y1, rm, w, f, gap_m=0.0, n=6):
-    """A tile's wireframe: its radial edges, top and bottom, and its four corners' uprights. No arcs: laid side by side, a
-    ring of tiles' arcs would draw circles round the floor (owner: no ring outlines)."""
-    def edge(r):
-        return ah - gap_m * .5 / r
-    for y in (y0, y1):
-        eo, ei = edge(r1), edge(r0)
-        bar(g, polar(r1, -eo, y, rm), polar(r0, -ei, y, rm), w, f)
-        bar(g, polar(r1, eo, y, rm), polar(r0, ei, y, rm), w, f)
-    for (r, s) in ((r1, -1), (r1, 1), (r0, -1), (r0, 1)):
-        e = edge(r)
-        bar(g, polar(r, s * e, y0, rm), polar(r, s * e, y1, rm), w, f)
+    top = inset2(q, [b] * 4) if b > 0 else list(q)
+    nu, nv = sub
+    for i in range(nu):
+        for j in range(nv):
+            c = [_bilerp(top, i / nu, j / nv), _bilerp(top, (i + 1) / nu, j / nv), _bilerp(top, (i + 1) / nu, (j + 1) / nv), _bilerp(top, i / nu, (j + 1) / nv)]
+            g.face([(p[0], y1, p[1]) for p in c], top_f, (0, 1, 0))
+    m = len(q)
+    cx = sum(p[0] for p in q) / m
+    cz = sum(p[1] for p in q) / m
+    for i in range(m):
+        a, c = q[i], q[(i + 1) % m]
+        dx, dz = c[0] - a[0], c[1] - a[1]
+        L = math.hypot(dx, dz)
+        nx, nz = dz / L, -dx / L
+        if (a[0] - cx) * nx + (a[1] - cz) * nz < 0:
+            nx, nz = -nx, -nz
+        if b > 0:
+            ta, tc = top[i], top[(i + 1) % m]
+            g.face(((ta[0], y1, ta[1]), (tc[0], y1, tc[1]), (c[0], y1 - b, c[1]), (a[0], y1 - b, a[1])), side_f, _n((nx, 1.0, nz)))
+        g.face(((a[0], y1 - b, a[1]), (c[0], y1 - b, c[1]), (c[0], y0, c[1]), (a[0], y0, a[1])), side_f, (nx, 0.0, nz))
+    g.face([(p[0], y0, p[1]) for p in q][::-1], bot_f, (0, -1, 0))
 
 
 def hashf(*k):
@@ -528,119 +551,141 @@ def old_skyline(k, T, wire=False, w=.05):
 # ---------------------------------------------------------------------------------------------------------------------------
 # The architect's world
 # ---------------------------------------------------------------------------------------------------------------------------
+def dais_corner(k, r):
+    """Corner k of the dais (and of the floor's sixteen-sided outlines) at circumradius r: on seam k, (k + .5) x 22.5 degrees."""
+    a = (k + .5) * 2 * WEDGE_HALF
+    return (r * math.sin(a), r * math.cos(a))
+
+
 def dais(T):
-    """The round obsidian dais the architect lands on: a slab with a sixteen-pointed sigil of light inlaid in its top (rays,
-    not rings), a boss at its middle, and a keel hanging under it into the void."""
+    """The dais the architect hovers over: a sixteen-sided slab of black glass, its corners on the floor's seams, a gold star at
+    its middle and sixteen rays of light from the star to its corners (the floor's seams run on from them: one sunburst, no
+    rings), and a keel of dark stone hanging under it into the void."""
     g = Geo()
-    sides = (48, 24, 12)[T.i]
     b = .03 if T.bevel else 0.0
-    prof = [(.0, -TILE_T), (DAIS_NEW_R - b, -TILE_T), (DAIS_NEW_R, -TILE_T + b), (DAIS_NEW_R, -b), (DAIS_NEW_R - b, 0.0)]
-    sk.lathe(g, [(r, y) for (r, y) in prof[1:]], (0, 0, 0), FIN['basalt'], sides, smooth=True)
-    # the top: rings of quads from the rim in (the colour's resolution), a fan at the middle
-    rr = [DAIS_NEW_R - b, 1.0, .62, .3]
+    R = DAIS_R - CUT * .5 / math.cos(WEDGE_HALF)
+    top = [dais_corner(k, R - b / math.cos(WEDGE_HALF)) for k in range(WEDGES)]
+    rim = [dais_corner(k, R) for k in range(WEDGES)]
+    # the top: bands of quads from the rim in (the colours' resolution), a fan in the middle
+    rr = (1.0, .66, .36, .14)
     for k in range(len(rr) - 1):
-        for i in range(sides):
-            a0, a1 = 2 * math.pi * i / sides, 2 * math.pi * (i + 1) / sides
-            g.face((polar(rr[k], a0, 0), polar(rr[k], a1, 0), polar(rr[k + 1], a1, 0), polar(rr[k + 1], a0, 0)), FIN['obsidian'], (0, 1, 0))
-    sk.lathe(g, [(.3, 0.0), (.26, .025), (0.0, .03)], (0, 0, 0), FIN['gold'], sides, cap1=False)
-    # the keel: an inverted cone of dark stone under the slab
-    sk.lathe(g, [(.02, -2.4), (.5, -1.5), (1.05, -.75), (DAIS_NEW_R - .06, -TILE_T)], (0, 0, 0), FIN['basalt-dark'], sides)
-    # the sigil: sixteen rays, alternately long and short, each a lit strip in a dark bezel
-    for i in range(16):
-        a = 2 * math.pi * i / 16
-        r0, r1 = .36, (1.22 if i % 2 == 0 else .9)
+        for i in range(WEDGES):
+            j = (i + 1) % WEDGES
+            pa, pb = top[i], top[j]
+            g.face(((pa[0] * rr[k], 0.0, pa[1] * rr[k]), (pb[0] * rr[k], 0.0, pb[1] * rr[k]), (pb[0] * rr[k + 1], 0.0, pb[1] * rr[k + 1]),
+                    (pa[0] * rr[k + 1], 0.0, pa[1] * rr[k + 1])), FIN['obsidian'], (0, 1, 0))
+    g.face([(p[0] * rr[-1], 0.0, p[1] * rr[-1]) for p in top], FIN['obsidian'], (0, 1, 0))
+    # the sides: the chamfer and the face down to the slab's foot, flat per side
+    for i in range(WEDGES):
+        j = (i + 1) % WEDGES
+        mid = ((rim[i][0] + rim[j][0]) * .5, (rim[i][1] + rim[j][1]) * .5)
+        n = _n((mid[0], 0.0, mid[1]))
+        if b > 0:
+            g.face(((top[i][0], 0.0, top[i][1]), (top[j][0], 0.0, top[j][1]), (rim[j][0], -b, rim[j][1]), (rim[i][0], -b, rim[i][1])), FIN['basalt'], _n((n[0], 1.0, n[2])))
+        g.face(((rim[i][0], -b, rim[i][1]), (rim[j][0], -b, rim[j][1]), (rim[j][0], -SLAB_T, rim[j][1]), (rim[i][0], -SLAB_T, rim[i][1])), FIN['basalt'], n)
+    g.face([(p[0], -SLAB_T, p[1]) for p in rim][::-1], FIN['basalt-dark'], (0, -1, 0))
+    # the gold star at the middle: sixteen points on the rays, a thin plate
+    star = []
+    for k in range(WEDGES * 2):
+        a = (k * .5 + .5) * 2 * WEDGE_HALF
+        r = .30 if k % 2 == 0 else .13
+        star.append((r * math.sin(a), .014, r * math.cos(a)))
+    for k in range(len(star)):
+        p0, p1 = star[k], star[(k + 1) % len(star)]
+        g.face(((0.0, .018, 0.0), p0, p1), FIN['gold'], (0, 1, 0))
+        mid = ((p0[0] + p1[0]) * .5, 0.0, (p0[2] + p1[2]) * .5)
+        g.face((p0, p1, (p1[0], .0, p1[2]), (p0[0], .0, p0[2])), FIN['gold'], _n(mid))
+    # the rays: sixteen strips of light from the star to the corners, in the seams' first colour
+    for k in range(WEDGES):
+        a = (k + .5) * 2 * WEDGE_HALF
+        r0, r1 = .3, R - .005
         c = polar((r0 + r1) * .5, a, 0)
-        u = _a((0, 0, 0), (math.sin(a), 0, math.cos(a)), (r1 - r0) * .5)
-        v = (math.cos(a) * .028, 0, -math.sin(a) * .028)
-        rect_on(g, c, u, v, (0, 1, 0), FIN['obsidian-dark'], .002)
-        rect_on(g, c, _a((0, 0, 0), u, .97), _a((0, 0, 0), v, .42), (0, 1, 0), FIN['vein'], .004)
-        if T.detail and i % 2 == 0:
-            # a chevron of light at the long ray's tip
-            for s in (-1, 1):
-                tip = polar(r1 + .06, a, 0)
-                back = polar(r1 - .08, a + s * .05, 0)
-                mid = ((tip[0] + back[0]) / 2, 0, (tip[2] + back[2]) / 2)
-                d = _s(tip, back)
-                L = math.sqrt(d[0] ** 2 + d[2] ** 2)
-                uu = (d[0] / 2, 0, d[2] / 2)
-                vv = (-d[2] / L * .012, 0, d[0] / L * .012)
-                rect_on(g, mid, uu, vv, (0, 1, 0), FIN['vein-soft'], .004)
-    # veins of light down the keel
+        u = (math.sin(a) * (r1 - r0) * .5, 0.0, math.cos(a) * (r1 - r0) * .5)
+        v = (math.cos(a) * SEAM * .5, 0.0, -math.sin(a) * SEAM * .5)
+        rect_on(g, c, u, v, (0, 1, 0), FIN['seam-0'], .003)
+    # the keel: an inverted cone of dark stone under the slab, veins of light down it under every other ray
+    sk.lathe(g, [(.02, -2.4), (.5, -1.5), (1.05, -.75), (R * .96, -SLAB_T)], (0, 0, 0), FIN['basalt-dark'], (32, 16, 16)[T.i])
     for i in range(8):
-        a = 2 * math.pi * (i + .5) / 8
-        pts = [polar(DAIS_NEW_R - .07, a, -TILE_T - .02), polar(1.05, a, -.77), polar(.5, a, -1.52), polar(.04, a, -2.38)]
+        a = (2 * i + .5) * 2 * WEDGE_HALF
+        pts = [polar(R * .96 - .02, a, -SLAB_T - .02), polar(1.05, a, -.77), polar(.5, a, -1.52), polar(.04, a, -2.38)]
         for k in range(3):
             p0, p1 = pts[k], pts[k + 1]
             d = _s(p1, p0)
             nrm = _n((math.sin(a), .6, math.cos(a)))
-            mid = _a(p0, d, .5)
             side = _n(_x(d, nrm))
             g.face((_a(_a(p0, side, -.018), nrm, .01), _a(_a(p0, side, .018), nrm, .01), _a(_a(p1, side, .018), nrm, .01), _a(_a(p1, side, -.018), nrm, .01)), FIN['vein-soft'], nrm)
     return g
 
 
 def dais_wire(T, w):
-    """The dais's wireframe: its eight spokes and its keel's lines (no rim circles: no ring outlines)."""
+    """The dais's wireframe: its sixteen rays and its keel's lines (no rim: no ring outlines)."""
     g = Geo()
-    for i in range(8):
-        a = 2 * math.pi * i / 8
-        bar(g, polar(.05, a, 0), polar(DAIS_NEW_R, a, 0), w, FIN['wire'])
-        bar(g, polar(DAIS_NEW_R, a, -TILE_T), polar(.02, a, -2.4), w, FIN['wire'])
+    R = DAIS_R - CUT * .5 / math.cos(WEDGE_HALF)
+    for k in range(WEDGES):
+        a = (k + .5) * 2 * WEDGE_HALF
+        bar(g, polar(.05, a, 0), polar(R, a, 0), w, FIN['wire'])
+        if k % 2 == 0:
+            bar(g, polar(R * .96, a, -SLAB_T), polar(.02, a, -2.4), w, FIN['wire'])
     return g
 
 
-def ring_tile(k, T):
-    r0, r1, count = RINGS[k]
-    rm = (r0 + r1) * .5
-    ah = math.pi / count
+def slab_quad(part, split):
+    """A floor slab's outline in its frame (the platform's centre at z = -rm), after and before its joints: (inset, full, rm)."""
+    h0, h1 = slab_span(part, split)
+    rm = (h0 + h1) * .5
+    t = math.tan(WEDGE_HALF)
+    q = [(-h0 * t, h0 - rm), (h0 * t, h0 - rm), (h1 * t, h1 - rm), (-h1 * t, h1 - rm)]
+    return inset2(q, [CUT * .5, SEAM * .5, CUT * .5 if part == 0 else 0.0, SEAM * .5]), q, rm
+
+
+def floor_slab(part, split, T):
+    """A slab of the floor: the inner (part 0: the dais to the cut) or the outer (1: the cut to the rim) piece of a wedge whose cut
+    lies at SPLITS[split], black glass on top, basalt sides, the light of its left seam filling the seam (each seam is lit once),
+    graded from cyan at the dais to gold at the rim, and a line of code glyphs across it (Fine and Mid)."""
     g = Geo()
-    sector(g, r0, r1, ah, -TILE_T, 0.0, FIN['basalt'], T, rm, bevel=.025, gap_m=SEAM, rings=(3, 2, 1)[T.i], top_f=FIN['obsidian'], bot_f=FIN['basalt-dark'])
-    # the seam's light: a lit strip along each radial edge of the top, half the line between two tiles
-    for s in (-1, 1):
-        e0, e1 = ah - (SEAM * .5 + .018) / (r0 + .03), ah - (SEAM * .5 + .018) / (r1 - .03)
-        p0, p1 = polar(r0 + .03, s * e0, 0, rm), polar(r1 - .03, s * e1, 0, rm)
-        d = _s(p1, p0)
-        L = math.sqrt(d[0] ** 2 + d[2] ** 2)
-        v = (-d[2] / L * .007, 0, d[0] / L * .007)
-        rect_on(g, _a(p0, d, .5), (d[0] / 2, 0, d[2] / 2), v, (0, 1, 0), FIN['vein'], .003)
-    # the inscription: a line of code glyphs along the tile's middle (Fine and Mid), its bezel
+    q, full, rm = slab_quad(part, split)
+    h0, h1 = slab_span(part, split)
+    quad_slab(g, q, -SLAB_T, 0.0, FIN['obsidian'], FIN['basalt'], FIN['basalt-dark'], T, bevel=.02, sub=((2, 4), (2, 2), (1, 1))[T.i])
+    # the left seam's light, filling the seam from the inner chord (or the dais's corner) to the outer one (or the cut, meeting
+    # the next slab's), in pieces of about half a metre, each its own step of the cyan-to-gold grade
+    t = math.tan(WEDGE_HALF)
+    e0, e1 = (-h0 * t, h0 - rm), (-h1 * t, h1 - rm)
+    dx, dz = e1[0] - e0[0], e1[1] - e0[1]
+    L = math.hypot(dx, dz)
+    nx, nz = dz / L * SEAM * .5, -dx / L * SEAM * .5
+    pieces = max(1, int(round(L / .5)))
+    for i in range(pieces):
+        u0, u1 = i / pieces, (i + 1) / pieces
+        a = (e0[0] + dx * u0, e0[1] + dz * u0)
+        c = (e0[0] + dx * u1, e0[1] + dz * u1)
+        r_mid = (h0 + (h1 - h0) * (u0 + u1) * .5) / math.cos(WEDGE_HALF)
+        k = int(round((r_mid - DAIS_R) / (FLOOR_R - DAIS_R) * (SEAM_STEPS - 1)))
+        k = max(0, min(SEAM_STEPS - 1, k))
+        y = -.002
+        g.face(((a[0] - nx, y, a[1] - nz), (c[0] - nx, y, c[1] - nz), (c[0] + nx, y, c[1] + nz), (a[0] + nx, y, a[1] + nz)), FIN['seam-%d' % k], (0, 1, 0))
     if T.detail:
-        cell = (.034, .03, .028)[k]
-        cols = (3, 4, 4)[k]
+        # a line of code glyphs across the slab's middle, in a dark bezel
+        cell = (.03, .03, .028)[T.i]
+        cols = 3 if (h1 - h0) < 2.5 else 4
         width = cols * 4 * cell
-        a_c = 0.0
-        r_c = rm + (r1 - r0) * .12
-        tang = (math.cos(a_c), 0, -math.sin(a_c))
-        rad = (math.sin(a_c), 0, math.cos(a_c))
-        centre = polar(r_c, a_c, 0, rm)
-        origin = _a(_a(centre, tang, -width * .5), rad, 5 * cell * .5)
-        rect_on(g, centre, _a((0, 0, 0), tang, width * .5 + cell), _a((0, 0, 0), rad, 3.2 * cell), (0, 1, 0), FIN['obsidian-dark'], .002)
-        engrave(g, origin, _a((0, 0, 0), tang, cell), _a((0, 0, 0), rad, -cell), (0, 1, 0), cols, 1, cell, FIN['code'], 31 + k, lift=.004, fill=1.0)
-        # a groove across the tile, nearer the inner edge
-        rr = r0 + (r1 - r0) * .3
-        ea = ah - (SEAM * .5 + .05) / rr
-        pa, pb = polar(rr, -ea, 0, rm), polar(rr, ea, 0, rm)
-        d = _s(pb, pa)
-        rect_on(g, _a(pa, d, .5), (d[0] / 2, 0, d[2] / 2), (0, 0, .012), (0, 1, 0), FIN['obsidian-dark'], .002)
-    if k == 2:
-        # the platform's rim: a gold band round the outer ring's face
-        e = ah - SEAM * .5 / r1
-        n = 4
-        for i in range(n):
-            a0, a1 = -e + 2 * e * i / n, -e + 2 * e * (i + 1) / n
-            for (ya, yb) in ((-.09, -.15),):
-                pa0, pa1 = polar(r1 + .006, a0, ya, rm), polar(r1 + .006, a1, ya, rm)
-                pb0, pb1 = polar(r1 + .006, a0, yb, rm), polar(r1 + .006, a1, yb, rm)
-                na, nb = _n((math.sin(a0), 0, math.cos(a0))), _n((math.sin(a1), 0, math.cos(a1)))
-                g.face((pa0, pb0, pb1, pa1), FIN['gold'], normals=(na, na, nb, nb))
+        z_c = (h0 + h1) * .5 - rm + (h1 - h0) * .08
+        centre = (0.0, 0.0, z_c)
+        origin = (-width * .5, 0.0, z_c + 5 * cell * .5)
+        rect_on(g, centre, (width * .5 + cell, 0, 0), (0, 0, 3.2 * cell), (0, 1, 0), FIN['obsidian-dark'], .002)
+        engrave(g, origin, (cell, 0, 0), (0, 0, -cell), (0, 1, 0), cols, 1, cell, FIN['code'], 31 + part * 7 + split * 3, lift=.004, fill=1.0)
     return g
 
 
-def ring_tile_wire(k, T, w):
-    r0, r1, count = RINGS[k]
-    rm = (r0 + r1) * .5
+def floor_slab_wire(part, split, T, w):
+    """A slab's wireframe: its radial edges, top and bottom, and its corners' uprights. No chords: laid side by side, the slabs'
+    chords would draw polygons round the floor (owner: no ring outlines)."""
     g = Geo()
-    sector_wire(g, r0, r1, math.pi / count, -TILE_T, 0.0, rm, w, FIN['wire'], gap_m=SEAM, n=(6, 4, 3)[T.i])
+    q, full, rm = slab_quad(part, split)
+    for y in (-SLAB_T, 0.0):
+        bar(g, (q[1][0], y, q[1][1]), (q[2][0], y, q[2][1]), w, FIN['wire'])
+        bar(g, (q[3][0], y, q[3][1]), (q[0][0], y, q[0][1]), w, FIN['wire'])
+    for p in q:
+        bar(g, (p[0], -SLAB_T, p[1]), (p[0], 0.0, p[1]), w, FIN['wire'])
     return g
 
 
@@ -776,79 +821,58 @@ def mono_obelisk_wire(T, w):
     return g
 
 
-def halo_arc(T):
-    """One of the crown's sixteen arcs: a chamfered beam of obsidian on a 10 m radius, a channel of light along its inner face,
-    two lines under it, ribs on its outer face and a gold cap strip on top; frame: its middle, the axis at z = -HALO_R."""
+def crown_spire(T):
+    """One of the crown's eight gold spires (no ring: they lean in toward one point over the platform, rays round the architect):
+    a blade of diamond section from its root (the frame's origin) to its point SPIRE_L up +y, its ridges toward +-z, a vein of
+    light along both ridges, a square obsidian collar at the root with a gold band, and a crystal of light at the point."""
     g = Geo()
-    ah = math.pi / HALO_ARCS - HALO_GAP * .5 / HALO_R
-    n = (24, 12, 6)[T.i]
-    rm = HALO_R
-    hw, hh = HALO_W * .5, HALO_H * .5
-    c = .06 if T.bevel else 0.0
-    sec = [(hw - c, -hh), (hw, -hh + c), (hw, hh - c), (hw - c, hh), (-hw + c, hh), (-hw, hh - c), (-hw, -hh + c), (-hw + c, -hh)]
-    if c == 0:
-        sec = [(hw, -hh), (hw, hh), (-hw, hh), (-hw, -hh)]
-    rings = []
-    for i in range(n + 1):
-        a = -ah + 2 * ah * i / n
-        rings.append([polar(rm + x, a, y, rm) for (x, y) in sec])
-    m = len(sec)
-    for i in range(n):
-        for j in range(m):
-            j1 = (j + 1) % m
-            pts = (rings[i][j], rings[i][j1], rings[i + 1][j1], rings[i + 1][j])
-            # outward normal from the section's edge, turned to this angle
-            x0, y0 = sec[j]
-            x1, y1 = sec[j1]
-            en = _n((y1 - y0, -(x1 - x0), 0))  # (radial, vertical)
-            a0 = -ah + 2 * ah * i / n
-            a1 = -ah + 2 * ah * (i + 1) / n
+    lv = (10, 6, 3)[T.i]
 
-            def turn(a):
-                return _n((math.sin(a) * en[0], en[1], math.cos(a) * en[0]))
-            fin = FIN['obsidian'] if en[1] < .7 else FIN['obsidian']
-            g.face(pts, fin, normals=(turn(a0), turn(a0), turn(a1), turn(a1)))
-    for i, s in ((0, -1), (n, 1)):
-        ring = rings[i]
-        a = -ah + 2 * ah * i / n
-        g.face(ring if s > 0 else ring[::-1], FIN['obsidian-dark'], (s * math.cos(a), 0, -s * math.sin(a)))
-    # the inner channel of light, the lines underneath, the gold cap strip
-    for i in range(n):
-        a0 = -ah + 2 * ah * i / n
-        a1 = -ah + 2 * ah * (i + 1) / n
-        ni0, ni1 = _n((-math.sin(a0), 0, -math.cos(a0))), _n((-math.sin(a1), 0, -math.cos(a1)))
-        r = rm - hw - .004
-        g.face((polar(r, a0, -.06, rm), polar(r, a1, -.06, rm), polar(r, a1, .06, rm), polar(r, a0, .06, rm)), FIN['crown'], normals=(ni0, ni1, ni1, ni0))
-        for rr in (rm - .22, rm + .22):
-            y = -hh - .004
-            g.face((polar(rr - .015, a0, y, rm), polar(rr - .015, a1, y, rm), polar(rr + .015, a1, y, rm), polar(rr + .015, a0, y, rm)), FIN['vein-soft'], (0, -1, 0))
-        y = hh + .004
-        g.face((polar(rm - .14, a0, y, rm), polar(rm - .14, a1, y, rm), polar(rm + .14, a1, y, rm), polar(rm + .14, a0, y, rm)), FIN['gold'], (0, 1, 0))
-    if T.detail:
-        ribs = 12
-        for i in range(ribs):
-            a = -ah + 2 * ah * (i + .5) / ribs
-            out = (math.sin(a), 0, math.cos(a))
-            tan = (math.cos(a), 0, -math.sin(a))
-            centre = polar(rm + hw + .07, a, 0, rm)
-            t = Geo()
-            sk.box(t, -.05, .05, -hh * .8, hh * .8, -.07, .07, FIN['gold'], T, bevel=.012, cell=0)
-            rot = math.atan2(out[0], out[2])
-            q = sk.quat_axis(0, 1, 0, rot)
-            g.extend(t.transformed(sk.affine(q, centre)))
+    def sec(u):
+        k = (1 - u) ** .9
+        y = SPIRE_L * u
+        return [(SPIRE_W * k, y, 0.0), (0.0, y, SPIRE_D * k), (-SPIRE_W * k, y, 0.0), (0.0, y, -SPIRE_D * k)]
+    rings = [sec(k / lv) for k in range(lv)]
+    tip = (0.0, SPIRE_L, 0.0)
+    for k in range(lv):
+        r0 = rings[k]
+        r1 = rings[k + 1] if k + 1 < lv else None
+        for i in range(4):
+            j = (i + 1) % 4
+            pts = (r0[i], r0[j], tip) if r1 is None else (r0[i], r0[j], r1[j], r1[i])
+            mid = ((r0[i][0] + r0[j][0]) * .5, 0.0, (r0[i][2] + r0[j][2]) * .5)
+            nrm = _x(_s(r0[j], r0[i]), _s(pts[-1], r0[i]))
+            if nrm[0] * mid[0] + nrm[2] * mid[2] < 0:
+                nrm = (-nrm[0], -nrm[1], -nrm[2])
+            g.face(pts, FIN['gold'], _n(nrm))
+    g.face(rings[0][::-1], FIN['gold'], (0, -1, 0))
+    # the veins along the two ridges (z = +-depth), standing a hair proud of them
+    for s_ in (1, -1):
+        for k in range(lv - 1):
+            u0, u1 = max(.04, k / lv), min(.9, (k + 1) / lv)
+            if u1 <= u0:
+                continue
+            d0, d1 = SPIRE_D * (1 - u0) ** .9 + .004, SPIRE_D * (1 - u1) ** .9 + .004
+            w0, w1 = .022 * (1 - u0 * .6), .022 * (1 - u1 * .6)
+            g.face(((-w0, SPIRE_L * u0, s_ * d0), (w0, SPIRE_L * u0, s_ * d0), (w1, SPIRE_L * u1, s_ * d1), (-w1, SPIRE_L * u1, s_ * d1)), FIN['crown'], (0, 0, s_))
+    # the collar: a square block of obsidian round the root, a gold band at its top
+    box(g, -.34, .34, -.62, .2, -.24, .24, FIN['obsidian'], T, bevel=.03)
+    box(g, -.36, .36, .14, .24, -.26, .26, FIN['gold'], T, bevel=.012)
+    # the crystal at the point
+    c = SPIRE_L + .02
+    s = .09
+    pts = [(s, c - .1, 0), (0, c - .1, s), (-s, c - .1, 0), (0, c - .1, -s)]
+    for i in range(4):
+        g.face((pts[i], pts[(i + 1) % 4], (0, c + .16, 0)), FIN['crown'])
+        g.face((pts[(i + 1) % 4], pts[i], (0, c - .3, 0)), FIN['crown'])
     return g
 
 
-def halo_wire(T, w):
+def crown_spire_wire(T, w):
     g = Geo()
-    ah = math.pi / HALO_ARCS - HALO_GAP * .5 / HALO_R
-    n = (16, 10, 6)[T.i]
-    hw, hh = HALO_W * .5, HALO_H * .5
-    corners = [(hw, -hh), (hw, hh), (-hw, hh), (-hw, -hh)]
-    for (x, y) in corners:
-        poly_wire(g, [polar(HALO_R + x, -ah + 2 * ah * i / n, y, HALO_R) for i in range(n + 1)], w, FIN['wire'], closed=False)
-    for a in (-ah, ah):
-        poly_wire(g, [polar(HALO_R + x, a, y, HALO_R) for (x, y) in corners], w, FIN['wire'])
+    for (x, z) in ((SPIRE_W, 0.0), (0.0, SPIRE_D), (-SPIRE_W, 0.0), (0.0, -SPIRE_D)):
+        bar(g, (x, 0.0, z), (0.0, SPIRE_L, 0.0), w, FIN['wire'])
+    box_wire(g, -.34, .34, -.62, .2, -.24, .24, w, FIN['wire'])
     return g
 
 
@@ -938,11 +962,12 @@ def kit(T):
     for k in range(4):
         out.append(('old-skyline-%d' % k, old_skyline(k, T), old_skyline(k, T, True, w * 3)))
     out.append(('dais', dais(T), dais_wire(T, w)))
-    for k in range(3):
-        out.append(('tile-%d' % (k + 1), ring_tile(k, T), ring_tile_wire(k, T, w)))
+    for part in (0, 1):
+        for split in (0, 1):
+            out.append(('slab-%d%d' % (part, split), floor_slab(part, split, T), floor_slab_wire(part, split, T, w)))
     out.append(('mono-plinth', mono_base(T), mono_base_wire(T, w * 1.4)))
     out.append(('mono-obelisk', mono_obelisk(T), mono_obelisk_wire(T, w * 1.4)))
-    out.append(('crown-arc', halo_arc(T), halo_wire(T, w * 2)))
+    out.append(('crown-spire', crown_spire(T), crown_spire_wire(T, w * 1.6)))
     if T.i == 0:
         for name in SPIRES:
             out.append((name, spire(name, T), None))
@@ -966,8 +991,21 @@ def bake(items, T, no_ao):
     for k, g in enumerate(geos):
         P, N, S, F = g.arrays()
         world = P.astype(np.float64) + np.array([17.0 * k, 0, 9.0 * k])
-        out.append(sk.Bake(g, ao[k], world=world, floors=(0.0, -.12), seed=101 + k))
+        bk = sk.Bake(g, ao[k], world=world, floors=(0.0, -.12), seed=101 + k)
+        press(g, bk)
+        out.append(bk)
     return out
+
+
+def press(g, bk):
+    """The black glass's occlusion pressed down (OCCLUDED): the shader occludes the probe's reflection by the vertex alpha but not
+    the lights' highlights, so the obsidian keeps its gloss without taking the arena's sky (it read pale grey on Brickfall)."""
+    P, N, S, F = g.arrays()
+    fc = np.repeat(F, S)
+    for name, k in OCCLUDED.items():
+        m = fc == FIN[name]
+        if m.any():
+            bk.colour[m, 3] = np.round(bk.colour[m, 3].astype(np.float64) * k).astype(np.uint8)
 
 
 def plain(g):
@@ -975,14 +1013,29 @@ def plain(g):
 
 
 VIEWS = [('old-arena', (2.5, 1.2, 9.5), (0, .9, 0), 55), ('new-wide', (0, 6, 24), (0, 6, 0), 55), ('new-low', (2.2, .5, 5.5), (0, 3.5, -4), 75),
-         ('crown-up', (1, 1.5, 3), (0, 15, -2), 80), ('top', (0, 40, .1), (0, 0, 0), 60), ('mono-close', (6.2, 2, 5.4), (9.3 * .38, 3, 9.3 * .92), 50),
-         ('floor-close', (1.2, 1.6, 3.4), (0, 0, 1), 60), ('old-top', (0, 14, 6), (0, 0, 0), 60), ('hero', (1.3, .9, 4.6), (0, 2.4, 0), 52), ('void', (6, 3, 14), (0, 1, 0), 60)]
+         ('crown-up', (1, .4, 4), (0, 12, -2), 80), ('top', (0, 40, .1), (0, 0, 0), 60), ('mono-close', (6.2, 2, 5.4), (9.3 * .38, 3, 9.3 * .92), 50),
+         ('floor-close', (1.2, 1.6, 3.4), (0, 0, 1), 60), ('old-top', (0, 14, 6), (0, 0, 0), 60), ('hero', (1.0, .3, 4.2), (0, 2.9, -1), 52), ('void', (6, 3, 14), (0, 1, 0), 60)]
 FLOOR = .012
 GROUND = FLOOR - DAIS_H
+# the crown's spires: rooted CROWN_R out and CROWN_Y up over each monolith, leaning in toward the point CROWN_APEX over the dais
+CROWN_R, CROWN_Y, CROWN_APEX = 10.2, 14.0, 23.0
+
+
+def crown_tilt():
+    """How far each spire leans in from upright (radians): toward the apex."""
+    return math.atan2(CROWN_R, CROWN_APEX - CROWN_Y)
+
+
+def qmul(a, b):
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw,
+            aw * bw - ax * bx - ay * by - az * bz)
 
 
 def layout(new=True):
-    """The pieces where Core NativeIntroArchitect rests them: [(name, x, y, z, yaw)] (yaw about +y; scale 1)."""
+    """The pieces where Core NativeIntroArchitect rests them: [(name, x, y, z, yaw[, tilt])] (yaw about +y, then the tilt about the
+    piece's own x; scale 1)."""
     out = []
     if not new:
         for i in range(-2, 2):
@@ -997,19 +1050,20 @@ def layout(new=True):
             out.append(('old-skyline-%d' % k, 0.0, GROUND, 0.0, 0.0))
         return out
     out.append(('dais', 0.0, FLOOR, 0.0, 0.0))
-    for k, (r0, r1, count) in enumerate(RINGS):
-        rm = (r0 + r1) * .5
-        for i in range(count):
-            a = (i + (.5 if k == 1 else 0)) / count * 2 * math.pi
-            out.append(('tile-%d' % (k + 1), math.sin(a) * rm, FLOOR, math.cos(a) * rm, a))
+    for k in range(WEDGES):
+        a = k * 2 * WEDGE_HALF
+        for part in (0, 1):
+            h0, h1 = slab_span(part, k & 1)
+            rm = (h0 + h1) * .5
+            out.append(('slab-%d%d' % (part, k & 1), math.sin(a) * rm, FLOOR, math.cos(a) * rm, a))
     for i in range(8):
         a = (i + .5) / 8 * 2 * math.pi
         x, z = math.sin(a) * 9.3, math.cos(a) * 9.3
         out.append(('mono-plinth', x, FLOOR + .6, z, a))
         out.append(('mono-obelisk', x, FLOOR + .6, z, a))
-    for i in range(HALO_ARCS):
-        a = (i + .5) / HALO_ARCS * 2 * math.pi
-        out.append(('crown-arc', math.sin(a) * HALO_R, CROWN_Y, math.cos(a) * HALO_R, a))
+    for i in range(8):
+        a = (i + .5) / 8 * 2 * math.pi
+        out.append(('crown-spire', math.sin(a) * CROWN_R, CROWN_Y, math.cos(a) * CROWN_R, a, -crown_tilt()))
     for i in range(6):
         a = (i + .3 * hashf(5, i)) / 6 * 2 * math.pi + .4
         r = 48 + 22 * hashf(6, i)
@@ -1023,9 +1077,13 @@ def layout_preview(T, items):
     byname = {it[0]: it[1] for it in items}
     old, new = Geo(), Geo()
     for dst, isnew in ((old, False), (new, True)):
-        for (name, x, y, z, yaw) in layout(isnew):
+        for it in layout(isnew):
+            name, x, y, z, yaw = it[:5]
+            q = sk.quat_axis(0, 1, 0, yaw)
+            if len(it) > 5:
+                q = qmul(q, sk.quat_axis(1, 0, 0, it[5]))
             if name in byname:
-                dst.extend(byname[name].transformed(sk.affine(sk.quat_axis(0, 1, 0, yaw), (x, y, z))))
+                dst.extend(byname[name].transformed(sk.affine(q, (x, y, z))))
     oldg = old.transformed([1, 0, 0, -60, 0, 1, 0, 0, 0, 0, 1, 0])
     return [(oldg, plain(oldg)), (new, plain(new))]
 

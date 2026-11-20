@@ -34,7 +34,8 @@ namespace ChipArena.UnityConversion
             }
             public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){Fx++;V(at);}
             public bool Ready=>Ready_;public bool Has(string prop)=>Has_;
-            public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){Pieces++;V(at);V(tint);V(glow);Hash+=scale+prop.Length;GlowSum+=glow.X+glow.Y+glow.Z;if(!(scale>=0)||!(scale<=1.0001f))Broken=true;}
+            public bool RingProp;
+            public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){Pieces++;V(at);V(tint);V(glow);Hash+=scale+prop.Length;GlowSum+=glow.X+glow.Y+glow.Z;if(!(scale>=0)||!(scale<=1.0001f))Broken=true;if(prop.StartsWith("crown-arc",StringComparison.Ordinal)||prop.StartsWith("tile-",StringComparison.Ordinal))RingProp=true;}
             public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){Prims++;V(at);V(color);}
             public int Copies;public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> rotation,float scale,Vector3 tint){Copies+=at.Length;foreach(var p in at)V(p);}
             public bool Model(string id,Vector3 position,Quaternion rotation,float scale,Vector3 tint)=>false;
@@ -142,11 +143,40 @@ namespace ChipArena.UnityConversion
                 }
                 Check(fast==0,"Reduced: no flash faster than 3 Hz ("+fast+")");
             }
-            // ---- the body builds from the core out and is whole from the ignition ----
+            // ---- the body builds from the core out and is whole from the ignition; it hovers over the dais from the drop (never lands) ----
             {
                 var s=Make(false,false,"Pilot");for(int b=0;b<22;b++){Check(s.Solid(NativeIntroArchitect.Condense-.01f,b)==0,"no body before it condenses");Check(s.Solid(NativeIntroArchitect.Body+.03f,b)==1,"the whole body from the ignition");}
                 Check(s.Solid(NativeIntroArchitect.Condense+.08f,CapturedRig.Chest)>s.Solid(NativeIntroArchitect.Condense+.08f,CapturedRig.LHand),"the chest before the hands");
-                s.Pose(NativeIntroArchitect.Still,pose,out var r0,out _);Check(r0.Y>1.2f,"floating through the stillness");s.Pose(NativeIntroArchitect.Total,pose,out var r1,out _);Check(Math.Abs(r1.Y-.88f)<.02f,"standing on the dais at the end");
+                s.Pose(NativeIntroArchitect.Still,pose,out var r0,out _);Check(r0.Y>1.2f,"floating through the stillness");
+                for(float t=NativeIntroArchitect.Drop+.5f;t<=NativeIntroArchitect.Total;t+=.1f){s.Pose(t,pose,out var r1,out _);Check(Math.Abs(r1.Y-(.88f+NativeIntroArchitect.Reign))<.06f,"hovering over the dais at "+t.ToString("0.0")+" ("+r1.Y.ToString("0.00")+")");}
+                // the head's frame agrees with the body's facing; the visor sits up the head's axis from the skull-base anchor, in front
+                foreach(float t in new[]{NativeIntroArchitect.Body+.5f,NativeIntroArchitect.Inhale+.3f,NativeIntroArchitect.Command+1f})
+                {
+                    s.HeadFrame(t,out var hu,out var hf);var fwd=s.Anchor(NativeEntranceAnchor.Forward,t);fwd=Vector3.Normalize(new Vector3(fwd.X,0,fwd.Z));var head=s.Anchor(NativeEntranceAnchor.Head,t);var visor=s.VisorAt(t);
+                    Check(Vector3.Dot(hf,fwd)>.5f&&hu.Y>.6f,"the head's frame faces the body's way at "+t);Check(visor.Y-head.Y>.1f&&Vector3.Dot(visor-head,fwd)>.05f,"the visor above and in front of the head anchor at "+t);
+                }
+                // the inhale's close-up: frontal on the visor, and the lens outside the body and the raised arms (nothing passes through it)
+                for(float t=NativeIntroArchitect.Inhale+.02f;t<NativeIntroArchitect.Drop;t+=.05f)
+                {
+                    s.Camera(t,out var v);var visor=s.VisorAt(t);s.HeadFrame(t,out _,out var hf);var toEye=v.Eye-visor;
+                    Check(Vector3.Dot(Vector3.Normalize(toEye),hf)>.6f&&toEye.Length()>.9f&&v.Eye.Y<visor.Y,"the close-up is low and frontal on the visor at "+t.ToString("0.00"));
+                    foreach(var part in new[]{NativeEntranceAnchor.Head,NativeEntranceAnchor.Chest,NativeEntranceAnchor.LeftHand,NativeEntranceAnchor.RightHand,NativeEntranceAnchor.LeftElbow,NativeEntranceAnchor.RightElbow,NativeEntranceAnchor.LeftShoulder,NativeEntranceAnchor.RightShoulder})
+                        Check(Vector3.Distance(v.Eye,s.Anchor(part,t))>.55f,"the close-up's lens clear of the "+part+" at "+t.ToString("0.00"));
+                }
+                // the hero frame: low, looking up; the architect about half the frame tall; the sky's name above its head
+                foreach(float t in new[]{NativeIntroArchitect.Drop+1.2f,NativeIntroArchitect.Total})
+                {
+                    s.Camera(t,out var v);float Ny(Vector3 p){var f=Vector3.Normalize(v.Look-v.Eye);var r=Vector3.Normalize(Vector3.Cross(f,Vector3.UnitY));var u=Vector3.Cross(r,f);var d=p-v.Eye;return Vector3.Dot(d,u)/Vector3.Dot(d,f)/(float)Math.Tan(v.Fov*Math.PI/360);}
+                    var feet=(s.Anchor(NativeEntranceAnchor.LeftFoot,t)+s.Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;var top=s.VisorAt(t)+new Vector3(0,.16f,0);var name=NativeIntroArchitect.NameCentre-new Vector3(0,NativeIntroArchitect.LetterHeight*.5f,0);
+                    Check(v.Eye.Y<.5f&&v.Look.Y>v.Eye.Y+1,"the hero frame is low, looking up, at "+t);float tall=(Ny(top)-Ny(feet))*.5f;
+                    Check(tall>.36f&&tall<.62f,"the architect about half the hero frame tall at "+t+" ("+tall.ToString("0.00")+")");Check(Ny(feet)>-.98f&&Ny(name)>Ny(top)+.05f&&Ny(NativeIntroArchitect.NameCentre)<.92f,"the sky's name above the head and in frame at "+t+" (feet "+Ny(feet).ToString("0.00")+", head "+Ny(top).ToString("0.00")+", name's foot "+Ny(name).ToString("0.00")+", its middle "+Ny(NativeIntroArchitect.NameCentre).ToString("0.00")+")");
+                }
+                // the card is the sky name's caption: small, under the architect, its kicker the title
+                var card=default(NativeIntroCardState);s.Card(14.5f,ref card);Check(card.Shown&&card.Size>0&&card.Size<=.05f&&card.Y>.85f&&card.Kicker=="THE ARCHITECT","the card is the sky name's small caption");
+            }
+            // ---- no ring shapes: the old ring crown and ring tiles are gone from the set (rays only) ----
+            {
+                var s=Make(false,false,"Pilot");var sink=new Sink();for(int f=0;f<=942;f+=2){sink.Reset();s.Set(f/60f,sink);}Check(!sink.RingProp,"no ring-shaped prop in the set (crown arcs, ring tiles)");
             }
             // ---- the stroke font: every letter, digit and the common marks, inside its cell ----
             {
