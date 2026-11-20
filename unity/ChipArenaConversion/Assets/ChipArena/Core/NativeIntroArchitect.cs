@@ -408,7 +408,7 @@ namespace ChipArena.UnityConversion
                 if(p.Kind==Crown&&t>=Drop){var turn=YawQ(CrownTurn(t));at=Vector3.Transform(at,turn);rot=turn*rot;}
                 // (Low keeps the wireframe flight for the obelisks only: the rest fly as dark stone with their seams ablaze)
                 bool wired=!low||p.Kind==Obelisk;
-                if(solid)set.Piece(p.Prop,at,rot,1,Vector3.One,Settled(t,p.Kind,p.Reach)+Molten*(5*flash));
+                if(solid)set.Piece(p.Prop,at,rot,1,Vector3.One,Settled(t,p.Kind,p.Reach,p.Yaw)+Molten*(5*flash));
                 else if(!wired)set.Piece(p.Prop,at,rot,1,new Vector3(.45f),Ice*(1.6f*wire));
                 if(wire>.01f&&wired)set.Piece(p.Wire,at,rot,1,Vector3.One,Ice*wire);
             }
@@ -422,18 +422,20 @@ namespace ChipArena.UnityConversion
             return on*(1-.75f*cut)*(1-NativeEntranceMath.Ramp(t,Break-.05f,Break+.25f))+.15f;
         }
         /// <summary>A new piece's glow once locked: the seams steady (cyan to gold, as the bank grades them) and lifted by the light the
-        /// hands pour out, a slow swell running out from the dais; the monoliths' veins and the crown's brighter; the name's sweep.</summary>
-        private Vector3 Settled(float t,byte kind,float reach)
+        /// hands pour out, a slow swell running out along each wedge in its own turn (never a ring round the floor); the monoliths'
+        /// veins and the crown's brighter; the name's sweep.</summary>
+        private Vector3 Settled(float t,byte kind,float reach,float yaw)
         {
             float b=kind==Crown?1.1f:kind==Obelisk?1.15f:1;float sweep=.12f*NativeEntranceMath.Bump(t,13.8f,15.0f);
-            if(kind==Slab||kind==Dais)b*=1+.32f*Swell(t,reach);
+            if(kind==Slab)b*=1+.32f*Swell(t,reach,yaw);else if(kind==Dais)b*=1.15f;
             return new Vector3(b+sweep,b+sweep,b+sweep);
         }
-        /// <summary>The poured light's swell at `reach` m from the dais (0..1): one slow wave out every 1.4 s once the hands pour.</summary>
-        private static float Swell(float t,float reach)
+        /// <summary>The poured light's swell at `reach` m out along the wedge at `yaw` (0..1): a slow wave out every 1.4 s once the hands
+        /// pour, each wedge's wave a turn after its neighbour's (the pulses' order round the floor), so the floor never brightens in rings.</summary>
+        private static float Swell(float t,float reach,float yaw)
         {
-            float on=NativeEntranceMath.Ramp(t,Drop+.4f,Lower+.4f);if(on<=0)return 0;float ph=(t-Drop-.4f-reach/5.5f)/1.4f;ph-=(float)Math.Floor(ph);
-            float s=(float)Math.Sin(Math.PI*ph);return on*s*s*s*s;
+            float on=NativeEntranceMath.Ramp(t,Drop+.4f,Lower+.4f);if(on<=0)return 0;float k=(float)Math.Round(yaw/(2*WedgeHalf));
+            float ph=(t-Drop-.4f-reach/5.5f)/1.4f+k*.37f;ph-=(float)Math.Floor(ph);float s=(float)Math.Sin(Math.PI*ph);return on*s*s*s*s;
         }
         private static float CrownTurn(float t)=>.11f*NativeEntranceMath.EaseOut((t-Drop)/2.5f)+.02f*Math.Max(0,t-Drop-2.5f);
         /// <summary>Shard `i`: born from the old world near the break, orbiting the presence, thrown back by the body at 6.66, hanging
@@ -831,16 +833,15 @@ namespace ChipArena.UnityConversion
         private void DropFx(INativeEntranceFx fx,float t,float thin,float floor,float q)
         {
             float s=t-Drop;if(s<-.02f)return;
-            // the flood: a white front running out along each seam from the centre at 18 m/s, cooling to the seam's own light behind it
-            if(s>=0&&s<.9f)
-            {
-                float front=.3f+s*18;float lvl=3.4f*(1-NativeEntranceMath.Smooth((s-.42f)/.4f));
-                if(lvl>.02f)for(int i=0;i<Wedges;i++)
+            // the flood: a white front running out along each seam from the centre, each seam's a little later and quicker or slower
+            // than its neighbours' (no ring of light runs round the floor), cooling to the seam's own light behind it
+            if(s>=0&&s<1.1f)
+                for(int i=0;i<Wedges;i++)
                 {
-                    if(thin<1&&(i&1)==1)continue;float a=(i+.5f)*2*WedgeHalf;float reach=Math.Min(front,FloorR);if(reach<=.35f)continue;
-                    FloorLine(fx,Polar(reach,a,floor+.012f),Polar(Math.Max(.3f,reach-2.2f),a,floor+.012f),Vector3.Lerp(Molten,Cyan,NativeEntranceMath.Clamp01(s*2))*lvl,.04f,8100+i);
+                    if(thin<1&&(i&1)==1)continue;float u=s-.2f*R(8110,i);if(u<0)continue;float lvl=3.4f*(1-NativeEntranceMath.Smooth((u-.4f)/.4f));if(lvl<.02f)continue;
+                    float a=(i+.5f)*2*WedgeHalf;float reach=Math.Min(.3f+u*(13+9*R(8111,i)),FloorR);if(reach<=.35f)continue;
+                    FloorLine(fx,Polar(reach,a,floor+.012f),Polar(Math.Max(.3f,reach-2.2f),a,floor+.012f),Vector3.Lerp(Molten,Cyan,NativeEntranceMath.Clamp01(u*2))*lvl,.04f,8100+i);
                 }
-            }
             if(s>=0)
             {
                 // the monoliths: a surge climbing each one's inner face in .3 s, then a beam from its point into the sky, flaring and holding
@@ -876,7 +877,8 @@ namespace ChipArena.UnityConversion
                     NativeEntranceFx.GroundDust(fx,t,Drop+.03f+.02f*m,Polar(FloorR-.3f,a+.4f,floor),thin<1?2:3,.2f,1.6f,1.6f,Dust,.26f,.9f,8700+m*17,q,floor);
                 }
             }
-            NativeEntranceFx.Sparks(fx,t,Drop,new Vector3(0,floor+.05f,0),new Vector3(0,.25f,0),1.4f,(int)(52*thin),9,.9f,6,.9f,Ice*2.6f,Gold*1.4f,.018f,8300,1,floor);
+            // a fountain of sparks up from the dais round the architect (upward, never a ring thrown out along the floor)
+            NativeEntranceFx.Sparks(fx,t,Drop,new Vector3(0,floor+.05f,0),Up,.55f,(int)(44*thin),8,1.0f,5,.7f,Ice*2.6f,Gold*1.4f,.018f,8300,1,floor);
             if(s>=0&&s<.4f)fx.Glow(new Vector3(0,1.4f,0),Ice*(4.5f*(1-s/.4f)),0,2.5f*(1-s/.4f)+.4f,1,0,8390);
             // embers of gold rising from the seams for the rest of it
             NativeEntranceFx.Embers(fx,t,Drop+.2f,Total+.5f,new Vector3(0,floor+.05f,0),7.2f,thin<1?14:34,.7f,2.4f,Gold*1.1f,.03f,8400,1,.25f);
@@ -948,6 +950,13 @@ namespace ChipArena.UnityConversion
             }
             return new Vector2(nameSegs[first],nameSegs[first+1]);
         }
+        /// <summary>One stroke of the name: a line drawn short of its ends by .175 of its width, so where two strokes meet their round
+        /// caps sum to the stroke's own brightness (whole, the caps overlap at every joint and each corner lights up like a bulb).</summary>
+        private void Stroke(INativeEntranceFx fx,Vector3 head,Vector3 tail,Vector3 color,float width,int seed)
+        {
+            var d=head-tail;float len=d.Length();float trim=.175f*width;if(len>2.5f*trim){d/=len;head-=d*trim;tail+=d*trim;}
+            Line(fx,head,tail,color,width,0,seed);
+        }
         private void NameFx(INativeEntranceFx fx,float t,float thin,Vector3 camRight,Vector3 camUp)
         {
             LayName(Context.Name);if(nameLetters==0)return;float fadeOut=1-NativeEntranceMath.Ramp(t,FadeFrom,Total);if(fadeOut<.01f)return;float level=NameLevel(t);
@@ -973,7 +982,7 @@ namespace ChipArena.UnityConversion
             // pulsing as the whole name completes and settling to a slow molten shimmer ----
             float done=LetterAt(nameLetters-1)+LetterTime;float pulse=1.1f*Flash(t,done,.03f,.55f);
             int segs=nameSegs.Count/6;int layers=thin<1?(segs>70?1:2):(segs>120?2:3);
-            float core=letterH*.085f,mid=letterH*.19f,outer=letterH*.44f;
+            float core=letterH*.075f,mid=letterH*.16f,outer=letterH*.34f;
             float sweep=NativeEntranceMath.Clamp01((t-13.9f)/1.0f);float sweepX=-.15f+1.3f*sweep;
             for(int s=0;s<nameSegs.Count;s+=6)
             {
@@ -983,9 +992,9 @@ namespace ChipArena.UnityConversion
                 var a=origin+right*(nameSegs[s]*k)+up*(nameSegs[s+1]*k);var b0=origin+right*(nameSegs[s+2]*k)+up*(nameSegs[s+3]*k);var b=Vector3.Lerp(a,b0,part);
                 float mx=(nameSegs[s]+nameSegs[s+2])*.5f/Math.Max(1,nameWidth);float shine=1+1.4f*Math.Max(0,1-Math.Abs(mx-sweepX)*6)*sweep*(1-sweep);
                 float shimmer=.9f+.1f*(float)Math.Sin(mx*14+t*1.8f);float heat=level*shine*shimmer*(1+pulse);
-                if(layers>=3)Line(fx,b,a,Ember*(.32f*heat*(1+.6f*fresh)),outer,0,14000+s);
-                if(layers>=2)Line(fx,b,a,Gold*(1.05f*heat*(1+.5f*fresh)),mid,0,14200+s);
-                Line(fx,b,a,Vector3.Lerp(Ice*3.4f,Molten*3.0f,NativeEntranceMath.Clamp01(age*2.5f))*(heat*(1+.7f*fresh)),core,0,14400+s);
+                if(layers>=3)Stroke(fx,b,a,Ember*(.34f*heat*(1+.6f*fresh)),outer,14000+s);
+                if(layers>=2)Stroke(fx,b,a,Gold*(1.05f*heat*(1+.5f*fresh)),mid,14200+s);
+                Stroke(fx,b,a,Vector3.Lerp(Ice*3.4f,Molten*3.0f,NativeEntranceMath.Clamp01(age*2.5f))*(heat*(1+.7f*fresh)),core,14400+s);
                 if(part<1)fx.Glow(b,Molten*(3.4f*level),0,core*3.2f,1,0,14600+s);
             }
             // ---- light rays from behind the name: a slow sunburst fanned above and beside it (rays, never a ring), flaring as it is
@@ -1003,7 +1012,7 @@ namespace ChipArena.UnityConversion
         public override void Card(float t,ref NativeIntroCardState card)
         {
             // the sky's name is the hero; the card is its quiet caption (small, low in the black glass under the architect)
-            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.042f;card.Y=.93f;card.X=.5f;
+            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.04f;card.Y=.925f;card.X=.5f;
             // EffectA: how far the build has run (s since the name beat); EffectB: the distortion left (1 at the beat .. 0 settled)
             card.EffectA=Math.Max(0,t-CardAt);card.EffectB=(float)Math.Exp(-Math.Max(0,t-CardAt-.3f)*2.2f);card.Exit=NativeEntranceMath.Ramp(t,FadeFrom,Total-.05f);
         }
