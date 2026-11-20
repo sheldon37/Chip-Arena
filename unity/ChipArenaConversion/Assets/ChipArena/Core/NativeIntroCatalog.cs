@@ -91,11 +91,11 @@ namespace ChipArena.UnityConversion
             //
             // darkness
             //
-            // katana
+            NativeIntroEntry.Weapon(NativeKatana.Spec,NativeIntroStillRain.Title,NativeIntroStillRain.Total,NativeIntroStillRain.CardAt,()=>new NativeIntroStillRain(),"I3","Rain, stillness and one cut: the rain stops in the air."),
             //
             // glaive
             //
-            // fangs
+            NativeIntroEntry.Weapon(NativeFangs.Spec,NativeIntroApex.Title,NativeIntroApex.Total,NativeIntroApex.CardAt,()=>new NativeIntroApex(),"I3","A predator's pounce from the ruins: both fangs into the earth."),
             //
             // ---- the dev intro: NativeIntroEntry.Dev("architect", ...) ----
             //
