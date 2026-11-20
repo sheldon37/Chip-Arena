@@ -99,10 +99,26 @@ The bleed draws nine layers up (`NativeCityBleedDraw.Lift`), over every layer th
 
 ## A2's caches
 
-`NativeCityBleedDress.CacheKeepOuts(walk.Caches, walk.Map)` gives each locker's footprint with 15 cm about it and the 2 m in front of
-it (to the clear height), and the roof cache's kerb. The bleed places nothing in them; the street dress (its `Input.KeepOut`)
-paints nothing in them and hangs no low lamp there; neither dress nor landmark covers (hides) a cache block or the kerb. The
-lockers themselves stay the greybox's boxes in the walk (the CD-647 locker is not stood on them here).
+`NativeCityBleedDress.CacheKeepOuts(walk.Caches, walk.Map)` gives three kinds of keep-out:
+- each locker's footprint with 15 cm about it and the 2 m in front of it (to the clear height, 3.1 m);
+- the roof cache's kerb;
+- each locker's own block (a core keep-out).
+
+What keeps out:
+- **Free-standing pieces, lamps and floor paint** keep out of every keep-out. That covers the bleed's pieces (`KeptOut`) and the
+  street dress's paint and low lamps (its `Input.KeepOut`).
+- **Flush wall art** (6 cm proud or less, no lamp) keeps only off the locker itself, so the wall behind or beside a cache is
+  dressed like its neighbours. The street dress's facade modules never consult the keep-outs.
+- Neither dress nor landmark covers (hides) a cache block or the kerb.
+
+The lockers themselves stay the greybox's boxes in the walk (the CD-647 locker is not stood on them here).
+
+**The walls behind the caches:** The Arcades' first cache stands against a fire escape. The greybox builds a fire escape's treads
+as solid steps down to the floor, and the street dress drew their sides in black iron, which read as a black slab at night. Those
+sides now draw in the wall finish of the lot the escape stands against (`EscapeHost`; stock brick when it stands alone), under a
+0.3 m black iron stringer along each step's top (`NativeMeridianDress.Stringer`). This applies to every fire escape, not only
+those by a cache. `--bleed` checks the first wall within 0.9 m behind and beside every cache: it must be dressed (by the
+landmarks, a whole-block module, a facade module or a surface) and not black, except for the stringer.
 
 ## The Developer walk's door-deal picker
 
@@ -156,4 +172,5 @@ and their blocks' ids (`<anchor>-block`, `cache-roof-kerb`).
 - `--bleed-scene LAYOUT EAST,SOUTH,WEST SEED OUT` writes a walk's map and the pieces' places for `tools/stages/zfight.py` (the pieces as `rig/bleed/<key>`).
 - `--bleed-zfight LAYOUT EAST,SOUTH,WEST SEED OUT` (with `CHIPARENA_MERIDIAN_BANK` and `CHIPARENA_BLEED_BANK`) writes the whole look: the street dress planned with the bleed's contracts, combined in chunks as its drawer combines them, and the landmarks' pieces, for a zfight run over all three.
 - The whole look is also checked in `--bleed`: the street dress takes themes from the bleed, leaves no bay wholly under its skins, gives only lamps near the bleed's own, and every dress keeps clear of the caches.
-- `--bleed-probe LAYOUT ROUTE` and `--bleed-table` are diagnostics.
+- `--bleed-probe LAYOUT ROUTE`, `--bleed-table` and `--bleed-cachewall LAYOUT EAST,SOUTH,WEST SEED` (the wall behind and beside each
+  cache, and what each dress draws there) are diagnostics.

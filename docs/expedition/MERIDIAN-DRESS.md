@@ -43,7 +43,7 @@ change. Without the city bank the walk draws its greybox exactly as before.
 | --- | --- |
 | `lot` (the sheet's lots) | Facades bay by bay (2.5 m, stretched to the face) and storey by storey (4 m ground, 3 m upper) by style: rows and villas (doors and parlour windows, sashes, oriels), shops and the market (their own trades' goods, shutters), tenements (barred flats, the lit entry and stair column, polychrome bays), warehouses and sheds (loading doors, iron windows), civic (rusticated arches). Blind faces get blind windows and a ghost sign. Partly hidden storeys get plain wall. A cornice under every roof line that hangs over a street; flat tar roofs with a coping and their hatches; pavements and kerbs (flat paint) along every street frontage. |
 | `terrace-*` | Asphalt tops; engineering-brick retaining walls with a stone coping |
-| Stair treads, fire escapes | Granite treads and risers on the built treads; iron grating and side plates on the fire escapes' flights and landings |
+| Stair treads, fire escapes | Granite treads and risers on the built treads; iron grating on the fire escapes' treads, risers and landings. The solid steps' sides draw in the host lot's wall finish under a 0.3 m black iron stringer (the solid wall read as a black slab in iron) |
 | Sloped streets (MapRamp `ramp`) | A setts surface on the wedge the pilots walk; the treads' sides as the stepped retaining edge |
 | Bridges, skybridges, the causeway | Plank or setts decks, green iron or stone girders and soffits; parapets as iron panels or a stone balustrade filling their boxes; street rails as iron railings |
 | Arcade roofs, lids | Lead tops, dark glazing from below (the Galleria, the arcades), soffits |

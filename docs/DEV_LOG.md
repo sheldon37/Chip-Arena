@@ -1,3 +1,59 @@
+## 2026-11-20 — Claude: the black wall behind the Arcades cache (fire escapes' stepped bases); cache walls checked (integrator's fix; presentation only)
+
+**Branch and status:** branch `claude/meridian-bleed`, fix commit `48d321ac` on top of `59392a95`. Pushed, not merged.
+
+### The cause
+The wall behind The Arcades' first cache is not a facade. It is the side of `fire-escape-3`: the greybox builds a fire escape's
+treads as solid steps down to the floor (here its steps rise to 12.9 m). The street dress drew those sides in black iron over
+their whole height, which read as a black slab, worst at night. The Arcades' second cache stands against `fire-escape-8` in
+the same way.
+
+The keep-outs did not cause it. `--bleed-cachewall` shows the same quads with and without them, and the street dress's facade
+modules never consult them.
+
+### What changed
+- **Fire escapes (`NativeMeridianDressPlan.cs`):** a fire escape's step sides now draw in the wall finish of the lot it stands
+  against (`EscapeHost`: the lot most of its blocks touch within 0.6 m; stock brick when it stands alone). A 0.3 m black iron
+  stringer runs along each step's top (`NativeMeridianDress.Stringer`). The treads, risers and landings keep the iron grating.
+  This applies to every fire escape on the five layouts, not only those by a cache. The lot finish is shared through
+  `LotBrick` and `LotWallFin`, and the lots' own finishes are unchanged.
+- **Keep-outs (`NativeCityBleedDress.cs`):** `CacheKeepOuts` adds each locker's own block as a core keep-out.
+  - The bleed's free-standing pieces, lamps and floor paint keep out of every keep-out (`KeptOut`).
+  - Flush wall art (6 cm proud or less, no lamp) keeps only off the locker itself, so a wall behind or beside a cache is still
+    dressed. The street dress's facade modules never consulted the keep-outs.
+- **Check:** `--bleed` checks the first wall within 0.9 m behind and beside each of the 25 caches. Each must be drawn by the
+  landmarks, a whole-block module, a facade module or a surface that is not black (the stringer excepted). That is 18 walls.
+  The check fails on the old finish, at The Arcades' first cache.
+- **Diagnostic:** `--bleed-cachewall LAYOUT EAST,SOUTH,WEST SEED` lists the wall behind and beside each cache and what each
+  dress draws there.
+
+### All 25 cache spots
+Only The Arcades' caches 1 and 2 stood against a black wall, both fire escapes.
+- 18 walls stand within 0.9 m of a locker: lot facades, The Stride's and The Yards' wagons, and the two fire escapes.
+- The other sides look onto open street or roof.
+- No cache wall is left to the greybox.
+
+### Checks
+- `--bleed`: pass. 11,077 pieces; the 18 cache walls are dressed and none is black.
+- `--meridian-dress` with `CHIPARENA_MERIDIAN_BANK`: pass (697,842 checks, up from 673,756: the stringer splits the sides).
+- `--layered-walk`: pass. `--landmark-reads`: pass.
+- Full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `48d321ac`: pass, 1078 groups, 0 failures, exit 0.
+- `tools/check_unity_compile.py` (6000.3.24f1): Input System, Player, Assembly-CSharp and Editor pass at `48d321ac`. `git diff --check`: clean.
+- The owner's Editor compiled `48d321ac` in the hold (Tundra success).
+- Not run: zfight (the new quads only split each side in its own plane), a Windows player build, multiplayer.
+
+### Captures (one Editor hold, 325 s)
+The three city banks were in Resources for both passes and out again afterwards. The capture block was removed, the Editor
+went back to `9319026b` (compiled), and the lock was given back.
+- **BEFORE:** `59392a95`. **AFTER:** `48d321ac`. Both at night, bleed on, High.
+- `F:/Chip Arena Development/scratch/meridian-bleed/look3/strip-caches-before-after.jpg`: all 25 caches from 4 m, by layout.
+- `F:/Chip Arena Development/scratch/meridian-bleed/look3/strip-arcades-cache.jpg`: The Arcades' first cache from 4 m, 6 m and 15 m, and its second cache from 6 m.
+- Stills in `look3/before` and `look3/after`.
+
+**Banks:** unchanged (the fix is code only; the city bank needs no rebuild).
+
+**Next:** the integrator reviews the stills and merges with relgen5.
+
 ## 2026-11-19 — Claude: the Meridian look integrated on `claude/meridian-bleed`: the street dress, the landmarks and the bleed together, A2's caches kept clear, night captures (integrator's go; presentation only)
 
 **Branch and status:** branch `claude/meridian-bleed`, with `claude/meridian-dress` (`616d1a83`, which carries D2's `claude/meridian-landmarks`) and then shared `c6fbf8e8` merged in. Pushed, not merged. Docs merges kept every entry; the only code conflicts were the walk's hook lines and `Program.cs`, kept both ways (the bleed opens before the street dress, which plans with its contracts).
