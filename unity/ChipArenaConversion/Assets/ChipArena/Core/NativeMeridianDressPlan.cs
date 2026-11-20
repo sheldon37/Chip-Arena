@@ -23,8 +23,9 @@ namespace ChipArena.UnityConversion
             public Input In;public Plan P;public Solids S;public ContentBlock[] Blocks;public Func<string,bool> Has;public Dictionary<string,string> Lots;
             public string[] Roles;public bool[] Left;public Dictionary<string,MapRamp> TreadRamp=new Dictionary<string,MapRamp>(StringComparer.Ordinal);
             public uint Seed;public readonly List<Mount> Mounts=new List<Mount>();
-            /// <summary>A fire escape's host lot (by the escape's id, fire-escape-N), or -1.</summary>
-            public readonly Dictionary<string,int> EscapeHost=new Dictionary<string,int>(StringComparer.Ordinal);
+            /// <summary>Per block: a sloped street's tread, a fire escape's tread; and each tread's block by its id (NativeMeridianDressStairs).</summary>
+            public bool[] RampTread,EscapeTread;public readonly Dictionary<string,int> TreadIndex=new Dictionary<string,int>(StringComparer.Ordinal);
+            public bool IsRampTread(int i)=>RampTread[i];
             public bool IsDressed(int i)=>Dressed(Roles[i])&&Roles[i]!=RLot;
             // (a lot's roof is a generated surface too: a top two blocks share is drawn by the first, lot or not)
             // (a block the dress leaves, the greybox's or the landmarks', draws its own faces: a face of the dress in its plane is not drawn)
@@ -32,8 +33,9 @@ namespace ChipArena.UnityConversion
             // (a lot's sides are its facade modules', wherever they stand: a face in their plane is theirs)
             public bool SideDrawn(int i)=>!Dressed(Roles[i])||Roles[i]==RLot;
             // (the floor runs on under the camp fence: the greybox draws the fence with chamfered edges, and its foot's groove showed
-            // the void under the floor once the dress's own blocks gave way on the live map)
-            public bool FloorRunsUnder(int i)=>Roles[i]==RCamp;
+            // the void under the floor once the dress's own blocks gave way on the live map; and under a fire escape's cage, seen
+            // through its grille)
+            public bool FloorRunsUnder(int i)=>Roles[i]==RCamp||EscapeTread[i];
             public bool DrawsTop(int i)=>Dressed(Roles[i])&&Roles[i]!=RTread&&Roles[i]!=RParapet&&Roles[i]!=RRail&&Roles[i]!=RPost&&Roles[i]!=RWagon;
             public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false,int layer=-1)
             {
@@ -83,13 +85,19 @@ namespace ChipArena.UnityConversion
                 var id=map.blocks[i].id;b.Left[i]=id!=null&&left.Contains(id);b.Roles[i]=b.Left[i]?RLandmark:RoleOf(id,b.Lots);
                 if(Dressed(b.Roles[i]))P.Covers.Add(id);else if(b.Left[i])P.Left.Add(id);
             }
+            b.RampTread=new bool[map.blocks.Length];b.EscapeTread=new bool[map.blocks.Length];
+            for(int i=0;i<map.blocks.Length;i++)
+            {
+                if(b.Roles[i]!=RTread||!b.TreadRamp.TryGetValue(map.blocks[i].id,out var tr))continue;
+                b.RampTread[i]=tr.kind=="ramp";b.EscapeTread[i]=IsFireEscape(map.blocks[i].id);b.TreadIndex[map.blocks[i].id]=i;
+            }
             for(int i=0;i<map.blocks.Length;i++)
             {
                 var role=b.Roles[i];if(!Dressed(role))continue;
                 if(role==RLot)DressLot(b,i);
                 else DressBox(b,i,role);
             }
-            foreach(var r in map.ramps??Array.Empty<MapRamp>())if(r.kind=="ramp")DressSlope(b,r);
+            foreach(var r in map.ramps??Array.Empty<MapRamp>())if(r.kind=="ramp")DressSlope(b,r);else if(IsFireEscape(r.id))FlightSoffit(b,r);
             Lamps(b);
             Marks(b);
             // the surfaces' seams, once every surface is made: no two meet in a T-junction at any mix of LODs (NativeMeridianChunks)
@@ -136,7 +144,9 @@ namespace ChipArena.UnityConversion
         {
             var n=NormalOf(f);int nu=us.Length-1,nv=vs.Length-1;var e=new bool[nu*nv];
             // (the face's three tests made once, not per cell: each is a new delegate)
-            Func<int,bool> ignore=f==2?b.FloorRunsUnder:(Func<int,bool>)null,drawn=f==2?b.DrawsTop:(Func<int,bool>)b.IsDressed,always=f==2?b.Undressed:(Func<int,bool>)b.SideDrawn;
+            // (a wall beside a sloped street runs down under its surface: the street's treads, flat-topped steps around its slope,
+            // stopped it at their tops and left notches open above the setts; NativeMeridianDressStairs)
+            Func<int,bool> ignore=f==2?b.FloorRunsUnder:f!=3&&!b.RampTread[bi]?b.IsRampTread:(Func<int,bool>)null,drawn=f==2?b.DrawsTop:(Func<int,bool>)b.IsDressed,always=f==2?b.Undressed:(Func<int,bool>)b.SideDrawn;
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
             {
                 var p=o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f);
@@ -186,27 +196,9 @@ namespace ChipArena.UnityConversion
         // ------------------------------------------------------------------------------------------------------------------
         // Every role but the lots: its faces in its finishes (NativeMeridianSurfaces), and the modules that fill it
         // ------------------------------------------------------------------------------------------------------------------
-        /// <summary>The iron stringer's depth along the top of a fire escape's step (m).</summary>
+        /// <summary>The depth (m) of the band along a flight's line: a fire escape's iron stringer, a stair's or a sloped street's
+        /// coping (NativeMeridianDressStairs).</summary>
         public const float Stringer=.3f;
-        /// <summary>The lot a fire escape stands against: the lot most of its blocks touch (within 0.6 m), or -1.</summary>
-        private static int EscapeHost(Builder b,string id)
-        {
-            int dash=id.IndexOf('-',12);string key=dash<0?id:id.Substring(0,dash);
-            if(b.EscapeHost.TryGetValue(key,out int host))return host;
-            var votes=new Dictionary<int,int>();var B=b.S.B;
-            for(int i=0;i<b.Blocks.Length;i++)
-            {
-                var bid=b.Blocks[i].id;if(bid==null||!bid.StartsWith(key,StringComparison.Ordinal)||bid.Length>key.Length&&bid[key.Length]!='-')continue;int o=i*6;
-                foreach(int j in b.S.Near(B[o]-.6f,B[o+1]+.6f,B[o+4]-.6f,B[o+5]+.6f))
-                {
-                    if(j==i||b.Roles[j]!=RLot)continue;int q=j*6;
-                    float gx=Math.Max(0,Math.Max(B[q]-B[o+1],B[o]-B[q+1])),gz=Math.Max(0,Math.Max(B[q+4]-B[o+5],B[o+4]-B[q+5]));
-                    if(Math.Max(gx,gz)<=.6f&&B[q+2]<B[o+3]&&B[q+3]>B[o+2]){votes.TryGetValue(j,out int v);votes[j]=v+1;}
-                }
-            }
-            host=-1;int most=0;foreach(var kv in votes)if(kv.Value>most||kv.Value==most&&kv.Key<host){most=kv.Value;host=kv.Key;}
-            b.EscapeHost[key]=host;return host;
-        }
         private static void DressBox(Builder b,int bi,string role)
         {
             var id=b.Blocks[bi].id;int o=bi*6;float[] B=b.S.B;float h=B[o+3]-B[o+2];
@@ -218,19 +210,9 @@ namespace ChipArena.UnityConversion
                     break;
                 case RTread:
                 {
-                    b.TreadRamp.TryGetValue(id,out var r);bool fire=id.StartsWith("fire-escape-",StringComparison.Ordinal);bool stair=r==null||r.kind=="stair";
-                    if(!stair){for(int f=0;f<6;f++)if(f!=2&&f!=3&&!Facing(r,f))Surface(b,bi,f,NativeMeridianSurfaces.BrickBlue,0,1.5f,NativeMeridianSurfaces.Coping,.3f);break;}
-                    int treadFin=fire?NativeMeridianSurfaces.IronGrate:NativeMeridianSurfaces.Granite,sideFin=NativeMeridianSurfaces.Stone;
-                    // a fire escape's treads stand on solid steps down to the floor (the greybox's stair): their sides are its host
-                    // lot's wall, the stair built into the building, under a black iron stringer stepping up with the treads (in iron
-                    // the whole height they read as a black slab, worst at night)
-                    if(fire){int host=EscapeHost(b,id);sideFin=host>=0?LotWallFin(b,host):NativeMeridianSurfaces.BrickStock;}
-                    for(int f=0;f<6;f++)
-                    {
-                        if(f==2||r!=null&&Facing(r,f))Surface(b,bi,f,treadFin,0,f==2?1f:1.5f);
-                        else if(fire)Surface(b,bi,f,sideFin,0,1.5f,NativeMeridianSurfaces.IronBlack,Stringer);
-                        else Surface(b,bi,f,sideFin,0,1.5f);
-                    }
+                    // a flight's tread: its sides end on the flight's line, a fire escape caged in iron (NativeMeridianDressStairs)
+                    if(b.TreadRamp.TryGetValue(id,out var r)){DressTread(b,bi,r);break;}
+                    for(int f=0;f<6;f++)Surface(b,bi,f,f==2?NativeMeridianSurfaces.Granite:NativeMeridianSurfaces.Stone,0,f==2?1f:1.5f);
                     break;
                 }
                 case RLanding:for(int f=0;f<6;f++)Surface(b,bi,f,f==2?NativeMeridianSurfaces.IronGrate:NativeMeridianSurfaces.IronBlack,0,1.5f);break;
