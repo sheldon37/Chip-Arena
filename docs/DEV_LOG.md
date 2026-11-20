@@ -1,3 +1,11 @@
+## 2026-11-20 — Claude: release 2 of the expedition overhaul: the caches on A2, the LEGENDARY beam, the Meridian look (integrator)
+Owner: "Release them" (the caches) and "Looks good" (the Meridian look at night). Shared `c181c819`, the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`, 376.6 MiB).
+- **Merged:** `claude/cache-openings` (`eba02d3a`: the presentation on Astra's A2, its adapter reading `tier`, the locker standing on A2's block with the block's box undrawn, the LEGENDARY beam laid on its head's camera plane), `claude/meridian-bleed` (`8befbda3`: D1, D2 and D3), `claude/cache-locker-column` (`c181c819`: the beacon's tube stands down where the steel locker stands, board 3).
+- **A2 and live starts:** A2 first stopped every live Expedition (each cache anchor inside its own solid block failed the start-up capsule; then a Ward Zero cache approach a Hulk could not reach). Astra fixed both (#426, #429). In the Editor on shared `321d0b6d`, three Black Siren runs (seeds 4284432158, 1916999984, 1719573477) started, and each bought and opened a cache on its steel locker; seed 1964354793 itself could not be forced (the deploy seed comes from the clock).
+- **Test re-pins on the way:** MapStyleChecks' draw line (Astra's `a15e1183`); `NativeExpeditionCityKit.Stem` read null-safe in four tests (A2's cache block ids); ExpeditionCityChecks' layout hash to #429's moved cache candidates (`be6a0526`; the town map unchanged).
+- **Drive zip:** `ChipArenaCityMeridian` (3,403,541 bytes), `ChipArenaCityLandmarks` (9,120,962) and `ChipArenaCityBleed` (1,891,139) with their metas, packed with `tools/pack_visual_body.py` from the Editor checkout's Resources; nothing removed; the old zip kept as `LocalAssets-2026-11-20-before-meridian-look.zip`.
+- **Checks:** the full suite at each merge (1,070, 1,078 and 1,079 groups, exit 0), the Unity compile, the build's package validation. Not run: two Windows clients, a Windows player with the city banks in the walk, the live run on the candidate-3 streets (still Astra's move).
+
 ## 2026-11-20 — Astra: weapon pick reveal hitch
 
 `codex/weapon-reveal-hitch` from shared `321d0b6d`. Card faces and flourishes rasterized exact-size vector icons synchronously on cold IMGUI repaints. Import class and weapon textures (including small artwork and Lucide fallbacks) ahead of time, warm the set at opening, and validate the imported catalog on the Windows builder. Five real 128 px weapon rasters took a median 58.4 ms across nine .NET CPU trials. Pinned Unity player/editor compilation, 5,598 Blind Pick and 1,504 flourish checks passed. Windows frame times and native publication require the builder. Release the isolated fix on the existing builder base while the unrelated Expedition content awaits integration. Gameplay, wire data and timing are unchanged.
@@ -129,6 +137,7 @@ Behind the loading card, open the bleed first (with its contracts set), then the
 - **Not tested:** a Windows player build and multiplayer were not run.
 
 **Next:** the integrator reviews the clips, sends them to the owner, merges with relgen5, and packs the three banks into the Drive zip.
+- **Released:** merged into shared `8befbda3` (D1 `claude/meridian-dress` and D2 `claude/meridian-landmarks` within it), the builder at `c181c819`, test channel revision `639307532568188737`; the three city banks are in the Drive zip and the build imported them.
 
 ## 2026-11-19 — Claude: Meridian's bleed near each instance door (owner request; presentation only)
 
@@ -380,6 +389,7 @@ Branch `claude/cache-openings` from shared `8790610c`. Owner: "an effect when op
 **Risks.** Not seen on two clients. The look is the board's starting values; the generated city is not yet the dark night (W1), so the openings read softer in its light. The late joiner sees an opened cache shut, never mid-opening. The cartridges dock on the local pilot wherever it stands. The tier colour now tints today's hologram (STANDARD near-white instead of amber). LEGENDARY's lamp-face strobe (faces only) is the board's; Reduced effects has none.
 
 **Next.** The owner reviews the clips and sheets; Astra's A2 (the field's one line, the block); the sounds when the owner approves a batch. Pushed, not merged.
+- **Released:** merged into shared `eba02d3a` on Astra's A2, with the beacon's tube stood down at the locker in `c181c819`; the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`).
 
 ## 2026-11-19 — Astra: integrate Claude’s A2 cache-block test fix
 
