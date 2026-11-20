@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
         {
             // A script with a weapon (the pistol intro if one is registered, else the first registered intro): its anchors keyed until a body
             // is handed in; then each handed anchor exactly where it was drawn at that frame's time, carried rigidly by its keyed joint at other
-            // times (a trail keeps its shape), the rest keyed; Undrawn gives the keyed ones back. No allocation.
+            // times (a trail keeps its shape), the rest keyed; ClearDrawn gives the keyed ones back. No allocation.
             var entry=NativeIntroCatalog.Find(NativeIntroCatalog.WeaponIntro("pistol")??"")??NativeIntroCatalog.Entries.FirstOrDefault();
             if(entry!=null)
             {
@@ -116,7 +116,7 @@ namespace ChipArena.UnityConversion
                     var w=(NativeEntranceAnchor)a;if(w==NativeEntranceAnchor.Root||w==NativeEntranceAnchor.Forward||w==NativeEntranceAnchor.Focus||w==NativeEntranceAnchor.LeftElbow)continue;
                     at[a]=s.KeyedAnchor(w,t0)+new Vector3(.03f+.01f*a,-.02f+.004f*a,.05f-.003f*a);mask|=1UL<<a;
                 }
-                s.Drawn(t0,at,mask);
+                s.SetDrawn(t0,at,mask);
                 for(int a=0;a<n;a++)
                 {
                     var w=(NativeEntranceAnchor)a;bool handed=(mask>>a&1)!=0;Check(s.IsDrawn(w)==handed,entry.Id+": "+w+" is drawn only when handed in");
@@ -129,9 +129,9 @@ namespace ChipArena.UnityConversion
                         Check(Math.Abs(o-off)<1e-3f&&MathUtil.Finite(p.X),entry.Id+": "+w+" keeps its drawn offset ("+off.ToString("0.000")+" m) on its joint at "+dt+" s from the frame (a trail keeps its shape)");
                     }
                 }
-                long b0=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<200;i++){s.Drawn(t0+i*.001f,at,mask);for(int a=0;a<n;a++)s.Anchor((NativeEntranceAnchor)a,t0-i*.001f);}
+                long b0=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<200;i++){s.SetDrawn(t0+i*.001f,at,mask);for(int a=0;a<n;a++)s.Anchor((NativeEntranceAnchor)a,t0-i*.001f);}
                 Check(GC.GetAllocatedBytesForCurrentThread()-b0<=64,entry.Id+": handing in a drawn body and reading its anchors allocates nothing");
-                s.Undrawn();for(int a=0;a<n;a++)Check(s.Anchor((NativeEntranceAnchor)a,t0)==s.KeyedAnchor((NativeEntranceAnchor)a,t0),entry.Id+": Undrawn gives the keyed "+(NativeEntranceAnchor)a+" back");
+                s.ClearDrawn();for(int a=0;a<n;a++)Check(s.Anchor((NativeEntranceAnchor)a,t0)==s.KeyedAnchor((NativeEntranceAnchor)a,t0),entry.Id+": ClearDrawn gives the keyed "+(NativeEntranceAnchor)a+" back");
                 // The keyed fallbacks of the newer anchors sit on their joints: the eyes and the visor on the head, the toes ahead of the ankles,
                 // the wrists and the grips at the wrist joints, the muzzles out along the hands.
                 for(float t=0;t<=entry.Duration;t+=.25f)
@@ -166,11 +166,11 @@ namespace ChipArena.UnityConversion
             // and before the lights, the set and the effects, and taken back after; a v2 intro owns its light and gives it back.
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             string intros=R("Runtime/NativeIntros.cs"),v2=R("Runtime/NativeIntroV2Presentation.cs"),light=R("Runtime/NativeLighting.cs"),cam=R("Core/NativeIntroCamera.cs");
-            int undrawn=intros.IndexOf("script.Undrawn();\n            script.Camera(age,out var view);",StringComparison.Ordinal),hands=intros.IndexOf("IntroV2Hands(script,t);\n            if(v2)EntranceLighting(script,t,camera,true);",StringComparison.Ordinal);
+            int undrawn=intros.IndexOf("script.ClearDrawn();\n            script.Camera(age,out var view);",StringComparison.Ordinal),hands=intros.IndexOf("IntroV2Hands(script,t);\n            if(v2)EntranceLighting(script,t,camera,true);",StringComparison.Ordinal);
             Check(undrawn>0&&hands>undrawn&&intros.IndexOf("IntroWeapon(style,age);",StringComparison.Ordinal)<hands&&hands<intros.IndexOf("script.Props(t,entranceProps,quality);",StringComparison.Ordinal)
-                &&intros.IndexOf("introBodyActor=-1;introBody=null;introV2Actor=-1;script.Undrawn();",StringComparison.Ordinal)>hands&&intros.Contains("bool v2=script is INativeIntroV2;if(!v2)EntranceLighting(script,t,camera,false);"),
+                &&intros.IndexOf("introBodyActor=-1;introBody=null;introV2Actor=-1;script.ClearDrawn();",StringComparison.Ordinal)>hands&&intros.Contains("bool v2=script is INativeIntroV2;if(!v2)EntranceLighting(script,t,camera,false);"),
                 "DirectedIntro: the camera on the keyed rig; the drawn body handed in after the model and its weapon, before the lights, set and effects; taken back after");
-            Check(v2.Contains("if(mask!=0)script.Drawn(t,introDrawn,mask);")&&v2.Contains("IntroV2Drawn(script,t);")&&cam.Contains("script.KeyedVelocity((NativeEntranceAnchor)s.Follow,t)")&&cam.Contains("script.KeyedAnchor(NativeEntranceAnchor.Chest,t)"),"the drawn anchors are handed in from the model; the camera leads and blends on the keyed ones");
+            Check(v2.Contains("if(mask!=0)script.SetDrawn(t,introDrawn,mask);")&&v2.Contains("IntroV2Drawn(script,t);")&&cam.Contains("script.KeyedVelocity((NativeEntranceAnchor)s.Follow,t)")&&cam.Contains("script.KeyedAnchor(NativeEntranceAnchor.Chest,t)"),"the drawn anchors are handed in from the model; the camera leads and blends on the keyed ones");
             Check(intros.Contains("if(v2)NativeLighting.IntroOwn(entranceLights);else NativeLighting.IntroRelease();")&&light.Contains("public static void EndIntro(ContentMap map,Camera camera){IntroRelease();")&&light.Contains("RenderSettings.defaultReflectionMode=keptReflectMode;"),"a v2 intro owns its light each frame and gives back what it replaced (an older entrance next, the intro's end)");
         }
         // ---- the framework ----

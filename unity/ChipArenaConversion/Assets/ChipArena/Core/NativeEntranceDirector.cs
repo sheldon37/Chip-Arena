@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
         /// <summary>What a shot following NativeEntranceAnchor.Focus looks at (a set piece the pilot rides or arrives in); the chest by default.</summary>
         protected virtual Vector3 Focus(float t,Vector3 chest)=>chest;
         /// <summary>
-        /// Anchor `which` at presentation time `t`. While the runtime has handed in the body as drawn (<see cref="Drawn"/>: the model this
+        /// Anchor `which` at presentation time `t`. While the runtime has handed in the body as drawn (<see cref="SetDrawn"/>: the model this
         /// frame), the drawn point: at the frame's own time exactly where the model has it, and at any other time (a trail's past, a
         /// velocity) the keyed anchor carried by its joint's keyed turn with the same offset, so the trail keeps its shape on the drawn
         /// body. Otherwise (the Classic body, the managed checks, before the body is posed) the keyed anchor.
@@ -154,10 +154,10 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The runtime hands in the body as drawn at presentation time `t` (Runtime DirectedIntro, once the model and its weapon are posed,
         /// before Lights, Props, Set and Effects): for each anchor whose bit (1 &lt;&lt; anchor) is set in `mask`, where it is drawn (source frame).
-        /// Until <see cref="Undrawn"/> the anchors are model-aware (<see cref="Anchor"/>). Each is kept as its offset from the keyed anchor in
+        /// Until <see cref="ClearDrawn"/> the anchors are model-aware (<see cref="Anchor"/>). Each is kept as its offset from the keyed anchor in
         /// its joint's keyed frame at `t`. No allocation.
         /// </summary>
-        public void Drawn(float t,ReadOnlySpan<Vector3> at,ulong mask)
+        public void SetDrawn(float t,ReadOnlySpan<Vector3> at,ulong mask)
         {
             if(anchors==null)BuildAnchors();drawnMask=0;
             for(int a=0;a<drawnOffset.Length&&a<at.Length;a++)
@@ -168,7 +168,7 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>Back to the keyed anchors (the runtime, before the camera and after the frame's effects).</summary>
-        public void Undrawn()=>drawnMask=0;
+        public void ClearDrawn()=>drawnMask=0;
         /// <summary>Whether anchor `which` is the drawn body's this frame (false: keyed).</summary>
         public bool IsDrawn(NativeEntranceAnchor which)=>(uint)which<(uint)drawnOffset.Length&&(drawnMask>>(int)which&1)!=0;
         /// <summary>Anchor `which` at `t` on a Catmull-Rom curve through the table (no velocity kinks at its samples: what the camera follows).</summary>
@@ -287,7 +287,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The direction weapon tip `left` points (hand to tip) at `t`.</summary>
         protected Vector3 Aim(bool left,float t){var d=Anchor(left?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip,t)-Anchor(left?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);return d.LengthSquared()<1e-6f?ForwardOf(t):Vector3.Normalize(d);}
         /// <summary>The way weapon `left`'s muzzle points at `t` (its grip to its muzzle: a gun's bore, a staff's shaft, a blade's line).</summary>
-        protected Vector3 Bore(bool left,float t){var d=Anchor(left?NativeEntranceAnchor.LeftMuzzle:NativeEntranceAnchor.RightMuzzle,t)-Anchor(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,t);return d.LengthSquared()<1e-6f?ForwardOf(t):Vector3.Normalize(d);}
+        protected Vector3 WeaponBore(bool left,float t){var d=Anchor(left?NativeEntranceAnchor.LeftMuzzle:NativeEntranceAnchor.RightMuzzle,t)-Anchor(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,t);return d.LengthSquared()<1e-6f?ForwardOf(t):Vector3.Normalize(d);}
         /// <summary>A trail of anchor `which` from `t` back `span` s (`count` samples), between `from` and `to` (presentation).</summary>
         protected void Trail(INativeEntranceFx fx,NativeEntranceAnchor which,float t,float from,float to,float span,Vector3 head,Vector3 tail,float width,int seed)
         {

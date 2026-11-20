@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             hands.Hands(t,right,left);
         }
         // ---- the model-aware anchors (docs/INTROS-V2.md "Anchors") ----
-        // Each frame a v2 intro's model is drawn, every anchor is handed to the script where the model has it (Core NativeEntranceScript.Drawn),
+        // Each frame a v2 intro's model is drawn, every anchor is handed to the script where the model has it (Core NativeEntranceScript.SetDrawn),
         // so the authors' Anchor calls follow the drawn body: the pelvis, the chest (the torso's line half way up the chest), the head's centre,
         // the eyes and the visor's front on the head bone (its frame: x across, y up, z ahead, the face gear's), the shoulders, elbows, wrists,
         // palms, knees, ankles and toes (the balls of the feet); and, while its weapon is drawn, each weapon hand's grip (the weapon frame's
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
         private VisualBody introPalmBody;private int introPalmL=-1,introPalmR=-1;
         private void IntroV2Drawn(NativeEntranceScript script,float t)
         {
-            script.Undrawn();introDrawnBore=Vector3.zero;if(!(script is INativeIntroV2))return;ulong mask=0;
+            script.ClearDrawn();introDrawnBore=Vector3.zero;if(!(script is INativeIntroV2))return;ulong mask=0;
             VisualBody body=null;
             if(introModel!=null&&introModelFrame==Time.frameCount&&visualBodies.TryGetValue(introModel,out var b)&&b.Root!=null&&b.Binding!=null&&b.PosedFrame==Time.frameCount)body=b;
             if(body!=null)
@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            if(mask!=0)script.Drawn(t,introDrawn,mask);
+            if(mask!=0)script.SetDrawn(t,introDrawn,mask);
         }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet

@@ -89,8 +89,8 @@ namespace ChipArena.UnityConversion
             if(script is NativeFangsIntro silent)silent.Shake=CameraShake;
             // The DEV animation classes' entrances shake their camera only with the player's Camera shake setting on (Core NativeDevPackIntro.Shake).
             if(script is NativeDevPackIntro shaken)shaken.Shake=CameraShake;
-            // The camera follows the keyed rig (Core NativeEntranceScript.Undrawn: no drawn body is handed in yet this frame).
-            script.Undrawn();
+            // The camera follows the keyed rig (Core NativeEntranceScript.ClearDrawn: no drawn body is handed in yet this frame).
+            script.ClearDrawn();
             script.Camera(age,out var view);var eye=CapturedAnimation.Vec(CapturedRig.Mirror(view.Eye));var forward=CapturedAnimation.Vec(CapturedRig.Mirror(view.Look-view.Eye));
             if(forward.sqrMagnitude>1e-8f)camera.transform.SetPositionAndRotation(eye,Quaternion.LookRotation(forward,CapturedAnimation.Vec(CapturedRig.Mirror(view.Up))));camera.fieldOfView=view.Fov;
             EntranceBlasts(script,style+":"+pilot.Seat.id+":"+Mathf.RoundToInt(quality*10),t,quality);
@@ -123,7 +123,7 @@ namespace ChipArena.UnityConversion
             IntroV2Set(script,t,camera);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
-            introBodyActor=-1;introBody=null;introV2Actor=-1;script.Undrawn();
+            introBodyActor=-1;introBody=null;introV2Actor=-1;script.ClearDrawn();
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }
