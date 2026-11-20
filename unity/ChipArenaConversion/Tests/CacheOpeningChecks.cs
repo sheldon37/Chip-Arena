@@ -408,6 +408,7 @@ namespace ChipArena.UnityConversion
         private static void Sources(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
+            Check(R("Core/NativeExpeditionWorld.cs").Contains("if(p.actionable&&!p.locker)Column(sink,"),"the beacon's tube stands down where the steel locker stands (its own lamps and motes show it for sale; the hologram keeps the tube)");
             foreach(var f in new[]{"Core/NativeCacheTiers.cs","Core/NativeCacheOpenFx.cs","Core/NativeCacheClock.cs","Core/NativeCacheLockerModels.cs","Runtime/NativeCachePresentation.cs","Runtime/NativeCacheLive.cs"})
             {
                 string src=R(f);
