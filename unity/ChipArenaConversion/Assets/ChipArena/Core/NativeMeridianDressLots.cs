@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
                                 case 'm':key=Unit(Mix(baySeed,3))<.15f?"g.shutter":"g.shop."+MarketTrades[Mix(lotSeed,(uint)(i/3))%(uint)MarketTrades.Length];break;
                                 default:key=door==1?V("g.door."+wallVar,3,baySeed):V("g.window."+wallVar,3,baySeed);break;
                             }
-                            b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true);
+                            b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true,false,false,0);
                             continue;
                         }
                         if(blind)key=Unit(Mix(baySeed,(uint)k))<.45f?V("u.blind",2,Mix(baySeed,(uint)k)):"u.plain";
@@ -87,10 +87,13 @@ namespace ChipArena.UnityConversion
                             default:key=oriel&&fy-.8f>=floorFront+Hug&&k<=2?"u.oriel":V("u.win."+wallVar,3,Mix(baySeed,(uint)k));break;
                         }
                         if(hug&&key!="u.oriel")key+=".h";
-                        b.Add(key,at,uh,N,w/Bay,fh/Storey,bi,f,ua,ub,fy,fy+fh,floorFront,hug);
+                        b.Add(key,at,uh,N,w/Bay,fh/Storey,bi,f,ua,ub,fy,fy+fh,floorFront,hug,false,false,UpperLayers);
                     }
                     // the cornice under the roof line (overhead: only where it hangs 3.1 m or more over the floor in front)
-                    if(top-floorFront>=Hug+1f&&topSeen)b.Add(topKey,new V3(col.x,top,col.z),uh,N,w/Bay,1,bi,f,ua,ub,top-1,top,floorFront,false);
+                    // (and not where a block stands against the face at the roof line, a landing or a neighbour's roof: the cornice would
+                    // lie in its top)
+                    var lip=col+N*.3f;bool clear=!b.S.Inside(lip.x,top-.05f,lip.z,bi)&&!b.S.Inside(lip.x,top-.6f,lip.z,bi)&&Math.Abs(b.S.Floor(lip.x,lip.z,top+.05f)-top)>.02f;
+                    if(top-floorFront>=Hug+1f&&topSeen&&clear)b.Add(topKey,new V3(col.x,top,col.z),uh,N,w/Bay,1,bi,f,ua,ub,top-1,top,floorFront,false,false,false,CorniceLayers+(f<2?1:0));
                     // a ghost sign on a blind face (board 3): one per face, over three bays of its first upper storeys
                     if(blind&&!ghostDone&&n>=3&&i==n/2&&storeys>=3&&baseY<StoreyFloor(bottom,1)+.1f)
                     {
@@ -119,11 +122,14 @@ namespace ChipArena.UnityConversion
             {
                 if(f==2||f==3)continue;var N=NormalOf(f);FaceFrame(B,o,f,out var fo,out var fu,out _);float L=fu.Length;if(L<.5f)continue;var uh=fu/L;
                 int n=Math.Max(1,(int)Math.Round(L/Bay));float w=L/n;
+                // the copings butt at the corners: the x-facing edges' run stops .35 m short of each end (the z-facing edges' own)
+                float s0=f<2?CopingWidth:0,s1=f<2?CopingWidth:0;
                 for(int i=0;i<n;i++)
                 {
                     var c=fo+uh*(w*(i+.5f));if(b.S.Inside(c.x+N.x*.1f,top-.3f,c.z+N.z*.1f,bi)||b.S.Inside(c.x-N.x*.2f,top+.05f,c.z-N.z*.2f,bi))continue;
+                    float a0=w*i+(i==0?s0:0),a1=w*(i+1)-(i==n-1?s1:0);if(a1-a0<.05f)continue;
                     // on the roof: from the edge inward .35 m, along the edge (u), wound to face up
-                    b.QuadUp(new V3(fo.x,top,fo.z)+uh*(w*i),uh*w,N*-.35f,NativeMeridianSurfaces.Coping,1,bi,top);
+                    b.QuadUp(new V3(fo.x,top,fo.z)+uh*a0,uh*(a1-a0),N*-CopingWidth,NativeMeridianSurfaces.Coping,1,bi,top);
                 }
             }
             foreach(var h in b.In.Hatches??Array.Empty<V3>())
@@ -134,6 +140,8 @@ namespace ChipArena.UnityConversion
         // ------------------------------------------------------------------------------------------------------------------
         // Lamps (R4, bible 6.2): the routes' chain from the plan's lamp points on the nearest wall or a span, then the side streets
         // ------------------------------------------------------------------------------------------------------------------
+        /// <summary>A roof coping's width on the roof (m).</summary>
+        public const float CopingWidth=.35f;
         private static readonly V3[] Dirs={new V3(1,0,0),new V3(-1,0,0),new V3(0,0,1),new V3(0,0,-1)};
         /// <summary>The nearest wall from a floor point in a direction at a height over it (within reach): distance, the wall's block.</summary>
         private static bool Wall(Builder b,V3 p,V3 d,float rise,float reach,out float t,out int block)
@@ -145,9 +153,19 @@ namespace ChipArena.UnityConversion
                 // the block it struck, and the face of it toward p
                 for(int i=0;i<b.Blocks.Length;i++){int o=i*6;var B=b.S.B;if(q.x>B[o]&&q.x<B[o+1]&&p.y+rise>B[o+2]&&p.y+rise<B[o+3]&&q.z>B[o+4]&&q.z<B[o+5]){block=i;
                     t=d.x>0?B[o]-p.x:d.x<0?p.x-B[o+1]:d.z>0?B[o+4]-p.z:p.z-B[o+5];break;}}
-                return block>=0&&t>=0;
+                // a landmark's block is the landmark's to light: nothing of the dress hangs on it; and the wall stands 0.4 m either side
+                // of the mount in the face (a mount on a corner would hang half off it, or into the block round the corner)
+                if(block<0||t<0||b.Left[block])return false;
+                var side=new V3(d.z,0,-d.x)*.4f;
+                foreach(var e in new[]{q+side,q-side}){int k=BlockAt(b,e.x,p.y+rise,e.z);if(k<0||b.Left[k])return false;}
+                return true;
             }
             return false;
+        }
+        private static int BlockAt(Builder b,float x,float y,float z)
+        {
+            var B=b.S.B;for(int i=0;i<b.Blocks.Length;i++){int o=i*6;if(x>B[o]&&x<B[o+1]&&y>B[o+2]&&y<B[o+3]&&z>B[o+4]&&z<B[o+5])return i;}
+            return -1;
         }
         private static void Lamps(Builder b)
         {
@@ -304,7 +322,14 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        private static bool OnFloor(Builder b,V3 p)=>Math.Abs(b.S.Floor(p.x,p.z,p.y+.3f)-p.y)<.06f&&!b.S.Inside(p.x,p.y+.5f,p.z,-1);
+        private static bool OnFloor(Builder b,V3 p)=>Math.Abs(b.S.Floor(p.x,p.z,p.y+.3f)-p.y)<.06f&&!b.S.Inside(p.x,p.y+.5f,p.z,-1)&&!LeftUnder(b,p);
+        /// <summary>Whether the floor under a point is a landmark's block's top (no paint or puddle of the dress lies on it).</summary>
+        private static bool LeftUnder(Builder b,V3 p)
+        {
+            var B=b.S.B;
+            for(int i=0;i<b.Left.Length;i++){if(!b.Left[i])continue;int o=i*6;if(p.x>B[o]-.05f&&p.x<B[o+1]+.05f&&p.z>B[o+4]-.05f&&p.z<B[o+5]+.05f&&p.y-.1f<B[o+3]&&p.y-.1f>B[o+2])return true;}
+            return false;
+        }
         /// <summary>The SANCTUARY mark: the word with its arrow pointing home, the metres under it, laid on the road (flat paint).</summary>
         private static void Sanctuary(Builder b,V3 p,V3 home,int metres)
         {

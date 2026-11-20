@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             into.Clear();
             if(bank!=null&&placements!=null)foreach(int pi in placements)
             {
-                var pl=plan.Placements[pi];if(pl.Dynamic||!modules.TryGetValue(pl.Key,out var props))continue;AddModule(bank,props[tier],pl.M,into,pl.Paint?PaintLayers:0);
+                var pl=plan.Placements[pi];if(pl.Dynamic||!modules.TryGetValue(pl.Key,out var props))continue;AddModule(bank,props[tier],pl.M,into,(pl.Paint?PaintLayers:0)+pl.Layer);
             }
             if(quads!=null)foreach(int qi in quads)AddQuad(plan.Quads[qi],tier,into);
         }
@@ -172,6 +172,52 @@ namespace ChipArena.UnityConversion
             int n=plan.Nx*plan.Nz;placements=new List<int>[n];quads=new List<int>[n];
             for(int i=0;i<plan.Placements.Count;i++){int c=plan.Placements[i].Chunk;(placements[c]??=new List<int>()).Add(i);}
             for(int i=0;i<plan.Quads.Count;i++){int c=plan.Quads[i].Chunk;(quads[c]??=new List<int>()).Add(i);}
+        }
+        /// <summary>The art bible's caps per chunk (10.1): triangles at LOD0 and at LOD1 (a chunk draws its solid and its glow).</summary>
+        public const int FineCap=60000,FarCap=7000;
+        /// <summary>The least a heavy chunk is cut down to (m).</summary>
+        public const float LeastChunk=8f;
+        /// <summary>A chunk as the drawer draws it: a 32 m cell of the plan's grid, or a quarter (an eighth, ...) of a cell too heavy for
+        /// the caps, with its placements and surfaces and their triangles at LOD0 and LOD1.</summary>
+        public sealed class DrawChunk{public int Cell;public float X0,Z0,Size;public List<int> Placements,Quads;public int Fine,Far;}
+        /// <summary>The chunks of a plan: each 32 m cell whose placements and surfaces come to the caps or under (FineCap at LOD0,
+        /// FarCap at LOD1), the others cut in four (by each piece's place, a surface's by its centre) until every part does or is
+        /// LeastChunk across. Pure and deterministic; counts the bank's triangles without combining.</summary>
+        public static List<DrawChunk> DrawChunks(Plan plan,NativePackBank.Bank bank,Dictionary<string,int[]> modules)
+        {
+            ByChunk(plan,out var pl,out var qs);var units=new List<DrawChunk>();var tris=new Dictionary<int,int>();
+            int PropTris(int prop)
+            {
+                if(bank==null||prop<0||prop>=bank.Props.Count)return 0;if(tris.TryGetValue(prop,out int n))return n;
+                foreach(var part in bank.Props[prop].Parts){var m=bank.Meshes[part.Mesh];if(m.Submeshes!=null)foreach(var s in m.Submeshes)n+=s.Indices.Length/3;}
+                tris[prop]=n;return n;
+            }
+            int Tris(List<int> ps,List<int> q,int tier)
+            {
+                int n=0;
+                if(ps!=null&&bank!=null)foreach(int i in ps){var p=plan.Placements[i];if(!p.Dynamic&&modules.TryGetValue(p.Key,out var t))n+=PropTris(t[tier]);}
+                if(q!=null)foreach(int i in q)n+=QuadTriangles(plan.Quads[i],tier);
+                return n;
+            }
+            void Split(int cell,float x0,float z0,float size,List<int> ps,List<int> q)
+            {
+                if((ps==null||ps.Count==0)&&(q==null||q.Count==0))return;
+                int fine=Tris(ps,q,0),far=Tris(ps,q,2);
+                if(fine<=FineCap&&far<=FarCap||size<=LeastChunk+.01f){units.Add(new DrawChunk{Cell=cell,X0=x0,Z0=z0,Size=size,Placements=ps,Quads=q,Fine=fine,Far=far});return;}
+                float h=size*.5f;var sp=new List<int>[4];var sq=new List<int>[4];
+                int Part(float x,float z)=>(x>=x0+h?1:0)+(z>=z0+h?2:0);
+                if(ps!=null)foreach(int i in ps){var p=plan.Placements[i];int k=Part(p.M[3],p.M[11]);(sp[k]??=new List<int>()).Add(i);}
+                if(q!=null)foreach(int i in q){var c=plan.Quads[i].O+plan.Quads[i].U*.5f+plan.Quads[i].V*.5f;int k=Part(c.x,c.z);(sq[k]??=new List<int>()).Add(i);}
+                for(int k=0;k<4;k++)Split(cell,x0+(k&1)*h,z0+(k>>1)*h,h,sp[k],sq[k]);
+            }
+            for(int c=0;c<plan.Nx*plan.Nz;c++)Split(c,plan.MinX+(c%plan.Nx)*ChunkSize,plan.MinZ+(c/plan.Nx)*ChunkSize,ChunkSize,pl[c],qs[c]);
+            return units;
+        }
+        /// <summary>A generated surface's triangles at a tier (as AddQuad cuts it).</summary>
+        public static int QuadTriangles(in Quad q,int tier)
+        {
+            bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
+            int nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(q.U.Length/cell))),nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(q.V.Length/cell)));return 2*nu*nv;
         }
         /// <summary>The tiers' reach (m, eye to a chunk's bounds): LOD0 within <see cref="FineReach"/> on High (a little nearer on
         /// Balanced), LOD1 beyond it out to the fog's end plus 25 m (bible 10.2; R4's far layer is D2's), the Low tier LOD1 only.</summary>

@@ -18,10 +18,10 @@ the mouth hang 3.1 m and more over the apron.
 """
 import math
 
-import meridian_kit as mk
+import meridian_gates_kit as mk
 import meridian_lm_kit as lk
 import stagekit as sk
-from meridian_kit import F, Geo, bx, glow
+from meridian_gates_kit import F, Geo, bx, glow
 from meridian_lm_kit import PI, WARM, OPAL
 
 FAMILIES = ('level0', 'poolrooms', 'wardzero', 'station', 'ironworks')

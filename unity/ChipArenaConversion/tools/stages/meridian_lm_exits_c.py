@@ -1,10 +1,10 @@
 """Meridian landmarks: the exit landmarks of the Stride and the Yards (registered into meridian_lm_exits.BUILDERS)."""
 import math
 
-import meridian_kit as mk
+import meridian_gates_kit as mk
 import meridian_lm_kit as lk
 import stagekit as sk
-from meridian_kit import F, Geo, bx, glow
+from meridian_gates_kit import F, Geo, bx, glow
 from meridian_lm_kit import PI, WARM, ROOM, OPAL
 from meridian_lm_exits import builder, X
 

@@ -1,14 +1,14 @@
 """Meridian landmarks: the shared pieces (tiers, the layout's blocks, extra finishes, lamps, brackets, lattices, windows).
 
-Built on the Meridian kit (meridian_kit: finishes F, glow, bx, wall/Hole/reveal, mould, text_stroke, clock at 6:47, lamps) and
+Built on the Meridian kit (meridian_gates_kit: finishes F, glow, bx, wall/Hole/reveal, mould, text_stroke, clock at 6:47, lamps) and
 stagekit's corner geometry, in Unity space (metres, +y up). A facade built here faces -z unless a frame turns it; `placed`
 builds a sub-geometry in that canonical frame and turns it onto any face.
 """
 import math
 
-import meridian_kit as mk
+import meridian_gates_kit as mk
 import stagekit as sk
-from meridian_kit import F, Geo, glow
+from meridian_gates_kit import F, Geo, glow
 
 PI = math.pi
 

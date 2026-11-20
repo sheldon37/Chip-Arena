@@ -501,6 +501,10 @@ def _clock(B):
         o = (c[0] + side * .095, c[1], c[2])
         ff = Frame((o[0], o[1] - .6, o[2] + .6 * side), (0.0, 0.0, -side * 1.0))
         cb.dial(B, ff, .6, .6, .55)
+    # the dials' backs and the arm's end lie inside the drum, where nothing sees them (and the two backs lay in one plane)
+    # (within the drum's flats: its own side faces' centres lie at its apothem)
+    inner = .62 * math.cos(math.pi / T.round) - .02
+    B.g = drop_faces(B.g, lambda q: abs(q[0]) < .088 and (q[1] - c[1]) ** 2 + (q[2] - c[2]) ** 2 < inner ** 2, centre=True)
 
 
 @module('cd.siren')
@@ -612,9 +616,14 @@ def _arch(B):
 def clamp_geo(g, axis):
     """Every corner flattened into 0.25 m in .. 6 cm out of the face (axis 2, z), or for a flat piece into 6 cm over its floor
     (axis 1, y); faces that collapse are dropped."""
+    return clamp_axis(g, axis, HUG_IN if axis == 2 else -.01, HUG_OUT)
+
+
+def clamp_axis(g, axis, lo, hi):
+    """Every corner clamped into lo .. hi along an axis; faces that collapse are dropped."""
     P, N, S, Fi = g.arrays()
     P = P.copy()
-    P[:, axis] = np.clip(P[:, axis], HUG_IN if axis == 2 else -.01, HUG_OUT)
+    P[:, axis] = np.clip(P[:, axis], lo, hi)
     out = sk.Geo()
     starts = np.zeros(len(S), dtype=np.int64)
     if len(S) > 1:
@@ -633,6 +642,41 @@ def clamp_geo(g, axis):
     return out
 
 
+def drop_faces(g, inside, centre=False):
+    """The faces whose every corner (or, `centre`, whose centre) `inside` names left out (a module's faces shut inside its own
+    solid)."""
+    P, N, S, Fi = g.arrays()
+    out = sk.Geo()
+    starts = np.zeros(len(S), dtype=np.int64)
+    if len(S) > 1:
+        starts[1:] = np.cumsum(S[:-1])
+    for f in range(len(S)):
+        idx = range(starts[f], starts[f] + S[f])
+        if inside(P[list(idx)].mean(axis=0)) if centre else all(inside(P[i]) for i in idx):
+            continue
+        out.face([tuple(float(x) for x in P[i]) for i in idx], int(Fi[f]), normals=[tuple(float(x) for x in N[i]) for i in idx])
+    return out
+
+
+def drop_floor(g):
+    """A fill's faces turned down onto its floor (a parapet's, a post's or a wagon's foot: never seen) left out, so they never
+    lie in another box's bottom."""
+    P, N, S, Fi = g.arrays()
+    out = sk.Geo()
+    starts = np.zeros(len(S), dtype=np.int64)
+    if len(S) > 1:
+        starts[1:] = np.cumsum(S[:-1])
+    for f in range(len(S)):
+        idx = range(starts[f], starts[f] + S[f])
+        if all(P[i][1] < 1e-3 and N[i][1] < -.9 for i in idx):
+            continue
+        out.face([tuple(float(x) for x in P[i]) for i in idx], int(Fi[f]), normals=[tuple(float(x) for x in N[i]) for i in idx])
+    return out
+
+
+FILLS = ('parapet.iron', 'parapet.stone', 'post.iron', 'wagon.van')
+
+
 def build_all():
     ck.finishes()
     extra_finishes()
@@ -649,6 +693,12 @@ def build_all():
                 g = clamp_geo(g, 2)
             if fl['flat']:
                 g = clamp_geo(g, 1)
+            if key in FILLS:
+                g = drop_floor(g)
+            if key.startswith('g.shop.') or key == 'g.shutter':
+                # a shopfront's consoles stood 2 cm past its bay each side, into its neighbour's: trimmed to the bay, so two
+                # shopfronts side by side butt instead of lying 4 cm in one another
+                g = clamp_axis(g, 0, -BAY / 2, BAY / 2)
             B.g = g
             builds[(key, lod)] = B
     return keys, builds

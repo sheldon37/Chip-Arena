@@ -8,10 +8,10 @@ change. Without the city bank the walk draws its greybox exactly as before.
 
 | Piece | Where | What it does |
 | --- | --- | --- |
-| The bank | `tools/stages/meridian_bank.py` on `meridian_kit.py` and `meridian_buildings.py` (board 3's approved kit, ported) and stagekit | 130 modules at LOD0 and LOD1 (`module/<key>/0`, `/2`): facade bays per typology, cornices, ghost signs, plates, road paint, puddles, hatches, the three lamp families in working, route and dead states, the 6:47 bracket clock, the Civil Defence siren, iron and stone parapets, the market column, the goods van, the viaduct's arch. Written as `ChipArenaCityMeridian.bytes` (3.6 MB). Never committed. |
+| The bank | `tools/stages/meridian_bank.py` on `meridian_kit.py` and `meridian_buildings.py` (board 3's approved kit, ported) and stagekit | 130 modules at LOD0 and LOD1 (`module/<key>/0`, `/2`): facade bays per typology, cornices, ghost signs, plates, road paint, puddles, hatches, the three lamp families in working, route and dead states, the 6:47 bracket clock, the Civil Defence siren, iron and stone parapets, the market column, the goods van, the viaduct's arch. Written as `ChipArenaCityMeridian.bytes` (3.4 MB). Never committed. A fill's faces turned down onto its floor and the clock's faces shut inside its drum are left out. |
 | The dressing sheet | `tools/stages/meridian_sheet.py` writes `Core/NativeMeridianDressSheet.cs` | Each lot's style and roof, the plan's lamp points and the street names, from `docs/expedition/meridian-plans/*.json`. Rerun after a spec changes; `MeridianDressChecks` fails while a walk lot has no entry. |
 | The planner | `Core/NativeMeridianDress*.cs` | Pure and deterministic per layout (the run seed moves only which lamps are dead or flicker). Every block role to modules and generated surfaces; the covered blocks; the lamps; the marks. |
-| The drawer | `Runtime/NativeMeridianDressDraw.cs` | Combines into 32 m chunks: every chunk's LOD1 at load, LOD0 on a worker within 38 m (High) or 24 m (Balanced), Low draws LOD1 only; chunks past the fog's end plus 25 m are left out. The night's light. |
+| The drawer | `Runtime/NativeMeridianDressDraw.cs` | Combines into 32 m chunks (`NativeMeridianDress.DrawChunks`: a cell over the bible's caps, 60,000 triangles at LOD0 or 7,000 at LOD1, is cut in quarters by each piece's place until every part is under them): every chunk's LOD1 at load, LOD0 on a worker within 38 m (High) or 24 m (Balanced), Low draws LOD1 only; chunks past the fog's end plus 25 m are left out. The night's light. |
 | The walk hook | `Runtime/NativeMeridianDressWalk.cs` | One call in `OpenCityWalk` and one in `CloseCityWalk`. |
 | The greybox | `Runtime/NativeArenaDressing.cs` | Leaves out each walk block the dress drew this frame (`NativeMeridianDressDraw.Hides`). |
 | The night | `MapLooks.json` `expedition-night`, written by `docs/arenas/scripts/expedition_city.py --maplooks`; `NativeMeridianDress.LookTable`'s one row, applied by the walk's hook | The walk's five maps draw in the night once the dress (and its lamps) is made; without the bank the greybox keeps the town's dusk. The live expedition's map keeps its look. |
@@ -27,7 +27,15 @@ change. Without the city bank the walk draws its greybox exactly as before.
   drawn once), and no block is covered that is not.
 - No free-standing furniture: until Astra's prop blocks exist, lamps hang on walls and span wires or sit flush in low walls,
   and the 6:47 clock and the siren are wall mounted.
-- D2's blocks stay greybox for D2: the halls, the court and City Hall, the landmarks.
+- D2's blocks are the landmarks' (`NativeMeridianLandmarks.FixedCovers`: the exits' host lots, the court and City Hall, the
+  halls): no module, surface, lamp, plate or paint of the dress on them, and they are not covered here (the landmarks hide them
+  while their bank draws). The other landmark blocks (barges, cranes, the keep, the bandstand) stay greybox.
+- Coplanar meetings never fight: a face of the dress in the plane of a face the greybox or the landmarks draw is left to them;
+  roof copings butt at the corners; the bank trims each shopfront to its 2.5 m bay, so the bays of a storey butt; the rest part
+  by a few ChipArena/StageLit layers (kept few: the shader's offset grows with each): the ground storey 0 (a shopfront's fascia
+  stands over its top), the upper storeys 1, the cornices 2 and on x-facing faces 3 (two meeting in a re-entrant corner), a
+  fill's tiles 0 and 1 in turn, what hangs on a wall 4; paint keeps its own 3. A cornice is left out where a block stands
+  against the face at the roof line (a landing, a neighbour's roof).
 
 ## The roles
 

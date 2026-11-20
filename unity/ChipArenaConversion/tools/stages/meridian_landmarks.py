@@ -10,8 +10,9 @@ routes, halls and Core's placement of every piece. The bank goes to OUT_DIR/Chip
 (keep it out of the repository; the integrator carries it in the Drive zip). The report (default OUT_DIR/landmarks-report.json)
 holds every piece's triangles per tier, the art-rule check on every layout and the triangles in view from each camp eye.
 
-The Meridian kit (meridian_kit.py: the shared finishes, walls, mouldings, lettering, clocks and lamps of the approved board 3) is
-not in the repository yet; SRC is the durable copy of the board-3 sources (default below), whose `gates-caches/pass2` holds it.
+The Meridian kit (the shared finishes, walls, mouldings, lettering, clocks and lamps of the approved board 3: its gates-caches pass 2
+kit) is tools/stages/meridian_gates_kit.py beside this script (not meridian_kit.py, the streets' city kit). `--sources` is still
+read but no longer needed: the kit came from SRC's `gates-caches/pass2/meridian_kit.py`.
 
 Bank names (the runtime reads them):
   <key>/0     the Fine tier (LOD0; the Mid tier shares it)       group "landmark"
@@ -56,13 +57,12 @@ def _args():
 
 ARGS = _args()
 os.environ.setdefault('CHIP_STAGES', HERE)
-for p in (HERE, os.path.join(ARGS['sources'], 'gates-caches', 'pass2')):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
 
 import numpy as np  # noqa: E402
 import stagekit as sk  # noqa: E402
-import meridian_kit as mk  # noqa: E402
+import meridian_gates_kit as mk  # noqa: E402
 import meridian_lm_kit as lk  # noqa: E402
 import meridian_lm_exits as lx  # noqa: E402
 import meridian_lm_exits_b  # noqa: E402,F401  (registers the Navigation's and the Arcades' exits)

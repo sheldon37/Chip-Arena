@@ -11,10 +11,10 @@ gateway's lintel carved with falling feathers. The tower's four 6 m opal dials r
 """
 import math
 
-import meridian_kit as mk
+import meridian_gates_kit as mk
 import meridian_lm_kit as lk
 import stagekit as sk
-from meridian_kit import F, Geo, bx, glow
+from meridian_gates_kit import F, Geo, bx, glow
 from meridian_lm_kit import PI, OPAL, WHITE_GOLD
 
 HALL = (-27.0, 27.0, 0.0, 19.0, 38.5, 62.5)

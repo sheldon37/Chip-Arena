@@ -13,10 +13,10 @@ between them and the camp: the Cordon's wall hides their feet, and their read fe
 """
 import math
 
-import meridian_kit as mk
+import meridian_gates_kit as mk
 import meridian_lm_kit as lk
 import stagekit as sk
-from meridian_kit import F, Geo, glow
+from meridian_gates_kit import F, Geo, glow
 from meridian_lm_kit import PI, OPAL, RED_LIGHT
 
 FAMILIES = ('level0', 'poolrooms', 'wardzero', 'station', 'ironworks')

@@ -21,14 +21,18 @@ namespace ChipArena.UnityConversion
         private sealed class Builder
         {
             public Input In;public Plan P;public Solids S;public ContentBlock[] Blocks;public Func<string,bool> Has;public Dictionary<string,string> Lots;
-            public string[] Roles;public Dictionary<string,MapRamp> TreadRamp=new Dictionary<string,MapRamp>(StringComparer.Ordinal);
+            public string[] Roles;public bool[] Left;public Dictionary<string,MapRamp> TreadRamp=new Dictionary<string,MapRamp>(StringComparer.Ordinal);
             public uint Seed;public readonly List<Mount> Mounts=new List<Mount>();
             public bool IsDressed(int i)=>Dressed(Roles[i])&&Roles[i]!=RLot;
             // (a lot's roof is a generated surface too: a top two blocks share is drawn by the first, lot or not)
+            // (a block the dress leaves, the greybox's or the landmarks', draws its own faces: a face of the dress in its plane is not drawn)
+            public bool Undressed(int i)=>!Dressed(Roles[i]);
             public bool DrawsTop(int i)=>Dressed(Roles[i])&&Roles[i]!=RTread&&Roles[i]!=RParapet&&Roles[i]!=RRail&&Roles[i]!=RPost&&Roles[i]!=RWagon;
-            public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false)
+            public void Add(string key,V3 at,V3 along,V3 normal,float sx,float sy,int block,int face,float u0,float u1,float v0,float v1,float floor,bool hugs,bool paint=false,bool dynamic=false,int layer=-1)
             {
-                var p=new Placement{Key=Pick(key,at,Has),Block=block,Face=face,U0=u0,U1=u1,V0=v0,V1=v1,Floor=floor,Hugs=hugs,Paint=paint,Dynamic=dynamic};
+                // (what hangs on a wall without a bay of its own, a lamp, a plate, a clock, a siren, draws over the bays)
+                if(layer<0)layer=block<0&&!paint?MountLayers:0;
+                var p=new Placement{Key=Pick(key,at,Has),Block=block,Face=face,U0=u0,U1=u1,V0=v0,V1=v1,Floor=floor,Hugs=hugs,Paint=paint,Dynamic=dynamic,Layer=layer};
                 var up=Cross(normal,along);
                 p.M[0]=along.x*sx;p.M[1]=up.x*sy;p.M[2]=normal.x;p.M[3]=at.x;
                 p.M[4]=along.y*sx;p.M[5]=up.y*sy;p.M[6]=normal.y;p.M[7]=at.y;
@@ -62,7 +66,14 @@ namespace ChipArena.UnityConversion
             var b=new Builder{In=input,P=P,Blocks=map.blocks,S=new Solids(map.blocks),Has=has,Lots=Lots(input.Layout),Seed=Mix(input.Layout,0x6a09e667u)};
             foreach(var r in map.ramps??Array.Empty<MapRamp>())foreach(var id in r.blocks)b.TreadRamp[id]=r;
             b.Roles=new string[map.blocks.Length];
-            for(int i=0;i<map.blocks.Length;i++){b.Roles[i]=RoleOf(map.blocks[i].id,b.Lots);if(Dressed(b.Roles[i]))P.Covers.Add(map.blocks[i].id);}
+            // the blocks the landmarks always draw in place of (the exits' host lots, the court, the halls) are theirs: no module,
+            // surface or lamp here, and the landmarks hide them while their bank draws
+            var left=NativeMeridianLandmarks.FixedCovers(input.Layout,map);b.Left=new bool[map.blocks.Length];
+            for(int i=0;i<map.blocks.Length;i++)
+            {
+                var id=map.blocks[i].id;b.Left[i]=id!=null&&left.Contains(id);b.Roles[i]=b.Left[i]?RLandmark:RoleOf(id,b.Lots);
+                if(Dressed(b.Roles[i]))P.Covers.Add(id);else if(b.Left[i])P.Left.Add(id);
+            }
             for(int i=0;i<map.blocks.Length;i++)
             {
                 var role=b.Roles[i];if(!Dressed(role))continue;
@@ -116,7 +127,7 @@ namespace ChipArena.UnityConversion
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
             {
                 var p=o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f);
-                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed);
+                e[i+j*nu]=!b.S.Inside(p.x+n.x*.05f,p.y+n.y*.05f,p.z+n.z*.05f,bi)&&!b.S.Shared(p.x,p.y,p.z,f,bi,f==2?b.DrawsTop:b.IsDressed,b.Undressed);
             }
             return e;
         }
@@ -243,7 +254,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<n;k++)
             {
                 var at=start+along*(piece*(k+.5f));
-                var p=new Placement{Key=Pick(key,at,b.Has),Block=bi,Face=-1,U0=piece*k,U1=piece*(k+1),V0=B[o+2],V1=B[o+3],Floor=B[o+2],Hugs=true};
+                var p=new Placement{Key=Pick(key,at,b.Has),Block=bi,Face=-1,U0=piece*k,U1=piece*(k+1),V0=B[o+2],V1=B[o+3],Floor=B[o+2],Hugs=true,Layer=k&1};
                 float kx=piece/ax,ky=sy/ay,kz=D/az;
                 p.M[0]=along.x*kx;p.M[1]=0;p.M[2]=normal.x*kz;p.M[3]=at.x;p.M[4]=0;p.M[5]=ky;p.M[6]=0;p.M[7]=at.y;p.M[8]=along.z*kx;p.M[9]=0;p.M[10]=normal.z*kz;p.M[11]=at.z;
                 p.Chunk=b.P.ChunkOf(at.x,at.z);b.P.Placements.Add(p);

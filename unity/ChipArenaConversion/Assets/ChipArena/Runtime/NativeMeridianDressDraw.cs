@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         public static bool Hides(string mapId,string blockId)=>blockId!=null&&activeCovers!=null&&mapId==activeMap&&Time.frameCount-activeFrame<=1&&activeCovers.Contains(blockId);
 
         private sealed class ChunkDraw{public int Index;public Bounds Box;public MeshRenderer Far,Near;public Mesh FarMesh,NearMesh;public Task<NativeMeridianMesh> Building;public int Shown=-1,NearTris,FarTris;}
-        private NativeMeridianDress.Plan plan;private NativePackBank.Bank bank;private Dictionary<string,int[]> modules;private List<int>[] chunkPlacements,chunkQuads;
+        private NativeMeridianDress.Plan plan;private NativePackBank.Bank bank;private Dictionary<string,int[]> modules;private List<NativeMeridianDress.DrawChunk> units;
         private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();private GameObject root;private Material solid,glow,poolMat;private Shader shader;private string mapId;private Camera eye;
         private MaterialPropertyBlock block;private Mesh poolMesh;private Vector3[] poolV;private Color32[] poolC;private Vector2[] poolUv;private int[] poolT;
         private readonly float[] slotPos=new float[NativeMapLooks.MaxLights*4],slotRgb=new float[NativeMapLooks.MaxLights*3];private readonly int[] nearest=new int[NativeMapLooks.MaxLights];
@@ -51,16 +51,15 @@ namespace ChipArena.UnityConversion
                 shader=Resources.Load<Shader>("NativeStageLit");if(shader==null||!shader.isSupported)throw new InvalidOperationException("ChipArena/StageLit is missing or unsupported");
                 var watch=System.Diagnostics.Stopwatch.StartNew();
                 plan=NativeMeridianDress.Build(input,modules.ContainsKey);PlanMs=(float)watch.Elapsed.TotalMilliseconds;watch.Restart();
-                NativeMeridianDress.ByChunk(plan,out chunkPlacements,out chunkQuads);
+                units=NativeMeridianDress.DrawChunks(plan,bank,modules);
                 solid=new Material(shader){name="Meridian dress",enableInstancing=true};solid.SetFloat("_Glow",0);
                 glow=new Material(shader){name="Meridian dress glow",enableInstancing=true};glow.SetFloat("_Glow",1);block=new MaterialPropertyBlock();
                 var pool=Resources.Load<Shader>("NativeFieldGlow");if(pool!=null){poolMat=new Material(pool){name="Meridian lamp pools",renderQueue=2990};poolMat.SetFloat("_Radial",1.6f);poolMat.SetFloat("_Offset",-2);poolMat.SetFloat("_Cull",0);}
                 root=new GameObject("Meridian dress "+input.Map.id);mapId=input.Map.id;eye=camera;
                 var data=new NativeMeridianMesh();
-                for(int c=0;c<chunkPlacements.Length;c++)
+                for(int c=0;c<units.Count;c++)
                 {
-                    if(chunkPlacements[c]==null&&chunkQuads[c]==null)continue;
-                    NativeMeridianDress.Combine(plan,c,2,bank,modules,chunkPlacements[c],chunkQuads[c],data);if(data.Vertices==0)continue;
+                    var u=units[c];NativeMeridianDress.Combine(plan,u.Cell,2,bank,modules,u.Placements,u.Quads,data);if(data.Vertices==0)continue;
                     var cd=new ChunkDraw{Index=c,FarMesh=Upload(data,"Meridian chunk "+c+" far"),FarTris=data.Triangles};cd.Box=cd.FarMesh.bounds;
                     cd.Far=Renderer(cd.FarMesh,"chunk "+c+" far");chunks.Add(cd);
                 }
@@ -98,7 +97,7 @@ namespace ChipArena.UnityConversion
                 float d=Mathf.Sqrt(c.Box.SqrDistance(e));int want=d<reach+(c.Shown==0?NativeMeridianDress.Hysteresis:0)?0:d<far?2:-1;
                 if(want==0&&c.NearMesh==null)
                 {
-                    if(c.Building==null&&building<2){building++;int idx=c.Index;var pl=chunkPlacements[idx];var qs=chunkQuads[idx];c.Building=Task.Run(()=>{var m=new NativeMeridianMesh();NativeMeridianDress.Combine(plan,idx,0,bank,modules,pl,qs,m);return m;});}
+                    if(c.Building==null&&building<2){building++;var u=units[c.Index];c.Building=Task.Run(()=>{var m=new NativeMeridianMesh();NativeMeridianDress.Combine(plan,u.Cell,0,bank,modules,u.Placements,u.Quads,m);return m;});}
                     if(c.Building!=null&&c.Building.IsCompleted)
                     {
                         building--;var task=c.Building;c.Building=null;

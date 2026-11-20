@@ -55,7 +55,14 @@ namespace ChipArena.UnityConversion
         /// facades' are a rotation with a stretch along the facade and up), the chunk it is combined into, the block and face it
         /// dresses (-1: none) and its face rectangle (along, up; for the checks), the floor in front of it, and whether it draws
         /// apart from the chunks each frame (a flickering lamp).</summary>
-        public sealed class Placement{public string Key;public readonly float[] M=new float[12];public int Chunk,Block=-1,Face=-1;public float U0,U1,V0,V1,Floor;public bool Dynamic,Hugs,Paint;}
+        public sealed class Placement{public string Key;public readonly float[] M=new float[12];public int Chunk,Block=-1,Face=-1,Layer;public float U0,U1,V0,V1,Floor;public bool Dynamic,Hugs,Paint;}
+        /// <summary>The layers a placement draws up (ChipArena/StageLit's, on top of a paint's own), kept few (the shader's offset
+        /// grows with each): pieces that meet in a plane are never on one layer, so they never fight there. The bays of a storey
+        /// butt (the bank trims each to its 2.5 m), so a facade needs two: the ground storey's 0 (its shopfronts' fascias stand
+        /// 18 cm over its top) and the upper storeys' 1. The cornices over them 2, the x-facing faces' 3 (two cornices meeting
+        /// in a re-entrant corner part); a fill's tiles alternate 0 and 1; what hangs on a wall (a lamp, a plate, a clock, a
+        /// siren) 4, over everything it hangs on.</summary>
+        public const int UpperLayers=1,CorniceLayers=2,MountLayers=4;
         /// <summary>A generated surface: a rectangle (origin, its two edges) on a collider's face, its finish (NativeMeridianSurfaces),
         /// its layer (the faces it lies on), the floor below it (the grime rises from it), its chunk and block.</summary>
         public struct Quad{public V3 O,U,V,N;public int Fin,Layer,Chunk,Block;public float Floor;}
@@ -73,6 +80,8 @@ namespace ChipArena.UnityConversion
             public readonly List<Lamp> Lamps=new List<Lamp>();
             /// <summary>The map blocks the art draws in place of (their greybox boxes are left out).</summary>
             public readonly HashSet<string> Covers=new HashSet<string>(StringComparer.Ordinal);
+            /// <summary>The blocks left to the landmarks (NativeMeridianLandmarks.FixedCovers): the dress draws nothing on them.</summary>
+            public readonly HashSet<string> Left=new HashSet<string>(StringComparer.Ordinal);
             /// <summary>Route lamp points that found no wall or span to hang from (dark gaps on the route; counted for the report).</summary>
             public int Unmounted;
             public int ChunkOf(float x,float z){int cx=Math.Max(0,Math.Min(Nx-1,(int)Math.Floor((x-MinX)/ChunkSize)));int cz=Math.Max(0,Math.Min(Nz-1,(int)Math.Floor((z-MinZ)/ChunkSize)));return cx+cz*Nx;}
@@ -187,15 +196,17 @@ namespace ChipArena.UnityConversion
                 for(int z=CZ(z0);z<=CZ(z1);z++)for(int x=CX(x0);x<=CX(x1);x++){var c=cells[x+z*nx];if(c==null)continue;foreach(int i in c)if(near.Add(i))nearList.Add(i);}
                 return nearList;
             }
-            /// <summary>Whether a block before `bi` (in the map's order) has its face `f` in the same plane over the point: two
-            /// overlapping coplanar faces are drawn once (by the first), so they never fight.</summary>
-            public bool Shared(float x,float y,float z,int f,int bi,Func<int,bool> drawn)
+            /// <summary>Whether a block before `bi` (in the map's order) that `drawn` names, or any block `always` names (a face the
+            /// greybox or the landmarks draw), has its face `f` in the same plane over the point: two overlapping coplanar faces are
+            /// drawn once, so they never fight.</summary>
+            public bool Shared(float x,float y,float z,int f,int bi,Func<int,bool> drawn,Func<int,bool> always=null)
             {
                 var c=cells[CX(x)+CZ(z)*nx];if(c==null)return false;int a=f>>1,side=f&1;int o0=bi*6;float plane=B[o0+(a==0?(side==0?1:0):a==1?(side==0?3:2):(side==0?5:4))];
                 // (the faces' order: 0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z: axis f / 2, the low side when f is odd)
                 foreach(int i in c)
                 {
-                    if(i>=bi||drawn!=null&&!drawn(i))continue;int o=i*6;float pl=B[o+(a==0?(side==0?1:0):a==1?(side==0?3:2):(side==0?5:4))];if(Math.Abs(pl-plane)>.01f)continue;
+                    if(i==bi)continue;
+                    if(!(always!=null&&always(i))&&(i>bi||drawn!=null&&!drawn(i)))continue;int o=i*6;float pl=B[o+(a==0?(side==0?1:0):a==1?(side==0?3:2):(side==0?5:4))];if(Math.Abs(pl-plane)>.01f)continue;
                     bool inX=a==0||x>B[o]-.001f&&x<B[o+1]+.001f,inY=a==1||y>B[o+2]-.001f&&y<B[o+3]+.001f,inZ=a==2||z>B[o+4]-.001f&&z<B[o+5]+.001f;
                     if(inX&&inY&&inZ)return true;
                 }

@@ -130,16 +130,25 @@ internal static class MeridianDressChecks
 
     /// <summary>zfight.py's input for a layout (--meridian-zfight LAYOUT DIR, CHIPARENA_MERIDIAN_BANK set): the combined chunks at
     /// LOD0 and LOD1 as a stage bank (static/&lt;chunk&gt;/0 and /2, cover/&lt;block&gt; for every covered block) and the walk's map.</summary>
-    public static void ZFightExport(int layout,string dir)
+    public static void ZFightExport(int layout,string dir,bool parts=false)
     {
         var bank=NativePackBank.Read(File.ReadAllBytes(Environment.GetEnvironmentVariable("CHIPARENA_MERIDIAN_BANK")));var modules=NativeMeridianDress.Modules(bank);
         var info=NativeCityLayout.Plans[layout];var walk=new NativeLayeredCityWalk(info);var plan=NativeMeridianDress.Build(InputOf(walk,info.Seed,77),modules.ContainsKey);
         NativeMeridianDress.ByChunk(plan,out var pl,out var qs);var mesh=new NativeMeridianMesh();Directory.CreateDirectory(dir);
         var meshes=new List<(string name,float[] p,float[] n,float[] uv0,float[] uv1,byte[] c,int[] solid,int[] glow,float[] lo,float[] hi)>();
-        for(int c=0;c<plan.Nx*plan.Nz;c++)foreach(int tier in new[]{0,2})
+        // parts: every placement and every surface its own mesh ("p<index>.<key>", "q<index>.<finish>.<block>"), so a report names
+        // the pieces that meet (a diagnosis; zfight's figures are over the combined chunks)
+        var units=new List<(string name,List<int> pl,List<int> qs)>();
+        if(parts)
         {
-            if(pl[c]==null&&qs[c]==null)continue;NativeMeridianDress.Combine(plan,c,tier,bank,modules,pl[c],qs[c],mesh);if(mesh.Vertices==0)continue;int n=mesh.Vertices;
-            meshes.Add(("static/"+c+"/"+tier,mesh.P.Take(n*3).ToArray(),mesh.N.Take(n*3).ToArray(),mesh.Uv0.Take(n*2).ToArray(),mesh.Uv1.Take(n*2).ToArray(),mesh.C.Take(n*4).ToArray(),mesh.Solid.ToArray(),mesh.Glow.ToArray(),
+            for(int i=0;i<plan.Placements.Count;i++)units.Add(("p"+i+"."+plan.Placements[i].Key+".b"+plan.Placements[i].Block,new List<int>{i},null));
+            for(int i=0;i<plan.Quads.Count;i++)units.Add(("q"+i+"."+plan.Quads[i].Fin+".b"+plan.Quads[i].Block,null,new List<int>{i}));
+        }
+        else{var drawn=NativeMeridianDress.DrawChunks(plan,bank,modules);for(int c=0;c<drawn.Count;c++)units.Add((c.ToString(),drawn[c].Placements,drawn[c].Quads));}
+        foreach(var u in units)foreach(int tier in new[]{0,2})
+        {
+            NativeMeridianDress.Combine(plan,0,tier,bank,modules,u.pl,u.qs,mesh);if(mesh.Vertices==0)continue;int n=mesh.Vertices;
+            meshes.Add(("static/"+u.name+"/"+tier,mesh.P.Take(n*3).ToArray(),mesh.N.Take(n*3).ToArray(),mesh.Uv0.Take(n*2).ToArray(),mesh.Uv1.Take(n*2).ToArray(),mesh.C.Take(n*4).ToArray(),mesh.Solid.ToArray(),mesh.Glow.ToArray(),
                 new[]{mesh.MinX,mesh.MinY,mesh.MinZ},new[]{mesh.MaxX,mesh.MaxY,mesh.MaxZ}));
         }
         using(var w=new BinaryWriter(File.Create(Path.Combine(dir,"meridian-"+layout+".bytes"))))
@@ -213,6 +222,8 @@ internal static class MeridianDressChecks
                     {
                         var d=p-n*.05f-q.O;float s=V3.Dot(d,q.U)/V3.Dot(q.U,q.U),t=V3.Dot(d,q.V)/V3.Dot(q.V,q.V);if(s>=-.01f&&s<=1.01f&&t>=-.01f&&t<=1.01f){hit=true;break;}
                     }
+                    // (a part of the face in the plane of a face the greybox or the landmarks draw is theirs)
+                    if(!hit&&solids.Shared(p.x-n.x*.05f,p.y,p.z-n.z*.05f,f,bi,_=>false,i=>!covered.Contains(map.blocks[i].id)))hit=true;
                     if(!hit){missed++;if(Environment.GetEnvironmentVariable("MERIDIAN_DEBUG")!=null&&missed%25==1)Console.WriteLine("bare "+blk.id+" "+role+" f"+f+" a="+a.ToString("0.0")+" y="+p.y.ToString("0.0")+" b="+blk.pos.y+"/"+blk.size.y);}
                 }
             }
@@ -233,6 +244,19 @@ internal static class MeridianDressChecks
         // every covered block is a dressed role, and the halls, court and landmarks (D2's) stay greybox
         foreach(var id in plan.Covers){var role=NativeMeridianDress.RoleOf(id,NativeMeridianDress.Lots(plan.Layout));Check(NativeMeridianDress.Dressed(role),name+": "+id+" covered");}
         Check(!plan.Covers.Any(id=>id.StartsWith("hall-",StringComparison.Ordinal)||id.StartsWith("court-",StringComparison.Ordinal)||id=="city-hall"||id=="city-hall-tower"),name+": D2's halls and court stay theirs");
+        // the landmarks' fixed covers (the exits' host lots, the court, the halls) are theirs: not covered, no module or surface on
+        // them, no lamp, plate or paint hung on or laid over them
+        var fixedCovers=NativeMeridianLandmarks.FixedCovers(plan.Layout,map);Check(fixedCovers.Count>0,name+": the landmarks name their blocks");
+        Check(fixedCovers.SetEquals(plan.Left),name+": the plan leaves exactly the landmarks' blocks");
+        foreach(var id in fixedCovers)Check(!plan.Covers.Contains(id),name+": "+id+" is the landmarks' (not covered by the dress)");
+        var leftIx=new HashSet<int>();for(int i=0;i<map.blocks.Length;i++)if(fixedCovers.Contains(map.blocks[i].id))leftIx.Add(i);
+        foreach(var p in plan.Placements)Check(p.Block<0||!leftIx.Contains(p.Block),name+": "+p.Key+" lies on the landmarks' "+(p.Block>=0?map.blocks[p.Block].id:""));
+        foreach(var q in plan.Quads)Check(q.Block<0||!leftIx.Contains(q.Block),name+": a surface lies on the landmarks' "+(q.Block>=0?map.blocks[q.Block].id:""));
+        foreach(var p in plan.Placements.Where(p=>p.Block<0))
+        {
+            var at=new V3(p.M[3],p.M[7],p.M[11]);
+            foreach(int i in leftIx){int o=i*6;if(at.x>B[o]-.02f&&at.x<B[o+1]+.02f&&at.y>B[o+2]-.02f&&at.y<B[o+3]+.02f&&at.z>B[o+4]-.02f&&at.z<B[o+5]+.02f)Check(false,name+": "+p.Key+" stands on the landmarks' "+map.blocks[i].id+FormattableString.Invariant($" at ({at.x:F2},{at.y:F2},{at.z:F2}) n ({p.M[2]:F1},{p.M[10]:F1}), box x {B[o]:F2}..{B[o+1]:F2} y {B[o+2]:F2}..{B[o+3]:F2} z {B[o+4]:F2}..{B[o+5]:F2}"));}
+        }
     }
 
     // The bank's side: the hugging modules within 0.25 m in and 6 cm out, the chunks' caps, the six views' triangles and draws.
@@ -253,13 +277,28 @@ internal static class MeridianDressChecks
                 }
             }
         }
-        NativeMeridianDress.ByChunk(plan,out var pl,out var qs);var mesh=new NativeMeridianMesh();int n=plan.Nx*plan.Nz;
-        var near=new int[n];var far=new int[n];var box=new (V3 lo,V3 hi)[n];int worst=0;
+        // the chunks as the drawer draws them (a cell too heavy for the caps cut into quarters): each at the caps or under, its
+        // counted triangles the combined mesh's
+        var units=NativeMeridianDress.DrawChunks(plan,bank,modules);var mesh=new NativeMeridianMesh();int n=units.Count;
+        var near=new int[n];var far=new int[n];var box=new (V3 lo,V3 hi)[n];int worst=0,worstFar=0;var cells=new Dictionary<int,int>();
         for(int c=0;c<n;c++)
         {
-            if(pl[c]==null&&qs[c]==null)continue;
-            NativeMeridianDress.Combine(plan,c,0,bank,modules,pl[c],qs[c],mesh);near[c]=mesh.Triangles;box[c]=(new V3(mesh.MinX,mesh.MinY,mesh.MinZ),new V3(mesh.MaxX,mesh.MaxY,mesh.MaxZ));
-            NativeMeridianDress.Combine(plan,c,2,bank,modules,pl[c],qs[c],mesh);far[c]=mesh.Triangles;worst=Math.Max(worst,near[c]);
+            var u=units[c];
+            NativeMeridianDress.Combine(plan,u.Cell,0,bank,modules,u.Placements,u.Quads,mesh);near[c]=mesh.Triangles;box[c]=(new V3(mesh.MinX,mesh.MinY,mesh.MinZ),new V3(mesh.MaxX,mesh.MaxY,mesh.MaxZ));
+            Check(near[c]==u.Fine,name+": a chunk's counted LOD0 triangles are its mesh's");
+            NativeMeridianDress.Combine(plan,u.Cell,2,bank,modules,u.Placements,u.Quads,mesh);far[c]=mesh.Triangles;Check(far[c]==u.Far,name+": a chunk's counted LOD1 triangles are its mesh's");
+            Check(near[c]<=NativeMeridianDress.FineCap,name+FormattableString.Invariant($": the chunk at ({u.X0:F0},{u.Z0:F0}) {u.Size:F0} m has {near[c]:N0} LOD0 triangles (cap {NativeMeridianDress.FineCap:N0})"));
+            Check(far[c]<=NativeMeridianDress.FarCap,name+FormattableString.Invariant($": the chunk at ({u.X0:F0},{u.Z0:F0}) {u.Size:F0} m has {far[c]:N0} LOD1 triangles (cap {NativeMeridianDress.FarCap:N0})"));
+            worst=Math.Max(worst,near[c]);worstFar=Math.Max(worstFar,far[c]);cells.TryGetValue(u.Cell,out int k);cells[u.Cell]=k+1;
+        }
+        int split=cells.Count(kv=>kv.Value>1);
+        if(Environment.GetEnvironmentVariable("MERIDIAN_DEBUG")!=null)
+        {
+            int wc=Array.IndexOf(near,worst);var byKey=new Dictionary<string,(int n,int t)>();var wu=units[wc];
+            foreach(int pi in wu.Placements??new List<int>()){NativeMeridianDress.Combine(plan,wu.Cell,0,bank,modules,new List<int>{pi},null,mesh);var k=plan.Placements[pi].Key;byKey.TryGetValue(k,out var e);byKey[k]=(e.n+1,e.t+mesh.Triangles);}
+            NativeMeridianDress.Combine(plan,wu.Cell,0,bank,modules,null,wu.Quads,mesh);
+            Console.WriteLine(name+": "+n+" chunks in "+cells.Count+" cells ("+split+" cut); LOD1 worst "+worstFar);
+            Console.WriteLine(name+FormattableString.Invariant($": heaviest chunk ({wu.X0:F0},{wu.Z0:F0}) {wu.Size:F0} m {worst}: surfaces {mesh.Triangles} ({wu.Quads?.Count??0}); ")+string.Join(", ",byKey.OrderByDescending(kv=>kv.Value.t).Take(14).Select(kv=>kv.Key+" "+kv.Value.n+"x="+kv.Value.t)));
         }
         // the six standard views (docs/MERIDIAN-B-WALK.md): the camp's pilot, each route 18 m short of its door, the overview
         var eyes=new List<V3>{new V3(1,6,-10)};
@@ -285,6 +324,6 @@ internal static class MeridianDressChecks
             Check(maxT<=(tier==NativeGraphicsTier.High?900000:330000)&&maxD<=(tier==NativeGraphicsTier.High?900:450),name+" "+tier+": the dress's worst view "+maxT+" triangles, "+maxD+" draws");
             text+=FormattableString.Invariant($"; {tier} worst view {maxT:N0} triangles, {maxD} draws");
         }
-        return text+FormattableString.Invariant($"; the heaviest LOD0 chunk {worst:N0}");
+        return text+FormattableString.Invariant($"; {n} chunks ({split} of {cells.Count} cells cut for the caps), the heaviest {worst:N0} triangles at LOD0, {worstFar:N0} at LOD1");
     }
 }
