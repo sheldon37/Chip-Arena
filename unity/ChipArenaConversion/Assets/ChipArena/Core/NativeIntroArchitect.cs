@@ -84,8 +84,10 @@ namespace ChipArena.UnityConversion
             float[] form=NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=HoverY;v[NativeEntranceKeys.Yaw]=f;v[NativeEntranceKeys.PlantL]=0;v[NativeEntranceKeys.PlantR]=0;
                 NativeEntranceKeys.Set(v,Hd,.48f,0,0);NativeEntranceKeys.Set(v,C,.1f,0,0);NativeEntranceKeys.Set(v,Sp,.04f,0,0);
                 NativeEntranceKeys.Set(v,LA,-.06f,0,.3f);NativeEntranceKeys.Set(v,RA,-.06f,0,-.3f);NativeEntranceKeys.Set(v,LE,-.28f,0,0);NativeEntranceKeys.Set(v,RE,-.24f,0,0);
-                NativeEntranceKeys.Set(v,LL,-.2f,0,.05f);NativeEntranceKeys.Set(v,LK,.42f,0,0);NativeEntranceKeys.Set(v,RL,.04f,0,-.05f);NativeEntranceKeys.Set(v,RK,.14f,0,0);
-                NativeEntranceKeys.Set(v,CapturedRig.LFoot,.5f,0,0);NativeEntranceKeys.Set(v,CapturedRig.RFoot,.42f,0,0);});
+                // (the left knee drawn well up and forward, its foot tucked back by the right shin; the right leg long, a touch back; both
+                // feet pointed: a hover, never a stand)
+                NativeEntranceKeys.Set(v,LL,-.5f,0,.07f);NativeEntranceKeys.Set(v,LK,.95f,0,0);NativeEntranceKeys.Set(v,RL,.08f,0,-.05f);NativeEntranceKeys.Set(v,RK,.2f,0,0);
+                NativeEntranceKeys.Set(v,CapturedRig.LFoot,.6f,0,0);NativeEntranceKeys.Set(v,CapturedRig.RFoot,.55f,0,0);});
             k.Key(0,form);k.Key(Draft,form);
             k.Key(Body-.06f,NativeEntranceKeys.With(form,v=>NativeEntranceKeys.Set(v,Hd,.52f,0,0)));
             // The body completes: the chest lifts, the arms are thrown a little out by its own pressure wave.
@@ -109,14 +111,17 @@ namespace ChipArena.UnityConversion
             k.Key(Inhale+.1f,form).J(Hd,-.06f).J(C,-.16f).J(Sp,-.04f).J(LA,-2.72f,0,.52f).J(RA,-2.72f,0,-.52f).J(LE,-.22f).J(RE,-.22f);
             k.Key(DipA,form).J(Hd,.0f).J(C,-.14f).J(Sp,-.04f).J(LA,-2.78f,0,.46f).J(RA,-2.78f,0,-.46f).J(LE,-.55f).J(RE,-.55f);
             k.Key(DipB+.06f,form).J(Hd,.06f).J(C,-.1f).J(Sp,-.03f).J(LA,-2.88f,0,.32f).J(RA,-2.88f,0,-.32f).J(LE,-1.2f).J(RE,-1.2f);
-            // THE DROP: the hands fling open into the V; the body sinks to its reign over the dais and hovers there (it never lands).
+            // THE DROP: the hands fling open into the V, the palms turned in and up to the sky (each arm turned 60 degrees about its own line
+            // from the plain Euler V, whose upper arms twisted 126 degrees past their range: the pose checks); the body sinks to its reign
+            // over the dais and hovers there (it never lands).
             float[] reign=NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=ReignY;v[NativeEntranceKeys.Yaw]=f;v[NativeEntranceKeys.PlantL]=0;v[NativeEntranceKeys.PlantR]=0;
                 NativeEntranceKeys.Set(v,Hd,-.1f,0,0);NativeEntranceKeys.Set(v,C,-.18f,0,0);NativeEntranceKeys.Set(v,Sp,-.03f,0,0);
-                NativeEntranceKeys.Set(v,LA,-2.5f,0,.85f);NativeEntranceKeys.Set(v,RA,-2.5f,0,-.85f);NativeEntranceKeys.Set(v,LE,-.1f,0,0);NativeEntranceKeys.Set(v,RE,-.1f,0,0);
-                NativeEntranceKeys.Set(v,LL,-.07f,0,.04f);NativeEntranceKeys.Set(v,LK,.18f,0,0);NativeEntranceKeys.Set(v,RL,.02f,0,-.04f);NativeEntranceKeys.Set(v,RK,.1f,0,0);
-                NativeEntranceKeys.Set(v,CapturedRig.LFoot,.42f,0,0);NativeEntranceKeys.Set(v,CapturedRig.RFoot,.36f,0,0);});
+                NativeEntranceKeys.Set(v,LA,-1.584f,-.608f,1.157f);NativeEntranceKeys.Set(v,RA,-1.584f,.608f,-1.157f);NativeEntranceKeys.Set(v,LE,-.1f,0,0);NativeEntranceKeys.Set(v,RE,-.1f,0,0);
+                // (the reign's hover: the arrival's legs eased, the left knee a little forward and bent, the right leg long, the feet pointed)
+                NativeEntranceKeys.Set(v,LL,-.24f,0,.05f);NativeEntranceKeys.Set(v,LK,.5f,0,0);NativeEntranceKeys.Set(v,RL,.05f,0,-.04f);NativeEntranceKeys.Set(v,RK,.14f,0,0);
+                NativeEntranceKeys.Set(v,CapturedRig.LFoot,.5f,0,0);NativeEntranceKeys.Set(v,CapturedRig.RFoot,.45f,0,0);});
             k.Key(Drop,reign).Root(0,HoverY-.04f,0,f).ImpactKey();
-            k.Key(Drop+.2f,reign).Root(0,ReignY+.05f,0,f).J(Hd,-.14f).J(C,-.22f).J(LA,-2.62f,0,.98f).J(RA,-2.62f,0,-.98f);
+            k.Key(Drop+.2f,reign).Root(0,ReignY+.05f,0,f).J(Hd,-.14f).J(C,-.22f).J(LA,-1.656f,-.502f,1.248f).J(RA,-1.656f,.502f,-1.248f);
             // The arms lower from the V out through the sides into an open pose and hold it to the end, the light pouring from the
             // hands into the seams; the palms come up to the ceiling as the arms open and stay there, steady (owner 2026-11-20: the hands
             // from 13 to 15 s read as random rotation). Each upper arm turned about its own line (no change to where it points) so its
