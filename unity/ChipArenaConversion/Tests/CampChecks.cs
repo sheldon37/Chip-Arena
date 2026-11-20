@@ -307,14 +307,16 @@ internal static class CampChecks
         long fineTris = 0;
         foreach (var p in l.Pieces)
         {
-            if (p.Kind == NativeCamp.Kind.WarBoard) continue;
             p.Bounds(out var lo, out var hi); bool baseOk = p.HasBase; V3 blo = default, bhi = default; if (baseOk) p.BaseBounds(out blo, out bhi);
-            foreach (var v in Verts(p.Key, p.Place))
+            // the war board is banked once per plan, every one of them held to the board's envelope
+            var keys = p.Kind == NativeCamp.Kind.WarBoard ? Enumerable.Range(0, 5).Select(i => "camp/board/war-" + i).ToArray() : new[] { p.Key };
+            foreach (var key in keys)
+            foreach (var v in Verts(key, p.Place))
             {
                 Check(v.x >= lo.x - .02f && v.x <= hi.x + .02f && v.y >= lo.y - .02f && v.y <= hi.y + .02f && v.z >= lo.z - .02f && v.z <= hi.z + .02f, p.Key + "'s mesh inside its envelope at " + Fmt(v));
                 if (v.y < NativeCamp.PocketTop - .01f) Check(baseOk && v.x >= blo.x - .015f && v.x <= bhi.x + .015f && v.z >= blo.z - .015f && v.z <= bhi.z + .015f, p.Key + "'s mesh below 3.4 m inside its base at " + Fmt(v));
             }
-            fineTris += Tris(bank, p.Key + "/0");
+            fineTris += Tris(bank, keys[0] + "/0");
         }
         for (int plan = 0; plan < 5; plan++) Check(bank.Find("camp/board/war-" + plan + "/0") != null, "the war board painted for plan " + plan);
         foreach (var fam in new[] { "level0", "poolrooms", "wardzero", "station", "ironworks" }) Check(bank.Find("camp/board/poster-" + fam + "/0") != null, "the " + fam + " poster");
@@ -366,6 +368,21 @@ internal static class CampChecks
         w.Append("],\"preview\":[");
         var shown = NativeCamp.Preview(1964354793u, 5);
         for (int i = 0; i < shown.Count; i++) { var s = shown[i]; if (i > 0) w.Append(','); w.Append("{\"key\":").Append(Str(s.Key)).Append(",\"at\":").Append(Vec(s.At)).Append(",\"yaw\":").Append(F(s.Yaw)).Append('}'); }
+        // the landing field's four worst draws over 2,000 seeds (the pods closest to a block), for the clearance diagram
+        var worst = new List<(float gap, uint seed)>();
+        for (uint i = 0; i < 2000; i++)
+        {
+            uint seed = unchecked(i * 2654435761u); var spots = NativeExpeditionHubPlan.LandingField(seed); float gap = float.MaxValue;
+            for (int k = 0; k < 4; k++) foreach (var r in NativeCamp.Table) if (r.Y0 < 3) gap = Math.Min(gap, Gap2(spots[k].x, spots[k].z, r) - NativeExpeditionHubPlan.HullRadius);
+            worst.Add((gap, seed));
+        }
+        w.Append("],\"fields\":[");
+        int wi = 0;
+        foreach (var (gap, seed) in worst.OrderBy(x => x.gap).Take(4))
+        {
+            if (wi++ > 0) w.Append(','); var spots = NativeExpeditionHubPlan.LandingField(seed);
+            w.Append("{\"seed\":").Append(seed).Append(",\"gap\":").Append(F(gap)).Append(",\"pods\":[").Append(string.Join(",", spots.Take(4).Select(q => "[" + F(q.x) + "," + F(q.z) + "," + F(q.yaw) + "]"))).Append("]}");
+        }
         w.Append("],\"plans\":[");
         for (int k = 0; k < NativeCityLayout.Plans.Count; k++)
         {

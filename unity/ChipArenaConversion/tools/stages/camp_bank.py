@@ -235,6 +235,52 @@ def preview(plan, built, out_dir):
         sk.preview(row, [('figures', (0, 1.2, 9), (0, .9, 0), 55)], out_dir, size=(1600, 600))
 
 
+def clearance(plan, out_dir):
+    """The table's clearances from above for the landing field's four worst draws (the review's diagram; the walk's K overlay draws
+    the same boxes): A1's blocks amber, the gates' leaf travel and track red, the 4 m lanes green, the ring's walkway cyan, the pods
+    white with their skid aprons yellow and the ExitReach 2.4 m capsule blue."""
+    def fin(name, hexc):
+        return sk.fin('camp-diagram-' + name, hexc, sk.DETAIL_NONE, smooth=.1, dirt=0)
+    inner = plan['inner']
+    base = sk.Geo()
+    sk.box(base, -27, 27, -.05, 0, -27, 27, fin('floor', 0x2A2C30))
+    for s_, (n, r) in enumerate((((0, 0, 1), (1, 0, 0)), ((1, 0, 0), (0, 0, -1)), ((0, 0, -1), (-1, 0, 0)), ((-1, 0, 0), (0, 0, 1)))):
+        for sign in (-1, 1):
+            a0, a1 = sorted((sign * 5.0, sign * 25.0))
+            c = [n[i] * (inner + .1) + r[i] * (a0 + a1) / 2 for i in range(3)]
+            half = [abs(n[i]) * .1 + abs(r[i]) * (a1 - a0) / 2 for i in range(3)]
+            sk.box(base, c[0] - half[0], c[0] + half[0], 0, 3.2, c[2] - half[2], c[2] + half[2], fin('fence', 0x8A8C90))
+            p0 = [n[i] * (inner - .25) + r[i] * sign * 5.0 for i in range(3)]
+            p1 = [n[i] * inner + r[i] * sign * 10.3 for i in range(3)]
+            sk.box(base, min(p0[0], p1[0]), max(p0[0], p1[0]), 0, 3.4, min(p0[2], p1[2]), max(p0[2], p1[2]), fin('pocket', 0xE0302A))
+        q0 = [n[i] * 9 + r[i] * -2 for i in range(3)]
+        q1 = [n[i] * inner + r[i] * 2 for i in range(3)]
+        sk.box(base, min(q0[0], q1[0]), max(q0[0], q1[0]), 0, .02, min(q0[2], q1[2]), max(q0[2], q1[2]), fin('lane', 0x36C060))
+    for (x0, x1, z0, z1) in ((-7.1, 7.1, 4.6, 7.1), (-7.1, 7.1, -7.1, -4.6), (4.6, 7.1, -4.6, 4.6), (-7.1, -4.6, -4.6, 4.6)):
+        sk.box(base, x0, x1, 0, .015, z0, z1, fin('walk', 0x34B2D0))
+    for row in plan['table']:
+        lo, hi = row['min'], row['max']
+        sk.box(base, lo[0], hi[0], lo[1], hi[1], lo[2], hi[2], fin('block', 0xFFB040))
+    for (x, z) in ((13.5, 13.5), (-13.5, -13.5)):
+        sk.box(base, x - .65, x + .65, 0, 2.2, z - .65, z + .65, fin('machine', 0xC07A20))
+    sk.box(base, -13.5 - 2.1, -13.5 + 2.1, 0, 3.5, 13.5 - 2.1, 13.5 + 2.1, fin('revive', 0xB06A30))
+    for k, field in enumerate(plan.get('fields', [])):
+        g = sk.Geo()
+        g.extend(base)
+        for (x, z, yaw) in field['pods']:
+            a = math.radians(yaw)
+            fx, fz = math.sin(a), math.cos(a)
+            sk.lathe(g, [(1.17, 0.0), (1.17, 3.0)], (x, 0, z), fin('pod', 0xF1F5F9), 8, cap1=True)
+            bx_, bz_ = x - fx * 2.5, z - fz * 2.5
+            for t in range(6):
+                cx, cz = x - fx * 2.5 * t / 5, z - fz * 2.5 * t / 5
+                sk.box(g, cx - 1.17, cx + 1.17, 0, .03, cz - 1.17, cz + 1.17, fin('apron', 0xC8B25A))
+            cx, cz = x + fx * 2.4, z + fz * 2.4
+            sk.box(g, cx - .42, cx + .42, 0, 1.7, cz - .42, cz + .42, fin('capsule', 0x70B5FF))
+        sk.preview([(g, sk.Bake(g))], [('clearance-%d' % k, (0.0, 120.0, -.5), (0.0, 0.0, 0.0), 25)], out_dir, size=(1000, 1000))
+        print('clearance diagram %d: seed %s, nearest pod %.2f m from a block' % (k, field['seed'], field['gap']))
+
+
 def main():
     plan = json.load(open(ARGS['plan']))
     only = ARGS['only'].split(',') if ARGS['only'] else None
@@ -249,6 +295,7 @@ def main():
         json.dump(report, fh, indent=1)
     if ARGS.get('preview'):
         preview(plan, built, ARGS['preview'])
+        clearance(plan, ARGS['preview'])
     print('camp bank', path, os.path.getsize(path), 'bytes;', len(bad), 'art rule failures')
 
 

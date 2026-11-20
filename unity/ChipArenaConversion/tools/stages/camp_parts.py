@@ -42,8 +42,8 @@ def sail_mast(T):
     """A scaffold tube clamped to the inner face (from the floor to 4.8 m), a small caged lamp on an arm at 4.3 m, the sail's eye."""
     f = F()
     g = Geo()
-    bx(g, T, -.09, .09, 0.0, .012, -.14, 0.0, f['clamp'], bevel=0, cell=0)
-    rod(g, (0, .012, -.07), (0, 4.8, -.07), .036, f['scaffold'], 8)
+    bx(g, T, -.09, .09, .004, .024, -.14, 0.0, f['clamp'], bevel=0, cell=0)
+    rod(g, (0, .024, -.07), (0, 4.8, -.07), .036, f['scaffold'], 8)
     for y in (1.0, 2.2, 3.0):
         bx(g, T, -.05, .05, y - .04, y + .04, -.12, 0.0, f['clamp'], bevel=.006, cell=0)
         rod(g, (-.05, y, -.07), (.05, y, -.07), .045, f['clamp'], 6)
@@ -129,7 +129,7 @@ def fire_drum(T):
             na = (math.cos((a0 + a1) / 2), 0, -math.sin((a0 + a1) / 2))
             g.face((P(a0, y - .015, rr), P(a1, y - .015, rr), P(a1, y + .015, rr), P(a0, y + .015, rr)), f['drum-char'] if y > .4 else f['drum'], normal=na)
     # the base and the brackets to the fence
-    g.face([P(PI * i / n, .01, r - .005) for i in range(n + 1)], f['drum-char'], normal=(0, 1, 0))
+    g.face([P(PI * i / n, .025, r - .005) for i in range(n + 1)], f['drum-char'], normal=(0, 1, 0))
     for sx in (-1, 1):
         bx(g, T, sx * .2 - .025, sx * .2 + .025, .55, .62, -.03, 0.0, f['clamp'], bevel=0, cell=0)
     # coals and embers: a glowing bed at the mouth, punched holes low on the drum
