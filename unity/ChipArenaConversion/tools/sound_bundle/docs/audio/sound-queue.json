@@ -332,7 +332,35 @@
       "maxSeconds": 5.3
     },
     {
-      "id": "intros-v2-2026-11-20-v1",
+      "id": "intros-v2-2026-11-20-v1a",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.cloudbreak.wind",
+        "intro2.cloudbreak.flip",
+        "intro2.cloudbreak.cool",
+        "intro2.cloudbreak.sun",
+        "intro2.cloudbreak.puff",
+        "intro2.whiteout.rise",
+        "intro2.whiteout.calm",
+        "intro2.slipstream.stop",
+        "intro2.slipstream.chime",
+        "intro2.slipstream.board",
+        "intro2.threshold.rumble",
+        "intro2.threshold.step",
+        "intro2.flashbulb.bulbs",
+        "intro2.flashbulb.doors",
+        "intro2.flashbulb.confetti"
+      ],
+      "variants": [
+        1
+      ],
+      "maxRequests": 15,
+      "maxSeconds": 22.0
+    },
+    {
+      "id": "intros-v2-2026-11-20-v1b",
       "approved": true,
       "manifest": "docs/audio/sound-requests-intros.json",
       "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
@@ -354,26 +382,19 @@
         "intro2.architect.lock",
         "intro2.architect.forge",
         "intro2.architect.settle",
-        "intro2.cloudbreak.wind",
         "intro2.cloudbreak.boom",
         "intro2.cloudbreak.fall",
-        "intro2.cloudbreak.flip",
         "intro2.cloudbreak.ignite",
         "intro2.cloudbreak.thrust",
         "intro2.cloudbreak.touch",
         "intro2.cloudbreak.gust",
-        "intro2.cloudbreak.cool",
-        "intro2.cloudbreak.sun",
         "intro2.cloudbreak.name",
-        "intro2.cloudbreak.puff",
         "intro2.whiteout.storm",
         "intro2.whiteout.visor",
         "intro2.whiteout.heat",
         "intro2.whiteout.crack",
         "intro2.whiteout.steam",
-        "intro2.whiteout.rise",
         "intro2.whiteout.pulse",
-        "intro2.whiteout.calm",
         "intro2.whiteout.name",
         "intro2.slipstream.rush",
         "intro2.slipstream.burst",
@@ -381,35 +402,41 @@
         "intro2.slipstream.leap",
         "intro2.slipstream.slide",
         "intro2.slipstream.pass",
-        "intro2.slipstream.stop",
-        "intro2.slipstream.chime",
         "intro2.slipstream.name",
-        "intro2.slipstream.board",
-        "intro2.threshold.rumble",
-        "intro2.threshold.crack",
         "intro2.threshold.charge",
         "intro2.threshold.split",
         "intro2.threshold.through",
-        "intro2.threshold.step",
         "intro2.threshold.seal",
         "intro2.threshold.name",
         "intro2.flashbulb.crowd",
-        "intro2.flashbulb.bulbs",
-        "intro2.flashbulb.doors",
         "intro2.flashbulb.cheer",
         "intro2.flashbulb.photo",
         "intro2.flashbulb.burst",
-        "intro2.flashbulb.confetti",
         "intro2.flashbulb.name",
         "intro2.flashbulb.shutter"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "maxRequests": 98,
+      "maxSeconds": 154.4
+    },
+    {
+      "id": "intros-v2-2026-11-20-v1c",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.threshold.crack"
       ],
       "variants": [
         1,
         2,
         3
       ],
-      "maxRequests": 116,
-      "maxSeconds": 179.45
+      "maxRequests": 3,
+      "maxSeconds": 3.0
     }
   ]
 }
