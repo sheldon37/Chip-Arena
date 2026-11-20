@@ -13,7 +13,7 @@ change. Without the city bank the walk draws its greybox exactly as before.
 | The planner | `Core/NativeMeridianDress*.cs` | Pure and deterministic per layout (the run seed moves only which lamps are dead or flicker). Every block role to modules and generated surfaces; the covered blocks; the lamps; the marks. |
 | The drawer | `Runtime/NativeMeridianDressDraw.cs` | Combines into 32 m chunks (`NativeMeridianDress.DrawChunks`: a cell over the bible's caps, 60,000 triangles at LOD0 or 7,000 at LOD1, is cut in quarters by each piece's place until every part is under them): every chunk's LOD1 at load, LOD0 on a worker within 38 m (High) or 24 m (Balanced), Low draws LOD1 only; chunks past the fog's end plus 25 m are left out. The night's light. |
 | The walk hook | `Runtime/NativeMeridianDressWalk.cs` | One call in `OpenCityWalk` and one in `CloseCityWalk`. |
-| The greybox | `Runtime/NativeArenaDressing.cs` | Leaves out each walk block the dress drew this frame (`NativeMeridianDressDraw.Hides`). |
+| The greybox | `Runtime/NativeArenaDressing.cs` | Leaves out each block the dress drew this frame (`NativeMeridianDressDraw.Hides`) on the maps `NativeMeridianDress.HidesGreybox` names: the walk's five layouts and the live run's generated map (`expedition-generated-city`, since PR #432 one deal's street plan under this dress). Drawn both ways, the greybox's face and the dress's surface lay in one plane (the live hub's z-fighting, 2026-11-20; `HubZFightChecks`). |
 | The night | `MapLooks.json` `expedition-night`, written by `docs/arenas/scripts/expedition_city.py --maplooks`; `NativeMeridianDress.LookTable`'s one row, applied by the walk's hook | The walk's five maps draw in the night once the dress (and its lamps) is made; without the bank the greybox keeps the town's dusk. The live expedition's map keeps its look. |
 
 ## The rules it keeps
@@ -78,14 +78,20 @@ change. Without the city bank the walk draws its greybox exactly as before.
   `terrace-`, `lot` ids in the sheet, `-tread-`, `fire-escape-*-landing`, `street-rail-`, `-parapet`, `cordon-`, `arcade-`,
   `viaduct-`, `rake-`/`train-car-`, the lids and bridges by name) and the routes' polylines, widths and kinds.
 - Add the live map's id to `NativeMeridianDress.LookTable` and read it where the live map is lit (W1: `NativeLighting.Look`
-  checks the table before `map.look`; WardZeroChecks:265 and WardLightingChecks:256 pin that line), and the arena dressing's
-  hide line beside its `surveyBlocks` test for the live map.
+  checks the table before `map.look`; WardZeroChecks:265 and WardLightingChecks:256 pin that line). (The live map sets
+  `expedition-night` itself since PR #432. The arena dressing's hide line for the live map is done: `HidesGreybox`, 2026-11-20.)
 - Rules this dress needs from you: `lamp-` prop blocks (0.3 m) at the sheet's lamp points that have no wall (59-68 of about
   100 per layout), `shelter-`, `barrier-` and `clock-` blocks for the free-standing furniture, rail blocks on the fire escapes'
   open sides and the stairs' drops, parapet blocks on walkable roofs, and ramp wedges under the lots marked `pitched` (today
   every lot is a flat box, so every roof is drawn flat and honest).
 
 ## Checks
+
+`HubZFightChecks` (`--hub-zfight`, in the full suite): each street plan's live deal built as the station builds it, the dress
+planned as the live run plans it, and everything drawn in the hub (64 m square at the camp) gathered: the greybox boxes the arena
+dressing still draws (with their lifts), the dress's surfaces (with `CHIPARENA_MERIDIAN_BANK`, its modules) and the gates. No two
+same-facing faces may share a plane there (4 mm; floors 30 mm; two greybox faces 2 mm, their lifts' step) unless StageLit's
+layers part them. `--hub-zfight-probe` lists the hub's blocks and every pair as shared drew it and as the branch draws it.
 
 `MeridianDressChecks` (`--meridian-dress`, in the full suite): the roles against the specs, the sheet, determinism, the theme
 hook, the hugging rule, modules on their faces' planes, every seen face drawn, the route corridors' keep-out, the lamp rule, the
