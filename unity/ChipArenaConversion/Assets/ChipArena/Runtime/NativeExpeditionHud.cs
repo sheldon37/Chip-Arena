@@ -47,7 +47,10 @@ namespace ChipArena.UnityConversion
             {
                 case ExpeditionTone.Muted:return C.Muted(a);case ExpeditionTone.Cyan:return C.Cyan(a);case ExpeditionTone.CyanSoft:return C.CyanSoft(a);
                 case ExpeditionTone.Magenta:return C.Magenta(a);case ExpeditionTone.Warn:return C.Warn(a);case ExpeditionTone.Good:return C.Good(a);
-                case ExpeditionTone.Danger:return C.Danger(a);default:return C.Ink(a);
+                case ExpeditionTone.Danger:return C.Danger(a);
+                // The caches' tiers in their own colours (R9: RARE CACHE in the tier colour; Core NativeCacheTiers.Hex).
+                case ExpeditionTone.CacheStandard:case ExpeditionTone.CacheRare:case ExpeditionTone.CacheEpic:case ExpeditionTone.CacheLegendary:return U.Hex(NativeCacheTiers.Hex(NativeCacheTiers.OfTone(t)),a);
+                default:return C.Ink(a);
             }
         }
 
@@ -440,16 +443,19 @@ namespace ChipArena.UnityConversion
         // ---- Chip caches -------------------------------------------------------------------------------------------------------
         /// <summary>The scene's chip caches before purchase: price, stock generation, cooldown against the clock, and why buying
         /// is not a control here (the scene's interaction at the cache).</summary>
+        private static readonly System.Collections.Generic.List<P.CacheRow> cacheRows=new System.Collections.Generic.List<P.CacheRow>(8);
         public static void Caches(Rect r,ExpeditionView v,Controls c,float a=1)
         {U.BeginBand(r);try{
             H.Panel(r,a,C.Warn());float y=Header(r,"CHIP CACHES · THE BUYER OWNS THE CHIP","Caches",C.Ink(),a);
-            var rows=P.Caches(v);if(rows.Length==0){U.Text(Inner(r,y,18),"No chip caches in this world yet.",12,C.Muted(a),TextAnchor.MiddleLeft);return;}
-            foreach(var row in rows)
+            // W6's J panel fix: each cache by its tier (in its colour), its state tag, what it holds or why not; no raw id (the stock
+            // generation is the authority's key); every word cached (P.Caches into a reused list: no allocation per frame).
+            P.Caches(v,cacheRows);if(cacheRows.Count==0){U.Text(Inner(r,y,18),"No chip caches in this world yet.",12,C.Muted(a),TextAnchor.MiddleLeft);return;}
+            foreach(var row in cacheRows)
             {
-                if(y+40>r.yMax-38)break;var line=Inner(r,y,36);CacheGlyph(new Rect(line.x,line.y+6,22,22),Tone(row.tone),row.restocking?.5f*a:a);
-                U.Text(new Rect(line.x+32,line.y,line.width-32,18),row.stock,11,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
+                if(y+40>r.yMax-38)break;var line=Inner(r,y,36);CacheGlyph(new Rect(line.x,line.y+6,22,22),Tone(row.titleTone),row.restocking?.5f*a:a);
+                U.Text(new Rect(line.x+32,line.y,line.width-32,18),row.title,11,Tone(row.titleTone,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
                 StateTag(line.xMax,line.y,row.state,row.tone,a);
-                U.Text(new Rect(line.x+32,line.y+18,line.width-32,16),row.detail,11,C.Muted(a),TextAnchor.MiddleLeft);y+=40;
+                U.Text(new Rect(line.x+32,line.y+18,line.width-32,16),row.detail,11,Tone(row.detailTone,a),TextAnchor.MiddleLeft,mono:true);y+=40;
             }
             Lines(r.x+18,r.yMax-36,r.width-36,P.NoPurchase,10,C.Muted(a),2);
         }finally{U.EndBand();}}
@@ -503,7 +509,7 @@ namespace ChipArena.UnityConversion
             float y=p.kind==ExpeditionPieceKind.Pickup?label.y+g/2+4:label.y-g/2-6-block,w=Mathf.Max(220,g*4);var shade=C.Void(.85f*a);float la=p.labelAtAnchor?a:alpha;
             U.Text(new Rect(label.x-w/2,y,w,size*1.5f),p.label,size,Tone(p.tone,la),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f,shadow:shade);y+=size*1.4f;
             if(detail){U.Text(new Rect(label.x-w/2,y,w,size*1.4f),p.detail,size*.82f,C.Ink(la),TextAnchor.MiddleCenter,mono:true,shadow:shade);y+=size*1.25f;}
-            if(extra)U.Text(new Rect(label.x-w/2,y,w,size*1.3f),p.extra,size*.76f,C.Muted(la),TextAnchor.MiddleCenter,mono:true,shadow:shade);
+            if(extra)U.Text(new Rect(label.x-w/2,y,w,size*1.3f),p.extra,size*.76f,p.extraAlert?C.Danger(la):C.Muted(la),TextAnchor.MiddleCenter,bold:p.extraAlert,mono:true,shadow:shade);
         }
 
         // ---- Host transfer ---------------------------------------------------------------------------------------------------

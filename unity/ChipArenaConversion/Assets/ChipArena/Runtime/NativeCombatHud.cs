@@ -186,7 +186,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots){if(!p.Seat.connected||(prefs.firstPerson||presentation.FirstPerson)&&p==arena.ViewPilot||ChooserFramed&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true||NativeTechniques.Under(NativeTechniques.Source?.Of(p.Seat.id),arena.Time)||arena.ViewPilot!=null&&p!=arena.ViewPilot&&arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)||presentation.BladeHidesHud(p.Seat.id)||presentation.SpawnHidesHud(p.Seat.id))continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true,p==arena.Local?p:null);}
             TechniqueMarkers(scale,height);
             // PvE chip selection: the "SELECTING CHIP" tag over the names (NativeChipSelectHud.cs).
-            ChipSelectTags(scale,height);PodUsePrompt(width,height);
+            ChipSelectTags(scale,height);PodUsePrompt(width,height);CacheHud(width,height);
             // DEV: the DEV tags over revealed pilots (everyone) and the DEV panel's read-only overlays (NativeDevOverlays.cs).
             DevWorld(scale,height);
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false,null);

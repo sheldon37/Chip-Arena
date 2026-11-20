@@ -33,6 +33,10 @@ namespace ChipArena.UnityConversion
         public int group;public bool labelAtAnchor, quiet;public float joinRadius,joinProgress;
         /// <summary>A join circle's door piece while the join pads draw it (NativeExpeditionJoinScene): no geometry, no label here.</summary>
         public bool joinPad;
+        /// <summary>A cache: its tier (NativeCacheTiers.Of, standard until A2's field); its extra line is an alert (the wallet's
+        /// shortfall, drawn red); the hologram's lid angle (degrees about its back edge) and flare (0..) while it opens, which
+        /// the opening's clock sets after Build (NativeCacheClock.Stamp); a steel locker stands for it (no hologram crate).</summary>
+        public NativeCacheTier tier;public bool extraAlert, locker;public float lid, flare;
     }
 
     /// <summary>The geometry sink of the world pieces (the runtime fills reused mesh lists; checks count or rasterise).</summary>
@@ -62,6 +66,8 @@ namespace ChipArena.UnityConversion
         public string Pair(string prefix,int a,int b,string suffix=null)
         {var k=(prefix,a,b,suffix);if(!pairs.TryGetValue(k,out var s)){Bound(pairs);s=pairs[k]=prefix+a.ToString(CultureInfo.InvariantCulture)+" / "+b.ToString(CultureInfo.InvariantCulture)+suffix;}return s;}
         public string Money(int amount){var k=("$",amount,(string)null);if(!ints.TryGetValue(k,out var s)){Bound(ints);s=ints[k]=NativeExpeditionPresentation.Money(amount);}return s;}
+        /// <summary>A countdown in minutes and seconds after a prefix: "RESTOCKS IN " and 42 give "RESTOCKS IN 0:42".</summary>
+        public string Clock(string prefix,int seconds){var k=(prefix,seconds,":");if(!ints.TryGetValue(k,out var s)){Bound(ints);s=ints[k]=prefix+NativeCacheText.Clock(seconds);}return s;}
     }
 
     /// <summary>
@@ -241,19 +247,20 @@ namespace ChipArena.UnityConversion
         }
         private static bool Has(string s)=>!string.IsNullOrEmpty(s);
 
-        // ---- Chip caches: the scene's offer (generation, price, cooldown against elapsed), shown before any purchase -----------
+        // ---- Chip caches: the scene's offer (tier, price, cooldown against elapsed), shown before any purchase ------------------
+        // R9's words (NativeCacheText): RARE CACHE in the tier colour, $175 · 3 CHIPS · KEEP 1, $75 SHORT in red, RESTOCKS IN 0:42.
+        // No raw id: the stock generation is the authority's key, never a word for the player (the J panel says the same).
         private void CachePiece(ExpeditionView v,ExpeditionWorldAnchor a)
         {
             if(!caches.TryGetValue(a.id,out int ci))return;var o=v.chests[ci];
-            var p=At(a,ExpeditionPieceKind.Chest,ExpeditionPieceLook.Chest,o.id);
-            string stock=Labels.Join("STOCK ",Labels.Who(o.generation));
-            if(Restocking(o,v.elapsed)){p.label="RESTOCKING";p.detail=Labels.Int("",NativeExpeditionPresentation.Left(o.cooldown,v.elapsed),"s");p.extra=stock;p.tone=ExpeditionTone.Muted;p.settled=true;}
-            else if(o.sold&&!Bought(v,o)){p.label="SOLD";p.detail="WAITING FOR RESTOCK";p.extra=stock;p.tone=ExpeditionTone.Muted;p.settled=true;}
-            else if(Bought(v,o)){p.label="BOUGHT · YOURS";p.detail=Labels.Money(o.price);p.extra=stock;p.tone=ExpeditionTone.Good;p.mine=true;p.settled=true;}
+            var p=At(a,ExpeditionPieceKind.Chest,ExpeditionPieceLook.Chest,o.id);var tier=NativeCacheTiers.Of(o);p.tier=tier;string title=NativeCacheTiers.Title(tier);
+            if(Restocking(o,v.elapsed)){p.label=NativeCacheText.Restocking(Labels,NativeExpeditionPresentation.Left(o.cooldown,v.elapsed));p.detail=title;p.tone=ExpeditionTone.Muted;p.settled=true;}
+            else if(o.sold&&!Bought(v,o)){p.label=NativeCacheText.Sold;p.detail=title;p.tone=ExpeditionTone.Muted;p.settled=true;}
+            else if(Bought(v,o)){p.label="BOUGHT · YOURS";p.detail=title;p.tone=ExpeditionTone.Good;p.mine=true;p.settled=true;}
             else
             {
-                p.label=Labels.Money(o.price);p.detail=Labels.Join("CHIP CACHE · ",stock);p.tone=ExpeditionTone.Warn;p.actionable=true;
-                if(NativeExpeditionPresentation.Has(v.mine.account)&&v.mine.wallet<o.price)p.extra=Labels.Join(Labels.Money(o.price-v.mine.wallet)," SHORT");
+                p.label=title;p.detail=NativeCacheText.Detail(Labels,o.price);p.tone=NativeCacheTiers.Tone(tier);p.actionable=true;
+                if(NativeExpeditionPresentation.Has(v.mine.account)&&v.mine.wallet<o.price){p.extra=NativeCacheText.Short(Labels,o.price-v.mine.wallet);p.extraAlert=true;}
             }
             Pieces.Add(p);
         }
@@ -317,8 +324,35 @@ namespace ChipArena.UnityConversion
                 case ExpeditionPieceLook.Machine:
                     Box(sink,p.x,p.y+.55f,p.z,.32f,.55f,.32f,0,p.tone,.32f,fade);Box(sink,p.x,p.y+1.18f,p.z,.4f,.06f,.4f,spin,p.tone,.8f,fade);break;
                 case ExpeditionPieceLook.Chest:
-                    Box(sink,p.x,p.y+.26f,p.z,.36f,.24f,.26f,0,p.tone,.4f,fade);Box(sink,p.x,p.y+.53f,p.z,.38f,.04f,.28f,0,p.tone,.9f,fade);break;
+                    // A steel locker stands for it (A2's block): the locker is the cache, no hologram crate (its column stays).
+                    if(p.locker)break;
+                    // The crate, turned by the anchor's yaw; while it opens its lid flares up about its back edge (the hologram's
+                    // opening: NativeCacheOpenFx's lid angle, its flare lifting the crate to full light). Dimmer when you are short.
+                    float fl=p.flare<0?0:p.flare>1?1:p.flare,dim=p.extraAlert?.55f:1,a0=(fade+(1-fade)*fl)*dim;
+                    float crateYaw=-(p.yaw+180)*(float)(Math.PI/180);
+                    Box(sink,p.x,p.y+.26f,p.z,.36f,.24f,.26f,crateYaw,p.tone,.4f+.6f*fl,a0);
+                    CrateLid(sink,p.x,p.y,p.z,p.yaw,p.lid,p.tone,.9f+.1f*fl,a0);break;
             }
+        }
+        /// <summary>The hologram crate's lid (half extents .38 x .04 x .28 over its .49 m rim), lifted `lid` degrees about its back
+        /// edge (the locker frame: front toward -z, the hinge at the back), then turned by the anchor's yaw (degrees, 0 faces +Z).</summary>
+        public static void CrateLid(IExpeditionWorldSink sink,float cx,float cy,float cz,float yawDegrees,float lidDegrees,ExpeditionTone tone,float level,float alpha)
+        {
+            const float hx=.38f,hy=.04f,hz=.28f,hingeY=.49f,hingeZ=.28f;double th=lidDegrees*Math.PI/180;float c=(float)Math.Cos(th),s=(float)Math.Sin(th);
+            Span<float> px=stackalloc float[8],py=stackalloc float[8],pz=stackalloc float[8];
+            for(int k=0;k<8;k++)
+            {
+                float lx=(k&1)!=0?hx:-hx,ly=.53f+((k&2)!=0?hy:-hy),lz=(k&4)!=0?hz:-hz,ry=ly-hingeY,rz=lz-hingeZ;
+                float y=hingeY+ry*c-rz*s,z=hingeZ+ry*s+rz*c;NativeCacheOpenFx.ToWorld(yawDegrees,lx,z,out float wx,out float wz);px[k]=cx+wx;py[k]=cy+y;pz[k]=cz+wz;
+            }
+            // Six faces of the eight corners (bit 0 x, bit 1 y, bit 2 z): the top brightest, the bottom darkest.
+            Face(sink,px,py,pz,2,3,7,6,tone,level,alpha);Face(sink,px,py,pz,0,4,5,1,tone,level*.45f,alpha);Face(sink,px,py,pz,0,2,6,4,tone,level*.7f,alpha);
+            Face(sink,px,py,pz,1,5,7,3,tone,level*.7f,alpha);Face(sink,px,py,pz,0,1,3,2,tone,level*.7f,alpha);Face(sink,px,py,pz,4,6,7,5,tone,level*.7f,alpha);
+        }
+        private static void Face(IExpeditionWorldSink sink,Span<float> x,Span<float> y,Span<float> z,int a,int b,int c,int d,ExpeditionTone tone,float level,float alpha)
+        {
+            int i=sink.Vertex(x[a],y[a],z[a],0,0,1,tone,level,alpha),j=sink.Vertex(x[b],y[b],z[b],0,0,1,tone,level,alpha),k=sink.Vertex(x[c],y[c],z[c],0,0,1,tone,level,alpha),l=sink.Vertex(x[d],y[d],z[d],0,0,1,tone,level,alpha);
+            sink.Triangle(i,j,k);sink.Triangle(i,k,l);
         }
         /// <summary>A flat ring band on the floor: `count` of `segments` segments from angle `spin` (no longer drawn round the
         /// pieces; kept for callers).</summary>

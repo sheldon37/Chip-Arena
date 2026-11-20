@@ -318,7 +318,7 @@ Built by `NativeExpeditionWorld.Build(view)` for the anchors whose `area` is the
 | Reserved boss chip | reward anchor of a `boss` loot entry | magenta chip tile with shackle; struck danger tile when the viewer is a member not in the record | YOURS / FOR X / NOT ELIGIBLE; RESERVED, CLAIMED, OPENED · PICK A CHIP; boss name |
 | Door | `door` anchor; building = instance named by the anchor's `area` (inside), else by its `id` (outdoor entrance) | ring + column; the 3D leaves where the door has them (below), else the HUD `Door` hologram (sealed/open) | SEALED · QUOTA p / t or BOSS d / n DOWN; OPEN; ENTER TOGETHER · QUOTA t; UNFINISHED |
 | Reprint machine | `machine` anchor | pedestal, ring, column while someone is down | REPRINT MACHINE · NAME · $quote or PRICE UNAVAILABLE · +n MORE DOWN / CARRIED BY X |
-| Chip cache | `chest` anchor with an offer of the same id | crate, ring, column while buyable | $price · CHIP CACHE · STOCK G; RESTOCKING · Ns; BOUGHT · YOURS; $n SHORT |
+| Chip cache | `chest` anchor with an offer of the same id | crate (the CD-647 locker where A2's solid block stands), column while buyable | RARE CACHE (tier colour) · $175 · 3 CHIPS · KEEP 1; $75 SHORT (red); RESTOCKS IN 0:42; BOUGHT · YOURS; SOLD ("Cache openings" below) |
 
 - A missing anchor, an anchor in another area, a reward not in the view (picked, private, unknown), a door
   with no building and a chest without an offer draw nothing. There is never a guessed origin.
@@ -466,6 +466,38 @@ pings); nothing reaches the authority.
   to the same quota. Key `expedition.quota.mark` (like the door keys it needs registering in `NativeSoundKeys` before the bank
   can carry a clip); until then, and without LocalAssets, the built-in synthesized ping (`NativeQuotaMarks.PingSamples`).
 - **Tiers:** Reduced effects: no pulse, no glow. Low graphics: no glow. No allocation per frame.
+
+### Cache openings (R9, W6; 2026-11-19)
+
+The Civil Defence caches by rarity, presentation only (Core `NativeCacheTiers`, `NativeCacheOpenFx`, `NativeCacheClock`,
+`NativeCacheLockerModels`; Runtime `NativeCacheLive.cs`, `NativeCachePresentation.cs`; `Tests/CacheOpeningChecks.cs`). The design
+is board 3's (`scratch/meridian/board3/work/fx/cache-openings.md`) with the owner's three decisions: STANDARD opens with a glow and
+particles in its colour and no column; Reduced effects shows only the lid; chip-machine purchases open by the chip's rarity.
+
+- **The tier:** one adapter, `NativeCacheTiers.Of(offer)`, reads A2's `ExpeditionChestOffer.tier` (standard, rare, epic,
+  legendary; missing or unknown reads standard). Until A2 adds the field its one line (`TierField`) returns null, so every live
+  cache is STANDARD. When the field lands that line becomes `=>o?.tier;` (a check flips with it).
+- **Chip rarities on the ladder** (the chip machine): common and uncommon STANDARD; rare RARE; epic EPIC; legendary, mythic and
+  the rainbow pickup LEGENDARY; the class rarities and anything unknown STANDARD. The Ward's machine opens by the cartridge it
+  rolled (public, in the pickup); an Expedition machine's three offers are private and chosen later with C, so it opens STANDARD.
+- **The words** (every one through `ExpeditionLabels`, no raw id, no allocation per frame): the label RARE CACHE in the tier
+  colour, $175 · 3 CHIPS · KEEP 1, $75 SHORT in red (`extraAlert`), RESTOCKS IN 0:42; the F prompt at the cache (the layout's
+  interaction point and range, from the feet with a clear line): the title, the offer, then F · OPEN CACHE or the shortfall; the
+  J panel (W6's fix): each cache by its tier, its state tag and what it holds, never the stock generation.
+- **The open moment** is R9's, from the replicated view only: the generation changed with the cooldown still ahead (or the stock
+  turned sold). The burst is public; only the viewer's own private reward for the generation that opened makes it the buyer's
+  view (the three cartridges, the column's foot dimmed within 3 m). A cache first seen already restocking (a late joiner, an
+  area just entered) shows opened from that first-seen clock: shut, its lamp faces red, no burst. At restock it clicks, and a new
+  tier's livery sweeps across.
+- **The beats:** latches 0.1 s, lid 0.25 s, cartridges fanned 0.45-0.85 s, docked 1.6-2.0 s, shut 2.2 s. No ring, nothing on the
+  floor, no shake, shockwave or bolts; lights pulse 3 Hz or slower (LEGENDARY's strobe is on its four lamp faces only); blooms
+  0.45 m or less, at the tray, gone by 0.45 s. Columns: RARE 4 m, EPIC 9.5 m, LEGENDARY 40 m. One muzzle-light slot per opening.
+- **The locker** (about 2.5k triangles a tier) draws only where a map block of A2's chest size (0.92 x 0.62 x 0.58 m) stands on the
+  anchor; elsewhere the hologram crate plays the opening as a flare (its lid lifts, it brightens).
+- **Sounds:** `cache.*` keys (`NativeCacheOpenFx.Cues`), each playing an existing sound until its recording lands
+  (`docs/audio/SOUND-REQUESTS.md`, "The caches' sounds").
+- **DEV preview:** DEV panel (F3) · Previews · Cache openings: the four lockers and the hologram 4.5 m ahead, a 9 s cycle
+  (restock and sweep, 2.5 s for sale, the opening), every tier on every locker over four cycles, odd cycles the buyer's view.
 
 ## Dev preview
 

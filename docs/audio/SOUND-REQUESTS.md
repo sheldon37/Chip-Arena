@@ -28,6 +28,31 @@ generator. Claude owns this manifest and the importer.
 - **Queued:** builder jobs `noctiel-full-20261106-v1`..`v4` in `docs/audio/sound-queue.json` (Astra, PR #370; one per take number; 92 requests, 148.6 s).
 - **Wired:** Core `NativeFallenBossCues` (`Cutscene`, `Fight`) and Runtime `NativeFallenBossAudio.cs` fire every key at its moment through NativeAudio's bank path. A key is silent until the builder imports its clips.
 
+## The caches' sounds (2026-11-19, requested, not generated)
+
+The Civil Defence caches' opening by rarity (`docs/EXPEDITION-PRESENTATION.md`, "Cache openings") plays these keys from
+`NativeCacheOpenFx.Cues`. None is in a manifest or the bank yet: until the owner approves a batch (generation is paid), each key
+plays the existing source sound named beside it, quietly. All positional; no combat, boss or hazard sound and no key named for one;
+the buyer's flat `pve.buy` is unchanged. `cache.open.legendary` would carry High priority and roll off at about 60 m (the rest about
+30 m); each bank cap is its request's longest edited length.
+
+| Key | Priority | Count | Generate (s) | Target (s) | Placeholder | Prompt |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| `cache.latch` | 1 | 4 | 0.8 | 0.25-0.4 | `ui` | Two heavy steel lever latches on an old field locker snapping open one after the other, sharp metallic clacks, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `cache.lid.open` | 1 | 3 | 1 | 0.4-0.7 | `metal` | A pressed-steel locker lid swinging open on a stiff hinge, a short creak ending in a soft metal thunk against its strap, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `cache.lid.kick` | 2 | 3 | 1 | 0.3-0.6 | `metal` | A steel locker lid flung open hard, a loud metal clank against its stop and a short rattle, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `cache.lid.fling` | 2 | 3 | 1.2 | 0.5-0.9 | `metal` | A heavy steel lid thrown open on its hinge, the hiss of a released seal, a deep metal clang against its stop and a rattling bounce, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `cache.lid.shut` | 1 | 3 | 1 | 0.3-0.6 | `wood` | A steel locker lid dropping shut with a solid clunk and a latch click, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `cache.open.standard` | 1 | 3 | 1.5 | 0.7-1.0 | `install` | One small soft glassy chime, a gentle bell-like ping with a short airy shimmer tail, warm and quiet, isolated, no reverb, no music, no background noise |
+| `cache.open.rare` | 1 | 3 | 2 | 1.0-1.4 | `install` | A bright two-note crystal chime rising, with a light sparkle of tiny bells spiralling upward, isolated, no reverb, no music, no background noise |
+| `cache.open.epic` | 1 | 3 | 2 | 1.3-1.7 | `win` | A deep soft whoomp swelling into a bright glassy chord, with a shimmer of tiny bells, isolated, no reverb, no music, no background noise |
+| `cache.open.legendary` | 1 | 3 | 3 | 1.8-2.2 | `win` | A deep warm bloom opening into a soaring bright bell chord and a rising rush of air, with a shimmering sparkle tail, triumphant but short, isolated, no reverb, no music, no background noise |
+| `cache.surge` | 2 | 2 | 1 | 0.25-0.35 | `shield` | A short soft rising hum swelling up, a warm charge-up like a valve amplifier warming, no crackle, no buzz, isolated, no reverb, no music, no background noise |
+| `cache.seams` | 2 | 2 | 1.5 | 1.1-1.3 | (not played yet) | A bright glassy shimmer running round a metal box, like a wet finger round a wine glass, rising and soft, continuous, no crackle, no buzz, isolated, no reverb, no music, no background noise |
+| `cache.strobe` | 2 | 2 | 1 | 0.45-0.6 | `countdown` | A rapid soft clockwork ticking, a small relay clicking quickly for half a second, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `cache.embers` | 3 | 2 | 2 | 1.0-1.4 | (not played yet) | Soft tiny sparkles falling and fizzing like the tail of a sparkler, gentle and airy, isolated, no reverb, no music, no background noise |
+| `cache.restock` | 2 | 2 | 0.6 | 0.15-0.3 | `ui` | A small mechanical click and a soft relay clunk as a steel locker re-arms, isolated, dry close-mic recording, no reverb, no music, no background noise |
+
 ## Reviewed short takes
 
 The importer rejects a take shorter than its request's `targetSeconds.min` after trimming. A take reviewed and accepted shorter goes in `ACCEPTED_SHORT` in `tools/import_sound_requests.py`, keyed by the manifest's SHA-256 and the take's name, with the shortest edited length accepted for that take. Nothing else is relaxed; a take from another manifest version keeps its minimum. The list is in the importer itself, so the builder queue's import fingerprint changes whenever the list does, and the queue re-imports the cached originals without regenerating anything.
