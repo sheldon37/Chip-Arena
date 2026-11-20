@@ -30,8 +30,10 @@ normally a constraint)".
   the bank, the peaks: 460 effects and 129 set pieces on High, 205 and 80 on Low, 8 lights; the streak rule; determinism under a
   scrub; no allocation per frame; Reduced effects; the body's build; the stroke font); `--intros-v2` passes (1,660); the Unity
   compile passes; `git diff --check` clean; `package_source.py --check` passes; the full CoreTests the relgen5 way at
-  `ed77ec08` (the final merge), exit 0 (1,080 groups). Two Editor holds, a review pass and the final, with captures in
-  `F:/Chip Arena Development/scratch/intro-dev/cap/`.
+  `6643cdf6` (the code's last commit), exit 0 (1,080 groups). Three Editor holds (a review pass, the final, and a short third
+  one the integrator approved to check two late fixes: the name card moved into a clean band below the feet, and the
+  skyline's towers, which the final capture showed crossing the crane at 3 s), captures in
+  `F:/Chip Arena Development/scratch/intro-dev/cap/` (r1, r2, r3).
 - **Not run:** a Windows player build; two clients (a guest's and a late joiner's view of the bed clock); the sound by ear (the
   captures are silent; the review clip carries the song on the capture's clock).
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The match reads the registry's
@@ -41,8 +43,12 @@ normally a constraint)".
 - **Risks:** the game's loading wipe covers the first ~0.1 s, so the strike is seen just after the song's opening hit; the crown is
   a ring-shaped piece of architecture overhead (kept dim so it does not read as a ring of light; one line removes it); the intro is
   long for a match intro (vote-skip still works); its 17 sounds wait on a builder job (until then each cue plays an existing bank
-  sound or a built-in clip).
-- **Next:** the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-dev/clips/`), merges after the framework,
+  sound or a built-in clip); under the hero light the platform reads as pale stone rather than black (the finish and the lights are
+  one-line tunings). The head anchor (the skull's pivot, about 0.16 m under the eyes) is read only for the soft gold glow behind
+  the head (+0.12 m), which sits right in the final frame; no close-up or light is aimed at the eyes by it.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-dev/clips/`: `architect-high-realtime.mp4` (15.75 s with the song on the
+  capture's clock, 2.6 MB), `architect-name-slowmo.mp4` (12.3-14.6 s at quarter speed), `architect-low-strip.png`.
+- **Next:** the integrator reviews the clips, merges after the framework,
   packs the bank, and compiles the intros' sound manifest (`tools/intros/compile_sound_requests.py`) for a builder run.
 
 ## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
