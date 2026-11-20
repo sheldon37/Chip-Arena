@@ -241,6 +241,7 @@ namespace ChipArena.UnityConversion
         private bool OpeningGui(float w,float h)
         {
             if(openingView==null)return false;
+            NativeIcons.WarmWeaponPick();
             var v=openingView;var step=(OpeningStep)v.pick;float now=Time.unscaledTime;OpeningTrack(v,step,now);
             // The starting chip, and my pick's follow-through, on the PvP draft's stage with my pilot (NativeDeathmatchPickStage.cs).
             if(step==OpeningStep.Chip||PickFollowing(PickStageKind.Opening))

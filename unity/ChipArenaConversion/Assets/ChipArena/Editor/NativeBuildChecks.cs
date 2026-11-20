@@ -122,6 +122,14 @@ namespace ChipArena.UnityConversion.Editor
             NativeSourceModels.ValidateTextureImports();
             var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new Exception("Missing native GameContent asset");
             var data=JsonUtility.FromJson<ConversionContent>(asset.text);
+            var pickIcons = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+            foreach (var icon in Resources.LoadAll<Texture2D>("WeaponPickIcons"))
+                pickIcons.Add(icon.name);
+            foreach (var weapon in data.weapons)
+                if (!pickIcons.Contains(NativeIcons.Spec(weapon.id)) ||
+                    !pickIcons.Contains(weapon.devOnly ? "shuffle" : NativeIcons.Class(weapon.@class)))
+                    throw new InvalidOperationException("Missing baked weapon pick icon for " + weapon.id);
+
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
             // Validate the pinned export before UnityMaps replaces legacy Ward Zero (siren).
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
