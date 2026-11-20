@@ -312,7 +312,9 @@ namespace ChipArena.UnityConversion
                 if(p.joinProgress>0)Band(sink,p.x,p.y+.03f,p.z,p.joinRadius-.16f,p.joinRadius-.08f,64,(int)Math.Ceiling(64*p.joinProgress),0,ExpeditionTone.Good,1,.95f);
             }
             float fade=p.settled?.42f:1,spin=reduced?0:(float)(t*.9%(Math.PI*2)),r=RingRadius(p.kind);
-            if(p.actionable)Column(sink,p.x,p.y,p.z,r*.62f,r*.8f,p.kind==ExpeditionPieceKind.Door?2.9f:p.kind==ExpeditionPieceKind.Machine?2.6f:1.9f,p.tone,.55f);
+            // (a steel locker shows for sale itself, board 3: its lamps blink the tier's count over a thin column of motes; the
+            // beacon's tube round it would hide the locker, so it stands down there; the hologram cache keeps it)
+            if(p.actionable&&!p.locker)Column(sink,p.x,p.y,p.z,r*.62f,r*.8f,p.kind==ExpeditionPieceKind.Door?2.9f:p.kind==ExpeditionPieceKind.Machine?2.6f:1.9f,p.tone,.55f);
             float gy=p.y+GlyphHeight(p.kind)+Bob(p,t,reduced),yaw=reduced?0:(float)(t*1.1%(Math.PI*2));
             switch(p.look)
             {
