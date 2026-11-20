@@ -160,14 +160,14 @@ namespace ChipArena.UnityConversion
             Tick++;
             foreach(var p in members)
             {
-                // Opposing short patrols on parallel streets just outside the south gate.
+                // Patrol the same approaches used to place the members at startup.
                 int seat=p.Seat.id;
                 float extent=Bundle.World.Map.id==NativeExpeditionGeneratedWorld.MapId?7:6;
                 float end=((Tick/150+seat)%2==0)?extent:-extent;
                 var delta=new Vector3(end-p.Body.position.x,0,-27.5f-seat*1.5f-p.Body.position.z);
-                if (Survey != null)
+                if (Bundle.World.City != null)
                 {
-                    Survey.Routes[seat-1].Sample((Tick/150+seat)%2==0 ? 8 : 18,
+                    Bundle.World.City.Routes[seat-1].Sample((Tick/150+seat)%2==0 ? 8 : 18,
                         out var foot,out _,out _);
                     delta=NativeArena.Vec(foot)-p.Body.position;
                     delta.y=0;
