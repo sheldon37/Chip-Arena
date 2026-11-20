@@ -330,7 +330,7 @@ namespace ChipArena.UnityConversion
         // Part 2: the DEV preview of the whole camp (the Developer walk only; never a live run).
         // =====================================================================================================================
         /// <summary>A preview piece: a bank key in a row's place (axis-aligned: centre on its floor, yaw degrees).</summary>
-        public readonly struct Shown{public readonly string Key;public readonly V3 At;public readonly float Yaw;public Shown(string key,V3 at,float yaw){Key=key;At=at;Yaw=yaw;}}
+        public readonly struct Shown{public readonly string Key,Post;public readonly V3 At;public readonly float Yaw;public Shown(string key,V3 at,float yaw,string post=null){Key=key;At=at;Yaw=yaw;Post=post;}}
         /// <summary>The structures' art (one key per row kind; rows that share a model share a key), the survivors at their posts (the
         /// rescued only up to `rescued` of them) and the landing field's pods for the seed.</summary>
         public static List<Shown> Preview(uint seed,int rescued)
@@ -353,18 +353,27 @@ namespace ChipArena.UnityConversion
                     case RowKind.Sandbag:o.Add(new Shown("camp/row/sandbag",new V3(r.X,0,r.Z),r.Sx>r.Sz?0:90));break;
                 }
             }
-            int joined=0;bool attendant=false;
-            foreach(var p in Posts)
+            bool attendant=false;
+            foreach(var (p,at,yaw) in PreviewPosts(rescued))
             {
-                if(p.Rescued!=null&&joined++>=rescued)continue;
                 if(p.Id=="attendant")attendant=true;
-                var at=p.Id=="sparks"?SparksAt():p.At;
                 int variant=(int)(Hash(seed,NativeExpeditionStates.StableHash(p.Id),7)*3);
-                o.Add(new Shown("camp/figure/"+p.Pose+"/"+variant.ToString(System.Globalization.CultureInfo.InvariantCulture),at,p.Id=="sparks"?225:p.Yaw));
+                o.Add(new Shown("camp/figure/"+p.Pose+"/"+variant.ToString(System.Globalization.CultureInfo.InvariantCulture),at,yaw,p.Id));
             }
             // the fourth bench waits for a rescued survivor: a folded blanket, a crate and a lantern keep it until then
             if(!attendant){var b=RowOf("camp-bench-3");o.Add(new Shown("camp/row/bench-waiting",new V3(b.X,0,b.Z),90));}
             return o;
+        }
+        /// <summary>The posts the preview shows (the rescued only up to `rescued` of them), each where its survivor is (Sparks at the
+        /// REVIVE-O-MATIC's works) and facing (degrees).</summary>
+        public static IEnumerable<(Post post,V3 at,float yaw)> PreviewPosts(int rescued)
+        {
+            int joined=0;
+            foreach(var p in Posts)
+            {
+                if(p.Rescued!=null&&joined++>=rescued)continue;
+                yield return (p,p.Id=="sparks"?SparksAt():p.At,p.Id=="sparks"?225:p.Yaw);
+            }
         }
     }
 }

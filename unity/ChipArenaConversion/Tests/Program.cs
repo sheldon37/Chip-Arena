@@ -77,6 +77,7 @@ internal static class Program
             if(args.Length==5&&args[0]=="--bleed-zfight"){BleedChecks.ZCombined(int.Parse(args[1]),args[2],uint.Parse(args[3]),args[4]);return 0;}
             if(args.Length==2&&args[0]=="--meridian-landmarks-dump"){LandmarkReadChecks.Dump(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--camp-dump"){CampChecks.Dump(args[1]);return 0;}
+            if(args.Length==2&&args[0]=="--camp-motion-probe"){CampChecks.MotionProbe(args[1]);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--camp")CampChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--camp")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--landmark-reads")LandmarkReadChecks.Run();

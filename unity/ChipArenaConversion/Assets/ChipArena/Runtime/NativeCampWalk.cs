@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
     public static class NativeCampWalk
     {
         public static string Map;public static uint Seed;public static string[] Deal;public static int Plan;public static int Rescued=5;public static bool Preview=true;
+        /// <summary>When the cheer key (Y) was last pressed (the survivors' cheer for a rescue, to review without one), or NaN.</summary>
+        public static double CheerAt=double.NaN;
         public static bool Active(string mapId)=>mapId!=null&&mapId==Map;
     }
 
@@ -25,17 +27,18 @@ namespace ChipArena.UnityConversion
         {NativeCampWalk.Map=walk?.Map?.id;NativeCampWalk.Seed=seed;NativeCampWalk.Plan=plan;NativeCampWalk.Deal=deal;}
         /// <summary>The walk closed (the one line in CloseCityWalk).</summary>
         private void CampWalkClose()=>NativeCampWalk.Map=null;
-        /// <summary>The walk's keys (the one line in LayeredCityWalkKeys): C the preview, U the rescued, K the clearances.</summary>
+        /// <summary>The walk's keys (the one line in LayeredCityWalkKeys): C the preview, U the rescued, K the clearances, Y a cheer.</summary>
         private bool CampWalkKeys()
         {
             if(NativeCampWalk.Map==null)return false;
             if(Input.GetKeyDown(KeyCode.C)){NativeCampWalk.Preview=!NativeCampWalk.Preview;return true;}
             if(Input.GetKeyDown(KeyCode.U)){NativeCampWalk.Rescued=(NativeCampWalk.Rescued+1)%6;return true;}
             if(Input.GetKeyDown(KeyCode.K)){NativeCampDraw.Clearances=!NativeCampDraw.Clearances;return true;}
+            if(Input.GetKeyDown(KeyCode.Y)){NativeCampWalk.CheerAt=Time.unscaledTimeAsDouble;return true;}
             return false;
         }
         /// <summary>The walk panel's line (the one line in LayeredCityWalkGui's panel).</summary>
-        private void CampWalkLabel()=>GUILayout.Label("C   Camp preview "+(NativeCampWalk.Preview?"on":"off")+"     U   Rescued "+NativeCampWalk.Rescued+"     K   Clearances "+(NativeCampDraw.Clearances?"on":"off"));
+        private void CampWalkLabel()=>GUILayout.Label("C   Camp preview "+(NativeCampWalk.Preview?"on":"off")+"     U   Rescued "+NativeCampWalk.Rescued+"     K   Clearances "+(NativeCampDraw.Clearances?"on":"off")+"     Y   Cheer");
         /// <summary>While the preview shows, the banner that says it is not gameplay (the one line after the walk's panel).</summary>
         private void CampWalkBanner(float width)
         {

@@ -29,6 +29,25 @@ namespace ChipArena.UnityConversion
         private Material solid,glow,glass,overlay;private MaterialPropertyBlock lampBlock;private static readonly int GlowId=Shader.PropertyToID("_StageGlow");
         private NativeCamp.Layout layout;private NativeCampFx fx;private NativeFxDraw fxDraw;private bool failed,lit;
         private Mesh overlayMesh;
+        // The preview's posed figures, one mesh each with its post (the bank's, where no survivor draws on the model this frame).
+        private readonly List<(string post,Mesh mesh)> figures=new List<(string,Mesh)>();
+        /// <summary>The posts whose survivor draws on the model this frame (Runtime NativeCampSurvivorsDraw.cs): their figures are not drawn.</summary>
+        public readonly HashSet<string> Skinned=new HashSet<string>(StringComparer.Ordinal);
+        private readonly Dictionary<string,Mesh> props=new Dictionary<string,Mesh>(StringComparer.Ordinal);
+        /// <summary>DEV preview: a bank prop (camp/prop/...) at `world` (StageLit, its shadow on); nothing when the bank has none.</summary>
+        public void DrawProp(string key,Matrix4x4 world)
+        {
+            if(!Ready||key==null)return;
+            if(!props.TryGetValue(key,out var m))
+            {
+                var bank=NativePackBanks.Bank(NativeCamp.Bank);var f=bank?.Find(key+"/0");m=null;
+                if(f!=null){var d=new NativeMeridianMesh();foreach(var part in f.Parts)NativeCampMeshes.Append(bank,part,Identity,d);m=Upload(d,"Camp prop "+key);}
+                props[key]=m;
+            }
+            if(m==null)return;
+            Graphics.DrawMesh(m,world,solid,0,null,0,null,ShadowCastingMode.On,true);
+            if(m.subMeshCount>1&&m.GetSubMesh(1).indexCount>0)Graphics.DrawMesh(m,world,glow,0,null,1,null,ShadowCastingMode.Off,true);
+        }
         /// <summary>The run whose camp is built (its seed and whether the preview is in it).</summary>
         public uint Seed{get;private set;}public bool HasPreview{get;private set;}public int Rescued{get;private set;}=-1;
         public bool Ready=>layout!=null&&solid!=null;
@@ -137,16 +156,16 @@ namespace ChipArena.UnityConversion
         private void BuildPreview(NativePackBank.Bank bank,uint seed,int rescued)
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            var shown=NativeCamp.Preview(seed,rescued);var fine=new NativeMeridianMesh();var low=new NativeMeridianMesh();var figures=new NativeMeridianMesh();var glassData=new NativeMeridianMesh();
+            var shown=NativeCamp.Preview(seed,rescued);var fine=new NativeMeridianMesh();var low=new NativeMeridianMesh();var glassData=new NativeMeridianMesh();
             foreach(var s in shown)
             {
                 double r=s.Yaw*Math.PI/180;float co=(float)Math.Cos(r),si=(float)Math.Sin(r);var place=new[]{co,0,si,s.At.x,0,1,0,s.At.y,-si,0,co,s.At.z};
-                if(s.Key.StartsWith("camp/figure/",StringComparison.Ordinal)){Add(bank,s.Key,place,figures,null);continue;}
+                if(s.Key.StartsWith("camp/figure/",StringComparison.Ordinal)){var one=new NativeMeridianMesh();Add(bank,s.Key,place,one,null);if(one.Vertices>0)figures.Add((s.Post,Upload(one,"Camp survivor "+s.Post)));continue;}
                 Add(bank,s.Key,place,fine,low);
                 var g=bank.Find("camp/glass/"+s.Key.Substring("camp/row/".Length));if(g!=null)foreach(var part in g.Parts)NativeCampMeshes.Append(bank,part,place,glassData);
                 if(fine.Vertices>40000){Keep(preview,fine,low,true,"Camp preview");fine=new NativeMeridianMesh();low=new NativeMeridianMesh();}
             }
-            Keep(preview,fine,low,true,"Camp preview");Keep(preview,figures,null,true,"Camp survivors");
+            Keep(preview,fine,low,true,"Camp preview");
             if(glassData.Vertices>0)
             {
                 // the panes a survivor stands behind: tinted, see-through (StageLit is opaque, art bible 4.1)
@@ -188,7 +207,7 @@ namespace ChipArena.UnityConversion
         public void Frame(Camera eye,float time,Vector3? pilot,bool low,bool reduced,float quality,bool showPreview,float dt)
         {
             if(!Ready||eye==null)return;var at=eye.transform.position;ShownFine=ShownLow=0;Triangles=0;
-            Draw(live,at,low);if(showPreview&&HasPreview)Draw(preview,at,low);
+            Draw(live,at,low);if(showPreview&&HasPreview){Draw(preview,at,low);foreach(var f in figures)if(f.mesh!=null&&(f.post==null||!Skinned.Contains(f.post)))DrawMesh(f.mesh,ShadowCastingMode.On);}
             if(showPreview&&glassMesh!=null&&glass!=null)Graphics.DrawMesh(glassMesh,Matrix4x4.identity,glass,0,null,0,null,ShadowCastingMode.Off,false);
             if(showPreview&&Clearances&&overlayMesh!=null&&overlay!=null)Graphics.DrawMesh(overlayMesh,Matrix4x4.identity,overlay,0,null,0,null,ShadowCastingMode.Off,false);
             // the posters and the crosses on the cleared ones
@@ -234,7 +253,7 @@ namespace ChipArena.UnityConversion
 
         private void Release()
         {
-            foreach(var c in live){Destroy(c.Fine);Destroy(c.Low);}foreach(var c in preview){Destroy(c.Fine);Destroy(c.Low);}live.Clear();preview.Clear();
+            foreach(var c in live){Destroy(c.Fine);Destroy(c.Low);}foreach(var c in preview){Destroy(c.Fine);Destroy(c.Low);}live.Clear();preview.Clear();foreach(var f in figures)Destroy(f.mesh);figures.Clear();foreach(var m in props.Values)Destroy(m);props.Clear();
             Destroy(warLamp);Destroy(glassMesh);Destroy(overlayMesh);warLamp=glassMesh=overlayMesh=null;foreach(var p in posters)Destroy(p.mesh);foreach(var c in crosses)Destroy(c.mesh);posters.Clear();crosses.Clear();
             if(solid!=null)UnityEngine.Object.Destroy(solid);if(glow!=null)UnityEngine.Object.Destroy(glow);if(glass!=null)UnityEngine.Object.Destroy(glass);if(overlay!=null)UnityEngine.Object.Destroy(overlay);solid=glow=glass=overlay=null;
             fxDraw?.Dispose();fxDraw=null;fx=null;layout=null;HasPreview=false;Rescued=-1;
@@ -261,9 +280,20 @@ namespace ChipArena.UnityConversion
         /// its light slots and sound.</summary>
         private void CampScenery(NativeArena arena)
         {
-            if(!CampEnsure(arena,out bool walk,out bool show)){camp?.Idle();campLast=-1;return;}
+            if(!CampEnsure(arena,out bool walk,out bool show))
+            {
+                camp?.Idle();campLast=-1;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                CampSurvivorsRelease();
+#endif
+                return;
+            }
             float now=PresentationClock(arena),dt=campLast<0?0:Mathf.Clamp(now-campLast,0,.1f);campLast=now;
             Vector3? pilot=arena.ViewPilot?.Body!=null?arena.ViewPilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight:(Vector3?)null;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // the preview's survivors on the model first: the camp's figures skip the posts they take (NativeCampSurvivorsDraw.cs)
+            if(show)CampSurvivorsFrame(arena,now,NativeCampWalk.Rescued);else CampSurvivorsHide();
+#endif
             camp.Frame(WorldEye,now,pilot,LowGraphics,EffectsQuality<.5f,EffectsQuality,show,dt);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if(show)CampPreviewMachines(arena,now);

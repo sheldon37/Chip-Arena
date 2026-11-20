@@ -31,9 +31,10 @@ internal static class CampChecks
     public static void Run(string root)
     {
         checks = 0;
-        Table(); Field(); Posts(); Live(); Fx(); Synth(); Sources(root); Bank();
+        Table(); Field(); Posts(); Live(); Fx(); Synth(); Survivors(); Sources(root); Bank(); Motion();
         Console.WriteLine("PASS camp: " + checks + " checks (the W5 table and its clearances, 2,000 landing fields, " + NativeCamp.Posts.Length +
-            " posts, the live camp's honesty, its light, sound and budgets" + (Environment.GetEnvironmentVariable("CHIPARENA_CAMP_BANK") != null ? ", the bank's meshes" : "") + ")");
+            " posts, the live camp's honesty, its light, sound and budgets, the survivors' roles" + (Environment.GetEnvironmentVariable("CHIPARENA_CAMP_BANK") != null ? ", the bank's meshes" : "") +
+            (Environment.GetEnvironmentVariable("CHIPARENA_CAMP_MOTION") != null ? ", the survivors' clips" : "") + ")");
     }
 
     // ---------------- the table ----------------
@@ -261,6 +262,96 @@ internal static class CampChecks
     }
 
     // ---------------- the runtime ----------------
+    // ---------------- the survivors on the pilot model (the DEV preview) ----------------
+    /// <summary>The clips the local bake writes into the camp's motion bank (scratch hold/bake-motion2.sh): every role's must be there.</summary>
+    public static readonly string[] Baked = { "Unarmed-Idle", "Unarmed-Idle-Static", "Unarmed-Idle-Alert1", "Unarmed-Idle-Injured1", "Unarmed-Crouch-Idle", "Unarmed-Pickup", "Unarmed-Activate", "Unarmed-Stunned",
+        "Crafter@Chair-Idle", "Crafter@Chair-Talk1", "Crafter@Chair-Drink", "Crafter@Chair-Eat", "Crafter@Item-Hammer-Table", "Crafter@Item-Kneel-Hammer", "Crafter@Item-Kneel-Idle", "Crafter@Item-Use",
+        "Crafter@Item-Whittle", "Crafter@Item-Chisel", "Crafter@Carry-Idle", "Crafter@Carry-Pickup", "Crafter@Carry-Putdown", "Crafter@Idle", "Crafter@Idle-Bored1", "Crafter@Laydown-Sleep",
+        "Crafter@Cheer1", "Crafter@Cheer2", "Crafter@Wave1" };
+    private static void Survivors()
+    {
+        // a role for every post and a post for every role
+        foreach (var p in NativeCamp.Posts) Check(NativeCampSurvivors.Of(p.Id) != null, "the post " + p.Id + " has a survivor's role");
+        foreach (var r in NativeCampSurvivors.Roles) Check(NativeCamp.Posts.Any(p => p.Id == r.Post), "the role " + r.Post + " stands at a post");
+        Check(NativeCampSurvivors.Roles.Select(r => r.Post).Distinct().Count() == NativeCampSurvivors.Roles.Length, "one role a post");
+        foreach (var c in NativeCampSurvivors.Clips()) Check(Baked.Contains(c), "the bake holds " + c);
+        var garments = new HashSet<string>(NativeZombieLooks.AllGarments); var gear = new HashSet<string>(NativeZombieLooks.All.SelectMany(v => v.Gear));
+        foreach (var r in NativeCampSurvivors.Roles)
+        {
+            var v = r.Look;
+            Check(r.Beats.Length > 0 && r.Beats.All(b => b.Seconds > .2f && b.Speed > 0) && Math.Abs(r.Length - r.Beats.Sum(b => b.Seconds)) < 1e-4f, r.Post + "'s loop is whole");
+            Check(v.Grime == 0 && v.Tears == 0 && v.Rot == 0 && v.Blood == 0 && v.Decay.Length == 0 && !v.Sac && !v.Mutant && !v.Beast && !v.Faceless && v.Char == 0, r.Post + " is clean: no wear, rot, blood or mutation");
+            Check(NativeLook.SkinTones.Contains(v.Skin), r.Post + " has a Locker skin tone");
+            Check(v.Pieces.Length == NativeLook.Slots.Length && v.Pieces.All(x => !string.IsNullOrEmpty(x)), r.Post + " is dressed in every slot");
+            Check(v.Garments.All(garments.Contains) && v.GarmentColours.Length == v.Garments.Length, r.Post + "'s garments are the garment bank's");
+            Check(v.Gear.All(gear.Contains), r.Post + "'s gear is the gear bank's");
+            Check(r.Beats.All(b => b.Prop == null || b.Prop.Contains("camp/prop/")) && (r.Head == null || r.Head.StartsWith("camp/prop/", StringComparison.Ordinal)), r.Post + "'s props are the camp bank's");
+            bool seated = NativeCamp.Posts.First(p => p.Id == r.Post).Pose.StartsWith("seated", StringComparison.Ordinal);
+            Check(seated == (r.Stance == NativeCampSurvivors.Stance.Seated), r.Post + " sits where its post sits");
+            Check(r.Beats.All(b => b.Clip.StartsWith("Crafter@Chair-", StringComparison.Ordinal) == seated), r.Post + " plays chair clips only seated");
+            // the loop's beats, in order, one at a time
+            int last = -1, changes = 0;
+            for (double t = 0; t < r.Length; t += .05)
+            {
+                NativeCampSurvivors.Where(r, t, 0, out int beat, out float into, out _, out float ease);
+                Check(into >= -1e-4f && into <= r.Beats[beat].Seconds + 1e-3f && ease >= 0 && ease <= 1, r.Post + " at " + t.ToString("F2", CultureInfo.InvariantCulture) + " is inside its beat");
+                if (beat != last) { changes++; last = beat; }
+            }
+            Check(changes == r.Beats.Length, r.Post + " plays every beat once a loop");
+        }
+        // the six nearest within 30 m, kept with slack
+        var at = NativeCamp.Posts.Select(p => new System.Numerics.Vector3(p.At.x, p.At.y, p.At.z)).ToArray();
+        var eye = new System.Numerics.Vector3(0, 1.7f, 0);
+        var drawn = new[] { -1, -1, -1, -1, -1, -1 }; NativeCampSurvivors.Pick(eye, at, drawn);
+        float D(int i) => System.Numerics.Vector3.Distance(eye, at[i] + new System.Numerics.Vector3(0, 1, 0));
+        Check(drawn.Count(i => i >= 0) == Math.Min(NativeCampSurvivors.MaxSkinned, Enumerable.Range(0, at.Length).Count(i => D(i) <= NativeCampSurvivors.Near)), "the nearest six within 30 m draw on the model");
+        int farthest = drawn.Where(i => i >= 0).OrderBy(i => D(i)).Last();
+        Check(Enumerable.Range(0, at.Length).Where(i => !drawn.Contains(i) && D(i) <= NativeCampSurvivors.Near).All(i => D(i) >= D(farthest) - 1e-4f), "none nearer than the six is left out");
+        var again = (int[])drawn.Clone(); NativeCampSurvivors.Pick(eye, at, again);
+        Check(again.SequenceEqual(drawn), "the pick is steady for a still eye");
+        var one = new[] { 0, -1, -1, -1, -1, -1 }; var lone = new[] { new System.Numerics.Vector3(0, 0, 31.5f) };
+        NativeCampSurvivors.Pick(System.Numerics.Vector3.Zero, lone, one); Check(one[0] == 0, "a survivor drawn stays drawn inside the slack (31.5 m)");
+        lone[0] = new System.Numerics.Vector3(0, 0, 34f); NativeCampSurvivors.Pick(System.Numerics.Vector3.Zero, lone, one); Check(one[0] == -1, "and goes past it (34 m)");
+        lone[0] = new System.Numerics.Vector3(0, 0, 31.5f); NativeCampSurvivors.Pick(System.Numerics.Vector3.Zero, lone, one); Check(one[0] == -1, "and does not come back until within 30 m");
+    }
+    // ---------------- with CHIPARENA_CAMP_MOTION: every role on the bank's clips ----------------
+    private static void Motion()
+    {
+        var path = Environment.GetEnvironmentVariable("CHIPARENA_CAMP_MOTION"); if (string.IsNullOrEmpty(path)) return;
+        var bank = NativeIntroPack.Read(File.ReadAllBytes(path));
+        foreach (var c in Baked) Check(bank.Clips.ContainsKey(c), "the camp's motion bank has " + c);
+        var pose = new CapturedRig.Pose(); var scratch = new NativeCampSurvivors.Scratch();
+        foreach (var r in NativeCampSurvivors.Roles)
+        {
+            uint seed = (uint)NativeExpeditionStates.StableHash(r.Post);
+            for (double t = 0; t < r.Length + 1; t += 1 / 15.0)
+            {
+                Check(NativeCampSurvivors.Sample(r, bank, t, seed, pose, scratch, out _, r.Cheers ? NativeCampSurvivors.Reaction(seed) : null, r.Cheers ? 2.0 : double.NaN), r.Post + " samples at " + t.ToString("F2", CultureInfo.InvariantCulture));
+                bool finite = true;
+                for (int b = 0; b < CapturedRig.Bones.Length; b++) { var q = pose.WorldRotation[b]; var x = pose.WorldPosition[b]; finite &= float.IsFinite(q.X + q.Y + q.Z + q.W + x.X + x.Y + x.Z) && Math.Abs(q.Length() - 1) < 1e-3f; }
+                Check(finite, r.Post + "'s pose is whole at " + t.ToString("F2", CultureInfo.InvariantCulture));
+                // the keyed feet stay by the floor (a seated clip's lowered hips keep them where the clip had them)
+                float low = Math.Min(pose.WorldPosition[CapturedRig.LFoot].Y, pose.WorldPosition[CapturedRig.RFoot].Y);
+                Check(low > -.95f && low < -.55f, r.Post + "'s feet are by the floor at " + t.ToString("F2", CultureInfo.InvariantCulture) + " (" + low.ToString("F3", CultureInfo.InvariantCulture) + ")");
+            }
+        }
+        // a seated clip's hips come down onto the bench with its feet held
+        var p0 = new CapturedRig.Pose(); var p1 = new CapturedRig.Pose(); var joints = new System.Numerics.Quaternion[CapturedRig.Bones.Length];
+        bank.TryGet("Crafter@Chair-Idle", out var chair); chair.Sample(1f, true, joints, out var body);
+        foreach (var q in new[] { p0, p1 }) { q.Reset(); for (int j = 1; j < joints.Length; j++) q.Rotation[j] = joints[j]; q.Position[CapturedRig.Body] = CapturedRig.Bones[CapturedRig.Body].Position + body; q.World(); }
+        float drop = (NativeCampSurvivors.BenchSeat - NativeCampSurvivors.ChairSeat) / bank.Skeleton.LegRatio; NativeCampSurvivors.Lower(p1, drop);
+        Check(Math.Abs(p1.WorldPosition[CapturedRig.Pelvis].Y - p0.WorldPosition[CapturedRig.Pelvis].Y - drop) < 1e-3f, "a seated clip's hips go down by the bench's difference");
+        for (int side = 0; side < 2; side++)
+        {
+            int f = side == 0 ? CapturedRig.LFoot : CapturedRig.RFoot; float moved = System.Numerics.Vector3.Distance(p1.WorldPosition[f], p0.WorldPosition[f]);
+            Check(moved < .004f, "a seated clip's " + (side == 0 ? "left" : "right") + " foot is held where it was (" + moved.ToString("F4", CultureInfo.InvariantCulture) + ")");
+        }
+        // allocation free per sample
+        var role = NativeCampSurvivors.Of("fire-1"); NativeCampSurvivors.Sample(role, bank, 1, 7, pose, scratch, out _);
+        long before = GC.GetAllocatedBytesForCurrentThread(); for (int k = 0; k < 200; k++) NativeCampSurvivors.Sample(role, bank, k * .05, 7, pose, scratch, out _);
+        Check(GC.GetAllocatedBytesForCurrentThread() - before == 0, "a survivor's sample allocates nothing");
+    }
+
     private static void Sources(string root)
     {
         string R(string f) => File.ReadAllText(Path.Combine(root, "Assets/ChipArena/Runtime", f));
@@ -276,7 +367,10 @@ internal static class CampChecks
         var d = R("NativeCampDraw.cs");
         Check(d.Contains("else if(NativeCampWalk.Active(arena.MapId)){walk=true;") && d.Contains("bool live=run?.City!=null&&arena.MapId==run.Map.id;walk=false;show=false;"), "the preview shows only in the walk: a live run never sets it");
         int start = d.IndexOf("private void BuildPreview", StringComparison.Ordinal); Check(start > 0 && d.IndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", start, StringComparison.Ordinal) - start < 200, "the preview's build is compiled only in Editor and development builds");
-        foreach (var (name, text) in new[] { ("NativeCampDraw.cs", d), ("NativeCampAudio.cs", R("NativeCampAudio.cs")), ("NativeCampWalk.cs", w), ("NativeCamp.cs", Core("NativeCamp.cs")), ("NativeCampFx.cs", Core("NativeCampFx.cs")), ("NativeCampMeshes.cs", Core("NativeCampMeshes.cs")), ("NativeCampSynth.cs", Core("NativeCampSynth.cs")) })
+        var survivors = R("NativeCampSurvivorsDraw.cs"); Check(survivors.StartsWith("#if UNITY_EDITOR || DEVELOPMENT_BUILD", StringComparison.Ordinal), "the survivors on the model exist only in Editor and development builds");
+        int survivorsHook = d.IndexOf("if(show)CampSurvivorsFrame(arena,now,NativeCampWalk.Rescued);else CampSurvivorsHide();", StringComparison.Ordinal);
+        Check(survivorsHook > 0 && d.LastIndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", survivorsHook, StringComparison.Ordinal) > d.LastIndexOf("#endif", survivorsHook, StringComparison.Ordinal), "the survivors draw only in the preview, in Editor and development builds");
+        foreach (var (name, text) in new[] { ("NativeCampDraw.cs", d), ("NativeCampAudio.cs", R("NativeCampAudio.cs")), ("NativeCampWalk.cs", w), ("NativeCamp.cs", Core("NativeCamp.cs")), ("NativeCampFx.cs", Core("NativeCampFx.cs")), ("NativeCampMeshes.cs", Core("NativeCampMeshes.cs")), ("NativeCampSynth.cs", Core("NativeCampSynth.cs")), ("NativeCampSurvivors.cs", Core("NativeCampSurvivors.cs")), ("NativeCampSurvivorsDraw.cs", survivors) })
         {
             foreach (var bad in new[] { "Collider", "Rigidbody", "Physics.", "NativeNetwork", "Emit(", "Replicat", "voxel", "Voxel" })
                 if (!(bad == "Replicat" && name == "NativeCamp.cs")) Check(!text.Contains(bad), name + " has no " + bad + " (presentation only)");
@@ -361,6 +455,9 @@ internal static class CampChecks
             fineTris += Tris(bank, keys[0] + "/0");
         }
         for (int plan = 0; plan < 5; plan++) Check(bank.Find("camp/board/war-" + plan + "/0") != null, "the war board painted for plan " + plan);
+        foreach (var r in NativeCampSurvivors.Roles)
+            foreach (var key in r.Beats.Select(b => b.Prop).Append(r.Head).Where(x => x != null).Select(x => x.StartsWith("l:", StringComparison.Ordinal) ? x.Substring(2) : x))
+                Check(bank.Find(key + "/0") != null, "the bank has " + r.Post + "'s " + key);
         foreach (var fam in new[] { "level0", "poolrooms", "wardzero", "station", "ironworks" }) Check(bank.Find("camp/board/poster-" + fam + "/0") != null, "the " + fam + " poster");
         foreach (var key in new[] { "camp/static/strands", "camp/static/sails", "camp/static/cables" })
         {
@@ -381,6 +478,27 @@ internal static class CampChecks
         Console.WriteLine("camp: the live camp's bank meshes " + fineTris + " Fine triangles");
     }
     private static long Tris(NativePackBank.Bank bank, string name) { var p = bank.Find(name); return p == null ? 0 : p.Parts.Sum(x => (long)bank.Meshes[x.Mesh].Submeshes.Sum(s => s.Indices.Length) / 3); }
+
+    // ---------------- the survivors' pack clips on the model (a probe for planning seats and feet) ----------------
+    public static void MotionProbe(string path)
+    {
+        var bank = NativeIntroPack.Read(File.ReadAllBytes(path)); var sk = bank.Skeleton; var inv = CultureInfo.InvariantCulture;
+        int Find(string n) { for (int i = 0; i < sk.Count; i++) if (sk.Names[i] == n) return i; return -1; }
+        int pelvis = Find("pelvis"), thighL = Find("thigh_l"), calfL = Find("calf_l"), footL = Find("foot_l"), ballL = Find("ball_l"), thighR = Find("thigh_r"), calfR = Find("calf_r"), footR = Find("foot_r"), head = Find("head"), handR = Find("hand_r"), handL = Find("hand_l");
+        var world = new System.Numerics.Quaternion[sk.Count]; var at = new System.Numerics.Vector3[sk.Count]; float floor = NativeVisualRig.Floor;
+        Console.WriteLine("legRatio " + sk.LegRatio.ToString("F3", inv) + " floor " + floor.ToString("F3", inv));
+        foreach (var n in new[] { "pelvis", "thigh_l", "calf_l", "foot_l", "ball_l", "head", "hand_r" }) { int i = Find(n); if (i >= 0) Console.WriteLine("rest " + n + " " + sk.RestPosition[i].X.ToString("F3", inv) + "," + (sk.RestPosition[i].Y - floor).ToString("F3", inv) + "," + sk.RestPosition[i].Z.ToString("F3", inv)); }
+        foreach (var c in bank.Clips.Values)
+        {
+            foreach (int f in new[] { 0, c.Frames / 2, c.Frames - 1 })
+            {
+                bank.Model(c, f, world, at); float low = float.MaxValue; for (int i = 0; i < sk.Count; i++) low = Math.Min(low, at[i].Y);
+                string P(int i) => i < 0 ? "-" : "(" + at[i].X.ToString("F2", inv) + "," + (at[i].Y - floor).ToString("F2", inv) + "," + at[i].Z.ToString("F2", inv) + ")";
+                Console.WriteLine(string.Format(inv, "{0,-26} f{1,-4} pelvis {2} thighL {3} kneeL {4} ankleL {5} ballL {6} kneeR {7} ankleR {8} head {9} handR {10} handL {11} lowest {12:F2}",
+                    c.Name, f, P(pelvis), P(thighL), P(calfL), P(footL), P(ballL), P(calfR), P(footR), P(head), P(handR), P(handL), low - floor));
+            }
+        }
+    }
 
     // ---------------- the dump for tools/stages/camp_bank.py ----------------
     public static void Dump(string path)

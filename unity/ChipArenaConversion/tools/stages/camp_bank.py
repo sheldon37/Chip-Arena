@@ -88,6 +88,9 @@ def registry(plan):
     for pose in ck.POSES:
         for v in range(3):
             reg['camp/figure/%s/%d' % (pose, v)] = ((lambda T, pose=pose, v=v: ck.figure(T, pose, v)), 0)
+    # the survivors' props on the pilot model (Core NativeCampSurvivors)
+    for name in ('mug', 'bowl', 'hammer', 'headset'):
+        reg['camp/prop/' + name] = (getattr(cp, 'prop_' + name), 0)
     return reg
 
 

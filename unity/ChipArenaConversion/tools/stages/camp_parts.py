@@ -976,3 +976,52 @@ def sandbag(T):
     if T.detail:
         ck.lettering(g, T, 'CD', -.6, .55, -.305, .03, f['cd-white'], style='stencil', depth=.001)
     return g
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# The survivors' props on the pilot model (the DEV preview; Core NativeCampSurvivors): each modelled about where it is held or worn.
+# A hand prop's origin is its grip, which sits in the binding's weapon frame (a sword's grip runs along its +z through the fist);
+# NativeCampSurvivors.Hold turns and moves it into the fist. The headset's origin is the middle of the skull (y up, z the face).
+# ---------------------------------------------------------------------------------------------------------------------------
+def prop_mug(T):
+    """An enamel camp mug, held by its handle: the handle round the grip, the mug's axis along the grip (z), its body beside it (+x)."""
+    f = F()
+    g = Geo()
+    sides = 12 if T.detail else 8
+    sk.lathe(g, [(.038, -.045), (.04, .043), (.036, .045)], (.058, 0, 0), f['cd-white'], sides, axis=(0, 0, 1), cap0=True)
+    sk.lathe(g, [(.036, .041), (.0, .041)], (.058, 0, 0), f['metal-dark'], sides, axis=(0, 0, 1))
+    tube(g, [(.022, 0, .028), (.004, 0, .022), (-.004, 0, 0), (.004, 0, -.022), (.022, 0, -.028)], .007, f['cd-white'], 5, caps=False)
+    return g
+
+
+def prop_bowl(T):
+    """A turned wooden bowl with a spoon in it, sat on the palm: the bowl's axis along y."""
+    f = F()
+    g = Geo()
+    sides = 14 if T.detail else 8
+    sk.lathe(g, [(.03, 0.0), (.065, .02), (.078, .055), (.072, .058), (.058, .028), (.0, .022)], (0, 0, 0), f['timber'], sides, cap0=True)
+    rod(g, (.0, .05, .0), (.04, .11, -.05), .005, f['metal-dark'], 4)
+    return g
+
+
+def prop_hammer(T):
+    """A claw hammer held by its handle: the handle along z (the butt at -.09), the head across x at z .2."""
+    f = F()
+    g = Geo()
+    rod(g, (0, 0, -.09), (0, 0, .2), .014, f['timber'], 6)
+    bx(g, T, -.055, .045, -.016, .016, .185, .215, f['metal-dark'], bevel=.004, cell=0)
+    rod(g, (.045, 0, .2), (.075, -.012, .19), .01, f['metal-dark'], 4)
+    return g
+
+
+def prop_headset(T):
+    """The radio operator's headset: a band over the top of the head, a cup on each ear, the mic on a boom to the mouth."""
+    f = F()
+    g = Geo()
+    band = [(-.104, -.005, 0), (-.095, .07, 0), (-.05, .12, 0), (0, .135, 0), (.05, .12, 0), (.095, .07, 0), (.104, -.005, 0)]
+    tube(g, band, .008, f['metal-dark'], 4, caps=False)
+    for sx in (-1, 1):
+        sk.lathe(g, [(.0, .0), (.042, .0), (.044, .02), (.036, .03), (.0, .03)], (sx * .094, -.02, .005), f['metal-dark'], 10, axis=(sx, 0, 0), cap0=True)
+    tube(g, [(-.115, -.025, .01), (-.1, -.07, .06), (-.06, -.095, .1), (-.025, -.1, .11)], .004, f['metal-dark'], 4, caps=False)
+    rod(g, (-.03, -.1, .108), (-.015, -.1, .112), .009, f['metal-dark'], 6)
+    return g
