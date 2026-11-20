@@ -150,7 +150,10 @@ queue job (`docs/audio/intros/README.md`). Generation runs only inside a builder
   layer tonight), and a clip never goes back to the keys.
 - The water's walls are set pieces of the bank lifted, swung, rolled forward and swapped for their frozen form under the frost
   front (no live fluid).
-- The polish pass (the integrator's review, 2026-11-20 morning) was filmed in one more Editor hold. Its clips replace the earlier
-  ones, which are kept as `*-v1.mp4`.
+- The polish pass (the integrator's review, 2026-11-20 morning) was filmed in holds 3 and 4 (hold 4 at the integrator's word). Its
+  clips replace the earlier ones, which are kept as `*-v1.mp4`.
+- Known from hold 4 (Cyber City): Still Tide's ice reads purple. The set takes the arena's own light volume (`ArenaGI`) and probe,
+  and with the probe cut the volume's magenta shows. Black Sun's plain is still dark grey rather than near-black. See DEV_LOG for
+  candidate fixes.
 - The magic sink's water puffs and the void orb's matte sphere are not on the entrance sink tonight; the water and the void use
   lit puffs, streaks and glows.
