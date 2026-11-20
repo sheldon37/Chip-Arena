@@ -120,11 +120,12 @@ namespace ChipArena.UnityConversion
             k.Key(Lower,reign).J(Hd,.0f).J(C,-.14f).J(LA,-1.55f,0,1.3f).J(RA,-1.55f,0,-1.3f).J(LE,-.12f).J(RE,-.12f);
             k.Key(Lower+.55f,reign).J(Hd,.12f).J(C,-.12f).J(LA,-.5f,0,.95f).J(RA,-.5f,0,-.95f).J(LE,-.14f).J(RE,-.14f);
             k.Key(Command-.06f,reign).J(Hd,.2f).J(C,-.12f).J(LA,-.3f,0,.74f).J(RA,-.3f,0,-.74f).J(LE,-.16f).J(RE,-.16f);
-            // The command: the right palm out over the world, rising to the chest's height, a touch past, settling there; the left hand
-            // low, still pouring; the head bowed a little to look down the lens.
-            k.Key(Command+.42f,reign).J(Hd,.26f).J(C,-.14f).J(LA,-.28f,0,.68f).J(RA,-1.44f,0,-.3f).J(LE,-.18f).J(RE,-.2f);
-            k.Key(Command+.9f,reign).J(Hd,.3f).J(C,-.14f).J(LA,-.27f,0,.66f).J(RA,-1.3f,0,-.32f).J(LE,-.18f).J(RE,-.16f);
-            k.Key(Total,reign).J(Hd,.3f).J(C,-.14f).J(LA,-.26f,0,.65f).J(RA,-1.32f,0,-.32f).J(LE,-.18f).J(RE,-.17f);
+            // The command: the right arm sweeps out over the world to the shoulder's height, the open palm a touch past and settling
+            // there, lit; the left hand low, still pouring; the head bowed a little to look down the lens. (Out to the side: the model
+            // places its own arms and took a forward lift as a hand raised beside the helmet, hold 1's frames.)
+            k.Key(Command+.42f,reign).J(Hd,.26f).J(C,-.14f).J(LA,-.28f,0,.68f).J(RA,-.34f,0,-1.62f).J(LE,-.18f).J(RE,-.08f);
+            k.Key(Command+.9f,reign).J(Hd,.3f).J(C,-.14f).J(LA,-.27f,0,.66f).J(RA,-.3f,0,-1.42f).J(LE,-.18f).J(RE,-.1f);
+            k.Key(Total,reign).J(Hd,.3f).J(C,-.14f).J(LA,-.26f,0,.65f).J(RA,-.3f,0,-1.45f).J(LE,-.18f).J(RE,-.1f);
             Keys=k;
         }
         /// <summary>The body is built from the core out as it condenses (6.38-6.66): the chest first, the hands and feet last.</summary>
@@ -200,7 +201,7 @@ namespace ChipArena.UnityConversion
                .Dolly(Gather,V(2.7f,.42f,5.1f),V(1.85f,.5f,3.45f),V(0,3.3f,-1.1f),V(0,2.8f,-.5f),52,44).Ease(NativeIntroEase.In)
                // the inhale: low and frontal on the visor as it kindles (the eye held on the head's ground point), the hands coming down
                // into the frame on the dips; outside the arms, so nothing passes through the lens
-               .Dolly(Inhale,f*1.42f+V(-.06f,1.64f,0),f*1.16f+V(-.05f,1.7f,0),f*VisorFront+V(0,EyeUp+.02f,0),f*VisorFront+V(0,EyeUp+.03f,0),33,29).Follow(NativeEntranceAnchor.Head,0,1).Ease(NativeIntroEase.Out)
+               .Dolly(Inhale,f*1.42f+V(-.06f,1.64f,0),f*1.2f+V(-.05f,1.7f,0),f*VisorFront+V(0,EyeUp+.02f,0),f*VisorFront+V(0,EyeUp+.03f,0),28,25).Follow(NativeEntranceAnchor.Head,0,1).Ease(NativeIntroEase.Out)
                // THE DROP: the hero frame from just over the floor, looking up: a slow push and orbit to the front, the architect hovering
                // between two monoliths, the sky's name above, the crown's spires leaning in at the top of the frame
                .Spline(Drop,new[]{V(1.35f,.36f,5.2f),V(.45f,.33f,4.5f),HeroEye},V(.1f,2.25f,-1.2f),V(.05f,1.95f,-1f),56,50).Ease(NativeIntroEase.Out)
@@ -471,11 +472,13 @@ namespace ChipArena.UnityConversion
             float well=Flash(t,Drop+.12f,.08f,.9f);
             l.Background=Vector3.Lerp(NativeEntranceFx.Hex(0x02040a),NativeEntranceFx.Hex(0x05070f),arena)+NativeEntranceFx.Hex(0x060a1a)*drop+NativeEntranceFx.Hex(0x16245a)*(.8f*well);l.Fog=l.Background;
             l.FogNear=t<Break?10:t<Drop?18:30;l.FogFar=t<Break?40:t<Drop?150:185;
-            l.Sky=NativeEntranceFx.Hex(0x6f8fbf,.18f+.2f*arena+.06f*drop);l.Ground=NativeEntranceFx.Hex(0x0f1a26,.25f+.03f*drop);
+            // (the ambient drops through the body's moment, so its rims carry it: hold 1 read it flat)
+            float bodyMoment=NativeEntranceMath.Ramp(t,Body-.1f,Body+.3f)*(1-NativeEntranceMath.Ramp(t,Still,Still+.6f));
+            l.Sky=NativeEntranceFx.Hex(0x6f8fbf,(.18f+.2f*arena+.06f*drop)*(1-.55f*bodyMoment));l.Ground=NativeEntranceFx.Hex(0x0f1a26,.25f+.03f*drop);
             float strike=Flash(t,Strike,.004f,.35f);
             // the key: soft and cool, low after the drop (the black glass keeps its gloss, the architect its form); the crown's gold
             // from above and behind, a rim
-            l.Directional(new Vector3(2.5f,5,4),NativeEntranceFx.Hex(0xdfe8ff,.55f*arena+.16f*NativeEntranceMath.Ramp(t,Body,Body+.5f)*(1-drop)+.22f*drop));
+            l.Directional(new Vector3(2.5f,5,4),NativeEntranceFx.Hex(0xdfe8ff,.55f*arena+.16f*NativeEntranceMath.Ramp(t,Body,Body+.5f)*(1-drop)*(1-.55f*bodyMoment)+.22f*drop));
             if(drop>0)l.Directional(new Vector3(-.6f,4,-3),Gold*(.5f*drop));
             // The strike: white at the centre, decaying to the thread of light that holds until the break.
             if(t<Break+.3f)l.Add(new Vector3(0,1.6f,0),Ice*(36*strike+2.5f*(1-NativeEntranceMath.Ramp(t,Break,Break+.3f))),14);
@@ -490,7 +493,7 @@ namespace ChipArena.UnityConversion
                 if(pres>.01f)l.Add(t<Body?new Vector3(0,PresenceY,0):chest+new Vector3(0,0,.3f),Ice*(4.5f*pres),6);
             }
             // The body's rims from the ignition (cyan from behind its left, ice from behind its right), so it stands out of the void.
-            if(t>=Body-.1f){float rim=NativeEntranceMath.Ramp(t,Body-.1f,Body+.2f);l.Add(chest+new Vector3(.95f,.75f,-1.45f),Cyan*(11*rim*(1-.35f*drop)),5);l.Add(chest+new Vector3(-1.05f,.45f,-1.3f),Ice*(8*rim*(1-.3f*drop)),5);}
+            if(t>=Body-.1f){float rim=NativeEntranceMath.Ramp(t,Body-.1f,Body+.2f)*(1+.6f*bodyMoment);l.Add(chest+new Vector3(.95f,.75f,-1.35f),Cyan*(13*rim*(1-.35f*drop)),5);l.Add(chest+new Vector3(-1.05f,.45f,-1.2f),Ice*(10*rim*(1-.3f*drop)),5);}
             // The visor's own light on the helmet and the shoulders.
             float visor=VisorLevel(t);if(visor>.02f)l.Add(VisorAt(t)+ForwardOf(t)*.3f,Molten*(1.1f*visor),1.6f);
             // The gathering's wires lighting the void; the inhale dims everything.
@@ -574,7 +577,7 @@ namespace ChipArena.UnityConversion
         {
             if(t<Body-.03f)return 0;float on=NativeEntranceMath.Ramp(t,Body-.03f,Body+.08f);
             float steady=.6f*on*(1-.65f*NativeEntranceMath.Ramp(t,Inhale-.05f,Inhale+.15f));
-            float kindle=t>=Inhale?.25f+.85f*NativeEntranceMath.Ramp(t,Inhale+.15f,Drop):0;
+            float kindle=t>=Inhale?.3f+.55f*NativeEntranceMath.Ramp(t,Inhale+.1f,DipA)+.6f*NativeEntranceMath.Ramp(t,DipA,DipA+.12f)+.7f*NativeEntranceMath.Ramp(t,DipB,DipB+.1f):0;
             float blaze=t>=Drop?1.25f:0;
             return Math.Max(steady,Math.Max(kindle,blaze))+1.4f*Flash(t,Body,.01f,.2f)+1.6f*Flash(t,Drop,.01f,.3f);
         }
@@ -582,9 +585,9 @@ namespace ChipArena.UnityConversion
         {
             float lvl=VisorLevel(t);if(lvl<.01f)return;var v=VisorAt(t);HeadFrame(t,out var hu,out var hf);var hr=Vector3.Cross(hu,hf);if(hr.LengthSquared()<1e-6f)return;hr=Vector3.Normalize(hr);
             // (ice while the body floats, as its accent is; white-gold from the drop, with the name)
-            var hot=t<Drop?Ice:Molten;fx.Glow(v,hot*(1.5f*lvl),0,.13f+.06f*lvl,1,0,12100);
-            fx.Glow(v,Ice*(.45f*lvl),0,.5f+.3f*lvl,0,0,12101);
-            float flare=.14f+.12f*lvl;Line(fx,v+hr*flare,v-hr*flare,Ice*(1.5f*lvl),.007f+.004f*lvl,.6f,12102);
+            var hot=t<Drop?Ice:Molten;fx.Glow(v,hot*(1.7f*lvl),0,.14f+.08f*lvl,1,0,12100);
+            fx.Glow(v,Ice*(.5f*lvl),0,.5f+.35f*lvl,0,0,12101);
+            float flare=.16f+.16f*lvl;Line(fx,v+hr*flare,v-hr*flare,Ice*(1.7f*lvl),.008f+.005f*lvl,.6f,12102);
             if(thin>=1&&lvl>.9f){float k=lvl-.9f;Line(fx,v+hr*(flare*2.4f),v-hr*(flare*2.4f),Cyan*(.6f*k),.004f,.85f,12103);}
         }
         // The architect's own light: glyph-light circling the body while it floats, a soft glow behind it and cyan motes rising round it
@@ -866,7 +869,7 @@ namespace ChipArena.UnityConversion
                     fx.Glow(tip,Gold*(.5f+1.6f*Flash(t,Drop+.85f,.02f,.5f)),0,.35f,1,0,8270+i);
                 }
                 // the sky answers: a vast glow wells up behind the name and the crown and settles
-                float sky=NativeEntranceMath.Ramp(s,.15f,.8f)*(1-.4f*NativeEntranceMath.Ramp(s,1.2f,2.8f))*(1-NativeEntranceMath.Ramp(t,FadeFrom,Total))+1.5f*Flash(t,Drop+.3f,.06f,.7f);
+                float sky=NativeEntranceMath.Ramp(s,.15f,.8f)*(1-.72f*NativeEntranceMath.Ramp(s,1.0f,2.6f))*(1-NativeEntranceMath.Ramp(t,FadeFrom,Total))+1.5f*Flash(t,Drop+.3f,.06f,.7f);
                 if(sky>.01f){fx.Glow(new Vector3(0,20,-32),Deep*(.32f*sky),0,48,1,0,8500);fx.Glow(new Vector3(0,12,-24),Gold*(.1f*sky),0,26,1,0,8501);
                     if(thin>=1){fx.Glow(new Vector3(-16,15,-20),Deep*(.16f*sky),0,30,1,0,8502);fx.Glow(new Vector3(16,15,-20),Deep*(.16f*sky),0,30,1,0,8503);}}
                 // dust shaken off the world as it lands: round each plinth's top and out from the platform's rim
@@ -894,8 +897,9 @@ namespace ChipArena.UnityConversion
                 bool left=side==0;float lvl=pour*(left?1:1-.85f*NativeEntranceMath.Ramp(t,Command,Command+.45f));if(lvl<.01f)continue;
                 var h=HandAt(left,t);var land=new Vector3(h.X,floor+.02f,h.Z);if(h.Y-land.Y<.1f)continue;
                 fx.Glow(h,Molten*(1.5f*lvl),0,.16f,1,0,12200+side);fx.Glow(h,Ice*(.4f*lvl),0,.5f,0,0,12202+side);
-                NativeEntranceFx.Shaft(fx,t,h,land,.05f,.2f,Ice*.8f,lvl,thin<1?3:5,thin<1?2:6,12210+side*40,1);
-                Line(fx,land,h,Ice*(1.3f*lvl),.014f,.3f,12290+side);
+                Line(fx,land,h,Cyan*(.42f*lvl),.16f,.35f,12210+side);Line(fx,land,h,Ice*(1.3f*lvl),.014f,.3f,12290+side);
+                int drops=thin<1?3:7;float fall=h.Y-land.Y;
+                for(int d=0;d<drops;d++){float ph=((t-Drop)*1.6f+d/(float)drops+.13f*side)%1f;var p=Vector3.Lerp(h,land,ph*ph);fx.Glow(p,Ice*(1.2f*lvl*(float)Math.Sin(Math.PI*ph)),0,.05f,0,0,12220+side*16+d);}
                 fx.Glow(land,Cyan*(1.2f*lvl),0,.55f,1,0,12300+side);
             }
             if(t<Drop+.6f)return;
@@ -1014,7 +1018,7 @@ namespace ChipArena.UnityConversion
         public override void Card(float t,ref NativeIntroCardState card)
         {
             // the sky's name is the hero; the card is its quiet caption (small, low in the black glass under the architect)
-            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.04f;card.Y=.925f;card.X=.5f;
+            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.04f;card.Y=.9f;card.X=.78f;
             // EffectA: how far the build has run (s since the name beat); EffectB: the distortion left (1 at the beat .. 0 settled)
             card.EffectA=Math.Max(0,t-CardAt);card.EffectB=(float)Math.Exp(-Math.Max(0,t-CardAt-.3f)*2.2f);card.Exit=NativeEntranceMath.Ramp(t,FadeFrom,Total-.05f);
         }

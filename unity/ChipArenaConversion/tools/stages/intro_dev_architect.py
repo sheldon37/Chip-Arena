@@ -16,8 +16,8 @@ Two worlds share the kit:
   floating plinths; the crown (eight gold spires leaning in over the platform toward one point: rays, not a ring), the far
   spires, shards, and the void's grid. It is built.
 Every solid piece has a `.wire` twin: its edges as thin glowing bars (the wireframe a piece falls away to, and is drawn in).
-The obsidian's baked occlusion is pressed low (OCCLUDED) so the arena's reflection probe, which the intro's set reads wherever the
-match is staged, cannot wash the black glass grey: its gloss is the intro's own lights' highlights.
+The obsidian's baked occlusion is pressed to nothing (OCCLUDED) so the arena's reflection probe, which the intro's set reads wherever
+the match is staged, cannot wash the black glass grey: its gloss is the intro's own lights' highlights.
 
 Frames (Unity space: metres, +y up; a piece's frame is where Core places it):
   old-plate          a 2 m deck plate's top centre                 old-dais-wedge   the hexagon's centre at its top; the wedge
@@ -72,8 +72,9 @@ CAP_H = 1.6
 # the crown: eight gold spires, each rooted above a monolith and leaning in toward one point over the platform (Core places them)
 SPIRE_L, SPIRE_W, SPIRE_D = 9.0, .46, .17
 # the black glass's occlusion scale: the env reflection (the arena's probe) is occluded by the vertex alpha, the lights' highlights
-# are not, so the obsidian stays black and glossy on every map (the gold keeps some of the probe: a metal needs a reflection)
-OCCLUDED = {'obsidian': .06, 'obsidian-dark': .06, 'basalt': .2, 'basalt-dark': .25, 'gold': .55}
+# are not, so the obsidian stays black and glossy on every map (the gold keeps some of the probe: a metal needs a reflection).
+# Fully off on the obsidian: at the hero frame's grazing angle even 6% of a bright map's probe (Brickfall's sky) read grey (hold 1).
+OCCLUDED = {'obsidian': 0.0, 'obsidian-dark': 0.0, 'basalt': .1, 'basalt-dark': .12, 'gold': .55}
 
 FIN = {}
 
