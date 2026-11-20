@@ -199,14 +199,19 @@ that exists:
 
 So an intro sounds right before any generation: write `alt` and `clip` to fit, and check the sync in your capture.
 
-**Requesting generated sounds:** read section 6a, the generation status, before relying on it.
-- Add one row per cue to your own `docs/audio/intros/<id>.md` (key, prompt, seconds, loop no, gain).
-- The framework batches every author's rows into the request queue (`docs/audio/SOUND-REQUESTS.md` format) in one pass.
+**Requesting generated sounds:** follow `docs/audio/intros/README.md`.
+- Put your rows in your own `docs/audio/intros/<author>.json`, in the manifest's sound schema.
+- Add one contract line per key to `Core/NativeIntroSoundKeys.cs`, on your slot.
+- `tools/intros/compile_sound_requests.py` merges every author's rows into `docs/audio/sound-requests-intros.json` and
+  prints the approved builder job.
 - Never put a key or token anywhere in the repo or in logs.
 
 ### 6a. Generation status
 
-Written by I0 after checking the pipeline; see the DEV_LOG entry and `docs/audio/intros/README.md`.
+The builder queue is live on this PC (its DPAPI setup and receipts are there). It generates only inside a builder run,
+which the integrator pushes. So the intros' sounds are generated unattended tonight only if the compiled manifest, its
+contract keys and its queue job are merged before a builder push. Until then every cue plays its `alt` or `clip`. The
+details are in `docs/audio/intros/README.md`.
 
 ## 7. The managed checks (`Tests/IntroV2Checks.cs`)
 
