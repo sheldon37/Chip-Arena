@@ -15,7 +15,10 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The hero facing every procedural entrance ends on.</summary>
         public const float Facing=-.22f;
-        protected NativeEntranceKeys Keys;protected float[] Start;protected NativeEntrancePose.Step[] Steps=Array.Empty<NativeEntrancePose.Step>();
+        private NativeEntranceKeys keys;
+        /// <summary>The keys; a v2 intro's carry its hinged legs (NativeEntranceKeys.Hinged), whoever samples them.</summary>
+        protected NativeEntranceKeys Keys{get=>keys;set{keys=value;if(value!=null)value.Hinged=HingedLegs;}}
+        protected float[] Start;protected NativeEntrancePose.Step[] Steps=Array.Empty<NativeEntrancePose.Step>();
         private readonly float[] feet=new float[8];protected Func<float,Vector3,Vector3> RootPath;
         protected NativeProceduralEntrance(string style,float hit,int accent):base(style,hit,accent){Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f);}
         /// <summary>A stance (left x, z, yaw, right x, z, yaw) in the hero facing's frame, as world values.</summary>
