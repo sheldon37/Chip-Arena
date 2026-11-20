@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     /// off the ground round it in a cloud of steam. The storm parts: the outpost, its masts, the aurora above. Camera: telephoto (one
     /// slow push into the storm), a close insert, a tilt up with the rise, a low wide pulse, a reveal as the storm parts, the hero.
     /// </summary>
-    public sealed class NativeIntroWhiteout:NativeIntroGenericScript,INativeIntroHead
+    public sealed class NativeIntroWhiteout:NativeIntroGenericScript
     {
         public const string Id=NativeIntroCatalog.Prefix+"whiteout";
         public const float Total=8f,CardAt=6.2f;
@@ -88,16 +88,6 @@ namespace ChipArena.UnityConversion
         protected override void Fallback(float t,INativeIntroSet set)=>Plain(set,t,NativeEntranceFx.Hex(0xc9d6e4),Vector3.Lerp(Visor,Heat,Warmth(t)),.4f+1.6f*Flash(t,PulseAt,.04f,.6f)+.6f*Warmth(t),Flood);
 
         // ---- the light ----
-        // ---- the head as drawn (INativeIntroHead): handed in each frame before the set and the effects (the lights read the frame
-        // before's); without it (the checks, the Classic body) the keyed head ----
-        private Vector3 drawnHead;private float drawnAt=-1;private bool drawnModel;
-        public void Head(float t,in NativeIntroHand head){drawnModel=head.Model;drawnHead=head.At;drawnAt=t;}
-        /// <summary>The visor: the head joint (the skull's base, drawn or keyed) lifted HeadLift along the keyed neck (the bow).</summary>
-        private Vector3 Eyes(float t)
-        {
-            var head=Anchor(NativeEntranceAnchor.Head,t);var neck=Vector3.Normalize(head-Anchor(NativeEntranceAnchor.Chest,t));
-            return (drawnModel&&Math.Abs(drawnAt-t)<.1f?drawnHead:head)+neck*HeadLift;
-        }
         public override void Lights(float t,NativeEntranceLights l)
         {
             float storm=StormLevel(t),clear=1-storm,warm=Math.Max(0,Warmth(t));
@@ -108,7 +98,7 @@ namespace ChipArena.UnityConversion
             l.Directional(FloodAt,Flood*(.85f+.4f*clear));
             l.Directional(new Vector3(.4f,.6f,.8f),NativeEntranceFx.Hex(0x9fb4ff,.12f+.3f*clear));
             var chest=Anchor(NativeEntranceAnchor.Chest,t);
-            float visor=NativeEntranceMath.Ramp(t,VisorAt,VisorAt+.25f);if(visor>.01f)l.Add(Eyes(t)+new Vector3(0,0,.25f),Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.4f*visor),1.8f);
+            float visor=NativeEntranceMath.Ramp(t,VisorAt,VisorAt+.25f);if(visor>.01f)l.Add(Anchor(NativeEntranceAnchor.Visor,t)+new Vector3(0,0,.12f),Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.4f*visor),1.8f);
             if(warm>.01f)l.Add(chest+new Vector3(0,0,.3f),Heat*(3.2f*warm),3.4f);
             float pulse=Flash(t,PulseAt,.04f,.55f);if(pulse>.01f)l.Add(chest,HeatHot*(14*pulse),7);
             l.Add(FloodAt+new Vector3(0,-1,1.5f),Flood*(6+4*clear),18);

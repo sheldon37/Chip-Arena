@@ -39,8 +39,6 @@ namespace ChipArena.UnityConversion
         /// kicker and line above and below): a band under the feet. The closing frames show the whole figure above it (the crown near
         /// .2 of the height, the soles near .72), so the name sits on the floor in front of the pilot, never on its legs.</summary>
         public const float CardY=.855f;
-        /// <summary>The head anchor is the head joint's pivot at the skull's base: the eyes sit about this far above it (I5's measure).</summary>
-        protected const float HeadLift=.16f;
         /// <summary>A point `distance` m out from the mark toward the pilot's front, turned side*.42 rad toward its left (the
         /// framework's hero angle; side .524 is straight down +z), `height` m up.</summary>
         protected static Vector3 Front(float side,float distance,float height)
