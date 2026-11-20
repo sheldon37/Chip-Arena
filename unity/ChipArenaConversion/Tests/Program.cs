@@ -48,6 +48,9 @@ internal static class Program
             if(args.Length==3&&args[0]=="--meridian-zfight"){MeridianDressChecks.ZFightExport(int.Parse(args[1]),args[2]);return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
+            if(args.Length==2&&args[0]=="--meridian-landmarks-dump"){LandmarkReadChecks.Dump(args[1]);return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--landmark-reads")LandmarkReadChecks.Run();
+            if(args.Length==1&&args[0]=="--landmark-reads")return 0;
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-slides"){RooftopLayout.Slides(ProjectRoot(),args[1]);return 0;}
             if(args.Length==1&&args[0]=="--rooftop"){RooftopChecks.Run(ProjectRoot());return 0;}
