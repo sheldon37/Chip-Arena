@@ -525,6 +525,366 @@
       "levelDb": -14,
       "fadeOutMs": 500,
       "prompt": "A clear bright bell-like chime swelling with warmth, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.wind",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 8,
+      "targetSeconds": {
+        "min": 7.4,
+        "max": 7.8
+      },
+      "levelDb": -16,
+      "fadeOutMs": 400,
+      "prompt": "A battlefield at dusk after a siege, a low wind over a broken stone wall, distant crackling fires and faint smoke, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.plant",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "prompt": "A heavy steel tower shield slammed down into packed earth, a deep metallic thud with a gritty crunch, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.launch",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 300,
+      "prompt": "A distant volley of siege engines firing at once, far-off heavy thumps and rising whooshes, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.hit",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A burning bolt striking a steel shield head on, a loud ringing clang with a burst of fire, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.miss",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "prompt": "A fiery projectile exploding in the dirt nearby, a heavy whump of earth and flame, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.hit2",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A heavy iron bolt slamming into a steel shield, a sharp deep clang and scraping sparks, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.hit3",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A flaming missile bursting on a steel shield, a booming metallic impact with a crackle of fire, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.miss2",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "prompt": "A fireball crashing into stone rubble beside a wall, an explosive burst with clattering stones, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.hit4",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A spear-like bolt glancing hard off a steel shield, a ringing clang and a whine of ricochet, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.miss3",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "Earth and debris thrown up by a near miss, a dull explosion with dirt raining down, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.hit5",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.0
+      },
+      "levelDb": -3,
+      "fadeOutMs": 200,
+      "prompt": "The heaviest bolt of the barrage smashing into a steel shield, a huge clang that rings on, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.hot",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.8
+      },
+      "levelDb": -14,
+      "fadeOutMs": 400,
+      "prompt": "Hot steel ticking and hissing as it cools in the smoke, soft crackles, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.bash",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A steel shield bashed forward with great force, a deep whoomp of air and a hard metallic thud, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.holdtheline.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -10,
+      "fadeOutMs": 400,
+      "prompt": "A low heavy war drum hit with a deep metallic ring, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.lane",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 8,
+      "targetSeconds": {
+        "min": 6.8,
+        "max": 7.2
+      },
+      "levelDb": -18,
+      "fadeOutMs": 400,
+      "prompt": "A narrow night market lane, soft rain-washed quiet, distant chatter muffled, steam hissing from grates, paper lanterns creaking, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.stop",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 80,
+      "prompt": "A light quick footstep stopping on wet cobblestones, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.split",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "A sudden shimmering split, a fast airy whoosh with a glassy phasing echo, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.cut",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.5
+      },
+      "levelDb": -6,
+      "fadeOutMs": 60,
+      "prompt": "A quick dagger slash, a short sharp whoosh with a thin metal edge, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.echo",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.5
+      },
+      "levelDb": -10,
+      "fadeOutMs": 60,
+      "prompt": "A ghostly echo of a dagger slash, a thin phased whoosh slightly higher in pitch, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.echo2",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.5
+      },
+      "levelDb": -12,
+      "fadeOutMs": 60,
+      "prompt": "A fainter second echo of a dagger slash, a distant airy whoosh, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.lanterns",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.4,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.2
+      },
+      "levelDb": -10,
+      "fadeOutMs": 250,
+      "prompt": "Paper lanterns falling and bouncing on cobblestones, light papery thumps and a wooden clatter, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.cut2",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.5
+      },
+      "levelDb": -6,
+      "fadeOutMs": 60,
+      "prompt": "A fast backhand dagger slash with a crisp metallic flick, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.join",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -8,
+      "fadeOutMs": 200,
+      "prompt": "Three shimmering echoes snapping back into one, a bright reversed whoosh ending in a soft impact, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.4,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.3
+      },
+      "levelDb": -12,
+      "fadeOutMs": 300,
+      "prompt": "Two daggers crossed with a light ringing scrape and a soft shimmer, isolated, no reverb, no music, no background noise"
     }
   ]
 }
