@@ -136,12 +136,18 @@ namespace ChipArena.UnityConversion
     }
     /// <summary>One hand as the runtime hands it in (source frame): the wrist's position and turn, from the model body when it is
     /// drawn (Model true), else the keyed rig's.</summary>
-    public struct NativeIntroHand{public bool Model;public Vector3 At;public Quaternion Turn;}
+    public struct NativeIntroHand{public bool Model;public Vector3 At;public Quaternion Turn;
+        /// <summary>A gun Weapon intro's right hand only: the drawn weapon's muzzle and its bore (unit), from the weapon's frame after the
+        /// hand fit (NativeWeaponDressing.MuzzleZ along its +z); HasMuzzle false otherwise.</summary>
+        public bool HasMuzzle;public Vector3 Muzzle,Bore;}
     /// <summary>
     /// Optional for a v2 intro: the hands as drawn this frame, handed in before Props, Set and Effects (docs/INTROS-V2.md "Hands"),
     /// so a muzzle flash, a cast or a trail leaves the drawn weapon. A checker that never hands them in still sees every effect.
     /// </summary>
     public interface INativeIntroHands{void Hands(float t,in NativeIntroHand right,in NativeIntroHand left);}
+    /// <summary>Optional for a v2 Bow intro: the bow as the match draws it (on the model's left hand, its string and its nocked arrow)
+    /// from the view at `t` (false: carried, one arrow). Without it the bow is the plain model in the hand.</summary>
+    public interface INativeIntroBow{bool Bow(float t,out NativeBow.View view);}
 
     /// <summary>
     /// The v2 intro interface (docs/INTROS-V2.md "The per-frame interface"). An intro is a NativeEntranceScript (its pose, camera,
