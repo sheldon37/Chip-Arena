@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         public static readonly float[] Glitches={.06f,.3f,.58f,1.07f,1.43f,1.86f};
         public const string SongId="music/architect-obey",BankId="ChipArenaIntroDev",CardEffect="architect";
         /// <summary>The presence (and the hovering chest) height, and how high the architect floats until the drop.</summary>
-        public const float PresenceY=1.78f,Hover=.45f;
+        public const float PresenceY=1.5f,Hover=.45f;
 
         private static readonly Vector3 Cyan=NativeEntranceFx.Hex(0x8ff0ff),Ice=NativeEntranceFx.Hex(0xd8fbff),Gold=NativeEntranceFx.Hex(0xffd690),
             GlyphTint=NativeEntranceFx.Hex(0x5ff0ff),Rose=NativeEntranceFx.Hex(0xff4d7a),Blue=NativeEntranceFx.Hex(0x3f6dff),Neon=NativeEntranceFx.Hex(0xbfe8ff);
@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             // The stillness: the arms open out wide and low, slowly, the chest open.
             k.Key(Gather-.05f,form).J(Hd,-.06f).J(C,-.12f).J(LA,-.42f,-.25f,1.05f).J(RA,-.42f,.25f,-1.05f).J(LE,-.32f).J(RE,-.3f);
             // The gathering: the arms come forward and up, a step on each stutter, the head lifting with them.
-            float[] lift={-.75f,-1.05f,-1.35f,-1.65f,-1.95f,-2.25f};float[] spread={.85f,.75f,.66f,.58f,.5f,.44f};float[] head={-.1f,-.14f,-.18f,-.22f,-.26f,-.3f};
+            float[] lift={-.7f,-1.1f,-1.5f,-1.9f,-2.3f,-2.65f};float[] spread={1.0f,.9f,.8f,.7f,.62f,.55f};float[] head={-.1f,-.14f,-.18f,-.22f,-.26f,-.3f};
             k.Key(Stutters[0],form).J(Hd,head[0]).J(C,-.16f).J(LA,lift[0],0,spread[0]).J(RA,lift[0],0,-spread[0]).J(LE,-.35f).J(RE,-.35f);
             for(int s=0;s<Stutters.Length;s++)
             {
@@ -88,8 +88,8 @@ namespace ChipArena.UnityConversion
                 k.Key(at,form).J(Hd,head[s+1]).J(C,-.16f-.03f*s).J(LA,lift[s+1],0,spread[s+1]).J(RA,lift[s+1],0,-spread[s+1]).J(LE,-.3f+.02f*s).J(RE,-.3f+.02f*s);
             }
             // The inhale: held high, arched; then the hands close and draw in toward the head.
-            k.Key(DipA,form).J(Hd,-.32f).J(C,-.3f).J(Sp,-.06f).J(LA,-2.3f,0,.42f).J(RA,-2.3f,0,-.42f).J(LE,-.25f).J(RE,-.25f);
-            k.Key(DipB+.06f,form).J(Hd,-.24f).J(C,-.28f).J(Sp,-.06f).J(LA,-2.55f,0,.62f).J(RA,-2.55f,0,-.62f).J(LE,-1.05f).J(RE,-1.05f);
+            k.Key(DipA,form).J(Hd,-.32f).J(C,-.3f).J(Sp,-.06f).J(LA,-2.75f,0,.5f).J(RA,-2.75f,0,-.5f).J(LE,-.18f).J(RE,-.18f);
+            k.Key(DipB+.06f,form).J(Hd,-.24f).J(C,-.28f).J(Sp,-.06f).J(LA,-2.9f,0,.32f).J(RA,-2.9f,0,-.32f).J(LE,-1.15f).J(RE,-1.15f);
             // THE DROP: the arms slam down and out, the body lands on the dais, knees taking it.
             float[] land=NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.RootY]=.88f;v[NativeEntranceKeys.Yaw]=f;v[NativeEntranceKeys.BodyY]=-.17f;
                 NativeEntranceKeys.Set(v,B,.16f,0,0);NativeEntranceKeys.Set(v,Hd,.22f,0,0);NativeEntranceKeys.Set(v,C,.06f,0,0);
@@ -136,13 +136,13 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(Strike,V(3.4f,1.05f,6.5f),V(2.7f,.95f,5.5f),V(0,1.0f,0),V(0,1.12f,0),54,50).Ease(NativeIntroEase.Out).Handheld(.6f)
                .Dolly(1.07f,V(-2.5f,.3f,2.7f),V(-1.75f,.26f,1.75f),V(-4.6f,.38f,-2.6f),V(-4.6f,.5f,-3.1f),40,38).Handheld(.35f)
                .Crane(Break,V(4.6f,2.1f,8.8f),V(7.2f,3.6f,14.5f),3.2f,V(0,.6f,0),V(0,2.1f,0),50,56).Ease(NativeIntroEase.InOut)
-               .Orbit(Presence,Vector3.Zero,40,-38,7.0f,5.6f,1.5f,2.25f,V(0,PresenceY,0),V(0,PresenceY,0),42,38).Ease(NativeIntroEase.InOut)
-               .Dolly(Draft,V(1.0f,2.05f,3.5f),V(.72f,1.95f,2.55f),V(0,PresenceY-.1f,0),V(0,PresenceY-.15f,0),35,33).Focus(0,0,.35f)
-               .Dolly(Body,V(.78f,.62f,2.35f),V(.64f,.68f,2.05f),V(0,PresenceY+.1f,0),V(0,PresenceY+.05f,0),42,39).Handheld(.25f)
-               .Crane(Still,V(15.5f,5.6f,24.5f),V(13.0f,6.0f,21.5f),1.8f,V(0,2.8f,0),V(0,3.2f,0),40,37).Ease(NativeIntroEase.InOut)
-               .Dolly(Gather,V(2.7f,.42f,5.1f),V(1.85f,.5f,3.45f),V(0,3.7f,-1.1f),V(0,3.1f,-.5f),52,44).Ease(NativeIntroEase.In)
-               .Dolly(Inhale,V(.34f,2.02f,1.08f),V(.31f,2.0f,.98f),V(0,1.98f,0),V(0,1.97f,0),30,28)
-               .Dolly(Drop,V(2.5f,.78f,8.6f),V(1.45f,.86f,6.1f),V(0,3.5f,-.6f),V(0,2.75f,-.6f),58,47).Ease(NativeIntroEase.Out)
+               .Orbit(Presence,Vector3.Zero,40,-38,7.6f,6.2f,1.2f,1.95f,V(0,PresenceY,0),V(0,PresenceY,0),40,36).Ease(NativeIntroEase.InOut)
+               .Dolly(Draft,V(1.0f,1.8f,3.5f),V(.72f,1.72f,2.55f),V(0,PresenceY-.12f,0),V(0,PresenceY-.16f,0),35,33).Focus(0,0,.35f)
+               .Dolly(Body,V(.78f,.55f,2.35f),V(.64f,.6f,2.05f),V(0,PresenceY+.12f,0),V(0,PresenceY+.08f,0),44,41).Handheld(.25f)
+               .Crane(Still,V(11.0f,4.2f,17.0f),V(9.6f,4.4f,14.6f),1.4f,V(0,2.3f,0),V(0,2.9f,0),42,38).Ease(NativeIntroEase.InOut)
+               .Dolly(Gather,V(2.7f,.42f,5.1f),V(1.85f,.5f,3.45f),V(0,3.3f,-1.1f),V(0,2.8f,-.5f),52,44).Ease(NativeIntroEase.In)
+               .Dolly(Inhale,V(.36f,1.52f,1.36f),V(.33f,1.54f,1.24f),V(0,2.1f,0),V(0,2.14f,0),39,36)
+               .Dolly(Drop,V(2.6f,.75f,8.6f),V(.38f,.72f,4.3f),V(0,3.3f,-.6f),V(0,2.25f,-.6f),58,45).Ease(NativeIntroEase.Out)
                .Bars(0,.85f).Bars(Drop,.55f).Black(0,0).Black(FadeFrom+.12f,1);
         }
 
@@ -175,7 +175,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<old.Length;i++)
             {
                 ref var p=ref old[i];var c=World(p.Rest,p.Yaw,p.Centroid);float d=new Vector2(c.X,c.Z).Length();
-                p.Seed=7100+i*13;p.Lift=Break+.03f+Math.Min(d,14)*.055f+.06f*R(p.Seed,1);p.Outward=d>.01f?Vector3.Normalize(new Vector3(c.X,0,c.Z)):Vector3.UnitZ;
+                p.Seed=7100+i*13;p.Lift=Break+.03f+Math.Min(d,14)*.03f+.05f*R(p.Seed,1);p.Outward=d>.01f?Vector3.Normalize(new Vector3(c.X,0,c.Z)):Vector3.UnitZ;
                 p.Swirl=Vector3.Normalize(new Vector3(S(p.Seed,2),.4f,S(p.Seed,3)));
             }
             var n=new List<Piece>();
@@ -224,8 +224,8 @@ namespace ChipArena.UnityConversion
                 float spin=(p.Kind==OldSky?.08f:.35f+.6f*R(p.Seed,6))*tau*(1+.35f*tau);var turn=Quaternion.CreateFromAxisAngle(p.Swirl,spin);
                 // about its centroid: the turn moves the frame round the centre of the piece
                 var c=NativeEntranceMath.RotateY(p.Centroid,p.Yaw);at+=c-Vector3.Transform(c,turn);rot=turn*q0;
-                solid=1-NativeEntranceMath.Smooth((tau-.42f)/.9f);
-                wire=(1-solid)*(1-NativeEntranceMath.Smooth((tau-1.15f)/.75f))*1.6f+.35f*(1-NativeEntranceMath.Smooth(tau/.4f));
+                solid=1-NativeEntranceMath.Smooth((tau-.28f)/.7f);
+                wire=(1-solid)*(1-NativeEntranceMath.Smooth((tau-.8f)/.5f))*1.6f+.35f*(1-NativeEntranceMath.Smooth(tau/.4f));
             }
             centre=at+Vector3.Transform(p.Centroid,rot);
         }
@@ -261,8 +261,8 @@ namespace ChipArena.UnityConversion
             {
                 // Locked: a hair of settle, the seams' flash travelling out with the wave of light.
                 float s=t-Drop;at=p.Rest-new Vector3(0,.012f*(float)Math.Exp(-14*s)*(float)Math.Sin(s*30),0);solid=true;
-                float reach=Math.Max(0,(new Vector2(p.Rest.X,p.Rest.Z).Length()-.5f))/22f;flash=Flash(t,Drop+reach,.01f,.3f)*(p.Kind==Crown?1.4f:1);
-                wire=1.8f*(1-NativeEntranceMath.Smooth(s/.38f));return true;
+                float reach=Math.Max(0,(new Vector2(p.Rest.X,p.Rest.Z).Length()-.5f))/22f;flash=Flash(t,Drop+reach,.01f,.3f)*(p.Kind==Crown?.6f:1);
+                wire=1.8f*(1-NativeEntranceMath.Smooth(s/(p.Kind==Crown||p.Kind==Tile||p.Kind==Dais?.14f:.38f)));return true;
             }
             float snapFrom=Drop-.045f;
             if(t>=snapFrom)
@@ -338,7 +338,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The new pieces' glow once locked: the seams steady, the crown and the capstones brighter.</summary>
         private static Vector3 Settled(float t,byte kind)
         {
-            float b=kind==Crown?1.25f:kind==Obelisk?1.1f:1;float sweep=.12f*NativeEntranceMath.Bump(t,13.8f,15.0f);return new Vector3(b+sweep,b+sweep,b+sweep);
+            float b=kind==Crown?.55f:kind==Obelisk?1.1f:1;float sweep=.12f*NativeEntranceMath.Bump(t,13.8f,15.0f);return new Vector3(b+sweep,b+sweep,b+sweep);
         }
         private static float CrownTurn(float t)=>.11f*NativeEntranceMath.EaseOut((t-Drop)/2.5f)+.02f*Math.Max(0,t-Drop-2.5f);
         /// <summary>Shard `i`: born from the old world near the break, orbiting the presence, thrown back by the body at 6.66, hanging
@@ -369,10 +369,10 @@ namespace ChipArena.UnityConversion
             l.Clear();var chest=Anchor(NativeEntranceAnchor.Chest,t);l.DriveProbe=true;
             float arena=1-NativeEntranceMath.Ramp(t,Break,Break+.9f),drop=NativeEntranceMath.Ramp(t,Drop-.02f,Drop+.15f);
             l.Background=Vector3.Lerp(NativeEntranceFx.Hex(0x02040a),NativeEntranceFx.Hex(0x05070f),arena)+NativeEntranceFx.Hex(0x0a1220)*drop;l.Fog=l.Background;l.FogNear=t<Break?10:18;l.FogFar=t<Break?40:150;
-            l.Sky=NativeEntranceFx.Hex(0x6f8fbf,.18f+.2f*arena+.18f*drop);l.Ground=NativeEntranceFx.Hex(0x0f1a26,.25f+.2f*drop);
+            l.Sky=NativeEntranceFx.Hex(0x6f8fbf,.18f+.2f*arena+.1f*drop);l.Ground=NativeEntranceFx.Hex(0x0f1a26,.25f+.05f*drop);
             float strike=Flash(t,Strike,.004f,.35f);
-            l.Directional(new Vector3(2.5f,5,4),NativeEntranceFx.Hex(0xdfe8ff,.55f*arena+.2f*NativeEntranceMath.Ramp(t,Body,Body+.5f)*(1-drop)+.85f*drop));
-            if(drop>0)l.Directional(new Vector3(-1,6,-2),Gold*(.45f*drop));
+            l.Directional(new Vector3(2.5f,5,4),NativeEntranceFx.Hex(0xdfe8ff,.55f*arena+.2f*NativeEntranceMath.Ramp(t,Body,Body+.5f)*(1-drop)+.42f*drop));
+            if(drop>0)l.Directional(new Vector3(-1,6,-2),Gold*(.3f*drop));
             // The strike: white at the centre, decaying to the thread of light that holds until the break.
             if(t<Break+.3f)l.Add(new Vector3(0,1.6f,0),Ice*(36*strike+2.5f*(1-NativeEntranceMath.Ramp(t,Break,Break+.3f))),14);
             // The old pylons' neon on the floor (two nearest the lens), out at the break.
@@ -393,7 +393,7 @@ namespace ChipArena.UnityConversion
             float hit=Flash(t,Drop,.004f,.32f);if(hit>.01f)l.Add(new Vector3(0,1.2f,.6f),Ice*(42*hit),18);
             if(drop>0)
             {
-                l.Add(new Vector3(0,CrownY-1.5f,0),Gold*(7*drop),24);l.Add(new Vector3(0,.35f,.4f),Cyan*(1.6f*drop),7);l.Add(new Vector3(.6f,2.6f,-2.3f),Ice*(4.2f*drop),7);
+                l.Add(new Vector3(0,CrownY-1.5f,0),Gold*(3.2f*drop),24);l.Add(chest+new Vector3(.5f,.35f,1.25f),Ice*(1.5f*drop),3.2f);l.Add(new Vector3(.6f,2.6f,-2.3f),Ice*(4.2f*drop),7);
                 float name=NameLevel(t);if(name>.01f)l.Add(NameCentre+new Vector3(0,0,.6f),Gold*(3.4f*name),9);
             }
         }
@@ -595,7 +595,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<count;i+=every)
                 {
                     float a=(i+(r==1?.5f:0)+.5f)/count*6.2831853f;float start=Still+.1f+r*.28f+.15f*R(7400+r,i);float u=NativeEntranceMath.EaseOut((t-start)/.45f);if(u<=0)continue;
-                    var a0=Polar(RingR0[r],a,y);var a1=Polar(RingR1[r],a,y);var head=Vector3.Lerp(a0,a1,u);float lvl=(.9f+1.6f*(1-NativeEntranceMath.Smooth((t-start-.45f)/.6f)))*fade;
+                    var a0=Polar(RingR0[r],a,y);var a1=Polar(RingR1[r],a,y);var head=Vector3.Lerp(a0,a1,u);float lvl=(1.4f+2.2f*(1-NativeEntranceMath.Smooth((t-start-.45f)/.6f)))*fade;
                     Line(fx,head,a0,Cyan*lvl,.014f,.2f,7500+r*40+i);if(u<1)fx.Glow(head,Ice*2.2f,0,.07f,1,0,7600+r*40+i);
                 }
             }
@@ -720,7 +720,7 @@ namespace ChipArena.UnityConversion
         }
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.084f;card.Y=.87f;
+            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.084f;card.Y=.885f;
             // EffectA: how far the build has run (s since the name beat); EffectB: the distortion left (1 at the beat .. 0 settled)
             card.EffectA=Math.Max(0,t-CardAt);card.EffectB=(float)Math.Exp(-Math.Max(0,t-CardAt-.3f)*2.2f);card.Exit=NativeEntranceMath.Ramp(t,FadeFrom,Total-.05f);
         }

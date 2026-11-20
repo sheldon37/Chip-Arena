@@ -89,9 +89,9 @@ def finishes():
         'vein': f('vein', 0xc8f6ff, D.DETAIL_GLOW, glow=2.6),
         'vein-soft': f('vein-soft', 0x7fe2ff, D.DETAIL_GLOW, glow=1.2),
         'code': f('code', 0x6ff4ff, D.DETAIL_GLOW, glow=1.7),
-        'crown': f('crown', 0xffe2a0, D.DETAIL_GLOW, glow=3.0),
+        'crown': f('crown', 0xffd690, D.DETAIL_GLOW, glow=1.1),
         'grid': f('grid', 0x3fb8e0, D.DETAIL_GLOW, glow=.9),
-        'wire': f('wire', 0xd8fbff, D.DETAIL_GLOW, glow=3.0),
+        'wire': f('wire', 0xd8fbff, D.DETAIL_GLOW, glow=1.4),
     })
 
 
@@ -265,16 +265,14 @@ def sector(g, r0, r1, ah, y0, y1, f, T, rm, bevel=.025, gap_m=0.0, rings=2, top_
 
 
 def sector_wire(g, r0, r1, ah, y0, y1, rm, w, f, gap_m=0.0, n=6):
+    """A tile's wireframe: its radial edges, top and bottom, and its four corners' uprights. No arcs: laid side by side, a
+    ring of tiles' arcs would draw circles round the floor (owner: no ring outlines)."""
     def edge(r):
         return ah - gap_m * .5 / r
     for y in (y0, y1):
         eo, ei = edge(r1), edge(r0)
-        outer = [polar(r1, -eo + 2 * eo * i / n, y, rm) for i in range(n + 1)]
-        inner = [polar(r0, -ei + 2 * ei * i / n, y, rm) for i in range(n + 1)]
-        poly_wire(g, outer, w, f, closed=False)
-        poly_wire(g, inner, w, f, closed=False)
-        bar(g, outer[0], inner[0], w, f)
-        bar(g, outer[-1], inner[-1], w, f)
+        bar(g, polar(r1, -eo, y, rm), polar(r0, -ei, y, rm), w, f)
+        bar(g, polar(r1, eo, y, rm), polar(r0, ei, y, rm), w, f)
     for (r, s) in ((r1, -1), (r1, 1), (r0, -1), (r0, 1)):
         e = edge(r)
         bar(g, polar(r, s * e, y0, rm), polar(r, s * e, y1, rm), w, f)
@@ -582,10 +580,8 @@ def dais(T):
 
 
 def dais_wire(T, w):
+    """The dais's wireframe: its eight spokes and its keel's lines (no rim circles: no ring outlines)."""
     g = Geo()
-    n = (32, 20, 12)[T.i]
-    for y in (0.0, -TILE_T):
-        poly_wire(g, [polar(DAIS_NEW_R, 2 * math.pi * i / n, y) for i in range(n)], w, FIN['wire'])
     for i in range(8):
         a = 2 * math.pi * i / 8
         bar(g, polar(.05, a, 0), polar(DAIS_NEW_R, a, 0), w, FIN['wire'])
