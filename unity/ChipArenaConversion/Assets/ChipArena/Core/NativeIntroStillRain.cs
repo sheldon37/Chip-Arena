@@ -143,7 +143,7 @@ namespace ChipArena.UnityConversion
         {
             if(!set.Has("rain/static"))return false;
             // The lantern's flame and the veranda's paper (the glow sub-mesh): steady, a breath of flicker (none in Reduced effects).
-            float fl=Context.Reduced?1:.96f+.04f*(float)Math.Sin(t*7.3f)*(float)Math.Sin(t*3.1f+1);
+            float r=RainTime(t),fl=Context.Reduced?1:.96f+.04f*(float)Math.Sin(r*7.3f)*(float)Math.Sin(r*3.1f+1);
             set.Piece("rain/static",SetAt,Quaternion.Identity,1,White,White*fl);
             for(int k=0;k<Stalks.Length;k++){StalkTop(k,t,out var at,out var turn);set.Piece(stalkProps[k],at,turn,1,White,White);}
             return true;
@@ -160,7 +160,8 @@ namespace ChipArena.UnityConversion
             // Moonlight from behind and above the gate, cold; the veranda's paper behind the lens, warm and low.
             l.Directional(new Vector3(.4f,1.0f,-.85f),Moon*(.42f+1.6f*bolt));
             l.Directional(new Vector3(-.15f,.35f,1),Paper*.12f);
-            float fl=Context.Reduced?1:.93f+.07f*(float)Math.Sin(t*9.1f)*(float)Math.Sin(t*4.3f+.7f);
+            // (the flame stands still in the freeze, as the rain does)
+            float r=RainTime(t),fl=Context.Reduced?1:.93f+.07f*(float)Math.Sin(r*9.1f)*(float)Math.Sin(r*4.3f+.7f);
             l.Add(U(2.55f,1.2f,-1.9f),Lamp*(2.3f*fl),5.5f);
             l.Add(new Vector3(0,1.7f,8.4f),Paper*3.2f,13);
             l.Add(new Vector3(.6f,2.7f,-3.4f),Moon*2.4f,6.5f);
@@ -219,7 +220,7 @@ namespace ChipArena.UnityConversion
                 fx.Smoke(new Vector3(x,NativeEntranceStage.FloorY+.2f,z),Mist,.11f+.04f*NativeEntranceMath.Rand(30055,i),1.4f+.8f*NativeEntranceMath.Rand(30057,i),.5f,32700+i,NativeEntranceStage.FloorY-.06f);
             }
             // The lantern's flame inside its paper.
-            fx.Glow(U(2.55f,1.14f,-1.9f),Lamp*(.9f+.1f*(float)Math.Sin(t*8.3f)),0,.22f,1,0,32800);
+            fx.Glow(U(2.55f,1.14f,-1.9f),Lamp*(.9f+.1f*(float)Math.Sin(r*8.3f)),0,.22f,1,0,32800);
             // The far lightning behind the gate: the sky lit for a moment.
             if(bolt>.01f)fx.Glow(new Vector3(-3,10,-26),new Vector3(.75f,.82f,1)*(1.6f*bolt),0,16,1,0,32810);
             // The draw: a glint at the saya's mouth as the blade leaves it.
