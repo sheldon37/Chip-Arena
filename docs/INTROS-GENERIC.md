@@ -25,8 +25,9 @@ the story, the set, the camera's language, the beats, the motion, the effects an
   settled before the card arrives; `NativeIntroGenericScript.Closing`, a slow push in from a low front three-quarter). The
   name, its kicker and its line stay centred (`card.X` unset), on the floor in front of the pilot.
 - **The head:** the framework's head anchor is the head joint's pivot at the skull's base; anything placed at the eyes lifts
-  `HeadLift` (0.16 m) along the neck. Whiteout's visor rides the head as drawn (`INativeIntroHead`), since the model's kneel
-  carries its head off the keyed one (seen in the first captures); its insert is framed by the chest for the same reason.
+  `HeadLift` (0.16 m) along the neck. Whiteout's visor is the model's own (its accent colour) and only its light rides the head
+  as drawn (`INativeIntroHead`): the model's kneel and bow part from the keyed head (a glow sphere there floated off the visor in
+  the captures, so there is none); its insert is framed by the chest for the same reason.
 - **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
 - **Body:** keyed on the intro rig (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are) and drawn on the model;
   where a pack clip fits the beat the model plays it from the motion bank, retimed in code (`Clip`, docs/INTROS-V2.md section 2):
@@ -116,7 +117,7 @@ is melted ground: dark and wet at the heart, grey slush, a low rim of packed sno
 
 **Motion:** keyed: the kneel (the left foot planted forward, the right knee down, the head bowed), the shudder, the rise through the
 knees with a step, the fist drawn in and the arms thrown open for the pulse, the hero hold. The frost coat is a pale ghost of the
-body until the crack. The visor's glow and light ride the model's head as drawn.
+body until the crack. The visor is the model's own, lit by its accent; its light rides the model's head as drawn.
 
 ## Slipstream (7.4 s, the name at 5.6 s)
 Underground, at speed. The pilot rides crouched on the roof of a maglev racing through a tunnel, its light strips streaking past.

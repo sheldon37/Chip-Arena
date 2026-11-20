@@ -147,9 +147,8 @@ namespace ChipArena.UnityConversion
                 }
             }
             var head=Anchor(NativeEntranceAnchor.Head,t);var chest=Anchor(NativeEntranceAnchor.Chest,t);
-            // The visor waking (on the drawn head when the model is drawn: the model's kneel carries its head a little off the keyed one).
-            float visor=NativeEntranceMath.Ramp(t,VisorAt,VisorAt+.25f);
-            if(visor>.01f){var f=Vector3.Transform(Vector3.UnitZ,Quaternion.CreateFromAxisAngle(Vector3.UnitY,Heading(t)));fx.Glow(Eyes(t)+f*.13f,Vector3.Lerp(Visor,HeatHot,NativeEntranceMath.Ramp(t,HeatAt,CrackAt))*(1.1f*visor+.8f*Flash(t,VisorAt,.04f,.3f)),0,.12f,1,0,22400);}
+            // The visor waking: the model's own visor takes the accent (AccentAt) and a light falls from it (Lights); no glow sphere, which
+            // in the captures floated off the drawn visor (the model's kneel and bow part from the keyed head).
             // Heat lines up the limbs, steady in Reduced effects.
             float lines=NativeEntranceMath.Ramp(t,HeatAt,HeatAt+.5f)*(1-.6f*NativeEntranceMath.Ramp(t,PartAt,CardAt));
             if(lines>.01f)
