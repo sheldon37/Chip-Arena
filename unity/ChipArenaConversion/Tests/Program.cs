@@ -45,6 +45,12 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--layered-walk")LayeredCityWalkChecks.Run();
             if(args.Length==1&&args[0]=="--layered-walk")return 0;
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
+            // The bleed near each Meridian door (docs/MERIDIAN-BLEED.md): the bands, the approach dressing's plan and its rules.
+            if(args.Length==0||args.Length==1&&args[0]=="--bleed")BleedChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--bleed")return 0;
+            if(args.Length==1&&args[0]=="--bleed-table"){BleedTable.Run();return 0;}
+            if(args.Length==3&&args[0]=="--bleed-probe"){BleedProbe.Run(int.Parse(args[1]),int.Parse(args[2]));return 0;}
+            if(args.Length==5&&args[0]=="--bleed-scene"){BleedChecks.Scene(int.Parse(args[1]),args[2],uint.Parse(args[3]),args[4]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-slides"){RooftopLayout.Slides(ProjectRoot(),args[1]);return 0;}
             if(args.Length==1&&args[0]=="--rooftop"){RooftopChecks.Run(ProjectRoot());return 0;}
