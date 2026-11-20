@@ -106,6 +106,18 @@ internal static class MeridianHulkChecks
                 }
             }
         }
+        var plan=NativeCityLayout.Plans.Single(p=>p.Name==map.name);
+        var alternatives=Enumerable.Range(0,64).SelectMany(seed=>NativeCityLayout.CacheAnchors(plan,(uint)seed))
+            .GroupBy(c=>(c.id,c.x,c.y,c.z,c.yaw)).Select(g=>g.First()).ToArray();
+        if(alternatives.Length!=10)throw new Exception("Expected two bays for each of five Meridian caches.");
+        foreach(var cache in alternatives)
+        {
+            var approach=NativeExpeditionGeneratedWorld.CacheApproach(cache);
+            if(!visited.Any(n=>Math.Abs(n.y-approach.y)<.1f&&Math.Abs(n.x-approach.x)<1.1f&&Math.Abs(n.z-approach.z)<1.1f))
+                throw new Exception("Unreachable cache in "+map.name+" / "+cache.id);
+        }
+        if(walk.Caches.Length!=5||walk.Caches.Count(c=>c.id.EndsWith(":roof",StringComparison.Ordinal))!=1)
+            throw new Exception("Meridian requires five caches per plan, including a rooftop.");
         foreach(var route in walk.Routes)
         {
             var door=route.Destination;

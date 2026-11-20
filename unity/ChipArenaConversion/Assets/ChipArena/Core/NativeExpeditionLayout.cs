@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
     {public PveEntry entry;public string[] allow;}
     [Serializable] public sealed class ExpeditionAreaLayout
     {
+        public readonly Dictionary<string,ExpeditionPoint[]> CacheCandidates=new Dictionary<string,ExpeditionPoint[]>();
         public PveMachine[] machines=Array.Empty<PveMachine>();
         public string id,role,map,spawnSource;public ExpeditionWorldAnchor[] anchors;public ExpeditionDoorLayout[] doors;
         public ExpeditionInteractionLayout[] interactions;public ExpeditionGateLayout[] gates;public ExpeditionSpawnLayout[] spawns;
@@ -134,7 +135,6 @@ namespace ChipArena.UnityConversion
                     for(int k=0;k<8;k++){double a=k*Math.PI/4;Check(new V3(j.x+(float)Math.Cos(a)*j.r,j.y,j.z+(float)Math.Sin(a)*j.r),.45f,1.8f);}
                 }
                 foreach(var p in area.slots)if(!area.sanctuary.Any(v=>v.Contains(p.Position)))throw new FormatException("Expedition layout: sanctuary slot outside sanctuary.");
-                foreach(var anchor in area.anchors)Check(new V3(anchor.x,anchor.y,anchor.z),.45f,1.8f);
                 var origin=slots.FirstOrDefault()??throw new FormatException("Expedition layout: no navigation origin.");
                 foreach(var d in area.doors.Where(d=>d.join!=null))
                     if(!reachable(area.map,origin.Position,new V3(d.join.x,d.join.y,d.join.z),.45f,1.8f))throw new FormatException("Expedition layout: unreachable join cylinder.");
@@ -144,6 +144,22 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<group.Length;i++)for(int j=0;j<i;j++)if((group[i].Position-group[j].Position).Length<1)throw new FormatException("Expedition layout: overlapping party slots.");
                 foreach(var p in area.bossPoints)Check(p.Position,routeRadius,routeHeight);
                 foreach(var machine in area.machines){Check(machine.front.Position(),.45f,1.8f);Check(machine.dispense.Position(),.45f,1.8f);if(!reachable(area.map,origin.Position,machine.front.Position(),.45f,1.8f))throw new FormatException("Expedition layout: unreachable machine "+machine.id);}
+                foreach(var anchor in area.anchors)
+                {
+                    // A placed cache's anchor locates the locker or its wall-backed hologram.
+                    // Actors stand in front of it. Legacy free-standing anchors still require clearance.
+                    bool placedCache=anchor.kind=="chest"&&
+                        ((layout.revision==NativeExpeditionGeneratedWorld.Version&&area.CacheCandidates.ContainsKey(anchor.id))||
+                         map.blocks?.Any(b=>b.id==anchor.id+"-block")==true);
+                    if(placedCache)
+                    {
+                        var at=NativeExpeditionGeneratedWorld.CacheApproach(anchor).Position;
+                        Check(at,routeRadius,routeHeight);
+                        if(!reachable(area.map,origin.Position,at,routeRadius,routeHeight))
+                            throw new FormatException("Unreachable cache approach: "+anchor.id);
+                    }
+                    else Check(new V3(anchor.x,anchor.y,anchor.z),.45f,1.8f);
+                }
                 foreach(var p in area.interactions)Check(new V3(p.x,p.y,p.z),.45f,1.8f);
                 foreach(var d in area.doors)Check(d.approach.Position,.45f,1.8f);
                 var spawns=ResolveSpawns(area,horde);
@@ -219,6 +235,14 @@ namespace ChipArena.UnityConversion
             {var q=Obj(v);var entry=Spawn(q);var allow=Items(q,"allow",Id,true);
                 if(allow.Length==0||allow.Length>16||allow.Distinct().Count()!=allow.Length||allow.Any(k=>!NativeHordeKinds.Known(k)||NativeHordeKinds.Resolve(k)<NativeHordeKinds.Count&&!NativeWardEntries.Allows(entry,k)))throw new FormatException("Expedition layout: invalid spawn allow list.");
                 return new ExpeditionSpawnLayout{entry=entry,allow=allow};}).ToArray();
+            foreach(var raw in List(Required(o,"anchors")))
+            {
+                var anchor=Obj(raw);
+                if(!anchor.ContainsKey("candidates"))continue;
+                var points=Items(anchor,"candidates",v=>Point(v));
+                if(Text(anchor,"kind")!="chest"||points.Length<2||points.Length>3)throw new FormatException("Invalid cache candidates.");
+                a.CacheCandidates.Add(Id(Text(anchor,"id")),points);
+            }
             return a;
         }
     }

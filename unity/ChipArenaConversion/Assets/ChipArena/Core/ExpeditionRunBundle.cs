@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 namespace ChipArena.UnityConversion
 {
     // Reconstructed from a bounded authenticated ticket. Never accept maps/layouts from the network.
@@ -20,6 +21,21 @@ namespace ChipArena.UnityConversion
             Layout=NativeExpeditionGeneratedWorld.ComposeLayout(World,authored,Backrooms==null?null:NativeBackroomsExpedition.Area(Backrooms),Poolrooms==null?null:NativePoolroomsExpedition.Area(Poolrooms));
             Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+NativeExpeditionMutators.Version+"\n"+string.Join("\n",Mutators));
             Content=content.WithGeneratedMap(World.Map).WithGeneratedMap(NativeFallenRules.Arena());
+            // The run owns this map array. Only sky-clear authored bays acquire solid lockers.
+            foreach(var area in Layout.areas.Where(a=>a.CacheCandidates.Count>0))
+            {
+                int index=Array.FindIndex(Content.maps,map=>map.id==area.map);
+                var map=Content.maps[index];
+                var lockers=area.anchors.Where(a=>area.CacheCandidates.ContainsKey(a.id)&&NativeExpeditionGeneratedWorld.CacheColumnClear(a,map.blocks))
+                    .Select(NativeExpeditionGeneratedWorld.CacheBlock).ToArray();
+                if(lockers.Length==0)continue;
+                Content.maps[index]=map.WithCacheBlocks(lockers);
+                foreach(var locker in lockers)
+                {
+                    string position=FormattableString.Invariant($"{locker.id}|{locker.pos.x:R}|{locker.pos.y:R}|{locker.pos.z:R}|{locker.rotation.y:R}|{locker.rotation.w:R}|{locker.size.x:R}|{locker.size.y:R}|{locker.size.z:R}");
+                    Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+position);
+                }
+            }
             Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\nfinal:"+NativeFallenBoss.Archetype);
             if(Backrooms!=null){Content=Content.WithGeneratedMap(Backrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Backrooms.Identity);}
             if(Poolrooms!=null){Content=Content.WithGeneratedMap(Poolrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Poolrooms.Identity);}

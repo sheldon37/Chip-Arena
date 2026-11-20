@@ -45,9 +45,9 @@ namespace ChipArena.UnityConversion
             p.mesh=new Mesh{name="Expedition world pieces"};p.mesh.MarkDynamic();return p;
         }
         /// <summary>Builds this frame's pieces for the view and draws the visible ones (call once per frame, before the GUI).</summary>
-        public void Frame(ExpeditionView v,Vector3 eye,double t,bool reduced)
+        public void Frame(ExpeditionView v,Vector3 eye,double t,bool reduced,NativeCacheClock caches=null)
         {
-            World.Build(v);sink.Clear();sink.Linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
+            World.Build(v);caches?.Stamp(World.Pieces,reduced);sink.Clear();sink.Linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
             for(int i=0;i<World.Pieces.Count;i++){var p=World.Pieces[i];if(NativeExpeditionWorld.Visible(p,eye.x,eye.y,eye.z)&&NativeMutatorLook.Within(NativeExpeditionWorld.Distance2(p,eye.x,eye.y,eye.z),NativeLighting.MutatorWhite))NativeExpeditionWorld.Emit(sink,p,t,reduced);}
             mesh.Clear();if(sink.Points.Count==0)return;
             mesh.SetVertices(sink.Points);mesh.SetColors(sink.Colors);mesh.SetUVs(0,sink.Uv);mesh.SetTriangles(sink.Indices,0,false);mesh.bounds=Everywhere;
@@ -74,11 +74,13 @@ namespace ChipArena.UnityConversion
             ExpeditionStatesFrame();
             // The join circles' pads, sounds and model (NativeExpeditionJoinPresentation.cs), before the world pieces are built.
             ExpeditionJoinFrame();
+            // The caches' open moments, the DEV preview and their sounds (NativeCacheLive.cs), before the world pieces are built.
+            CacheWorldFrame();
             // Nothing at the area's anchors until the arena holds its map (the view names the next area before the load).
             if(!ExpeditionWorldShown||!expeditionMapReady){expeditionWorld?.Clear();expeditionLabelWorld.Pieces.Clear();return;}
             if(expeditionWorld==null&&!expeditionWorldFailed){expeditionWorld=NativeExpeditionWorldPresentation.Create();expeditionWorldFailed=expeditionWorld==null;}
-            if(expeditionWorld!=null)expeditionWorld.Frame(LiveExpedition,cameraView.transform.position,Time.unscaledTime,prefs.reducedEffects);
-            else expeditionLabelWorld.Build(LiveExpedition);
+            if(expeditionWorld!=null)expeditionWorld.Frame(LiveExpedition,cameraView.transform.position,Time.unscaledTime,prefs.reducedEffects,cacheClock);
+            else{expeditionLabelWorld.Build(LiveExpedition);cacheClock.Stamp(expeditionLabelWorld.Pieces,prefs.reducedEffects);}
         }
         private const int MaxLabelled=256;
         private static readonly int[] labelOrder=new int[MaxLabelled];private static readonly float[] labelDepth=new float[MaxLabelled],labelK=new float[MaxLabelled];

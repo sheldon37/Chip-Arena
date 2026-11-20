@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
             AdvancedLightingWorld(arena);
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.
             HazardKitWorld(arena);
-            PveMachinePresentation(arena);
+            PveMachinePresentation(arena);CacheLockers(arena);
             // The Expedition drop pods in a generated run's hub (NativePodPresentation.cs).
             ExpeditionPods(arena);
             // The hub's REVIVE-O-MATIC (NativeReviveMachinePresentation.cs).

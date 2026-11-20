@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion.Editor
                 var lobby=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="lobby",deployment=room.Ticket}));
                 if(lobby.deployment?.station!=room.Ticket.station)throw new Exception("Station ticket lost in lobby codec.");
                 var points=world.Area.slots.Concat(world.Area.bossPoints).Concat(world.Area.doors.SelectMany(d=>d.returns.Concat(new[]{d.approach})))
-                    .Concat(world.Area.interactions.Select(i=>new ExpeditionPoint{x=i.x,y=i.y,z=i.z}));
+                    .Concat(world.Area.anchors.Where(a=>a.kind=="chest").Select(NativeExpeditionGeneratedWorld.CacheApproach));
                 foreach(var p in points)
                     if(!arena.ExpeditionSupported(p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)||
                        !arena.ExpeditionReachable(world.Area.slots[0].Position,p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))

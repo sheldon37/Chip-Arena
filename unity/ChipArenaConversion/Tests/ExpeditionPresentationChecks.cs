@@ -433,28 +433,33 @@ namespace ChipArena.UnityConversion
             Check(!P.Continue(NativeExpeditionView.Build(Party(2),"p0")).open,"no continue outside victory");
         }
 
-        // 14. Chip caches: generation, price and cooldown against elapsed before any purchase; restocking only from the data; never range.
+        // 14. Chip caches: tier, price and cooldown against elapsed before any purchase; restocking only from the data; never range.
+        // Re-pinned on purpose for W6 (R9's words, 2026-11-19): STANDARD CACHE in its colour, $100 · 3 CHIPS · KEEP 1, $75 SHORT in red,
+        // RESTOCKS IN 0:42; no raw id (the stock generation is never a word for the player: the J panel fix).
         private static void Caches()
         {
             var run=Party(2);Check(run.Credit("p0","cash",300),"credit");
             Check(run.SetWorld(new[]{new ExpeditionWorldAnchor{id="c1",area="city",kind="chest",x=2},new ExpeditionWorldAnchor{id="c2",area="city",kind="chest",x=-2},new ExpeditionWorldAnchor{id="c3",area="station",kind="chest"}},
                 new[]{new ExpeditionChestOffer{id="c1",generation="g1",price=100},new ExpeditionChestOffer{id="c2",generation="g7",price=400,cooldown=30},new ExpeditionChestOffer{id="c3",generation="s1",price=50}}),"world");
             var rows=P.Caches(NativeExpeditionView.Build(run,"p0"));
-            Check(rows[0].state=="$100"&&rows[0].stock=="STOCK G1"&&!rows[0].restocking&&rows[0].affordable&&rows[0].here,"an offer shows price and stock");
-            Check(rows[1].restocking&&rows[1].seconds==30&&rows[1].state=="RESTOCKING · 30s","a cooldown ahead of the clock reads restocking");
-            Check(!rows[2].here&&rows[2].detail.EndsWith("In another area."),"a cache in another area says so");
-            for(int i=0;i<40;i++)run.Tick(.25);rows=P.Caches(NativeExpeditionView.Build(run,"p0"));Check(rows[1].seconds==20&&rows[1].state=="RESTOCKING · 20s","the cooldown counts down with the authority clock");
-            for(int i=0;i<80;i++)run.Tick(.25);rows=P.Caches(NativeExpeditionView.Build(run,"p0"));Check(!rows[1].restocking&&rows[1].state=="$400"&&!rows[1].affordable&&rows[1].detail.Contains("$100 short"),"restocked: the price, and the wallet's shortfall");
+            Check(rows[0].state=="$100"&&rows[0].title=="STANDARD CACHE"&&rows[0].titleTone==ExpeditionTone.CacheStandard&&rows[0].tone==ExpeditionTone.CacheStandard&&rows[0].detail=="3 CHIPS · KEEP 1 · F AT THE CACHE"&&!rows[0].restocking&&rows[0].affordable&&rows[0].here,"an offer shows its tier, price and what it holds");
+            Check(rows[1].restocking&&rows[1].seconds==30&&rows[1].state=="RESTOCKS IN 0:30","a cooldown ahead of the clock reads restocking");
+            Check(!rows[2].here&&rows[2].detail.EndsWith(" · IN ANOTHER AREA",StringComparison.Ordinal),"a cache in another area says so");
+            for(int i=0;i<40;i++)run.Tick(.25);rows=P.Caches(NativeExpeditionView.Build(run,"p0"));Check(rows[1].seconds==20&&rows[1].state=="RESTOCKS IN 0:20","the cooldown counts down with the authority clock");
+            for(int i=0;i<80;i++)run.Tick(.25);rows=P.Caches(NativeExpeditionView.Build(run,"p0"));Check(!rows[1].restocking&&rows[1].state=="$400"&&!rows[1].affordable&&rows[1].detail=="$100 SHORT"&&rows[1].detailTone==ExpeditionTone.Danger&&rows[1].shortBy==100,"restocked: the price, and the wallet's shortfall in red");
+            foreach(var r in rows)Check(!(r.title+r.state+r.detail).Contains("STOCK G")&&!(r.title+r.state+r.detail).ToUpperInvariant().Contains("G7")&&!(r.title+r.state+r.detail).ToUpperInvariant().Contains("G1"),"no raw id in the J panel");
             Check(run.Purchase("p0","g1",100),"p0 buys c1");
             var mine=P.Caches(NativeExpeditionView.Build(run,"p0"));var theirs=P.Caches(NativeExpeditionView.Build(run,"p1"));
             Check(mine[0].bought&&mine[0].state=="BOUGHT · YOURS"&&!theirs[0].bought&&theirs[0].state=="SOLD","sold state is public; buyer ownership stays private");
             Check(!Json(NativeExpeditionView.Build(run,"p1")).Contains(":chest:g1"),"another pilot's purchase never reaches the view");
             foreach(var r in mine.Concat(theirs))Check(!(r.state+r.detail).ToUpperInvariant().Contains("RANGE"),"purchase range is never claimed");
             var w=new NativeExpeditionWorld();w.Build(NativeExpeditionView.Build(run,"p0"));var pieces=w.Pieces.Where(x=>x.kind==ExpeditionPieceKind.Chest).ToArray();
-            Check(pieces.Length==2&&pieces.First(x=>x.target=="c1").label=="BOUGHT · YOURS"&&pieces.First(x=>x.target=="c2").label=="$400"&&pieces.First(x=>x.target=="c2").extra=="$200 SHORT","cache pieces at their anchors, from the offer (wallet 200 after the purchase)");
+            var c2=pieces.First(x=>x.target=="c2");
+            Check(pieces.Length==2&&pieces.First(x=>x.target=="c1").label=="BOUGHT · YOURS"&&c2.label=="STANDARD CACHE"&&c2.tone==ExpeditionTone.CacheStandard&&c2.detail=="$400 · 3 CHIPS · KEEP 1"&&c2.extra=="$200 SHORT"&&c2.extraAlert&&c2.tier==NativeCacheTier.Standard,"cache pieces at their anchors, from the offer (wallet 200 after the purchase): the tier in its colour, the price and the shortfall in red");
             w.Build(NativeExpeditionView.Build(run,"p1"));Check(w.Pieces.First(x=>x.target=="c1").label=="SOLD","others see sold stock without buyer ownership");
             Check(run.SetWorld(run.Snapshot().anchors,new[]{new ExpeditionChestOffer{id="c1",generation="g2",price=120,cooldown=run.Snapshot().elapsed+15},new ExpeditionChestOffer{id="c2",generation="g7",price=400},new ExpeditionChestOffer{id="c3",generation="s1",price=50}}),"the scene restocks c1");
-            w.Build(NativeExpeditionView.Build(run,"p0"));var c1=w.Pieces.First(x=>x.target=="c1");Check(c1.label=="RESTOCKING"&&c1.detail=="15s"&&c1.extra=="STOCK G2"&&c1.settled,"restocking piece from the cooldown");
+            w.Build(NativeExpeditionView.Build(run,"p0"));var c1=w.Pieces.First(x=>x.target=="c1");Check(c1.label=="RESTOCKS IN 0:15"&&c1.detail=="STANDARD CACHE"&&c1.extra==null&&!c1.extraAlert&&c1.settled,"restocking piece from the cooldown");
+            foreach(var pc in w.Pieces)Check(!(pc.label+pc.detail+pc.extra).Contains("STOCK G")&&!(pc.label+pc.detail+pc.extra).ToUpperInvariant().Contains("G2"),"no raw id on a cache's label");
             Check(P.NoPurchase.Contains("host checks distance"),"purchase hint describes host proximity enforcement");
         }
 

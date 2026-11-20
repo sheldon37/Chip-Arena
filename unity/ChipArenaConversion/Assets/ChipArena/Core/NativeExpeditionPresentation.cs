@@ -5,8 +5,9 @@ using System.Linq;
 
 namespace ChipArena.UnityConversion
 {
-    /// <summary>Semantic tones of the Expedition screens; Runtime maps them onto NativeCyberTheme (text-safe tones only).</summary>
-    public enum ExpeditionTone { Ink, Muted, Cyan, CyanSoft, Magenta, Warn, Good, Danger }
+    /// <summary>Semantic tones of the Expedition screens; Runtime maps them onto NativeCyberTheme (text-safe tones only). The four
+    /// cache tones are the caches' tier colours (NativeCacheTiers.Hex: R9's RARE CACHE "in the tier colour").</summary>
+    public enum ExpeditionTone { Ink, Muted, Cyan, CyanSoft, Magenta, Warn, Good, Danger, CacheStandard, CacheRare, CacheEpic, CacheLegendary }
     public enum ExpeditionStep { Pending, Active, Done, Unavailable, Failed }
 
     /// <summary>
@@ -336,31 +337,41 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Chip caches (world chest offers) ----------------------------------------------------------------------------------
-        public struct CacheRow{public string id, price, stock, state, detail;public int seconds;public bool restocking, bought, anchored, here, affordable;public ExpeditionTone tone;}
+        /// <summary>A J-panel cache row: its tier's title (in the tier colour), price, state tag and detail line (W6: the J panel
+        /// fix; no raw id: the stock generation is never shown), with the detail's own tone (red when you are short).</summary>
+        public struct CacheRow{public string id, title, price, state, detail;public NativeCacheTier tier;public int seconds, shortBy;public bool restocking, bought, anchored, here, affordable;public ExpeditionTone tone, titleTone, detailTone;}
+        // The J panel's words through ExpeditionLabels (cached: a steady view allocates no string per frame).
+        private static readonly ExpeditionLabels cacheLabels=new ExpeditionLabels();
+        public const string CacheAtCache=" · F AT THE CACHE",CacheWaiting="WAITING FOR RESTOCK",CacheYours="YOURS · C TO CHOOSE",CacheElsewhere=" · IN ANOTHER AREA",CacheUnplaced=" · NO WORLD POSITION YET";
         /// <summary>
-        /// The scene's chip caches before any purchase: price, stock generation and cooldown (an authority-clock deadline compared with
-        /// elapsed). "Restocking" only while the cooldown is ahead; range is never claimed (the scene checks purchase proximity and
-        /// the view carries none). "Bought" only for the viewer's own purchase of the current generation; others' purchases are private.
+        /// The scene's chip caches before any purchase: tier, price and cooldown (an authority-clock deadline compared with elapsed).
+        /// "Restocking" only while the cooldown is ahead; range is never claimed (the scene checks purchase proximity and the view
+        /// carries none). "Bought" only for the viewer's own purchase of the current generation; others' purchases are private.
         /// </summary>
         public static CacheRow[] Caches(ExpeditionView v)
         {
-            var rows=new CacheRow[v.chests.Length];bool member=Has(v.mine.account);
-            for(int i=0;i<rows.Length;i++)
+            var rows=new CacheRow[v.chests.Length];for(int i=0;i<rows.Length;i++)rows[i]=Cache(v,i);return rows;
+        }
+        /// <summary>The same rows into a reused list (the J panel's frame: no allocation once warmed).</summary>
+        public static void Caches(ExpeditionView v,List<CacheRow> into){into.Clear();for(int i=0;i<v.chests.Length;i++)into.Add(Cache(v,i));}
+        private static CacheRow Cache(ExpeditionView v,int i)
+        {
+            var L=cacheLabels;bool member=Has(v.mine.account);var o=v.chests[i];var tier=NativeCacheTiers.Of(o);
+            var r=new CacheRow{id=o.id,tier=tier,title=NativeCacheTiers.Title(tier),titleTone=NativeCacheTiers.Tone(tier),price=L.Money(o.price),restocking=NativeExpeditionWorld.Restocking(o,v.elapsed),
+                bought=NativeExpeditionWorld.Bought(v,o),affordable=member&&v.mine.wallet>=o.price,detailTone=ExpeditionTone.Muted};
+            foreach(var a in v.anchors)if(a!=null&&a.id==o.id&&a.kind==NativeExpeditionWorld.Chest){r.anchored=true;r.here|=a.area==v.area;}
+            if(r.restocking){r.seconds=Left(o.cooldown,v.elapsed);r.state=NativeCacheText.Restocking(L,r.seconds);r.tone=ExpeditionTone.Muted;r.detail=NativeCacheText.Offer;}
+            else if(o.sold&&!r.bought){r.state=NativeCacheText.Sold;r.tone=ExpeditionTone.Muted;r.detail=CacheWaiting;}
+            else if(r.bought){r.state="BOUGHT · YOURS";r.tone=ExpeditionTone.Good;r.detail=CacheYours;}
+            else
             {
-                var o=v.chests[i];var r=new CacheRow{id=o.id,price=Money(o.price),stock="STOCK "+Who(o.generation),restocking=NativeExpeditionWorld.Restocking(o,v.elapsed),bought=NativeExpeditionWorld.Bought(v,o),affordable=member&&v.mine.wallet>=o.price};
-                foreach(var a in v.anchors)if(a!=null&&a.id==o.id&&a.kind==NativeExpeditionWorld.Chest){r.anchored=true;r.here|=a.area==v.area;}
-                if(r.restocking){r.seconds=Left(o.cooldown,v.elapsed);r.state="RESTOCKING · "+r.seconds+"s";r.tone=ExpeditionTone.Muted;r.detail="The cache refills when its cooldown ends.";}
-                else if(o.sold&&!r.bought){r.state="SOLD";r.tone=ExpeditionTone.Muted;r.detail="Waiting for the next cache generation.";}
-                else if(r.bought){r.state="BOUGHT · YOURS";r.tone=ExpeditionTone.Good;r.detail="This chip belongs to you, the buyer.";}
-                else
-                {
-                    r.state=r.price;r.tone=ExpeditionTone.Warn;
-                    r.detail=!member?"You are not in this run.":r.affordable?"The chip belongs to whoever buys it.":"Your wallet is "+Money(o.price-v.mine.wallet)+" short.";
-                }
-                if(!r.anchored)r.detail+=" No world position yet.";else if(!r.here)r.detail+=" In another area.";
-                rows[i]=r;
+                r.state=r.price;r.tone=r.titleTone;
+                if(!member)r.detail=NativeCacheText.NotMember;
+                else if(r.affordable)r.detail=L.Join(NativeCacheText.Offer,CacheAtCache);
+                else{r.shortBy=o.price-v.mine.wallet;r.detail=NativeCacheText.Short(L,r.shortBy);r.detailTone=ExpeditionTone.Danger;}
             }
-            return rows;
+            if(!r.anchored)r.detail=L.Join(r.detail,CacheUnplaced);else if(!r.here)r.detail=L.Join(r.detail,CacheElsewhere);
+            return r;
         }
         /// <summary>Purchases are a scene interaction at the cache (proximity, then the authority's Purchase); no intent exists for it.</summary>
         public const string NoPurchase="Buy at the cache; the host checks distance and availability.";

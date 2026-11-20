@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
                     foreach(var v in area.sanctuary)
                     {
                         var x=ExpeditionDressingChecks.Aabb(v);if(isFlat||w.Y0>=2.6||!ExpeditionDressingChecks.BoxHit(w,x[0],x[1],x[2],x[3],x[4],x[5]))continue;
-                        Check(NativeExpeditionCityKit.Stem(b.id).StartsWith("sanctuary-fence-",StringComparison.Ordinal),"seed "+seed+": the sanctuary floor holds only flat paint and its fences' dressing: "+at);
+                        Check(NativeExpeditionCityKit.Stem(b.id)?.StartsWith("sanctuary-fence-",StringComparison.Ordinal)==true,"seed "+seed+": the sanctuary floor holds only flat paint and its fences' dressing: "+at);
                     }
                 }
                 Check(low>0&&flat>0,"seed "+seed+": the rules saw wall dressing and flat paint ("+low+" low, "+flat+" flat)");

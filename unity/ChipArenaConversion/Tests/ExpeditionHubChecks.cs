@@ -257,7 +257,7 @@ namespace ChipArena.UnityConversion
             string manifest=R("Assets/Conversion/Resources/ExpeditionLayout.json");var town=JsonSerializer.Deserialize<UnityMapContent>(R("Assets/Conversion/Resources/UnityMaps.json"),o).maps.Single(m=>m.id=="expedition-city");
             // ---------------- the record ----------------
             var layout=NativeExpeditionLayout.Parse(manifest);var area=layout.Area("exp-city");var hub=ExpeditionHubLayout.Parse(manifest);
-            Check(layout.revision=="exp-layout-7"&&hub!=null&&hub.Area=="exp-city","exp-layout-7 carries the town's hub record");
+            Check(layout.revision=="exp-layout-8"&&hub!=null&&hub.Area=="exp-city","exp-layout-7 carries the town's hub record");
             Check(area.gates.Length==1&&area.gates[0].id=="exp-city:gate:final"&&area.spawns.Length>0&&area.slots.Length==8,"the loader's strict reader still reads the manifest: the final gate only, the spawns and slots");
             Check(ExpeditionHubLayout.Parse(R("Tests/expedition-layout-draft.json"))!=null&&ExpeditionHubLayout.Parse(manifest.Replace("\"hub\":","\"hubOld\":"))==null,"a manifest without the record has no hub (exp-layout-2 and earlier read as before)");
             Check(hub.Gates.Select(g=>g.Side).SequenceEqual(new[]{"north","east","south","west"})&&hub.Gates.Count(g=>g.Wood)==2&&hub.Gates.All(g=>g.Wood==(g.Motion=="swing"))&&hub.Gates.All(g=>Math.Abs(g.Width-4)<1e-4),"four 4 m gates: wooden swing (north, west), metal slide (east, south)");
@@ -371,7 +371,7 @@ namespace ChipArena.UnityConversion
             foreach(var f in hub.Fence){int i=Array.FindIndex(town.blocks,b=>b.id==f.Block);Check(kit.Parts.Count(p=>p.Parent==i)>=10,f.Block+" is dressed ("+(f.Kind=="wood"?"palisade logs":"scrap sheets")+")");}
             Check(kit.Glows.Count(g=>Math.Abs(g.X)<13&&Math.Abs(g.Z)<13&&g.Kind==NativeExpeditionCityKit.GlowLamp&&g.Y>4)>=6,"lamps on the gate posts light the sanctuary");
             Check(kit.Parts.Count(p=>p.Role==NativeExpeditionCityKit.RoleSign&&Math.Abs(town.blocks[p.Parent].pos.x)<13&&Math.Abs(town.blocks[p.Parent].pos.z)<13)>=40,"each gate's header carries SANCTUARY and its destination");
-            foreach(var b in town.blocks.Where(b=>NativeExpeditionCityKit.Stem(b.id).StartsWith("wild-",StringComparison.Ordinal))){int i=Array.IndexOf(town.blocks,b);Check(kit.Parts.Any(p=>p.Parent==i),b.id+" is dressed");}
+            foreach(var b in town.blocks.Where(b=>NativeExpeditionCityKit.Stem(b.id)?.StartsWith("wild-",StringComparison.Ordinal)==true)){int i=Array.IndexOf(town.blocks,b);Check(kit.Parts.Any(p=>p.Parent==i),b.id+" is dressed");}
             int litWild=0;foreach(var p in kit.Parts){if(p.Role!=NativeExpeditionCityKit.RoleFacade||p.Drive==NativeExpeditionCityKit.DriveFire||(p.Flags&NativeCyberCityLooks.Bank)==0||p.Look!=NativeCyberCityLooks.Tube||p.Gain<.38f||p.Color==NativeExpeditionCityKit.GlassSkyHex||p.Color==NativeExpeditionCityKit.GlassDuskHex)continue;var b=town.blocks[p.Parent];if(hub.InWilds(b.pos.x+p.X,b.pos.z+p.Z))litWild++;}
             int lampsWild=kit.Glows.Count(g=>g.Kind==NativeExpeditionCityKit.GlowLamp&&hub.InWilds(g.X,g.Z));
             Check(litWild==0&&lampsWild==0,"the wilds are dark: no lit window (fires burn on) and no steady street lamp in them ("+litWild+" lit, "+lampsWild+" lamps"+string.Concat(kit.Glows.Where(g=>g.Kind==NativeExpeditionCityKit.GlowLamp&&hub.InWilds(g.X,g.Z)).Take(4).Select(g=>" at "+g.X.ToString("0.0")+","+g.Y.ToString("0.0")+","+g.Z.ToString("0.0")))+")");

@@ -87,7 +87,8 @@ namespace ChipArena.UnityConversion
                 int Wallet()=>run.Snapshot().members[0].wallet;
                 var cache=area.interactions.First(i=>area.anchors.Any(a=>a.id==i.anchor&&a.kind=="chest"));Stand(new V3(cache.x,cache.y,cache.z));
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==25&&run.Snapshot().rewards.Length==0,"cache refuses insufficient funds without granting reward");
-                Check(run.Credit("native-host","interaction-fixture",1000),"fund machine checks");
+                int cachePrice=run.Snapshot().chests.Single(c=>c.id==cache.anchor).price;
+                Check(run.Credit("native-host","interaction-fixture",900+cachePrice),"fund machine checks");
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"nearby cache purchase charges exactly once");
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"sold cache refuses duplicate input");
                 director.Step();Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"restocking cache refuses purchase");

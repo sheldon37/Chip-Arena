@@ -56,7 +56,7 @@ internal static class ExpeditionIntegrationChecks
         Check(router.Execute("guest",req).state==ExpeditionCommandState.Pending,"retransmission returns original result");
         req.intent=ExpeditionIntent.Reprint;Check(router.Execute("guest",req).state==ExpeditionCommandState.Refused,"transaction reuse with changed payload refused");
         var claimed=run.Snapshot().rewards.First(r=>r.id==reward);
-        Check(claimed.offers.Length>0&&claimed.offers.All(id=>new[]{"epic","legendary","unique"}.Contains(data.chips.First(c=>c.id==id).rarity)),"boss offers are catalog Epic+");
+        Check(claimed.offers.Length>0&&claimed.offers.All(id=>new[]{"epic","legendary","mythic","unique"}.Contains(data.chips.First(c=>c.id==id).rarity)),"boss offers are catalog Epic+");
         int installs=0;string installedAccount=null,installedChip=null;int installedCount=0;
         session.Installed=(a,c,n)=>{installs++;installedAccount=a;installedChip=c;installedCount=n;};
         Check(session.Execute("host",new ExpeditionCommand(ExpeditionIntent.OpenChoice,reward)).state==ExpeditionCommandState.Refused,"cannot open another member's reward");
@@ -126,7 +126,7 @@ internal static class ExpeditionIntegrationChecks
         var metrics=new NativeConnectionMetrics();int a=metrics.Ping(0);metrics.Pong(a,.1);int b=metrics.Ping(1);metrics.Pong(b,1.15);metrics.Ping(2);metrics.Ping(11);
         var report=metrics.Report(true);Check(Math.Abs(report.loss-1d/3)<.001&&Math.Abs(report.jitterMs-50)<.001,"measured loss and successive RTT jitter");
         run=Ready();run.Credit("host","cachecash",100);run.Credit("guest","cachecash2",100);session=new ExpeditionSession(run,data,_=>{});
-        session.SetWorld(new[]{new ExpeditionWorldAnchor{id="cache",area="city",kind="chest"},new ExpeditionWorldAnchor{id="entrance",area="city",kind="door",building="ward",yaw=90}},new[]{new ExpeditionChestOffer{id="cache",generation="stock1",price=30,cooldown=run.Elapsed+1}});
+        session.SetWorld(new[]{new ExpeditionWorldAnchor{id="cache",area="city",kind="chest"},new ExpeditionWorldAnchor{id="entrance",area="city",kind="door",building="ward",yaw=90}},new[]{new ExpeditionChestOffer{id="cache",generation="stock1",tier="legendary",price=30,cooldown=run.Elapsed+1}});
         var purchase=new ExpeditionCommand(ExpeditionIntent.Purchase,"cache");
         Check(session.Execute("guest",purchase).state==ExpeditionCommandState.Refused,"cooldown refuses purchase");session.Tick(1);
         Check(session.Execute("guest",purchase).state==ExpeditionCommandState.Refused,"missing scene evidence fails closed");
@@ -144,6 +144,8 @@ internal static class ExpeditionIntegrationChecks
         Check(pieces.Pieces.Single(p=>p.anchor=="entrance").target=="ward"&&pieces.Pieces.Single(p=>p.anchor=="entrance").yaw==90,"explicit building and facing reach world pieces");
         Check(!run.RestockChest("cache","stock1",30,run.Elapsed),"restock rejects reused generation");
         Check(run.RestockChest("cache","stock2",40,run.Elapsed+1),"scene restocks with fresh generation");
+        var purchased=Copy(run.Snapshot()).rewards.Single(r=>r.source=="chest");
+        Check(purchased.cacheTier=="legendary"&&run.Snapshot().chests[0].tier=="standard","unopened purchase keeps its original tier across restock and JSON");
         Check(!run.Snapshot().chests[0].sold&&session.Execute("guest",purchase).state==ExpeditionCommandState.Refused,"restock retains its cooldown");
         Check(ExpeditionIntentTracker.Reflected(purchase,NativeExpeditionView.Build(run,"guest"),baseline),"purchase confirmation survives immediate restock");
         Check(!ExpeditionIntentTracker.Reflected(purchase,NativeExpeditionView.Build(run,"host"),baseline),"someone else's purchase cannot confirm mine");
@@ -151,6 +153,13 @@ internal static class ExpeditionIntegrationChecks
         var named=NativeExpeditionView.Build(run,"guest",session.Sources);
         Check(named.Member("guest").name=="Guest Pilot"&&named.Member("host").name=="Host","public names are bounded sanitized display text");
         var privateReward=run.Snapshot().rewards.Single(r=>r.source=="chest").id;
+        // Distinct test weights expose an accidental read of the restocked locker.
+        session.CacheWeights=new[]{new PveWeights{id="legendary",weights=new[]{new NumberValue{name="mythic",value=1}}},
+            new PveWeights{id="common",weights=new[]{new NumberValue{name="common",value=1}}}};
+        session.ChipFilter=c=>c.rarity=="mythic"||c.rarity=="common";
+        var boughtOffers=session.Offers("guest",privateReward);
+        Check(boughtOffers.Length>0&&boughtOffers.All(chip=>data.Chip(chip).rarity=="mythic")&&session.Offers("host",privateReward)==null,
+            "unopened cache uses the purchased weight row and offers stay private");
         Check(!run.PlaceReward(privateReward,0,0,0),"private purchase cannot acquire world anchor");
         session.Sources.Anchors=new[]{new ExpeditionWorldAnchor{id=privateReward,area="city",kind="reward"},new ExpeditionWorldAnchor{id="unknown",area="city",kind="reward"}};
         Check(NativeExpeditionView.Build(run,"guest",session.Sources).anchors.Length==0,"source overrides cannot leak private or unknown reward anchors");

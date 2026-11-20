@@ -182,6 +182,7 @@ namespace ChipArena.UnityConversion
                 case "preview-deepend-boss":DeepEndBossPreviewToggle();break;
                 case "preview-fallen-boss":FallenBossPreviewToggle();break;
                 case "preview-rounds-fx":RoundsPreviewToggle();break;
+                case "preview-caches":CachePreviewToggle();break;
                 case "preview-door-lock":NativeLaserDoorPreview.On=!NativeLaserDoorPreview.On;DevSay(NativeLaserDoorPreview.On?"Instance exit door preview · on (presentation only; the laser door cycles lock, sealed, unlock and open; the exit's collider is unchanged)":"Instance exit door preview · off",false);break;
                 case "preview-account-xp":AccountXpPreviewToggle();break;
                 case "preview-expedition-ui":ExpeditionUiPreviewToggle();break;
@@ -650,6 +651,7 @@ namespace ChipArena.UnityConversion
             y=FallenBossPreviewPanel(x,y,w);
             y=RoundsPreviewPanel(x,y,w);
             y=DevHead(x,y,w,"INSTANCE EXIT DOOR (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-door-lock",NativeLaserDoorPreview.On);y+=38;
+            y=DevHead(x,y,w,"CACHE OPENINGS (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-caches",NativeCachePreview.On);y+=38;y=DevNote(x,y,w,"The four CD-647 lockers (STANDARD, RARE, EPIC, LEGENDARY) and today's hologram cache, 4.5 m ahead: each 9 s cycle restocks (the livery sweeps to the next tier), stands for sale 2.5 s, then opens; odd cycles are your view as the buyer. Presentation only: nothing collides, buys or sends.",C.Muted());
             y=DevNote(x,y,w,"In an instance (or an instance map in the sandbox): the exit's laser door locks, holds sealed, unlocks and stands open on a 7 s cycle. Presentation only: the closure and its collider stay the director's.",C.Muted());
             y=DevHead(x,y,w,"EVENT LOG");DevToggleAct(new Rect(x,y,w,32),"log",devLogOn);y+=40;
             for(int i=0;i<NativeDevLog.Filters.Length;i++)
