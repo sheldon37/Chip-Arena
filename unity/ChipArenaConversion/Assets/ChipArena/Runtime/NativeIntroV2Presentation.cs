@@ -56,7 +56,16 @@ namespace ChipArena.UnityConversion
                 var m=VisualJointFrame(introModel,j);var p=(Vector3)m.GetColumn(3);var q=m.rotation;
                 return new NativeIntroHand{Model=true,At=new System.Numerics.Vector3(-p.x,p.y,p.z),Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
             }
-            var right=Hand(CapturedRig.RHand,NativeEntranceAnchor.RightHand);var left=Hand(CapturedRig.LHand,NativeEntranceAnchor.LeftHand);hands.Hands(t,right,left);
+            var right=Hand(CapturedRig.RHand,NativeEntranceAnchor.RightHand);var left=Hand(CapturedRig.LHand,NativeEntranceAnchor.LeftHand);
+            // A gun's muzzle and bore on the drawn weapon: its frame is the one the model's weapon is drawn on after the hand fit (the
+            // entrance's hand frame, introHand, as the match's muzzle flash reads it), the muzzle MuzzleZ along its +z.
+            var spec=NativeIntroCatalog.Find(script.Style)?.Spec;
+            if(model&&introHand!=null&&(spec=="pistol"||spec=="rifle"||spec=="machinegun"))
+            {
+                var w=introHand(CapturedRig.RHand);var mz=w.MultiplyPoint3x4(new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec)));var bore=w.MultiplyVector(Vector3.forward);
+                if(bore.sqrMagnitude>1e-8f){bore.Normalize();right.HasMuzzle=true;right.Muzzle=new System.Numerics.Vector3(-mz.x,mz.y,mz.z);right.Bore=new System.Numerics.Vector3(-bore.x,bore.y,bore.z);}
+            }
+            hands.Hands(t,right,left);
         }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet

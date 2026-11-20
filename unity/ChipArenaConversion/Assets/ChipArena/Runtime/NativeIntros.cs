@@ -213,6 +213,8 @@ namespace ChipArena.UnityConversion
         private void IntroWeapon(string style,float age)
         {
             if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}
+            // Intros v2: a Bow intro's bow as the match draws it (Core INativeIntroBow), else carried with one arrow.
+            if(entranceScript is INativeIntroBow v2bow&&NativeIntroCatalog.Find(style)?.Spec==NativeBowWire.Spec){if(!v2bow.Bow(entranceTime,out var bv))bv=new NativeBow.View{Phase=NativeBow.Phase.Carry,Arrows=1};var bf=default(NativeBowPose.Frame);bf.Pull=bv.Pull;BowIntroDraw(bv,bf,entranceTime);return;}
             string model=IntroModel(NativeIntroRules.IntroWeapon(style));if(model==null)return;
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;
