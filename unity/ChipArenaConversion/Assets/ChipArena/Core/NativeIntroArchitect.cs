@@ -589,7 +589,8 @@ namespace ChipArena.UnityConversion
         private void VisorFx(INativeEntranceFx fx,float t,float thin)
         {
             float lvl=VisorLevel(t);if(lvl<.01f)return;var v=VisorAt(t);HeadFrame(t,out var hu,out var hf);var hr=Vector3.Cross(hu,hf);if(hr.LengthSquared()<1e-6f)return;hr=Vector3.Normalize(hr);
-            fx.Glow(v,Molten*(1.5f*lvl),0,.13f+.06f*lvl,1,0,12100);
+            // (ice while the body floats, as its accent is; white-gold from the drop, with the name)
+            var hot=t<Drop?Ice:Molten;fx.Glow(v,hot*(1.5f*lvl),0,.13f+.06f*lvl,1,0,12100);
             fx.Glow(v,Ice*(.45f*lvl),0,.5f+.3f*lvl,0,0,12101);
             float flare=.14f+.12f*lvl;Line(fx,v+hr*flare,v-hr*flare,Ice*(1.5f*lvl),.007f+.004f*lvl,.6f,12102);
             if(thin>=1&&lvl>.9f){float k=lvl-.9f;Line(fx,v+hr*(flare*2.4f),v-hr*(flare*2.4f),Cyan*(.6f*k),.004f,.85f,12103);}
