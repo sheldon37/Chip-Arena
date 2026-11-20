@@ -78,6 +78,8 @@ namespace ChipArena.UnityConversion
         {
             if(script is NativeWeaponEntrance)script.Bind(NativeSourceMotion.EntranceClip(style));if(!script.Ready)throw new InvalidOperationException("Missing source entrance clip: "+style);
             float quality=Mathf.Clamp01(WeaponEffectsQuality),t=script.Clock(age);entranceScript=script;entranceTime=t;
+            // Intros v2 (docs/INTROS-V2.md): the frame's context (Reduced effects, the Low tier, the live display name) before any call.
+            IntroV2Begin(script,pilot,quality);
             var sheldon=script as NativeSheldonIntroScript;if(sheldon!=null)actor=SheldonIntroBegin(sheldon,actor,pilot,t);
             script.Pose(t,entrancePose,out var root,out var rotation);
             if(NativePoseWriter.Write(introRig.Bones,entrancePose,"the intro rig")){introRig.Root.transform.SetPositionAndRotation(CapturedAnimation.Vec(CapturedRig.Mirror(root)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)));introRig.Root.transform.localScale=Vector3.one;}
@@ -106,6 +108,8 @@ namespace ChipArena.UnityConversion
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             entranceGhostActor=actor;EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);if(script is NativeTopDogIntro dogIntro)DogIntroToons(dogIntro,t);if(script is NativeGlaiveIntro ring)GlaiveIntroRing(ring,t);
+            // Intros v2: the set (its bank's pieces, or the dark lit void).
+            IntroV2Set(script,t,camera);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
