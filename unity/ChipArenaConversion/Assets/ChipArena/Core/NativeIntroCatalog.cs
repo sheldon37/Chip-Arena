@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private static readonly NativeIntroEntry[] All=
         {
             // ---- I0 (framework): the showcase that proves the pipeline (DEV only; may be removed later) ----
-            NativeIntroEntry.Dev("intro2-showcase","DEV · Pipeline Proof",NativeIntroShowcase.Total,NativeIntroShowcase.CardAt,()=>new NativeIntroShowcase(),"I0","The v2 pipeline end to end: a crane out of the dark, a column of light, the hero frame."),
+            // (the showcase is not registered for players: batch 1, 2026-11-20; its code stays)
             //
             // ---- the new default (I2) ----
             NativeIntroEntry.Default("Cloudbreak",NativeIntroCloudbreak.Total,NativeIntroCloudbreak.CardAt,()=>new NativeIntroCloudbreak(),"I2"),
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Generic("whiteout","Whiteout",NativeIntroWhiteout.Total,NativeIntroWhiteout.CardAt,()=>new NativeIntroWhiteout(),"I2"),
             //
-            NativeIntroEntry.Generic("slipstream","Slipstream",NativeIntroSlipstream.Total,NativeIntroSlipstream.CardAt,()=>new NativeIntroSlipstream(),"I2"),
+            // (Slipstream waits for its Runner Action pack run, owner 2026-11-20: "The run is very 'cartoon' like"; its author re-registers it here)
             //
             NativeIntroEntry.Generic("threshold","Threshold",NativeIntroThreshold.Total,NativeIntroThreshold.CardAt,()=>new NativeIntroThreshold(),"I2"),
             //
