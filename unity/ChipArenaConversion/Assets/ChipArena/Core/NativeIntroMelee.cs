@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
         {
             float yaw=Facing+side*angle;var dir=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
             var from=dir*(distance+.5f)+new Vector3(0,.92f,0);var to=dir*distance+new Vector3(0,1.0f,0);
-            Rig.Dolly(at,from,to,new Vector3(0,.8f,0),new Vector3(0,.83f,0),fov+2,fov).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,blend);
+            Rig.Dolly(at,from,to,new Vector3(0,.8f,0),new Vector3(0,.83f,0),fov+2,fov).Ease(NativeIntroEase.Out);if(blend>0)Rig.In(NativeIntroCut.Blend,blend);
         }
         /// <summary>The name card in the band under the hero frame's feet (HeroFull), centred with its kicker and line.</summary>
         protected static void NameBelow(ref NativeIntroCardState card){card.X=.5f;card.Y=.9f;card.Size=.062f;}
