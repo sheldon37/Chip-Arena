@@ -7,16 +7,16 @@ registers). The framework and its contract are I0's (`docs/INTROS-V2.md`). Prese
 
 Each is an authored scene: a story beat, a modelled set (scripted Blender, the local bank `ChipArenaIntroMelee`, never committed),
 the model playing the packs' clips from the motion bank, an authored camera, timed light, effects, a sound cue timeline and the live
-name card beside the pilot in the hero frame. Each differs from the others in set, mood and camera.
+name card in the band under the pilot's feet in a full-length hero frame (`HeroFull`, `NameBelow`: the card's kicker and line stay centred, so the name stays centred too). Each differs from the others in set, mood and camera.
 
 | Weapon | Intro (`intro2-weapon-<spec>`) | Length / name | Set (bank prefix) | Mood | Card |
 | --- | --- | --- | --- | --- | --- |
-| Katana | Still Rain | 8.2 s / 6.6 s | `rain`: the Rain Garden, a walled courtyard at night | indigo, silver rain, one crimson | Wipe, right |
-| Fangs | Apex | 7.4 s / 5.9 s | `canopy`: jungle temple ruins at night | toxic green in blue-black mist | Rise, right |
-| Greatsword | Faultline | 8.0 s / 6.4 s | `rift`: a basalt quarry over a molten seam | ember on charcoal | Slam, left |
-| Sword | Severed Dawn | 7.4 s / 5.9 s | `lightwell`: a ruined vaulted hall, one shaft of dawn | umber dark, white-gold shaft | Assemble, right |
-| Shield | Hold the Line | 7.8 s / 6.3 s | `breach`: a broken fortress gate at dusk | smoke orange, steel blue | Slam, right |
-| Daggers | Afterimage | 7.2 s / 5.8 s | `alley`: a night market lane with paper lanterns | teal and magenta neon | Rise, right |
+| Katana | Still Rain | 8.2 s / 6.6 s | `rain`: the Rain Garden, a walled courtyard at night | indigo, silver rain, one crimson | Wipe |
+| Fangs | Apex | 7.4 s / 5.9 s | `canopy`: jungle temple ruins at night | toxic green in blue-black mist | Rise |
+| Greatsword | Faultline | 8.0 s / 6.4 s | `rift`: a basalt quarry over a molten seam | ember on charcoal | Slam |
+| Sword | Severed Dawn | 7.4 s / 5.9 s | `lightwell`: a ruined vaulted hall, one shaft of dawn | umber dark, white-gold shaft | Assemble |
+| Shield | Hold the Line | 7.8 s / 6.3 s | `breach`: a broken fortress gate at dusk | smoke orange, steel blue | Slam |
+| Daggers | Afterimage | 7.2 s / 5.8 s | `alley`: a night market lane with paper lanterns | teal and magenta neon | Rise |
 | Glaive | (Orrery, not built) | | `observatory` (modelled, not banked) | | |
 
 ## How they are made
@@ -42,8 +42,10 @@ name card beside the pilot in the hero frame. Each differs from the others in se
   the scripts place them in the source frame (`NativeIntroMelee.U`).
   `blender --background --factory-startup --python tools/intros/melee_set.py -- --sets rain,canopy,rift,lightwell,breach,alley --out DIR`.
   Without the bank each intro draws a dark lit floor in its own light (`NativeIntroMelee.Plain`).
-- **Sound:** each intro's cues name a generated key (`intro2.<intro>.<cue>`), an existing bank key and a built-in clip. The 59
-  requests are in `docs/audio/intros/I3.json`, their contract lines on the I3 slot of `Core/NativeIntroSoundKeys.cs`.
+- **Sound:** each intro's cues name a generated key (`intro2.<intro>.<cue>`), an existing bank key and a built-in clip. The bank
+  keys are filled one-shot keys (the installed bank leaves the `topdog.blade-*` and some ironworks keys empty, and loops such as
+  `field.fire` do not play as cues; either way a cue falls to its built-in clip). The 59 requests are in `docs/audio/intros/I3.json`,
+  their contract lines on the I3 slot of `Core/NativeIntroSoundKeys.cs`.
 
 ## The intros
 
