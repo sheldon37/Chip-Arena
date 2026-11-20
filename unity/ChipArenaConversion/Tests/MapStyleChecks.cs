@@ -52,7 +52,8 @@ namespace ChipArena.UnityConversion
         private static void Switch(MapLookSet set)
         {
             var on=set.maps.Where(m=>NativeMapStyle.On(m,false)).Select(m=>m.id).OrderBy(x=>x).ToArray();
-            Check(on.SequenceEqual(new[]{"breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","factory","harbor","polar","rig","sanctum","siren-quarantine","skyframe","training"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages; the Training Room) turn the style on: "+string.Join(",",on));
+            // (re-pinned on purpose, plan W1: the Meridian walk's expedition-night look is styled as the town's is)
+            Check(on.SequenceEqual(new[]{"breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-night","expedition-transit","factory","harbor","polar","rig","sanctum","siren-quarantine","skyframe","training"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages; the Training Room) turn the style on: "+string.Join(",",on));
             var state=new MapStyleState();
             foreach(var m in set.maps)
             {
@@ -424,7 +425,7 @@ namespace ChipArena.UnityConversion
             Check(outline.Contains("material.SetFloat(FootId,NativeMapStyle.Foot(fov,Mathf.Max(1,view.pixelHeight)));")&&Code(R("Assets/ChipArena/Resources/NativeToonEdge.shader")).Contains("EdgeLine(i.pos.xy*texel,texel*_EdgeWidth,_EdgeFoot)"),"the outline's creases fade by the camera's own pixel footprint (resolution and zoom)");
             Check(game.Contains("outline=NativeToonOutline.Attach(cameraView);")&&game.IndexOf("bloom=NativeBloom.Attach(cameraView);",StringComparison.Ordinal)<game.IndexOf("outline=NativeToonOutline.Attach(cameraView);",StringComparison.Ordinal)&&settings.Contains("if(outline!=null)outline.Quality(low);"),"on the match camera after the bloom, off on the low tier");
             Check(lighting.Contains("public static bool StyleWrap=>StyleActive&&!lowShadows;")&&lighting.Contains("Shader.SetGlobalVector(ToonWrapId,V(Style.Wrap));Shader.SetGlobalVector(ToonFxId,V(Style.Fx));"),"the wrap on the normal tiers (the low tier keeps the rounded box); its and the highlights' globals written");
-            foreach(var (file,pick) in new[]{("NativeArenaDressing.cs","Draw(NativeLighting.StyleActive?ToonStage(s):meshes[s],batches[s][i],n);"),("NativeArenaDressing.cs","private Mesh ToonStage(int s)=>NativeLighting.StyleWrap?(wrapMeshes[s]??=MeshOf(NativeToonMesh.WrapMesh(s),s)):s==0?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[Math.Min(s,meshes.Length-1)];"),
+            foreach(var (file,pick) in new[]{("NativeArenaDressing.cs","Draw(StageForMap(s),batches[s][i],n);"),("NativeArenaDressing.cs","return NativeLighting.StyleActive ? ToonStage(stage) : meshes[stage];"),("NativeArenaDressing.cs","private Mesh ToonStage(int s)=>NativeLighting.StyleWrap?(wrapMeshes[s]??=MeshOf(NativeToonMesh.WrapMesh(s),s)):s==0?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[Math.Min(s,meshes.Length-1)];"),
                 ("NativeExpeditionCityPresentation.cs","private Mesh TownMesh=>NativeLighting.StyleWrap?(townWrap??=MetroMeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;"),
                 ("NativeExpeditionHubPresentation.cs","private Mesh Shape=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;"),
                 ("NativeExpeditionStatesPresentation.cs","private Mesh Shape=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;")})
@@ -476,7 +477,8 @@ namespace ChipArena.UnityConversion
                 {var b=Copy();breakIt(b);bool threw=false;try{NativeMapStyle.Validate(id,b);}catch(InvalidOperationException){threw=true;}Check(threw,id+": refused: "+what);}
             }
             var off=new MapLookToon{on=false,softness=float.NaN};NativeMapStyle.Validate("x",off);Check(true,"a look with the style off is never read");
-            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==17,"seventeen looks carry the style (stage 1's pilots; stage 2's Factory, Cyber City, quarantine, Central Station and the Ironworks; the Training Room's studio; the five M1 stages)");
+            // (re-pinned on purpose, plan W1: the Meridian walk's expedition-night is the eighteenth)
+            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==18,"eighteen looks carry the style (stage 1's pilots; stage 2's Factory, Cyber City, quarantine, Central Station and the Ironworks; the Training Room's studio; the five M1 stages; the Meridian walk's night)");
         }
     }
 }
