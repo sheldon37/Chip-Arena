@@ -145,6 +145,9 @@ namespace ChipArena.UnityConversion
     /// so a muzzle flash, a cast or a trail leaves the drawn weapon. A checker that never hands them in still sees every effect.
     /// </summary>
     public interface INativeIntroHands{void Hands(float t,in NativeIntroHand right,in NativeIntroHand left);}
+    /// <summary>Optional for a v2 intro: the head as drawn (the model's head joint when the model is drawn, else the keyed head anchor), handed
+    /// in with the hands, before Props, Set and Effects (I5: a lit eye on the visor, a crown on the head while a clip plays).</summary>
+    public interface INativeIntroHead{void Head(float t,in NativeIntroHand head);}
     /// <summary>Optional for a v2 Bow intro: the bow as the match draws it (on the model's left hand, its string and its nocked arrow)
     /// from the view at `t` (false: carried, one arrow). Without it the bow is the plain model in the hand.</summary>
     public interface INativeIntroBow{bool Bow(float t,out NativeBow.View view);}
