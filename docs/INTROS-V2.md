@@ -42,6 +42,9 @@ are what the match reads (`NativeIntroRules.Duration` / `NameAt`), so they must 
 name beat. The checks enforce this.
 
 - **Until a weapon's intro is registered**, that weapon's old signature still plays, so nothing breaks mid-night.
+- **Timing tests:** `Tests/ParityFollowupChecks.cs` ("Siren follows human intro") ticks a match with a human **pistol** seat and
+  expects the Siren's intro next, so the pistol's intro must end within 8.0 s. Run the full suite after registering: it
+  stops at the first failing check.
 - **The Siren** keeps its boss entrance. **The Top Dog** and **the Bombadier** keep theirs.
 - **A script must always be `Ready`.** If it uses a pack clip that may be missing, give it a procedural fallback pose.
   The runtime throws on a script that isn't Ready.
@@ -62,6 +65,7 @@ scrub must draw the same frame. Never allocate per frame.
 | `Pose(t, pose, out root, out rotation)` | The keyed rig pose (`Keys`/`Steps`, `NativeProceduralEntrance`): the anchors' source for the camera and effects, and the Classic body's pose. |
 | `Clip(t, out clip, out time)` / `Fade(t)` (`INativeIntroBody`; virtuals on `NativeIntroV2Script`) | The model body plays a motion-bank clip at its time (you retime it), fading in over `Fade` s; false: the model follows the keyed rig. One clip at a time (no upper-body layer tonight). A `NativeBladeIntro` keeps its own path. |
 | `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame): the model's joint when the model is drawn (`Model` true), else the keyed hand anchor. For a gun Weapon intro (pistol, rifle, machine gun) the right hand also carries `HasMuzzle`, `Muzzle` and `Bore`: the drawn weapon's muzzle and barrel direction. For a staff head or a blade tip, measure your offsets in the wrist frame in your Editor hold. |
+| `Head(t, head)` (`INativeIntroHead`, optional) | The head as drawn, handed in with the hands: the model's head joint when the model is drawn, else the keyed head anchor. |
 | `Bow(t, out view)` (`INativeIntroBow`, optional, Bow intros) | The bow drawn as the match draws it (on the model's left hand, its string and its nocked arrow) from a `NativeBow.View` you give. Without it, the bow is carried with one arrow. |
 | `Camera(age, out view)` | `NativeIntroV2Script` evaluates `Rig` (section 4). Override it only if you must. |
 | `Lights(t, lights)` | The void rig (`NativeIntroVoid.Light`), then add your own: `l.Add(at, colour, distance)`, at most 8 points. |
