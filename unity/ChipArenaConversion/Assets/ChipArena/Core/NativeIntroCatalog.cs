@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Generic("whiteout","Whiteout",NativeIntroWhiteout.Total,NativeIntroWhiteout.CardAt,()=>new NativeIntroWhiteout(),"I2"),
             //
-            // (Slipstream waits for its Runner Action pack run, owner 2026-11-20: "The run is very 'cartoon' like"; its author re-registers it here)
+            NativeIntroEntry.Generic("slipstream","Slipstream",NativeIntroSlipstream.Total,NativeIntroSlipstream.CardAt,()=>new NativeIntroSlipstream(),"I2"),
             //
             NativeIntroEntry.Generic("threshold","Threshold",NativeIntroThreshold.Total,NativeIntroThreshold.CardAt,()=>new NativeIntroThreshold(),"I2"),
             //

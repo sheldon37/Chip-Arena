@@ -45,6 +45,20 @@ namespace ChipArena.UnityConversion
         public NativeEntranceKeys Planted(float weight){current[Row+PlantL]=weight;current[Row+PlantR]=weight;return this;}
         public NativeEntranceKeys Planted(float left,float right){current[Row+PlantL]=left;current[Row+PlantR]=right;return this;}
         public NativeEntranceKeys J(int bone,float x,float y=0,float z=0){int s=Row+Slot(bone);current[s]=x;current[s+1]=y;current[s+2]=z;return this;}
+        /// <summary>The keys' pack-clip segments (NativeIntroPack; docs/INTROS-V2.md 9d), in the order added: each plays over the keys.</summary>
+        public NativeIntroPack.Segment[] Packs=Array.Empty<NativeIntroPack.Segment>();
+        /// <summary>
+        /// Plays pack clip `clip` (the intros' motion bank, NativeIntroPack.Local) from intro time `from` to `to`, starting `start` seconds
+        /// into the clip at `speed` times its rate (`loop`: wrapped, else held at its ends): its joints in `mask` (NativeIntroPack.All,
+        /// Legs, Torso, Arms...) eased in over `blendIn` and out over `blendOut` from what the keys put there, the keyed body where the
+        /// clip's pelvis is (with the legs' mask), the planting let go while the clip's legs play. `root`: the intro's path (move it at the
+        /// clip's Speed for the drawn feet to hold) or the clip's own travel (Kept). Without the bank the keys play as keyed. The keys still
+        /// key the joints a segment leaves out (a weapon carry over a pack run: mask Legs | Torso).
+        /// </summary>
+        public NativeEntranceKeys FromPack(string clip,float from,float to,float start=0,float speed=1,bool loop=false,NativeIntroPack.RootMode root=NativeIntroPack.RootMode.Path,int mask=NativeIntroPack.All,float blendIn=.1f,float blendOut=.1f)
+        {
+            Array.Resize(ref Packs,Packs.Length+1);Packs[Packs.Length-1]=new NativeIntroPack.Segment(clip,from,to,start,speed,loop,root,mask,blendIn,blendOut);return this;
+        }
         public NativeEntranceKeys PassKey(){Pass|=1u<<(count-1);return this;}
         public NativeEntranceKeys ImpactKey(){Impact|=1u<<(count-1);return this;}
         /// <summary>The value of channel `c` at `t`.</summary>
@@ -106,8 +120,11 @@ namespace ChipArena.UnityConversion
                 pose.Rotation[bone]=CapturedRig.Euler(k.At(c,t-lag),k.At(c+1,t-lag),k.At(c+2,t-lag));
             }
             Idle(pose,t,idleFrom);
-            float left=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantL,t)),right=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantR,t));
+            // (a pack segment's legs are the clip's: the planting lets go as it comes in; NativeIntroPack)
+            float pack=k.Packs.Length>0?1-NativeIntroPack.Weight(k,t,NativeIntroPack.Legs):1;
+            float left=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantL,t))*pack,right=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantR,t))*pack;
             if(stance.Length>=8){if(left>.001f)Plant(pose,root,rotation,stance,true,left,hinged);if(right>.001f)Plant(pose,root,rotation,stance,false,right,hinged);}
+            if(k.Packs.Length>0)NativeIntroPack.Apply(k,t,pose,ref root,rotation,rootAt);
         }
         /// <summary>heroIdle (intro-curves.ts): a slow weight shift, breathing and a settling head, fading in over .6 s from `from`.</summary>
         public static void Idle(CapturedRig.Pose pose,float t,float from)

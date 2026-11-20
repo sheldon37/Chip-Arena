@@ -95,6 +95,8 @@ namespace ChipArena.UnityConversion
             StationBossScenery(arena);
             CyberCityScenery(arena);
             ExpeditionCityScenery(arena);
+            // Belvedere Camp: the live hub's fence and overhead life, and the Developer walk's DEV preview (NativeCampDraw.cs).
+            CampScenery(arena);
             // The Backrooms: Level 0 (its live map, or the DEV preview) and the DEV Poolrooms preview (NativeBackroomsPresentation.cs,
             // NativePoolroomsPresentation.cs).
             BackroomsWorld(arena);

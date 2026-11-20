@@ -63,6 +63,7 @@ Core/NativeBodyChips.cs                                    0   0   0   0   6
 Core/NativeBombadierIntro.cs                               0   0   0   0  18
 Core/NativeBowEntrance.cs                                  0   0   0   1   0
 Core/NativeBowMotion.cs                                    0   0   0  16   0
+Core/NativeCampSurvivors.cs                                0   0   0   4   0   # Voxel dependency: the camp survivors (DEV preview) sample their pack clips (NativeIntroPack) into the 22-joint pose the model binding takes, as intros v2 do; V4 plays pack clips on the model directly
 Core/NativeChipSelect.cs                                   0   0   0   6   0
 Core/NativeCyberLordAirBoostFx.cs                          0   0   0   0   1
 Core/NativeCyberLordAura.cs                                0   0   0   0   1
@@ -128,6 +129,7 @@ Runtime/NativeBodyChipPresentation.cs                      0   0   4   0   0
 Runtime/NativeBodySkinPresentation.cs                      0   0   1   0   0
 Runtime/NativeBombPresentation.cs                          0   0   8   0  23
 Runtime/NativeBowPresentation.cs                           1   0   7   0   0
+Runtime/NativeCampSurvivorsDraw.cs                         0   0   0   1   0   # Voxel dependency: the survivors' pose scratch for the model binding (as Core/NativeCampSurvivors.cs)
 Runtime/NativeCinematicCamera.cs                           0   0   2   0   0
 Runtime/NativeCombatGlow.cs                                0   0   4   0   0
 Runtime/NativeCorpseDressPresentation.cs                   1   0   1   0   0
