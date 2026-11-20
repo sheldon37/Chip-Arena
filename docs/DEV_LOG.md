@@ -1,3 +1,9 @@
+## 2026-11-20 — Astra: protect visor and entrance saves across PCs
+
+Branch `codex/locker-save-receipt` from shared `8d56f015`. Ordinary token refreshes no longer advance the revision of a Locker profile that has not been reloaded. Stale writes receive the existing conflict response. The Locker waits for the save response, checks the face gear and entrance, and exposes failures. On the next profile load, account-scoped pending face gear and entrance choices retry against unchanged fields while preserving newer remote choices. An acknowledged pick yields to later edits on another PC.
+
+The local account suite passed all 18 tests, including two clients with conflicting revisions and plain Visor across seven procedural intros. Managed CoreTests compiled and targeted Locker (1,643 checks) and pending-choice checks passed. No live account or Windows two-PC session used.
+
 ## 2026-11-20 — Claude: release 2 of the expedition overhaul: the caches on A2, the LEGENDARY beam, the Meridian look (integrator)
 Owner: "Release them" (the caches) and "Looks good" (the Meridian look at night). Shared `c181c819`, the builder at `c181c819`, test channel revision `639307532568188737` (build `978e29a4`, 376.6 MiB).
 - **Merged:** `claude/cache-openings` (`eba02d3a`: the presentation on Astra's A2, its adapter reading `tier`, the locker standing on A2's block with the block's box undrawn, the LEGENDARY beam laid on its head's camera plane), `claude/meridian-bleed` (`8befbda3`: D1, D2 and D3), `claude/cache-locker-column` (`c181c819`: the beacon's tube stands down where the steel locker stands, board 3).
