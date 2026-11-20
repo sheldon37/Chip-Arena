@@ -1,3 +1,88 @@
+## 2026-11-20 — Claude: DEV · Architect of Reality, the polish pass on the integrator's review (I1b; presentation only)
+
+The integrator's review of the first version (`7a0302e2`): the structure works; the payoff is not godlike yet. Fixed on the same
+branch; every beat time and `Duration`/`NameAt` (15.7 s / 12.63 s) unchanged (the song's sync is right).
+
+- **Branch:** `claude/intro-dev-architect`, from `7a0302e2`, the framework merged in as it landed: the card fix `545faef6`, `7c0f3783`
+  (I0c: the keyed pose drawn faithfully on the model, model-aware anchors, the intro's own light), `17380adb` (the dressed entrance
+  ghost) and `d0138423` (its ratchet-clean local). Pushed, not merged.
+- **The finale (12.62-15.7):** a low hero frame from just over the floor looking up, a slow push and orbit to the front: the
+  architect about half the frame tall between the two monoliths behind it, the sky's name above. It never lands: it sinks to
+  hover over the dais as the world lands, the hands fling open into a V and lower out through the sides with light pouring from
+  them into the dais and on out along the seams into an open pose it holds to the end, both palms up to the ceiling (owner, on the
+  preview: the hands from 13 to 15 s read as random rotation; the command sweep is gone), the visor blazing white-gold. On the drop light erupts up every monolith and on into the sky as beams, runs up
+  the crown's spires, the sky wells up deep blue and settles darker, dust shakes off the landing world, a fountain of sparks, gold
+  embers.
+- **No rings anywhere (owner):** the crown is eight gold spires rooted over the monoliths and leaning in toward one point over
+  the dais (rays); the floor is sixteen wedges round a sixteen-sided dais, each cut once at an apothem alternating 3.5 / 4.6 m, so
+  no seam runs round it, and the dais's rays continue the seams (one sunburst); the wires leave out the chords; the floor's flood,
+  its pulses and its swell run each seam in its own turn (no ring of light round the floor); the drop's sparks rise as a fountain.
+  The old ring props are gone from the set (a check).
+- **The floor:** black glass. Two things washed it grey at the hero lens's 3-6 degree grazing angle: the arena's reflection probe
+  (the intro's set reads it wherever the match is staged) and, once that was gone, the crown's gold rim light from behind and above,
+  whose specular lobe on a 0.66-smooth finish lit the whole near band. The obsidian's baked occlusion is now pressed to nothing (the
+  stage shader occludes the probe's reflection by it, not the lights' highlights), its finish is glass-smooth (0.9: a light shows
+  only as its own mirror image) and the gold light comes from overhead. Its seams graded cyan at the dais to gold at the rim.
+- **The name:** forged in the sky: code glyphs fly up out of the floor's seams to each letter's strokes and its pen writes it
+  white-hot (an ember glow, a gold body, a white-gold molten core; bold; the strokes trimmed so the joints don't light up like
+  bulbs), a pulse as the name completes, then a slow molten shimmer; light rays fanned behind it. Long names of heavy letters shed
+  the outer layers, then the glyphs and the rays, never their strokes (a check holds the heaviest 20-letter name inside the dev
+  budgets). The card is its small caption: `Size` .04, lower right (`X` .78), "THE ARCHITECT" over the live name, its letters
+  decoding in step with the sky's pens.
+- **The draft (5.0-6.6):** the body of light is the dressed pilot's own silhouette in cyan, armour and helmet and all (the
+  framework's entrance ghost at no lag, `17380adb`: bright edges, a soft inner glow, no scanlines; owner: the first ghost was a
+  blank model without armour, and a bald head once its hair was hidden) with pens of light tracing each limb's silhouette edges,
+  a scan sweeping it up and back down and a core of light swelling in its chest; it fills solid from the core out, and the
+  ignition throws rays, sparks and the shards out. (A bespoke helmet drawn in light was begun for the bare ghost and dropped
+  when the framework dressed every ghost.)
+- **The solid body (6.66-8.0):** cyan and ice rim lights from behind, the ambient and the front key down through the moment, the
+  visor's glow and light, an aura (glyph-light circling, a soft glow behind, motes rising).
+- **The close-up (11.82-12.62):** frontal on the visor, the lens a little under its line (from well below, the first hold's view
+  climbed into the helmet's open bottom and read as the back of a head); the visor drawn dim on the inhale and kindling a step on
+  each dip; the hands come down into the frame; the lens stays clear of the body and the raised arms (a check).
+- **The palms up (13.0-15.7):** keyed, not posed per frame: each upper arm turned about its own line (where it points unchanged)
+  and the wrist bent back, so the palm (the hand frame's +z, as Core `NativeDraftPlant.PalmIn` has it) faces straight up with the
+  fingers out along the forearm; solved offline on the keyed rig at the keys' times (the open pose's arms turned 47.5 degrees, the
+  wrists 20 back): the palms within 4.4 degrees of up from 13.0 and 0.5 from 13.55, turning under 45 degrees a second after
+  13.05. They come up as the arms swing from the V to the sides (12.82-13.0, part of the drop's opening). Both hands pour their
+  light to the end (the command's stop and palm flare are gone).
+- **The head and the hands:** on the model-aware anchors (`7c0f3783`, docs/INTROS-V2.md 2a) the visor's light is the drawn glass
+  (`Anchor(Visor)`), the hands' light the drawn palms, the chest and the draft's lines the drawn joints; the hand-tuned offsets are
+  gone. The keyed camera still frames the visor from the keyed head (`EyeUp` .18 m up the head's axis, `VisorFront` .13 m ahead:
+  `FramedVisor`), as measured on the first version's frames and confirmed on the first hold's.
+- **Files:** Core `NativeIntroArchitect.cs`, Runtime `NativeIntroArchitectCard.cs` (the letters' timing), `Tests/IntroArchitectChecks.cs`,
+  `tools/stages/intro_dev_architect.py`, `docs/INTRO-DEV-ARCHITECT.md`, PROJECT_STATE.
+- **The set bank (never committed):** rebuilt, `ChipArenaIntroDev.bytes` 4,753,227 bytes (sha256 `b2efced4...`), master and meta in
+  `F:/Chip Arena Development/scratch/intro-dev/bank/` (the first version's kept beside it as `ChipArenaIntroDev-v1.bytes`). The
+  integrator packs it; without it the intro draws the framework's void under the same effects.
+- **Checks:** `--intro-architect` 9,833 passed (the first version's plus: the hover from the drop to the end; the palms up from
+  13.0 to the end; the head's frame
+  and the visor; the close-up frontal on the visor a little under its line, its lens clear of the head, chest, shoulders, elbows
+  and hands; the hero frame low and looking up, the architect .36-.62 of the frame tall, the sky's name above the head and in
+  frame; the card a small caption; no ring-shaped prop; the heaviest 20-letter name inside the dev budgets); peaks 545 effects
+  and 121 set pieces on High, 213 and 76 on Low, 8 lights; `--intros-v2` passes (2,659); the voxel ratchet at zero for this
+  intro's files; the Unity compile passes (all four assemblies); `git diff --check` clean; the full CoreTests the relgen5 way at
+  `e1f15e97` (the framework's `d0138423` merged), exit 0 (1,080 groups).
+- **Holds:** three, each with the rebuilt bank put in, the Editor back on `9319026b` after and the lock given back: b1 07:46-07:55
+  (`581b71f8`), b2 08:15-08:25 (`93ff46d0`), b3 09:24-09:36 (`e9848e07`, the framework's `7c0f3783` merged: the floor near-black
+  glass under the intro's own light, the hands' columns on the drawn palms, the name and the visor as before; the draft's ghost
+  still bald, before the dressed ghost). Hold 4 (the dressed draft ghost and the palms up, with I2's side and three-quarter
+  cameras) waits on the integrator's word.
+- **Clips:** the first version's kept as `*-v1.*` in `F:/Chip Arena Development/scratch/intro-dev/clips/`; hold 2's preview in
+  `.../intro-dev/i1b/preview-b2/`, hold 3's in `.../intro-dev/i1b/preview-b3/` (the drop's audio and the picture's snap both at
+  12.600 s: 0 frames apart). Hold 3's show the old hands and the bald draft ghost; the final set comes from hold 4 into `clips/`.
+- **Not run:** a Windows player build; two clients (a guest's view of the bed clock); the sound by ear (the captures are muted;
+  the review clip carries the song on the capture's clock).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the intro's length and name beat
+  are unchanged.
+- **Voxel dependency:** none added (the ratchet is at zero for both files): the head's frame comes from the anchors (the neck's
+  line and the body's facing), not a rig pose; the effects read the drawn model's anchors.
+- **Risks:** not yet seen in the Editor: the palms up (the keys take the model's palm as the hand frame's +z, as the chip draft
+  has it) and the dressed ghost in the draft; I0c's joint-limits check has not run on this intro; the side and three-quarter
+  views wait for hold 4.
+- **Next:** hold 4 at the integrator's word (`i1b/tools/hold4.sh`), I0c's joint-limits check merged and cleared, the final clips;
+  then the integrator reviews them, merges after the framework, packs the rebuilt bank and compiles the intros' sound manifest.
+
 ## 2026-11-20 — Claude: DEV · Architect of Reality, the owner's new dev intro, on their song "Obey" (I1 of the intros revamp; presentation only)
 
 Owner: "a new dev intro for myself. The dev intro id like to be even better, with name effects and everything. Essentially
