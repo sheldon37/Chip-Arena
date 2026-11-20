@@ -63,6 +63,7 @@ internal static class LandmarkReadChecks
                 Court(plan, a, solids, doors);
                 Fronts(plan, a, deal);
                 Far(plan, a, solids, map);
+                Budget(plan, a);
                 views++;
             }
         }
@@ -244,6 +245,29 @@ internal static class LandmarkReadChecks
             if (!read) throw new Exception(plan.Name + " " + p.Key + " does not read from the camp: " + why);
         }
         if (l.Pieces.Count(x => x.Kind == NativeMeridianLandmarks.Kind.Far) != 3) throw new Exception(plan.Name + ": expected three far landmarks");
+    }
+
+    // Triangles and draws per view: every piece counted at its cap and at the runtime's tier for its distance from each camp eye
+    // (no culling, so an upper bound), within the frame budget's room on High and Low; two draws a piece at most.
+    private static void Budget(NativeCityLayout.Plan plan, NativeMeridianLandmarks.Layout l)
+    {
+        foreach (var eye in CampEyes)
+            foreach (bool low in new[] { false, true })
+            {
+                long tris = 0;
+                foreach (var p in l.Pieces)
+                {
+                    float d = (p.At - eye).Length;
+                    int t = p.Kind == NativeMeridianLandmarks.Kind.Far || p.Kind == NativeMeridianLandmarks.Kind.Mast ? 3 : (low || d > 38) ? 2 : 0;
+                    int cap = NativeMeridianLandmarks.TriangleCap(p.Key, t);
+                    if (cap == 0 && t == 2) cap = NativeMeridianLandmarks.TriangleCap(p.Key, 0);
+                    if (cap == 0) throw new Exception(plan.Name + " " + p.Key + ": no triangle cap");
+                    tris += cap;
+                }
+                if (tris > (low ? NativeMeridianLandmarks.LowRoom : NativeMeridianLandmarks.HighRoom))
+                    throw new Exception(plan.Name + ": the landmarks' triangles in a view " + tris + " over the frame budget's room");
+            }
+        if (l.Pieces.Count * 2 > NativeMeridianLandmarks.DrawRoom) throw new Exception(plan.Name + ": " + l.Pieces.Count + " pieces, over the draws' room");
     }
 
     /// <summary>`--meridian-landmarks-dump OUT.json`: the five layouts' blocks, ramps, routes, halls and placements, for the bank

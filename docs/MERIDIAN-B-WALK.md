@@ -69,3 +69,7 @@ The packaged Unity 6000.3.24f1 Development player ran at 1600 × 900 on an RTX 4
 | The Yards | South door | 74,026 | 8.72 / 9.85 | 13,686 | 8.77 / 9.56 |
 | The Yards | West door | 144,472 | 9.14 / 10.10 | 25,422 | 8.93 / 9.97 |
 | The Yards | Overview | 796,546 | 9.42 / 10.35 | 272,090 | 9.04 / 9.94 |
+
+## Landmarks and doors
+
+With the local bank `ChipArenaCityLandmarks` (built by `tools/stages/meridian_landmarks.py`; the Drive zip carries it), the walk also draws Meridian's landmarks (Core `NativeMeridianLandmarks`, Runtime `NativeMeridianLandmarksDraw`): one exit landmark per gate per layout, City Hall's court with its 62 m tower at 6:47, the dealt instances' door fronts on their halls, and the far layer (each dealt instance's landmark beyond the Cordon on the camp's line through its door, and the WMRD 64.7 mast). Every open rebuilds them for the deal. The blocks they replace are left out of the greybox while they draw; without the bank the greybox is unchanged. `--landmark-reads` checks the reads from the camp at High and Low, and the bank script checks the art rules (0.25 m, 3.1 m) on every layout and hall. Their triangles stay under about 77,000 from any camp eye counted without culling, the court's tower and halls on the far material past the fog's 65%.

@@ -136,6 +136,23 @@ def registry(D):
 
 
 TIER_NAME = {0: '0', 2: '2', 'far': 'far'}
+
+
+def triangle_cap(key, t):
+    """Core NativeMeridianLandmarks.TriangleCap (tier 0 Fine, 2 Low, 'far'): a piece over its cap is refused."""
+    t = 3 if t == 'far' else t
+    if key.startswith('exit/'):
+        return {0: 14000, 2: 2500}.get(t, 0)
+    if key == 'court/final':
+        return {0: 45000, 2: 8000, 3: 600}[t]
+    if key == 'far/mast':
+        return 1600 if t == 3 else 0
+    if key.startswith('far/'):
+        return 2500 if t == 3 else 0
+    part = key.rsplit('/', 1)[-1]
+    caps = {'door': (4000, 1500), 'rear': (1500, 400), 'bay': (700, 150), 'side': (700, 150), 'back': (700, 150), 'lining': (120, 120), 'roof': (4, 4)}
+    c = caps.get(part, (500, 300))
+    return c[0] if t == 0 else c[1] if t == 2 else 0
 LOW_FROM = 2500     # LOD0 triangles from which a piece also banks a Low tier
 
 
@@ -190,6 +207,8 @@ def build_all(D, only=None):
                     built[key] = g
             tris = sum(len(s) for s in om.submeshes) // 3
             stats.setdefault(key, {})[TIER_NAME[t]] = tris
+            if tris > triangle_cap(key, t):
+                raise SystemExit('%s tier %s: %d triangles over its cap %d (Core NativeMeridianLandmarks.TriangleCap)' % (key, t, tris, triangle_cap(key, t)))
             print('built %-44s %-3s %7d tris  %.1f s' % (key, TIER_NAME[t], tris, time.time() - t0))
     return sb, stats, built
 

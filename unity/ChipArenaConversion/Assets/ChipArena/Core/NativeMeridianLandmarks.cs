@@ -64,6 +64,34 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The distance from which a look's fog would pass the cap (the runtime's switch to the far material).</summary>
         public static float FarFrom(float start, float end) => start + (end - start) * FarFogCap;
+        /// <summary>The most triangles a bank piece may have at a tier (0 Fine, 2 Low, 3 far; the bank script refuses a piece over its
+        /// cap, LandmarkReadChecks sums the caps per view against the frame budget). A tier the bank leaves out draws the next one.</summary>
+        public static int TriangleCap(string key, int tier)
+        {
+            if (key == null) return 0;
+            if (key.StartsWith("exit/", StringComparison.Ordinal)) return tier == 0 ? 14000 : tier == 2 ? 2500 : 0;
+            if (key == "court/final") return tier == 0 ? 45000 : tier == 2 ? 8000 : 600;
+            if (key == "far/mast") return tier == 3 ? 1600 : 0;
+            if (key.StartsWith("far/", StringComparison.Ordinal)) return tier == 3 ? 2500 : 0;
+            if (key.StartsWith("front/", StringComparison.Ordinal))
+            {
+                string part = key.Substring(key.LastIndexOf('/') + 1);
+                switch (part)
+                {
+                    case "door": return tier == 0 ? 4000 : tier == 2 ? 1500 : 0;
+                    case "rear": return tier == 0 ? 1500 : tier == 2 ? 400 : 0;
+                    case "bay": case "side": case "back": return tier == 0 ? 700 : tier == 2 ? 150 : 0;
+                    case "lining": return 120;
+                    case "roof": return 4;
+                    default: return tier == 0 ? 500 : tier == 2 ? 300 : 0;   // the leaves
+                }
+            }
+            return 0;
+        }
+        /// <summary>The frame budget's room for the landmarks in one view (the owner's complete-view caps less the greybox's measured
+        /// most: 1.01 M on High, 0.35 M on Low, docs/MERIDIAN-B-WALK.md), and the draws they may add.</summary>
+        public const int HighRoom = 2177224 - 1010000, LowRoom = 821492 - 350000, DrawRoom = 700;
+
         /// <summary>The far landmarks' footprint radius (m) round their place: all of it stands outside the map.</summary>
         public static float FarRadius(string family)
         {
