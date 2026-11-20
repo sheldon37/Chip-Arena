@@ -54,9 +54,9 @@ The forge of a dead volcano. The caldera wakes, the forge's fire rises as a colu
 
 | t (s) | Beat | Camera | Pilot | Cue (key; fallback) |
 | ---: | --- | --- | --- | --- |
-| 0 | Dark caldera lit by its lava, embers rising | macro, low along a seam toward the dais | unseen | `intro2.fire.rumble`; `boss.ironworks.arrive.rumble`, `stone` |
-| 1.0 | The cracks light in from the rim to the dais, sparks running down the seams | crane up and back | unseen | `intro2.fire.crack`; `boss.ironworks.crust.crack`, `stone` |
-| 2.15 | **Eruption** (speed ramp): a 9.5 m fire column with a white-hot core, sparks, the forge's joints flaring | low under it, then a crane up it | built in inside the fire | `intro2.fire.erupt`; `blast.fire`, `explosion` / `intro2.fire.column`; `field.fire`, `fire` |
+| 0 | Dark caldera lit by its lava, embers rising | macro, low along a seam toward the dais | unseen | `intro2.fire.rumble`; `structure.rumble`, `stone` |
+| 1.0 | The cracks light in from the rim to the dais, sparks running down the seams | crane up and back | unseen | `intro2.fire.crack`; `structure.crack`, `stone` |
+| 2.15 | **Eruption** (speed ramp): a 9.5 m fire column with a white-hot core, sparks, the forge's joints flaring | low under it, then a crane up it | built in inside the fire | `intro2.fire.erupt`; `blast.fire`, `explosion` / `intro2.fire.column`; `hazard.lava`, `fire` |
 | 3.3 | It walks out of the fire, flame peeling off its shoulders and arms | front, pushing in at the lens | keyed walk, the staff upright at its side | `intro2.fire.step` (x2); `impact.stone`, `stone` |
 | 4.75 | The column spirals in and gathers into nine licks of flame round its head | orbit framing the crown | `Cast-L-Buff1` | `intro2.fire.crown`; `magic.flame-lance`, `fire` |
 | 5.45 | The staff comes down: fire runs out along the floor, the lava rings flare outward | wide and low | `Cast-L-AOE1` | `intro2.fire.slam`; `magic.fire.hit`, `explosion` |
@@ -82,11 +82,11 @@ A summit under a storm. The storm has been waiting for a conductor; the pilot is
 
 | t (s) | Beat | Camera | Pilot | Cue (key; fallback) |
 | ---: | --- | --- | --- | --- |
-| 0 | Rain on the slate, St Elmo's fire on the spires, the clouds lit from inside | low and wide, tilting up | unseen | `intro2.storm.bed`; `field.storm`, `lightning` |
-| 1.1 | Arcs leap spire to spire and crawl in over the stone; the cloud turns into a vortex | straight up into it, turning | unseen | `intro2.storm.charge`; `boss.station.arc`, `lightning` |
+| 0 | Rain on the slate, St Elmo's fire on the spires, the clouds lit from inside | low and wide, tilting up | unseen | `intro2.storm.bed`; `structure.rumble`, `lightning` |
+| 1.1 | Arcs leap spire to spire and crawl in over the stone; the cloud turns into a vortex | straight up into it, turning | unseen | `intro2.storm.charge`; `blast.static`, `lightning` |
 | 2.0 | A point of light gathers in the vortex's eye | down from the cloud | unseen | `intro2.storm.gather`; `chip.vacuum`, `dash` |
 | 2.45 | **Strike** (ramp): the trunk and its branches come down and are the pilot, white-hot in a crouch (a lag-0 afterimage cooling), arcs run out over the stone | smash to wide and low, then a fast orbit | keyed crouch | `intro2.storm.strike`; `magic.lightning.hit`, `lightning` / `intro2.storm.after`; `blast.shock`, `explosion` |
-| 3.7 | It rises, arcs crawling on its limbs | low, rising with it | staff idle | `intro2.storm.crackle`; `magic.ball-lightning`, `electric-hook` |
+| 3.7 | It rises, arcs crawling on its limbs | low, rising with it | staff idle | `intro2.storm.crackle`; `status.shock-zap`, `electric-hook` |
 | 4.3 | The staff up: a bolt into its head, then to every spire, which fire back into the sky | wide between the spires | `Cast-L-Summon1` | `intro2.storm.call`; `magic.lightning.shot`, `electric-hook-hit` |
 | 5.5 | **Name** (Slam): the staff crackling, rain, the storm behind | hero frame | staff idle | `intro2.storm.name`; `blast.quake`, `explosion` |
 
@@ -106,12 +106,19 @@ An eclipse over a glass plain. The light goes out, the dark comes to one place, 
 | 4.55 | One eye of light on the visor | close on the head | head up | `intro2.void.eye`; `boss.noctiel.hush.open`, `install` |
 | 5.05 | The staff up, the dark spreading behind its shoulders in feathers edged with violet | slow pull back, centred | `Cast-L-Summon2` | `intro2.void.wings`; `boss.noctiel.wings.open`, `dash` |
 | 5.7 | The snap: the dark streaks back to the monoliths, their runes flare | | `Cast-Attack1` | `intro2.void.snap`; `magic.darkness.hit`, `darkness` |
-| 6.6 | **Name** (Assemble): centred under the black sun, the eye lit | centred hero frame | staff idle | `intro2.void.name`; `magic.singularity`, `darkness` |
+| 6.6 | **Name** (Assemble): centred under the black sun, the eye lit | centred hero frame | staff idle | `intro2.void.name`; `blast.void`, `darkness` |
 
 ## Sounds
 
 Every cue has an existing bank key and a built-in clip, so the intros are synced before anything is generated (the managed
-checks hear each cue once at 60 Hz and at a guest's 20 Hz). The 31 generated sounds are requested in
+checks hear each cue once at 60 Hz and at a guest's 20 Hz). A cue plays its generated key, else the existing key, else the
+built-in clip (`Runtime/NativeIntroAudio.cs`). Each existing key is a one-shot that the installed bank fills, going by
+`docs/audio/audio-inventory-2026-11-16.csv`. `BankPlay` refuses a loop entry and finds nothing in an empty key. So the first
+mapping's loops (`field.fire`, `field.storm`, `magic.ball-lightning`, `magic.singularity`) and empty keys
+(`boss.ironworks.arrive.rumble`, `boss.ironworks.crust.crack`, `boss.station.arc`) would have dropped to the built-in clip.
+They are now `hazard.lava`, `structure.rumble`, `status.shock-zap` and `blast.void`, plus the empty keys' listed stand-ins
+(`structure.rumble`, `structure.crack`, `blast.static`). `--intro-elemental` checks that no fallback key is a loop. The 31
+generated sounds are requested in
 `docs/audio/intros/I5.json` (category `boss`, two takes each, prompts ending "isolated, no reverb, no music, no background
 noise") with their keys on the I5 slot of `Core/NativeIntroSoundKeys.cs`; the framework compiles every author's rows into one
 queue job (`docs/audio/intros/README.md`). Generation runs only inside a builder run.

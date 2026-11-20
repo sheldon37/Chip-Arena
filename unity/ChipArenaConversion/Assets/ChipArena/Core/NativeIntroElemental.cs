@@ -286,10 +286,10 @@ namespace ChipArena.UnityConversion
         }
         private static readonly NativeIntroCue[] cues=
         {
-            new NativeIntroCue(.05f,"intro2.fire.rumble","boss.ironworks.arrive.rumble","stone",.5f),
-            new NativeIntroCue(CrackFrom,"intro2.fire.crack","boss.ironworks.crust.crack","stone",.6f),
+            new NativeIntroCue(.05f,"intro2.fire.rumble","structure.rumble","stone",.5f),
+            new NativeIntroCue(CrackFrom,"intro2.fire.crack","structure.crack","stone",.6f),
             new NativeIntroCue(EruptAt,"intro2.fire.erupt","blast.fire","explosion",.9f),
-            new NativeIntroCue(EruptAt+.2f,"intro2.fire.column","field.fire","fire",.55f),
+            new NativeIntroCue(EruptAt+.2f,"intro2.fire.column","hazard.lava","fire",.55f),
             new NativeIntroCue(WalkFrom+.5f,"intro2.fire.step","impact.stone","stone",.32f),
             new NativeIntroCue(WalkFrom+.95f,"intro2.fire.step","impact.stone","stone",.3f),
             new NativeIntroCue(CrownAt,"intro2.fire.crown","magic.flame-lance","fire",.6f),
@@ -685,12 +685,12 @@ namespace ChipArena.UnityConversion
         public override void Card(float t,ref NativeIntroCardState card){base.Card(t,ref card);card.Style=NativeIntroCardStyle.Slam;card.Ink=new Vector3(.97f,.95f,1);card.Glow=Hex(0xc8aaff,1.8f);}
         private static readonly NativeIntroCue[] cues=
         {
-            new NativeIntroCue(.05f,"intro2.storm.bed","field.storm","lightning",.45f),
-            new NativeIntroCue(ChargeFrom,"intro2.storm.charge","boss.station.arc","lightning",.55f),
+            new NativeIntroCue(.05f,"intro2.storm.bed","structure.rumble","lightning",.45f),
+            new NativeIntroCue(ChargeFrom,"intro2.storm.charge","blast.static","lightning",.55f),
             new NativeIntroCue(GatherAt,"intro2.storm.gather","chip.vacuum","dash",.6f),
             new NativeIntroCue(StrikeAt,"intro2.storm.strike","magic.lightning.hit","lightning",1f),
             new NativeIntroCue(StrikeAt+.25f,"intro2.storm.after","blast.shock","explosion",.6f),
-            new NativeIntroCue(RiseFrom,"intro2.storm.crackle","magic.ball-lightning","electric-hook",.45f),
+            new NativeIntroCue(RiseFrom,"intro2.storm.crackle","status.shock-zap","electric-hook",.45f),
             new NativeIntroCue(CallStrike,"intro2.storm.call","magic.lightning.shot","electric-hook-hit",.8f),
             new NativeIntroCue(CardAt,"intro2.storm.name","blast.quake","explosion",.5f),
         };
@@ -870,7 +870,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(EyeAt,"intro2.void.eye","boss.noctiel.hush.open","install",.5f),
             new NativeIntroCue(WingsAt,"intro2.void.wings","boss.noctiel.wings.open","dash",.6f),
             new NativeIntroCue(SnapAt,"intro2.void.snap","magic.darkness.hit","darkness",.7f),
-            new NativeIntroCue(CardAt,"intro2.void.name","magic.singularity","darkness",.45f),
+            new NativeIntroCue(CardAt,"intro2.void.name","blast.void","darkness",.45f),
         };
         public override NativeIntroCue[] Cues=>cues;
         public override void Effects(float t,INativeEntranceFx fx,float q)

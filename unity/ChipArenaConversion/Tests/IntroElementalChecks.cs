@@ -105,7 +105,9 @@ namespace ChipArena.UnityConversion
             foreach(var s in Scripts()){var set=new Set{Bank=true};for(float t=0;t<=s.IntroTotal;t+=.1f)s.Set(t,set);foreach(var prop in set.Drawn){string rest=prop.Substring(prop.IndexOf('/')+1),numbered=Regex.Replace(prop,@"/\d+$","/%d"),restNumbered=Regex.Replace(rest,@"/\d+$","/%d");Check(built.Contains(prop)||text.Contains("'"+numbered+"'")||text.Contains("'"+rest+"'")||text.Contains("'"+restNumbered+"'"),s.Style+" draws "+prop+", which the set script builds");}}
             // the cue keys are in the sound contract and requested in docs/audio/intros/I5.json
             var rows=File.ReadAllText(Path.Combine(root,"..","..","docs","audio","intros","I5.json"));
-            foreach(var s in Scripts())foreach(var c in s.Cues){NativeIntroSoundKeys.Find(c.Key,out var def);Check(def.Key==c.Key,s.Style+" cue key "+c.Key+" in Core/NativeIntroSoundKeys.cs");Check(rows.Contains("\""+c.Key+"\""),s.Style+" cue key "+c.Key+" requested in docs/audio/intros/I5.json");}
+            foreach(var s in Scripts())foreach(var c in s.Cues){NativeIntroSoundKeys.Find(c.Key,out var def);Check(def.Key==c.Key,s.Style+" cue key "+c.Key+" in Core/NativeIntroSoundKeys.cs");Check(rows.Contains("\""+c.Key+"\""),s.Style+" cue key "+c.Key+" requested in docs/audio/intros/I5.json");
+                // the existing key plays as a one-shot: the bank refuses a loop entry here (Runtime NativeEffectsAudio.BankPlay)
+                Check(NativeSoundKeys.Find(c.Alt,out var alt)&&alt.Space!=NativeSoundSpace.Loop,s.Style+" cue "+c.Key+" falls back to "+c.Alt+", a known one-shot bank key");}
         }
         /// <summary>`--intro-elemental-probe [id] [t...]`: the anchors (hands, the staff's tip, the head, the root) at sampled times.</summary>
         public static void Probe(string[] args)
