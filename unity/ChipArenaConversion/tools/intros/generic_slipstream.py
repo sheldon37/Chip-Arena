@@ -28,6 +28,10 @@ ST_EDGE_Z = -1.25      # the platform's edge
 ST_HALF = 34.0         # the hall's half length (its end walls at x = +-ST_HALF)
 ST_CAR = 16.0          # a car's length
 ST_ROOF = 2.95         # the cars' roof (Unity y)
+# The tunnel's lining (z across, y up; Core NativeIntroSlipstream.TunnelCeiling mirrors it) and the mouths' lintel: tall enough for a
+# pilot standing and running on the roof (its helmet near 4.8 m), the ribs hanging .11 m under the lining.
+ST_TUNNEL = [(-5.3, -1.55), (-5.3, 3.4), (-4.9, 4.5), (-4.0, 5.15), (-2.95, 5.35), (-1.9, 5.15), (-1.0, 4.5), (-.6, 3.4), (-.6, -1.55)]
+ST_MOUTH = 5.25
 ST_SPRING, ST_RISE, ST_ZC, ST_SPAN = 5.0, 3.2, .9, 7.3   # the vault: springing, rise, centre z, half span
 
 
@@ -277,13 +281,13 @@ def build(T):
         nrm = (-sx, 0, 0)
         g.face((V(x, -1.55, -6.4), V(x, -1.55, -5.3), V(x, 8.4, -5.3), V(x, 8.4, -6.4)), F['concrete'], normal=nrm)
         g.face((V(x, -1.55, -.6), V(x, -1.55, 8.2), V(x, 8.4, 8.2), V(x, 8.4, -.6)), F['concrete'], normal=nrm)
-        g.face((V(x, 4.25, -5.3), V(x, 4.25, -.6), V(x, 8.4, -.6), V(x, 8.4, -5.3)), F['concrete'], normal=nrm)
-        sk.box(g, x - .3 * sx, x + .02 * sx, -1.55, 4.45, -5.55, -5.3, F['band'], None, .02, cell=0)
-        sk.box(g, x - .3 * sx, x + .02 * sx, -1.55, 4.45, -.6, -.35, F['band'], None, .02, cell=0)
-        sk.box(g, x - .3 * sx, x + .02 * sx, 4.25, 4.5, -5.55, -.35, F['band'], None, .02, cell=0)
+        g.face((V(x, ST_MOUTH, -5.3), V(x, ST_MOUTH, -.6), V(x, 8.4, -.6), V(x, 8.4, -5.3)), F['concrete'], normal=nrm)
+        sk.box(g, x - .3 * sx, x + .02 * sx, -1.55, ST_MOUTH + .2, -5.55, -5.3, F['band'], None, .02, cell=0)
+        sk.box(g, x - .3 * sx, x + .02 * sx, -1.55, ST_MOUTH + .2, -.6, -.35, F['band'], None, .02, cell=0)
+        sk.box(g, x - .3 * sx, x + .02 * sx, ST_MOUTH, ST_MOUTH + .25, -5.55, -.35, F['band'], None, .02, cell=0)
     # ---- the tunnel beyond the +x mouth: its lining, ribs every 4 m, light strips ----
     tun = Geo()
-    prof = [(-5.3, -1.55), (-5.3, 2.6), (-4.9, 3.6), (-4.0, 4.2), (-2.95, 4.35), (-1.9, 4.2), (-1.0, 3.6), (-.6, 2.6), (-.6, -1.55)]
+    prof = ST_TUNNEL
     L0, L1 = H, H + 104
     nseg = 26 if fine else 6
     for i in range(nseg):
@@ -306,7 +310,7 @@ def build(T):
         tun.face((V(L0, 1.45, zz), V(L1, 1.45, zz), V(L1, 1.58, zz), V(L0, 1.58, zz)), F['strip'], normal=(0, 0, nz_))
     for i in range(0 if not fine else 13):
         x = L0 + 4 + 8 * i
-        tun.face((V(x, 4.28, -3.3), V(x + 3, 4.28, -3.3), V(x + 3, 4.28, -2.6), V(x, 4.28, -2.6)), F['strip'], normal=(0, -1, 0))
+        tun.face((V(x, 5.28, -3.3), V(x + 3, 5.28, -3.3), V(x + 3, 5.28, -2.6), V(x, 5.28, -2.6)), F['strip'], normal=(0, -1, 0))
     # ---- the cars ----
     car = build_car(T, F, False)
     nose = build_car(T, F, True)

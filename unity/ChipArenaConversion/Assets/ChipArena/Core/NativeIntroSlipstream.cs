@@ -19,6 +19,17 @@ namespace ChipArena.UnityConversion
         // The set (Unity space, generic_slipstream.py): the track's centre line, the platform edge, the hall's ends; the roof the pilot
         // rides (its surface where the pilot runs, a little to the platform's side of the car's centre line).
         public const float TrackZ=-2.95f,EdgeZ=-1.25f,Half=34,Car=16,RoofY=2.888f,RideZ=TrackZ+.95f;
+        /// <summary>The tunnel's mouth (source x; the tunnel runs on beyond it toward -x) and its ceiling over z: the set's lining
+        /// (tools/intros/generic_slipstream.py ST_TUNNEL; keep them matched) less the ribs hanging .11 m under it. A metre taller than
+        /// the first build, whose curved ceiling the helmet reached into as the pilot stood and ran on the roof (the owner's review).</summary>
+        public const float MouthX=-Half;
+        private static readonly float[] LiningZ={-5.3f,-4.9f,-4.0f,-2.95f,-1.9f,-1.0f,-.6f},LiningY={3.4f,4.5f,5.15f,5.35f,5.15f,4.5f,3.4f};
+        public static float TunnelCeiling(float z)
+        {
+            if(z<=LiningZ[0])return LiningY[0]-.11f;
+            for(int i=1;i<LiningZ.Length;i++)if(z<=LiningZ[i]){float u=(z-LiningZ[i-1])/(LiningZ[i]-LiningZ[i-1]);return LiningY[i-1]+(LiningY[i]-LiningY[i-1])*u-.11f;}
+            return LiningY[LiningY.Length-1]-.11f;
+        }
         private const float V0=14,Accel=15;
         private static readonly Vector3 Cool=NativeEntranceFx.Hex(0xd8f0ff),Hall=NativeEntranceFx.Hex(0xbfe6ff),Spark=NativeEntranceFx.Hex(0xffb050),SparkHot=NativeEntranceFx.Hex(0xfff0c0),
             Tail=NativeEntranceFx.Hex(0xff2a3a),Teal=NativeEntranceFx.Hex(0x16b6c8),Flap=NativeEntranceFx.Hex(0xffd98a),Head=NativeEntranceFx.Hex(0xffffff);
@@ -128,9 +139,11 @@ namespace ChipArena.UnityConversion
             var p=new Vector3[7];
             for(int i=0;i<p.Length;i++)
             {
-                float t=from+(to-from)*i/(p.Length-1f),out_=NativeEntranceMath.Ramp(t,BurstAt-.05f,BurstAt+.6f);
+                // (it swings out and up only once it is out of the tunnel's mouth: the pilot on the middle car leaves the tunnel well
+                // after the train's nose bursts into the hall)
+                float t=from+(to-from)*i/(p.Length-1f),out_=NativeEntranceMath.Ramp(Ride(t).X+1.7f,MouthX-1,MouthX+5);
                 p[i]=Ride(t)+new Vector3(1.7f+1.2f*out_,-.2f+1.1f*out_,EdgeZ+.1f-RideZ+1.4f*out_);
-                if(t<BurstAt){p[i].Z=Math.Min(p[i].Z,-1.12f);p[i].Y=Math.Min(p[i].Y,3.55f);}
+                if(p[i].X<MouthX+.5f){p[i].Z=Math.Min(p[i].Z,-1.12f);p[i].Y=Math.Min(p[i].Y,4.4f);}
             }
             return p;
         }

@@ -31,6 +31,7 @@ internal static class IntroGenericChecks
         {
             string n=s.Title;Check(names.Add(n)&&ids.Add(s.Style),n+" has its own name and id");
             Registry(s);Timeline(s,root);Determinism(s);Budgets(s);Reduced(s);Streaks(s);Closing(s);Feet(s,rig);
+            if(s is NativeIntroSlipstream ss)Tunnel(ss,rig);
         }
         Check(NativeIntroCatalog.Find(NativeIntroCatalog.DefaultId)?.Make() is NativeIntroCloudbreak,"the new default is Cloudbreak");
         Console.WriteLine("PASS generic intros ("+count+" checks)");
@@ -126,6 +127,37 @@ internal static class IntroGenericChecks
             }
         }
         Check(true,n+"'s planted feet on the model: at most "+worst.ToString("0.00")+" m/s; at most "+(deepest*100).ToString("0")+" cm into the floor");
+    }
+
+    /// <summary>
+    /// Slipstream in its tunnel (the owner: "head in tunnel"; the helmet reached into the curved ceiling as the pilot stood and ran on
+    /// the roof): every 1/60 s while the model's head is inside the tunnel (beyond its mouth), the helmet's top (the head bone + .25 m)
+    /// stays at least 5 cm under the ceiling over it (NativeIntroSlipstream.TunnelCeiling: the set's lining less its ribs), and the
+    /// camera's eye stays inside the lining (under its ceiling, between its walls) while it is in the tunnel.
+    /// </summary>
+    private static void Tunnel(NativeIntroSlipstream s,NativeVisualRig.Rig rig)
+    {
+        var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();int head=Array.IndexOf(rig.Names,"head");Check(head>=0,"the measured skeleton has a head");
+        s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};float least=9,eyeLeast=9;int inside=0;
+        for(float age=0;age<=s.Length;age+=1/60f)
+        {
+            float t=s.Clock(age);if(t>=NativeIntroSlipstream.LeapAt)break;
+            s.Pose(t,pose,out var root,out var rot);pose.World();NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp(),false,false);
+            var h=root+Vector3.Transform(st.Position[head],rot);
+            if(h.X<NativeIntroSlipstream.MouthX)
+            {
+                inside++;float room=NativeIntroSlipstream.TunnelCeiling(h.Z)-(h.Y+.25f);least=Math.Min(least,room);
+                Check(room>=.05f,"Slipstream: the helmet is "+((.05f-room)*100).ToString("0")+" cm too near the tunnel's ceiling at "+t.ToString("0.00")+" s");
+            }
+            s.Camera(age,out var v);
+            if(v.Eye.X<NativeIntroSlipstream.MouthX-.3f)
+            {
+                float room=NativeIntroSlipstream.TunnelCeiling(v.Eye.Z)-v.Eye.Y;eyeLeast=Math.Min(eyeLeast,room);
+                Check(room>.15f&&v.Eye.Z>-5.15f&&v.Eye.Z<-.75f,"Slipstream: the camera leaves the tunnel's lining at "+age.ToString("0.00")+" s ("+v.Eye.Z.ToString("0.00")+", "+v.Eye.Y.ToString("0.00")+")");
+            }
+        }
+        Check(inside>30,"Slipstream rides the tunnel ("+inside+" frames)");
+        Check(true,"Slipstream's helmet at least "+(least*100).ToString("0")+" cm under the tunnel's ceiling, the camera "+(eyeLeast*100).ToString("0")+" cm");
     }
 
     // ---- the registry and the timeline ----
