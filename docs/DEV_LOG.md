@@ -1,3 +1,70 @@
+## 2026-11-20 — Claude (I2): five new generic intros, Cloudbreak the new default (owner: "5 new intros"; presentation only)
+
+**Branch and base:** `claude/intro-generic` from shared `8d56f015`, with I0's `claude/intro-framework` merged in as it moved
+(last at `545faef6`, the card fix). Pushed, not merged; nothing released. Design and as-built notes: `docs/INTROS-GENERIC.md`.
+
+**What changed and why** (owner, 2026-11-20: "a much higher quality standard, great animations and effects, non-block based
+background and designs ... With great camera work as well!"): five weapon-agnostic v2 intros replacing the archived generic ones,
+each with its own story, modelled set, camera language, effects and cue timeline.
+- **Cloudbreak** (the new default, `intro2-default`, 7.6 s, name 5.7): a re-entry streak out of the dawn sky onto a summit relay
+  station above the clouds, a flip and a thruster-braked touchdown in slow motion, the sun breaking the cloud line.
+- **Whiteout** (`intro2-whiteout`, 8.0 s, name 6.2): a frosted figure kneeling in a polar blizzard thaws, rises, and a heat pulse
+  parts the storm over the outpost and the aurora.
+- **Slipstream** (`intro2-slipstream`, 7.4 s, name 5.6): riding a maglev's roof out of a tunnel into a station, a sprint, a leap and
+  a sliding stop on the platform as the train pulls away.
+- **Waygate** (`intro2-waygate`, 8.2 s, name 6.4): an ancient ring gate in a canyon locks, opens on a vortex of light, and the pilot
+  floats out of it.
+- **Flashbulb** (`intro2-flashbulb`, 7.8 s, name 6.0): a premiere's red carpet, three poses held for the photographers' flashes,
+  the cover shot.
+- **The name** sits centred in a band under the feet (`card.Y` 0.855) over closing frames that show the whole figure above it
+  (a check holds it).
+- **Sets:** scripted Blender 5.2.3 (`tools/intros/generic_sets.py` and its modules, on stagekit), two tiers, one local bank
+  `ChipArenaIntroGeneric.bytes` (6,829,925 bytes; master in `F:/Chip Arena Development/scratch/intro-generic/bank/`), never
+  committed. No placeholder shapes: the sun has a limb, the gate's light is a vortex, the thaw is wet ground and slush, the aurora
+  is rays, the glass doors and ad panels carry designs. Without the bank each intro draws its own plain fallback in its own light.
+- **Motion:** keyed on the intro rig (as Top Dog and Last Warning); Flashbulb's stride (`Armed-Walk` 1.33x) and Slipstream's run
+  (`Unarmed-Sprint` 1.45x) play from the motion bank on the model through the framework's `Clip`, for weapons whose motion set
+  holds the clip (the keyed rig walks and runs otherwise; lending asked of I0). No new pack clips, no rebake. Whiteout's visor
+  is the model's own (its accent) and its light rides the head as drawn (`INativeIntroHead`): the model's kneel and bow part from
+  the keyed head.
+- **Sound:** every cue has a filled one-shot bank stand-in and a built-in clip (the checks refuse a loop or an empty stand-in);
+  49 generated keys requested in `docs/audio/intros/I2.json` (82 takes, 128 s), their contract lines in
+  `Core/NativeIntroSoundKeys.cs`.
+
+**Systems touched:** Core (`NativeIntroGeneric.cs` and one file per intro, my registry lines, my sound-key lines), Tests
+(`IntroGenericChecks.cs`, one line in `Program.cs`), `tools/intros/generic_*.py`, docs. No Runtime file, no rules, no wire, no saves.
+
+**Checks:** `CoreTests --intro-generic` PASS (14,860 checks: registry and timing, cue order, filled one-shot stand-ins, clock,
+determinism, finite values, no per-frame allocation, budgets with and without the bank, Reduced flashes, long streaks on the
+camera plane, every closing frame's figure above the name band); `--intros-v2` PASS (3,195 checks, 6 registered intros); the full
+suite the relgen5 way (LF worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` banks-next) 1,081 PASS, exit 0 at `4949aac2`
+(the last code commit; also at `2f96ecf9` and `577b896e`); Unity compile 4 PASS at `4949aac2` (after the framework's card fix);
+`git diff --check` clean; `compile_sound_requests.py --check` reads 49 valid keys (the manifest is the integrator's to compile).
+Not run: a Windows player build, multiplayer, Reduced-effects captures, clip playback for weapons other than the sword.
+
+**Captures (BoZo, Cyber City, sword, High every 1/15 s and Low every 0.5 s):** hold hB (`f025a05c`, bank 6,515,281 bytes; 25.8
+min) Cloudbreak, Whiteout, Flashbulb; hold hC (`ebea6907`, bank 6,801,773 bytes; 18.7 min) Slipstream, Waygate; hold hD
+(`a04711b5`, bank 6,829,925 bytes; 24.5 min) Whiteout and Flashbulb (High and Low), Waygate (High). The clips: Cloudbreak from hB
+(only its sun's shading changed since), Slipstream from hC, the others from hD (Waygate's Low strip from hC, before the far wall's
+saddle; Whiteout's clip still shows the visor's glow sphere, removed after it in `4949aac2`). Clips in `F:/Chip Arena
+Development/scratch/intro-generic/clips/` (`<Name>-high.mp4`, 15 fps real time, and `<Name>-low-strip.png`). Seen in them and
+fixed: the name on the legs (now a band under the feet), Whiteout's visor glow off the drawn head and its insert framing, flat
+placeholder shapes (the sun, the gate's light and the red cliff filling the dark ring, the thaw, the aurora's panels, the glass
+doors, the ad panels), the glass clipping to yellow in Low.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the intros are presentation (the
+match reads only their registered Duration and NameAt, 7.4-8.2 s, inside the 6-9 s rule). Whiteout (8.0) and Waygate (8.2) end
+after 8.0 s; no timing test uses a generic intro.
+
+**Voxel dependency:** none added. The intros author the keyed intro rig through `NativeEntranceKeys` (the framework's sanctioned
+path, no rig reads, no `WeaponShape.Cube`); the voxel ratchet passes unchanged.
+
+**Risks and next step:** the motion-bank clips play only for weapons whose set holds them (lending asked of I0; the keyed rig
+covers the rest); the keyed rig and the drawn model part in deep poses (Whiteout's kneel: effects there ride the drawn head);
+Low draws without tone mapping, so a warm glow over a warm finish clips (fixed where seen, Flashbulb's glass); the crowd's cheer in
+Flashbulb is silent until its generated take lands. Next: the integrator merges the branch with the framework and packs the bank
+into the Drive zip; the generated sounds come with the builder's next audio run.
+
 ## 2026-11-20 — Claude: intros v2 framework: the contract, the archive, the camera rig, name cards, sets, cues and checks (owner report; presentation only)
 
 Owner: "I need to redo essentially all of them (except top dog and Bombardier ones ...) ... "archive" them, so theyre no longer visible in the customization screen ... great animations and effects, non-block based background and designs ... great camera work". I0, the framework for the five intro authors (I1 dev, I2 generic, I3 melee, I4 ranged, I5 elemental).
