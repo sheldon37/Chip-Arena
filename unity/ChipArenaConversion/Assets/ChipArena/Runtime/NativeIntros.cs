@@ -89,12 +89,13 @@ namespace ChipArena.UnityConversion
             if(script is NativeFangsIntro silent)silent.Shake=CameraShake;
             // The DEV animation classes' entrances shake their camera only with the player's Camera shake setting on (Core NativeDevPackIntro.Shake).
             if(script is NativeDevPackIntro shaken)shaken.Shake=CameraShake;
+            // The camera follows the keyed rig (Core NativeEntranceScript.ClearDrawn: no drawn body is handed in yet this frame).
+            script.ClearDrawn();
             script.Camera(age,out var view);var eye=CapturedAnimation.Vec(CapturedRig.Mirror(view.Eye));var forward=CapturedAnimation.Vec(CapturedRig.Mirror(view.Look-view.Eye));
             if(forward.sqrMagnitude>1e-8f)camera.transform.SetPositionAndRotation(eye,Quaternion.LookRotation(forward,CapturedAnimation.Vec(CapturedRig.Mirror(view.Up))));camera.fieldOfView=view.Fov;
             EntranceBlasts(script,style+":"+pilot.Seat.id+":"+Mathf.RoundToInt(quality*10),t,quality);
-            script.Lights(t,entranceLights);
-            foreach(var f in entranceSim.Flashes)if(f.Intensity>0){NativeBlastSim.Linear(f.Color,out double fr,out double fg,out double fb);entranceLights.Add(new System.Numerics.Vector3(-(float)f.X,(float)f.Y,(float)f.Z),new System.Numerics.Vector3((float)(fr*f.Intensity),(float)(fg*f.Intensity),(float)(fb*f.Intensity)),(float)f.Distance);}
-            NativeLighting.Entrance(entranceLights,camera);
+            // Intros v2 light their stage once the body is drawn, from its anchors as drawn (below); the older entrances here, as before.
+            bool v2=script is INativeIntroV2;if(!v2)EntranceLighting(script,t,camera,false);
             // The pilot, its weapon, its team band; afterimages and the hologram as one-layer see-through silhouettes.
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
             // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
@@ -113,16 +114,27 @@ namespace ChipArena.UnityConversion
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             entranceGhostActor=actor;EntranceGhosts(script,style,t);
-            // Intros v2: the hands as drawn, handed in before the set and the effects (INativeIntroHands).
+            // Intros v2: the body as drawn (the model-aware anchors, the hands, the head), handed in before the lights, the set and the effects;
+            // then its own light, which owns the stage (NativeLighting.IntroOwn: no arena light reaches it).
             IntroV2Hands(script,t);
+            if(v2)EntranceLighting(script,t,camera,true);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);if(script is NativeTopDogIntro dogIntro)DogIntroToons(dogIntro,t);if(script is NativeGlaiveIntro ring)GlaiveIntroRing(ring,t);
             // Intros v2: the set (its bank's pieces, or the dark lit void).
             IntroV2Set(script,t,camera);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
-            introBodyActor=-1;introBody=null;introV2Actor=-1;
+            introBodyActor=-1;introBody=null;introV2Actor=-1;script.ClearDrawn();
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
+        }
+        /// <summary>The entrance's light rig this frame (its script's lights and its blasts' flashes) onto the stage; a v2 intro's owns it
+        /// (NativeLighting.IntroOwn: its own ambient and reflection, none of the arena's), an older entrance gives back what one took.</summary>
+        private void EntranceLighting(NativeEntranceScript script,float t,Camera camera,bool v2)
+        {
+            script.Lights(t,entranceLights);
+            foreach(var f in entranceSim.Flashes)if(f.Intensity>0){NativeBlastSim.Linear(f.Color,out double fr,out double fg,out double fb);entranceLights.Add(new System.Numerics.Vector3(-(float)f.X,(float)f.Y,(float)f.Z),new System.Numerics.Vector3((float)(fr*f.Intensity),(float)(fg*f.Intensity),(float)(fb*f.Intensity)),(float)f.Distance);}
+            NativeLighting.Entrance(entranceLights,camera);
+            if(v2)NativeLighting.IntroOwn(entranceLights);else NativeLighting.IntroRelease();
         }
         private void EntranceBlasts(NativeEntranceScript script,string key,float t,float quality)
         {
@@ -164,6 +176,8 @@ namespace ChipArena.UnityConversion
                     var holder=entranceGhostHolders[i]??=captured.Create(transform,-900-i);holder.Root.transform.SetPositionAndRotation(rootM.GetColumn(3),rootM.rotation);
                     // (Its hands onto the ghost's weapon frames, so the model's own weapon sits in them: VisualLiveGhostWeapon.)
                     asModel=VisualLiveGhostDraw(2L<<40|(uint)i,holder,introActor,entranceGhostPose,Vector3.zero,"NativeEntranceGhost",tint,g.Opacity,new Vector4(scan.r,scan.g,0,0),entranceGhostActor);
+                    // (Intros v2: the ghost's hair as the live body wears it, hidden under the helmet: IntroV2GhostHair.)
+                    if(asModel&&script is INativeIntroV2)IntroV2GhostHair(2L<<40|(uint)i);
                 }
                 if(!asModel)sourceModels.Queue(model,rootM,entranceGhostBone,null,0,null,tint,scan,g.Opacity);
                 if(weaponGhost!=null&&!isHolo)
@@ -215,7 +229,9 @@ namespace ChipArena.UnityConversion
         {
             if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}
             // Intros v2: a Bow intro's bow as the match draws it (Core INativeIntroBow), else carried with one arrow.
-            if(entranceScript is INativeIntroBow v2bow&&NativeIntroCatalog.Find(style)?.Spec==NativeBowWire.Spec){if(!v2bow.Bow(entranceTime,out var bv))bv=new NativeBow.View{Phase=NativeBow.Phase.Carry,Arrows=1};var bf=default(NativeBowPose.Frame);bf.Pull=bv.Pull;BowIntroDraw(bv,bf,entranceTime);return;}
+            if(entranceScript is INativeIntroBow v2bow&&NativeIntroCatalog.Find(style)?.Spec==NativeBowWire.Spec){if(!v2bow.Bow(entranceTime,out var bv))bv=new NativeBow.View{Phase=NativeBow.Phase.Carry,Arrows=1};var bf=default(NativeBowPose.Frame);bf.Pull=bv.Pull;if(BowIntroDraw(bv,bf,entranceTime)){introWeaponAt=Time.frameCount;introWeaponBow=true;}return;}
+            // (Intros v2: the frame the weapon is drawn on this frame, for the weapon anchors: IntroV2Drawn.)
+            introWeaponBow=false;
             string model=IntroModel(NativeIntroRules.IntroWeapon(style));if(model==null)return;
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;
@@ -233,8 +249,9 @@ namespace ChipArena.UnityConversion
             if(bladeIntro!=null&&bladeIntro.Sheathed(entranceTime))return;
             // The blade classes' entrances pose the model with a clip after the rig is bound (Core NativeBladeIntros): each blade where the
             // model holds it, in the palm as the match draws it (NativeBladePresentation.cs BladeIntroFrame).
-            if(bladeIntro!=null){bladeIntroHand??=b=>BladeIntroFrame(b,introGrip);sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bladeIntroHand,accent:introAccent);return;}
+            if(bladeIntro!=null){bladeIntroHand??=b=>BladeIntroFrame(b,introGrip);sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bladeIntroHand,accent:introAccent);introWeaponAt=Time.frameCount;return;}
             if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
+            introWeaponAt=Time.frameCount;
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }
         // The baked entrance stage (tools/export_cinematics.mjs, the rig excluded) with its lights. ChipBlasts' glow voxels are

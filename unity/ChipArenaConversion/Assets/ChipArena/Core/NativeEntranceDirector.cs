@@ -10,8 +10,11 @@ namespace ChipArena.UnityConversion
     }
     /// <summary>An afterimage of the pilot: the entrance's own pose `Lag` s earlier on its clock, a flat see-through silhouette.</summary>
     public struct NativeEntranceGhost{public float Lag,Opacity;public Vector3 Color,Offset;}
-    /// <summary>Points the effects follow (sampled once per entrance, NativeEntranceScript.Anchor).</summary>
-    public enum NativeEntranceAnchor{Root,Pelvis,Chest,Head,LeftHand,RightHand,LeftTip,RightTip,LeftFoot,RightFoot,Forward,LeftElbow,RightElbow,LeftKnee,RightKnee,LeftShoulder,RightShoulder,Focus,Count}
+    /// <summary>Points the effects follow (sampled once per entrance, NativeEntranceScript.Anchor). Root to Focus are the first set; Eyes to
+    /// RightMuzzle came with the model-aware anchors (docs/INTROS-V2.md "Anchors"): the eyes' midpoint and the visor's front, each foot's
+    /// toe (its ball), each wrist, and each hand's weapon grip and muzzle (a gun's crown, a staff's head, a blade's tip).</summary>
+    public enum NativeEntranceAnchor{Root,Pelvis,Chest,Head,LeftHand,RightHand,LeftTip,RightTip,LeftFoot,RightFoot,Forward,LeftElbow,RightElbow,LeftKnee,RightKnee,LeftShoulder,RightShoulder,Focus,
+        Eyes,Visor,LeftToe,RightToe,LeftWrist,RightWrist,LeftGrip,RightGrip,LeftMuzzle,RightMuzzle,Count}
 
     /// <summary>
     /// Presentation only: one directed entrance (owner 2026-10-11 rework of every non-DEV entrance). A script is a set of
@@ -66,13 +69,37 @@ namespace ChipArena.UnityConversion
 
         // ---- anchors: the pose sampled at 120 Hz over the clip, built on first use (a pure function of the script) ----
         public const int AnchorRate=120;
-        private Vector3[] anchors;private readonly CapturedRig.Pose anchorPose=new CapturedRig.Pose();
+        private Vector3[] anchors;private Quaternion[] carried;private readonly CapturedRig.Pose anchorPose=new CapturedRig.Pose();
         /// <summary>Held while the script is staged (Runtime DirectedIntro) and while NativeEntranceDirector.Warm builds it ahead
         /// on a worker: one thread at a time poses it and builds its anchors and its pack's plan.</summary>
         public readonly object PoseLock=new object();
+        /// <summary>The keyed eyes' midpoint and the visor's front on the keyed head (the voxel head's box: its centre .165 over the joint,
+        /// its face .16 ahead).</summary>
+        public static readonly Vector3 KeyedEyes=new Vector3(0,.19f,.06f),KeyedVisor=new Vector3(0,.19f,.165f);
+        // The joints whose keyed turn carries an anchor's drawn offset to other times (Anchor), and each anchor's slot among them (-1: the
+        // root, the facing and the focus, which the body never moves).
+        private static readonly int[] CarrierJoints={CapturedRig.Pelvis,CapturedRig.Chest,CapturedRig.Head,CapturedRig.LHand,CapturedRig.RHand,CapturedRig.LHip+2,CapturedRig.RHip+2,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LKnee,CapturedRig.RKnee,CapturedRig.LArm,CapturedRig.RArm};
+        private static readonly int[] CarrierOf=MakeCarriers();
+        private static int[] MakeCarriers()
+        {
+            var c=new int[(int)NativeEntranceAnchor.Count];for(int i=0;i<c.Length;i++)c[i]=-1;
+            void S(NativeEntranceAnchor a,int joint)=>c[(int)a]=Array.IndexOf(CarrierJoints,joint);
+            S(NativeEntranceAnchor.Pelvis,CapturedRig.Pelvis);S(NativeEntranceAnchor.Chest,CapturedRig.Chest);
+            S(NativeEntranceAnchor.Head,CapturedRig.Head);S(NativeEntranceAnchor.Eyes,CapturedRig.Head);S(NativeEntranceAnchor.Visor,CapturedRig.Head);
+            S(NativeEntranceAnchor.LeftHand,CapturedRig.LHand);S(NativeEntranceAnchor.LeftTip,CapturedRig.LHand);S(NativeEntranceAnchor.LeftWrist,CapturedRig.LHand);S(NativeEntranceAnchor.LeftGrip,CapturedRig.LHand);S(NativeEntranceAnchor.LeftMuzzle,CapturedRig.LHand);
+            S(NativeEntranceAnchor.RightHand,CapturedRig.RHand);S(NativeEntranceAnchor.RightTip,CapturedRig.RHand);S(NativeEntranceAnchor.RightWrist,CapturedRig.RHand);S(NativeEntranceAnchor.RightGrip,CapturedRig.RHand);S(NativeEntranceAnchor.RightMuzzle,CapturedRig.RHand);
+            S(NativeEntranceAnchor.LeftFoot,CapturedRig.LHip+2);S(NativeEntranceAnchor.LeftToe,CapturedRig.LHip+2);S(NativeEntranceAnchor.RightFoot,CapturedRig.RHip+2);S(NativeEntranceAnchor.RightToe,CapturedRig.RHip+2);
+            S(NativeEntranceAnchor.LeftElbow,CapturedRig.LElbow);S(NativeEntranceAnchor.RightElbow,CapturedRig.RElbow);S(NativeEntranceAnchor.LeftKnee,CapturedRig.LKnee);S(NativeEntranceAnchor.RightKnee,CapturedRig.RKnee);
+            S(NativeEntranceAnchor.LeftShoulder,CapturedRig.LArm);S(NativeEntranceAnchor.RightShoulder,CapturedRig.RArm);
+            return c;
+        }
+        /// <summary>The weapon this entrance's pilot holds (a v2 Weapon intro's spec, from the registry), or null: its muzzle anchors sit on
+        /// that weapon's muzzle (Core NativeIntroWeapon), else on the tips.</summary>
+        protected virtual string WeaponSpec=>NativeIntroCatalog.Find(Style)?.Spec;
         private void BuildAnchors()
         {
-            int n=(int)(Length*AnchorRate)+2,k=(int)NativeEntranceAnchor.Count;var a=new Vector3[n*k];
+            int n=(int)(Length*AnchorRate)+2,k=(int)NativeEntranceAnchor.Count,c=CarrierJoints.Length;var a=new Vector3[n*k];var q=new Quaternion[n*c];
+            string spec=WeaponSpec;var leftMuzzle=NativeIntroWeapon.Muzzle(spec,true,out var lm)?lm:new Vector3(0,0,TipLength(true));var rightMuzzle=NativeIntroWeapon.Muzzle(spec,false,out var rm)?rm:new Vector3(0,0,TipLength(false));
             for(int i=0;i<n;i++)
             {
                 float t=i/(float)AnchorRate;Pose(t,anchorPose,out var root,out var rot);anchorPose.World();int o=i*k;
@@ -86,17 +113,64 @@ namespace ChipArena.UnityConversion
                 a[o+13]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LKnee,Vector3.Zero);a[o+14]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RKnee,Vector3.Zero);
                 a[o+15]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LArm,Vector3.Zero);a[o+16]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RArm,Vector3.Zero);
                 a[o+17]=Focus(t,a[o+2]);
+                // The model-aware set's keyed places: the eyes and visor on the keyed head, the toes' joints, the wrists, the weapon's grip (its
+                // frame's origin, the keyed wrist) and its muzzle there.
+                a[o+(int)NativeEntranceAnchor.Eyes]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.Head,KeyedEyes);a[o+(int)NativeEntranceAnchor.Visor]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.Head,KeyedVisor);
+                a[o+(int)NativeEntranceAnchor.LeftToe]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LToe,Vector3.Zero);a[o+(int)NativeEntranceAnchor.RightToe]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RToe,Vector3.Zero);
+                a[o+(int)NativeEntranceAnchor.LeftWrist]=a[o+(int)NativeEntranceAnchor.LeftGrip]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LHand,Vector3.Zero);
+                a[o+(int)NativeEntranceAnchor.RightWrist]=a[o+(int)NativeEntranceAnchor.RightGrip]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RHand,Vector3.Zero);
+                a[o+(int)NativeEntranceAnchor.LeftMuzzle]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LHand,leftMuzzle);a[o+(int)NativeEntranceAnchor.RightMuzzle]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RHand,rightMuzzle);
+                for(int j=0;j<c;j++)q[i*c+j]=NativeEntrancePose.WorldRotation(anchorPose,rot,CarrierJoints[j]);
             }
-            anchors=a;Plan();
+            carried=q;anchors=a;Plan();
         }
         /// <summary>What a shot following NativeEntranceAnchor.Focus looks at (a set piece the pilot rides or arrives in); the chest by default.</summary>
         protected virtual Vector3 Focus(float t,Vector3 chest)=>chest;
-        /// <summary>Anchor `which` at presentation time `t` (linear between the 120 Hz samples).</summary>
+        /// <summary>
+        /// Anchor `which` at presentation time `t`. While the runtime has handed in the body as drawn (<see cref="SetDrawn"/>: the model this
+        /// frame), the drawn point: at the frame's own time exactly where the model has it, and at any other time (a trail's past, a
+        /// velocity) the keyed anchor carried by its joint's keyed turn with the same offset, so the trail keeps its shape on the drawn
+        /// body. Otherwise (the Classic body, the managed checks, before the body is posed) the keyed anchor.
+        /// </summary>
         public Vector3 Anchor(NativeEntranceAnchor which,float t)
+        {
+            var keyed=KeyedAnchor(which,t);int a=(int)which;if((uint)a>=(uint)drawnOffset.Length||(drawnMask>>a&1)==0)return keyed;
+            int c=CarrierOf[a];return c<0?keyed+drawnOffset[a]:keyed+Vector3.Transform(drawnOffset[a],CarrierTurn(c,t));
+        }
+        /// <summary>Anchor `which` on the keyed rig at presentation time `t` (linear between the 120 Hz samples): what the camera follows.</summary>
+        public Vector3 KeyedAnchor(NativeEntranceAnchor which,float t)
         {
             if(anchors==null)BuildAnchors();int k=(int)NativeEntranceAnchor.Count,n=anchors.Length/k;float x=Math.Max(0,Math.Min(n-1.001f,t*AnchorRate));int i=(int)x;float f=x-i;
             return Vector3.Lerp(anchors[i*k+(int)which],anchors[(i+1)*k+(int)which],f);
         }
+        // The keyed world turn of carrier `slot` at `t` (normalised lerp between the samples, the shorter way).
+        private Quaternion CarrierTurn(int slot,float t)
+        {
+            if(carried==null)BuildAnchors();int c=CarrierJoints.Length,n=carried.Length/c;float x=Math.Max(0,Math.Min(n-1.001f,t*AnchorRate));int i=(int)x;float f=x-i;
+            var p=carried[i*c+slot];var q=carried[(i+1)*c+slot];if(Quaternion.Dot(p,q)<0)q=-q;return Quaternion.Normalize(Quaternion.Lerp(p,q,f));
+        }
+        // ---- the body as drawn (docs/INTROS-V2.md "Anchors") ----
+        private readonly Vector3[] drawnOffset=new Vector3[(int)NativeEntranceAnchor.Count];private ulong drawnMask;
+        /// <summary>
+        /// The runtime hands in the body as drawn at presentation time `t` (Runtime DirectedIntro, once the model and its weapon are posed,
+        /// before Lights, Props, Set and Effects): for each anchor whose bit (1 &lt;&lt; anchor) is set in `mask`, where it is drawn (source frame).
+        /// Until <see cref="ClearDrawn"/> the anchors are model-aware (<see cref="Anchor"/>). Each is kept as its offset from the keyed anchor in
+        /// its joint's keyed frame at `t`. No allocation.
+        /// </summary>
+        public void SetDrawn(float t,ReadOnlySpan<Vector3> at,ulong mask)
+        {
+            if(anchors==null)BuildAnchors();drawnMask=0;
+            for(int a=0;a<drawnOffset.Length&&a<at.Length;a++)
+            {
+                if((mask>>a&1)==0)continue;var p=at[a];if(!(Math.Abs(p.X)<1e5f&&Math.Abs(p.Y)<1e5f&&Math.Abs(p.Z)<1e5f))continue;
+                var keyed=KeyedAnchor((NativeEntranceAnchor)a,t);int c=CarrierOf[a];
+                drawnOffset[a]=c<0?p-keyed:Vector3.Transform(p-keyed,Quaternion.Conjugate(CarrierTurn(c,t)));drawnMask|=1UL<<a;
+            }
+        }
+        /// <summary>Back to the keyed anchors (the runtime, before the camera and after the frame's effects).</summary>
+        public void ClearDrawn()=>drawnMask=0;
+        /// <summary>Whether anchor `which` is the drawn body's this frame (false: keyed).</summary>
+        public bool IsDrawn(NativeEntranceAnchor which)=>(uint)which<(uint)drawnOffset.Length&&(drawnMask>>(int)which&1)!=0;
         /// <summary>Anchor `which` at `t` on a Catmull-Rom curve through the table (no velocity kinks at its samples: what the camera follows).</summary>
         public Vector3 AnchorCurve(NativeEntranceAnchor which,float t)
         {
@@ -104,8 +178,10 @@ namespace ChipArena.UnityConversion
             var p0=anchors[Math.Max(0,i-1)*k+(int)which];var p1=anchors[i*k+(int)which];var p2=anchors[(i+1)*k+(int)which];var p3=anchors[Math.Min(n-1,i+2)*k+(int)which];
             float f2=f*f,f3=f2*f;return .5f*(2*p1+(p2-p0)*f+(2*p0-5*p1+4*p2-p3)*f2+(3*p1-p0-3*p2+p3)*f3);
         }
-        /// <summary>The anchor's velocity (m/s) at `t`.</summary>
+        /// <summary>The anchor's velocity (m/s) at `t` (model-aware, as <see cref="Anchor"/>).</summary>
         public Vector3 Velocity(NativeEntranceAnchor which,float t)=>(Anchor(which,t+1f/AnchorRate)-Anchor(which,t-1f/AnchorRate))*(AnchorRate*.5f);
+        /// <summary>The keyed anchor's velocity (m/s) at `t`: what the camera leads by.</summary>
+        public Vector3 KeyedVelocity(NativeEntranceAnchor which,float t)=>(KeyedAnchor(which,t+1f/AnchorRate)-KeyedAnchor(which,t-1f/AnchorRate))*(AnchorRate*.5f);
         /// <summary>Discards the anchors (a new clip).</summary>
         protected void Invalidate(){anchors=null;}
         public void Prepare(){if(anchors==null)BuildAnchors();}
@@ -132,7 +208,7 @@ namespace ChipArena.UnityConversion
             float t=Clock(Math.Min(age,SettleAt));subject??=Subject;heading??=Heading;follow??=Smoothed;
             NativeEntranceCamera.Evaluate(Shots,t,Clock(SettleAt),subject,heading,out view,follow);
             int n=Boxes(t,boxes);
-            view.Eye=NativeEntranceCamera.Guard(view.Eye,NativeEntranceStage.FloorY,Anchor(NativeEntranceAnchor.Head,t),Anchor(NativeEntranceAnchor.Pelvis,t),(Anchor(NativeEntranceAnchor.LeftFoot,t)+Anchor(NativeEntranceAnchor.RightFoot,t))*.5f,new ReadOnlySpan<Vector4>(boxes,0,n));view.Eye+=CameraJolt(Clock(Math.Min(age,Length)));
+            view.Eye=NativeEntranceCamera.Guard(view.Eye,NativeEntranceStage.FloorY,KeyedAnchor(NativeEntranceAnchor.Head,t),KeyedAnchor(NativeEntranceAnchor.Pelvis,t),(KeyedAnchor(NativeEntranceAnchor.LeftFoot,t)+KeyedAnchor(NativeEntranceAnchor.RightFoot,t))*.5f,new ReadOnlySpan<Vector4>(boxes,0,n));view.Eye+=CameraJolt(Clock(Math.Min(age,Length)));
         }
 
         // ---- shot helpers (subject frame: +z its front, +x its left, heights above the floor; Track follows the subject) ----
@@ -210,6 +286,8 @@ namespace ChipArena.UnityConversion
         protected Vector3 ForwardOf(float t){var f=Anchor(NativeEntranceAnchor.Forward,t);if(f.LengthSquared()<1e-6f)return Vector3.UnitZ;return Vector3.Normalize(f);}
         /// <summary>The direction weapon tip `left` points (hand to tip) at `t`.</summary>
         protected Vector3 Aim(bool left,float t){var d=Anchor(left?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip,t)-Anchor(left?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);return d.LengthSquared()<1e-6f?ForwardOf(t):Vector3.Normalize(d);}
+        /// <summary>The way weapon `left`'s muzzle points at `t` (its grip to its muzzle: a gun's bore, a staff's shaft, a blade's line).</summary>
+        protected Vector3 WeaponBore(bool left,float t){var d=Anchor(left?NativeEntranceAnchor.LeftMuzzle:NativeEntranceAnchor.RightMuzzle,t)-Anchor(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,t);return d.LengthSquared()<1e-6f?ForwardOf(t):Vector3.Normalize(d);}
         /// <summary>A trail of anchor `which` from `t` back `span` s (`count` samples), between `from` and `to` (presentation).</summary>
         protected void Trail(INativeEntranceFx fx,NativeEntranceAnchor which,float t,float from,float to,float span,Vector3 head,Vector3 tail,float width,int seed)
         {
