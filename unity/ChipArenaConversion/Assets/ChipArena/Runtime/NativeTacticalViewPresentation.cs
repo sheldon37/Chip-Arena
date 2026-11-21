@@ -125,7 +125,7 @@ namespace ChipArena.UnityConversion
                 var pose=viewRig.Pose;viewBody.Binding.WeaponFrame(pose,out var rp,out var rq);
                 Vector3 hp=root.InverseTransformPoint(arms.Hand[1].position);Quaternion hq=Quaternion.Inverse(root.rotation)*arms.Hand[1].rotation;
                 var iq=Quaternion.Inverse(rq);
-                tacticalCal=tacticalView.Calibrate(g,CapturedAnimation.Num(iq*(hp-rp)),CapturedAnimation.Num(iq*hq),CapturedAnimation.Num(TacticalSight(a,held)));
+                tacticalCal=tacticalView.Calibrate(g,CapturedAnimation.Num(iq*(hp-rp)),CapturedAnimation.Num(iq*hq),CapturedAnimation.Num(TacticalSight(a,held)),held.Supported?CapturedAnimation.Num(held.Support):default);
                 tacticalCalBody=viewBody;tacticalCalHeld=held;tacticalCalGun=a.Weapon;tacticalCalCalm=calm;
             }
             bool fresh=tacticalFrame<Time.frameCount-1&&tacticalScopedFrame<Time.frameCount-1;

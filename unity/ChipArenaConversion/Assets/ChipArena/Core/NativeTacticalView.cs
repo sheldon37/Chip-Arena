@@ -101,15 +101,19 @@ namespace ChipArena.UnityConversion
         public bool FireAction;
         // Seconds the draw is played in (presentation only: no rule times a draw; a shot cuts it).
         public float DrawSeconds;
-        // The pack's weaponOffset and sprintPoseOffset (root space) and the sprint's lowered carry added here.
+        // The pack's weaponOffset and sprintPoseOffset (root space); SprintCarry and SprintCarryDegrees add to its sprint (none:
+        // the pack's own sprint loop already swings the gun across the body).
         public Vector3 WeaponOffset,SprintOffset;public Quaternion SprintTurn=Quaternion.Identity;
         public Vector3 SprintCarry;public Vector3 SprintCarryDegrees;
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
         // The view model's lens (vertical degrees) at the hip and fully aimed (the pack's: 90, and its aimFov).
         public float HipFov=80,AimFov=72;
-        // The game's model on the pack's gun: moved in the gun frame (its bore height and grip differ from the pack gun's), and the
-        // left hand's support moved likewise (the pack's leftHandOffset).
+        // The game's model on the pack's gun: its rear sight on the pack gun's sight line (SightHeight above the gun bone: the
+        // pack weapon's AimPoint), its right wrist level with the pack's along the bore, then ModelOffset (gun frame). The left
+        // hand: on the right hand as the pack's (a pistol's support), or under the model's own handguard (its Support) as the
+        // pack's under its own (PackSupport below the gun bone); then LeftOffset (the pack's leftHandOffset).
+        public float SightHeight,PackSupport=-.03f;public bool LeftOnRight;
         public Vector3 ModelOffset,LeftOffset;
         // Procedural recoil per shot: metres back, degrees up, yaw and roll ranges; the springs' rate and damping; the pivot
         // (gun frame) the kick turns about.
@@ -121,14 +125,14 @@ namespace ChipArena.UnityConversion
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.015f,.03f,0),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            SprintCarry=new Vector3(.02f,-.05f,-.02f),SprintCarryDegrees=new Vector3(14,-10,12),EyeRelief=.30f,
+            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
-            DrawSeconds=.9f,WeaponOffset=new Vector3(-.03f,.05f,.025f),SprintCarry=new Vector3(.03f,-.06f,-.04f),SprintCarryDegrees=new Vector3(16,-18,14),EyeRelief=.09f,
+            DrawSeconds=.9f,WeaponOffset=new Vector3(-.03f,.05f,.025f),EyeRelief=.09f,SightHeight=.0724f,
             KickBack=.02f,KickPitch=1.5f,KickYaw=.4f,KickRoll=.8f};
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
-            DrawSeconds=1f,WeaponOffset=new Vector3(-.043f,.007f,.02f),SprintOffset=new Vector3(0,-.035f,0),SprintCarry=new Vector3(.03f,-.06f,-.04f),SprintCarryDegrees=new Vector3(16,-18,14),EyeRelief=.16f,
+            DrawSeconds=1f,WeaponOffset=new Vector3(-.043f,.007f,.02f),SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=.06f,
             KickBack=.014f,KickPitch=1.1f,KickYaw=.5f,KickRoll=1.1f,KickOmega=40,KickZeta=.6f};
         public static NativeTacticalGun For(WeaponId w)=>w==WeaponId.Pistol?Pistol:w==WeaponId.Rifle?Rifle:w==WeaponId.MachineGun?MachineGun:null;
     }
@@ -253,7 +257,9 @@ namespace ChipArena.UnityConversion
     public struct NativeTacticalCalibration
     {
         public bool Set;public Vector3 GunToWeapon;public Quaternion GunToWeaponTurn;
-        public Vector3 RightGrip;public Quaternion RightGripTurn;public Vector3 Sight;
+        public Vector3 RightGrip;public Quaternion RightGripTurn;public Vector3 Sight,Support;
+        // The left hand's shift from the pack's place (gun frame).
+        public Vector3 LeftShift;
         // The pack's right hand frame -> the view body's right hand bone (constant per gun and body). The left hand takes the
         // pack's own place and palm (its support on the pack's gun reads true on the game's models, whose grip the wrists share).
         public Vector3 RightKey;public Quaternion RightKeyTurn;
@@ -281,13 +287,16 @@ namespace ChipArena.UnityConversion
 
         /// <summary>The calibration from the gun's idle and the view body's grasp (hand bones in its weapon frame) and sight: the
         /// model's bore and up on the pack gun's, its right wrist on the pack's right wrist.</summary>
-        public NativeTacticalCalibration Calibrate(NativeTacticalGun g,Vector3 rightGrip,Quaternion rightGripTurn,Vector3 sight)
+        public NativeTacticalCalibration Calibrate(NativeTacticalGun g,Vector3 rightGrip,Quaternion rightGripTurn,Vector3 sight,Vector3 support=default)
         {
-            var c=new NativeTacticalCalibration{Set=true,RightGrip=rightGrip,RightGripTurn=rightGripTurn,Sight=sight,GunToWeaponTurn=Quaternion.Identity};
+            var c=new NativeTacticalCalibration{Set=true,RightGrip=rightGrip,RightGripTurn=rightGripTurn,Sight=sight,Support=support,GunToWeaponTurn=Quaternion.Identity};
             Bank.Clip(g.Idle).Sample(0,out var b);
-            c.GunToWeapon=NativeTacticalMath.Rotate(Quaternion.Inverse(b.GunTurn),b.Right-b.Gun)-rightGrip+g.ModelOffset;
-            // Pack hand -> our hand: K = inv(pack hand in gun) * C * our grip.
+            // The model's sight on the pack's sight line (bore and up shared), its right wrist level with the pack's along the bore.
             NativeTacticalMath.Relative(b.Gun,b.GunTurn,b.Right,b.RightTurn,out var hrp,out var hrq);
+            c.GunToWeapon=new Vector3(-sight.X,g.SightHeight-sight.Y,hrp.Z-rightGrip.Z)+g.ModelOffset;
+            // The left hand: on our right as the pack's on its right, or under our handguard as the pack's under its own.
+            c.LeftShift=g.LeftOnRight?c.GunToWeapon+rightGrip-hrp:new Vector3(0,c.GunToWeapon.Y+support.Y-g.PackSupport,0);
+            // Pack hand -> our hand: K = inv(pack hand in gun) * C * our grip.
             NativeTacticalMath.Compose(c.GunToWeapon,c.GunToWeaponTurn,rightGrip,rightGripTurn,out var crp,out var crq);
             NativeTacticalMath.Relative(hrp,hrq,crp,crq,out c.RightKey,out c.RightKeyTurn);
             return c;
@@ -353,7 +362,7 @@ namespace ChipArena.UnityConversion
             // The model's weapon frame and the hand bones' targets (pack hand x key), elbows along.
             NativeTacticalMath.Compose(gp,gq,cal.GunToWeapon,cal.GunToWeaponTurn,out s.Weapon,out s.WeaponTurn);
             NativeTacticalMath.Compose(gp,gq,hrp,hrq,out var prp,out var prq);NativeTacticalMath.Compose(prp,prq,cal.RightKey,cal.RightKeyTurn,out s.Right,out s.RightTurn);
-            s.Left=gp+NativeTacticalMath.Rotate(gq,hlp+g.LeftOffset);s.LeftPalm=Quaternion.Normalize(gq*lpq);s.RightPalm=Quaternion.Normalize(gq*rpq);
+            s.Left=gp+NativeTacticalMath.Rotate(gq,hlp+cal.LeftShift+g.LeftOffset);s.LeftPalm=Quaternion.Normalize(gq*lpq);s.RightPalm=Quaternion.Normalize(gq*rpq);
             s.RightElbow=gp+NativeTacticalMath.Rotate(gq,er);s.LeftElbow=gp+NativeTacticalMath.Rotate(gq,el);
             s.RightShoulder=f.RightShoulder;s.LeftShoulder=f.LeftShoulder;
             for(int k=0;k<15;k++){s.RightFingers[k]=fr[k];s.LeftFingers[k]=fl[k];}
@@ -363,8 +372,9 @@ namespace ChipArena.UnityConversion
         }
 
         // The pack's procedural layer (its Movement blend tree on ik_hand_gun_additive): the idle pose to the idle loop by the
-        // idle intensity, the walk pose to the walk loop (on the stride) by the walk intensity, and the sprint loop, by gait.
-        public const float WalkCycles=2,SprintCycles=2;
+        // idle intensity, the walk pose to the walk loop (on the stride; the loop holds three strides, the sprint loop two) by the
+        // walk intensity, and the sprint loop, by gait.
+        public const float WalkCycles=3,SprintCycles=2;
         private void Locomotion(NativeTacticalGun g,in NativeTacticalInput i,float ads,float walk,float sprint,out Vector3 p,out Quaternion q)
         {
             float idleK=g.IdleIntensity+(g.IdleAimIntensity-g.IdleIntensity)*ads,walkK=(g.WalkIntensity+(g.WalkAimIntensity-g.WalkIntensity)*ads)*MathUtil.Clamp(i.Shake,.3f,1);
