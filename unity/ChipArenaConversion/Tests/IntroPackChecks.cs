@@ -204,8 +204,48 @@ namespace ChipArena.UnityConversion
                 NativeIntroPack.Local=null;NativeEntrancePose.Keyed(k,1.5f,kp,out var none,out _,ReadOnlySpan<float>.Empty);Check(Math.Abs(none.Z)<1e-5f,"without the bank a segment does nothing");
             }
             finally{NativeIntroPack.Local=keep;clip.Speed=keepSpeed;}
-            MultiBank(names,parents,pos,rot,tracks,frames,rate,data,bank,bytes);
+            MultiBank(names,parents,pos,rot,tracks,frames,rate,data,bank,bytes);BodyTurns(bank,rig);
             return worst;
+        }
+
+        // ---- the keys' body turn under a clip (I2b's note: a keyed lean tilted the whole clip) ----
+        /// <summary>FromPack's `body`: Keyed (the default) turns the whole clip by a keyed lean, its legs too, as before; Clip stands the clip
+        /// as baked; Pelvis leans the hips and everything above them by it and keeps the legs' turns; allocation-free. And the pose mapping
+        /// leaves a joint a clip plays in full to these checks (IntroPoseChecks.Mapping, as Limits does).</summary>
+        private static void BodyTurns(NativeIntroPack.Bank bank,NativeVisualRig.Rig rig)
+        {
+            var keep=NativeIntroPack.Local;NativeIntroPack.Local=bank;
+            try
+            {
+                const float lean=.35f;var leanTurn=CapturedRig.Euler(lean,0,0);
+                NativeEntranceKeys K(float bodyLean,NativeIntroPack.BodyTurn mode)
+                {
+                    var k=new NativeEntranceKeys();var stand=NativeEntranceKeys.With(NativeEntranceKeys.Stand(),v=>NativeEntranceKeys.Set(v,CapturedRig.Body,bodyLean,0,0));
+                    k.Key(0,stand).Root(0,.88f,0,0);k.Key(3,stand).Root(0,.88f,0,0);
+                    // (the pelvis and the torso from the clip, the keys' legs: no held feet, so only the body turn differs between the modes)
+                    k.FromPack("round-trip",.5f,2.5f,0,1,true,NativeIntroPack.RootMode.Path,NativeIntroPack.Torso|1<<CapturedRig.Pelvis,.2f,.2f,mode);return k;
+                }
+                var flat=new CapturedRig.Pose();var p=new CapturedRig.Pose();float keyedLegs=0,clipAll=0,pelvisLegs=0,pelvisChest=0;
+                var none=K(0,NativeIntroPack.BodyTurn.Keyed);var keyed=K(lean,NativeIntroPack.BodyTurn.Keyed);var clip=K(lean,NativeIntroPack.BodyTurn.Clip);var pelvis=K(lean,NativeIntroPack.BodyTurn.Pelvis);
+                for(int i=30;i<=66;i++)
+                {
+                    float t=i/30f;NativeEntrancePose.Keyed(none,t,flat,out _,out _,ReadOnlySpan<float>.Empty);flat.World();
+                    NativeEntrancePose.Keyed(keyed,t,p,out _,out _,ReadOnlySpan<float>.Empty);p.World();keyedLegs=Math.Max(keyedLegs,Angle(p.WorldRotation[CapturedRig.LHip],flat.WorldRotation[CapturedRig.LHip]));
+                    NativeEntrancePose.Keyed(clip,t,p,out _,out _,ReadOnlySpan<float>.Empty);p.World();for(int j=0;j<22;j++)clipAll=Math.Max(clipAll,Angle(p.WorldRotation[j],flat.WorldRotation[j]));
+                    NativeEntrancePose.Keyed(pelvis,t,p,out _,out _,ReadOnlySpan<float>.Empty);p.World();
+                    foreach(int j in new[]{CapturedRig.LHip,CapturedRig.RHip,CapturedRig.LKnee,CapturedRig.RKnee,CapturedRig.LFoot,CapturedRig.RFoot})pelvisLegs=Math.Max(pelvisLegs,Angle(p.WorldRotation[j],flat.WorldRotation[j]));
+                    foreach(int j in new[]{CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Head})pelvisChest=Math.Max(pelvisChest,Angle(p.WorldRotation[j],leanTurn*flat.WorldRotation[j]));
+                }
+                Check(keyedLegs*Deg>15,"by default a keyed body lean turns the whole clip, its legs too, as before ("+(keyedLegs*Deg).ToString("0.0")+" deg)");
+                Check(clipAll*Deg<.05f,"BodyTurn.Clip: the clip stands as baked under a keyed lean (worst "+(clipAll*Deg).ToString("0.000")+" deg)");
+                Check(pelvisLegs*Deg<.05f&&pelvisChest*Deg<.05f,"BodyTurn.Pelvis: the hips and the torso lean by it, the legs keep their turns (legs "+(pelvisLegs*Deg).ToString("0.000")+", torso "+(pelvisChest*Deg).ToString("0.000")+" deg off)");
+                long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<300;i++)NativeEntrancePose.Keyed(pelvis,i/120f,p,out _,out _,ReadOnlySpan<float>.Empty);
+                Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"a body turn mode allocates nothing per frame");
+                // the mapping leaves a joint a clip plays in full to the clip on the model (these checks)
+                var pp=new PackPose(bank.Clips["round-trip"]);var map=IntroPoseChecks.Mapping("pack round-trip",pp,pp.Seconds,rig);
+                Check(map.Worst.All(w=>w==0),"IntroPoseChecks.Mapping skips the joints a clip plays in full");
+            }
+            finally{NativeIntroPack.Local=keep;}
         }
 
         // ---- several banks (the first and one per batch-2 author) ----
