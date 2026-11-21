@@ -106,6 +106,11 @@ namespace ChipArena.UnityConversion
         public Vector3 SprintCarry;public Vector3 SprintCarryDegrees;
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
+        // The view model's lens (vertical degrees) at the hip and fully aimed (the pack's: 90, and its aimFov).
+        public float HipFov=80,AimFov=72;
+        // The game's model on the pack's gun: moved in the gun frame (its bore height and grip differ from the pack gun's), and the
+        // left hand's support moved likewise (the pack's leftHandOffset).
+        public Vector3 ModelOffset,LeftOffset;
         // Procedural recoil per shot: metres back, degrees up, yaw and roll ranges; the springs' rate and damping; the pivot
         // (gun frame) the kick turns about.
         public float KickBack,KickPitch,KickYaw,KickRoll,KickOmega=34,KickZeta=.55f;public Vector3 KickPivot=new Vector3(0,-.04f,-.12f);
@@ -280,7 +285,7 @@ namespace ChipArena.UnityConversion
         {
             var c=new NativeTacticalCalibration{Set=true,RightGrip=rightGrip,RightGripTurn=rightGripTurn,Sight=sight,GunToWeaponTurn=Quaternion.Identity};
             Bank.Clip(g.Idle).Sample(0,out var b);
-            c.GunToWeapon=NativeTacticalMath.Rotate(Quaternion.Inverse(b.GunTurn),b.Right-b.Gun)-rightGrip;
+            c.GunToWeapon=NativeTacticalMath.Rotate(Quaternion.Inverse(b.GunTurn),b.Right-b.Gun)-rightGrip+g.ModelOffset;
             // Pack hand -> our hand: K = inv(pack hand in gun) * C * our grip.
             NativeTacticalMath.Relative(b.Gun,b.GunTurn,b.Right,b.RightTurn,out var hrp,out var hrq);
             NativeTacticalMath.Compose(c.GunToWeapon,c.GunToWeaponTurn,rightGrip,rightGripTurn,out var crp,out var crq);
@@ -348,7 +353,7 @@ namespace ChipArena.UnityConversion
             // The model's weapon frame and the hand bones' targets (pack hand x key), elbows along.
             NativeTacticalMath.Compose(gp,gq,cal.GunToWeapon,cal.GunToWeaponTurn,out s.Weapon,out s.WeaponTurn);
             NativeTacticalMath.Compose(gp,gq,hrp,hrq,out var prp,out var prq);NativeTacticalMath.Compose(prp,prq,cal.RightKey,cal.RightKeyTurn,out s.Right,out s.RightTurn);
-            s.Left=gp+NativeTacticalMath.Rotate(gq,hlp);s.LeftPalm=Quaternion.Normalize(gq*lpq);s.RightPalm=Quaternion.Normalize(gq*rpq);
+            s.Left=gp+NativeTacticalMath.Rotate(gq,hlp+g.LeftOffset);s.LeftPalm=Quaternion.Normalize(gq*lpq);s.RightPalm=Quaternion.Normalize(gq*rpq);
             s.RightElbow=gp+NativeTacticalMath.Rotate(gq,er);s.LeftElbow=gp+NativeTacticalMath.Rotate(gq,el);
             s.RightShoulder=f.RightShoulder;s.LeftShoulder=f.LeftShoulder;
             for(int k=0;k<15;k++){s.RightFingers[k]=fr[k];s.LeftFingers[k]=fl[k];}

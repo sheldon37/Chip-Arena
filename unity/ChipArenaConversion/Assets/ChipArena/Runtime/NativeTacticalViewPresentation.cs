@@ -39,6 +39,9 @@ namespace ChipArena.UnityConversion
             public VisualBody Body;public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2];
             public readonly Transform[][] Fingers={new Transform[15],new Transform[15]};public readonly Vector3[][] Axis={new Vector3[15],new Vector3[15]};
             public readonly Transform[][] Twist={new Transform[2],new Transform[2]};public readonly float[][] Share={new float[2],new float[2]};
+            // The places the binding never writes (it turns bones only): put back every frame before the arms are posed again.
+            public readonly Vector3[] UpperAt=new Vector3[2],HandAt=new Vector3[2];
+            public void Rest(){for(int i=0;i<2;i++){if(Upper[i]!=null)Upper[i].localPosition=UpperAt[i];if(Hand[i]!=null)Hand[i].localPosition=HandAt[i];}}
         }
         private static readonly string[] TacticalDigits={"thumb","index","middle","ring","pinky"};
         private static TacticalArms TacticalArmsOf(VisualBody body)
@@ -51,6 +54,7 @@ namespace ChipArena.UnityConversion
                 string s=side==0?"_l":"_r";
                 arms.Upper[side]=Find("upperarm"+s);arms.Lower[side]=Find("lowerarm"+s);arms.Hand[side]=Find("hand"+s);
                 if(arms.Upper[side]==null||arms.Lower[side]==null||arms.Hand[side]==null)return null;
+                arms.UpperAt[side]=arms.Upper[side].localPosition;arms.HandAt[side]=arms.Hand[side].localPosition;
                 for(int d=0;d<5;d++)for(int k=0;k<3;k++)
                 {
                     var b=Find(TacticalDigits[d]+"_0"+(k+1)+s);if(b==null)return null;arms.Fingers[side][d*3+k]=b;
@@ -103,6 +107,7 @@ namespace ChipArena.UnityConversion
         /// model stands).</summary>
         private bool TacticalViewPose(Actor a,float time)
         {
+            if(tacticalArms!=null&&tacticalArms.Body==viewBody)tacticalArms.Rest();
             if(ScopeActive){tacticalScopedFrame=Time.frameCount;return false;}
             var bank=TacticalBank;var g=NativeTacticalGun.For(a.Weapon);if(bank==null||g==null||!bank.Covers(g)||ViewCamera==null||viewRig==null)return false;
             if(!VisualViewDrawn(viewRig)||viewBody.Held==null)return false;
@@ -167,6 +172,9 @@ namespace ChipArena.UnityConversion
             var rh=viewRig.Bones[CapturedRig.RHand];rh.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));
             rh.localScale=viewBody.RightScale;float rs=rh.lossyScale.x;if(rs>1e-5f)rh.localScale=viewBody.RightScale/rs;VisualWeaponFit(rh,held);
             var lm=arms.Hand[0].localToWorldMatrix*leftItem;lh.SetPositionAndRotation(lm.GetColumn(3),lm.rotation);
+            // The view model's lens: the pack's own framing (its first-person camera's 90 degrees, its aim's 70-80) instead of the
+            // world's, eased with the aim; the sights stay on the axis whatever the lens.
+            ViewCamera.fieldOfView=Mathf.Lerp(g.HipFov,g.AimFov,s.Ads);
             tacticalCamera=CapturedAnimation.Quat(s.Camera);tacticalFrame=Time.frameCount;
             return true;
         }
