@@ -64,6 +64,11 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--hub-zfight")HubZFightChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--hub-zfight")return 0;
             if(args.Length==1&&args[0]=="--hub-zfight-probe"){HubZFightChecks.Probe(ProjectRoot());return 0;}
+            // The bleed's facade skins hang on a wall (owner 2026-11-20, "Weird building bug found near ward zero"): no bay given to the bleed is left open.
+            if(args.Length==0||args.Length==1&&args[0]=="--bleed-skins")BleedSkinChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--bleed-skins")return 0;
+            if(args.Length==4&&args[0]=="--bleed-skins-probe"){BleedSkinChecks.Probe(ProjectRoot(),int.Parse(args[1]),args[2],int.Parse(args[3]));return 0;}
+            if((args.Length==4||args.Length==7)&&args[0]=="--bleed-skins-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;BleedSkinChecks.Export(ProjectRoot(),int.Parse(args[1]),args[2],args[3],args.Length==7?float.Parse(args[4],inv):float.NaN,args.Length==7?float.Parse(args[5],inv):float.NaN,args.Length==7?float.Parse(args[6],inv):70);return 0;}
             // The dress's seams: no T-junction pinholes at any LOD pair, the floor under the camp fence (the hub's follow-up).
             if(args.Length==0||args.Length==1&&args[0]=="--dress-seams")DressSeamChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--dress-seams")return 0;
