@@ -37,7 +37,7 @@ Each batch therefore has its own rows folder and its own manifest:
 
 | Batch | Rows | Manifest (and its byte-identical bundle copy) | State |
 | --- | --- | --- | --- |
-| `b1` (the default) | `docs/audio/intros/*.json` | `docs/audio/sound-requests-intros.json` | shipped, sealed by jobs `intros-v2-2026-11-20-v1a`, `-v1c`, `-v1d`, `-v2a`, `-v2b` (sha256 `68c49c12`) |
+| `b1` (the default) | `docs/audio/intros/*.json` | `docs/audio/sound-requests-intros.json` | shipped, sealed by its approved jobs `intros-v2-2026-11-20-*` (sha256 `68c49c12`) |
 | `b2` | `docs/audio/intros-b2/*.json` (I3, I4, I5) | `docs/audio/sound-requests-intros-b2.json` | batch 2, the 15 weapon intros |
 
 - **Never add rows to `docs/audio/intros/`.** The compiler refuses to write a sealed manifest with other bytes and says so; it also
@@ -70,7 +70,7 @@ This is the existing pipeline (`docs/audio/SOUND-GENERATOR.md`, "Automatic build
   sounds can be generated unattended tonight if the integrator merges the compiled manifest, its contract keys and its
   queue job before a builder push.
 - **No author rows existed** when the framework shipped, so no job is queued.
-- **Batch 1 shipped** (I1's and I2's rows, Slipstream's keys included; jobs `intros-v2-2026-11-20-v1a` to `-v2b`). Batch 2's
+- **Batch 1 shipped** (I1's and I2's rows, Slipstream's keys included; its approved jobs `intros-v2-2026-11-20-*`). Batch 2's
   rows go in `docs/audio/intros-b2/` (I0e, 2026-11-20); the integrator writes its job at release.
 
 Until a batch is imported, every cue plays its `alt` or `clip`, so the intros ship synced either way.

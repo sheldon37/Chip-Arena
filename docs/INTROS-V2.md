@@ -614,6 +614,42 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
     the owner's packs by weapon and body mechanic, with the clips the match plays marked.
   - The packing (`tools/pack_visual_body.py`) takes every `.bytes` beside the body in the Editor's Resources, so the extra banks go
     into the Drive zip with the integrator's next pack; nothing counts them.
+- **Baking your bank** (I0e's form of the local tool's `bozo-intromotion.request`; the scratch patch
+  `scratch/intro-framework/i0e/motion/intromotion2_patch.py`, over I0d's and idempotent, never committed). Under the Editor lock
+  (`take`/`give` in `integrator-tools/headgib/common.sh`), write `unity/ChipArenaConversion/Temp/bozo-intromotion.request` in the
+  Editor checkout (write a `.tmp` and move it into place). The bake needs no checkout move:
+
+  ```
+  #version <the tool's Version, from its "const int Version" line>
+  F:/Chip Arena Development/scratch/<your task>/motion
+  bank=ChipArenaIntroMotionMelee
+  clip=Assets/LocalAssets/CLazyRunnerActionAnimPack/Animations/P1_CLazyMovement/Mvm_8way_Dash/CLazy@Mvm_Dash.FBX|Mvm_Dash|0-8|test
+  clip=Assets/LocalAssets/CLazyRunnerActionAnimPack/Animations/P2_CLazyEscape/Esc_Slide_Fwd/CLazy@Esc_Slide_All.FBX||20-47|rise
+  ```
+
+  - The first line after `#version` is the output folder (on F:). `bank=` is required: your bank's name. Never `ChipArenaIntroMotion`
+    (Slipstream's) or `ChipArenaVisualMotion` (the match's).
+  - Each `clip=` line has four fields, split by `|`. The asset path of the FBX (or `.anim`). The take: the AnimationClip's name in it,
+    or empty for its first. A frame range of the take at its own frame rate, inclusive, or empty for all of it. An optional label.
+  - The bank's clip is named `<take>`, or `<take>#<label>` with a label. Use that name in `FromPack`. A range is not a loop.
+  - **Refused** (listed in `intromotion.json` under `refused`): a take the match plays (its take or its file's name is in the match's
+    motion bank), a repeated name (give it a label), and a bad range. **Missing** (under `missing`): a take that is not in the file.
+    The report names the file's takes.
+  - **Output:** `<out>/<bank>.bytes` ("CAIM" 2, each clip's source `path|take|range` after its name, which `IntroPackChecks` reads) and
+    `<out>/intromotion.json` (per clip its source, length, frames, the take's fps, loop, drift and pelvis heights). It never writes
+    Resources. The integrator puts your bank in the Editor's Resources and the Drive zip at release.
+  - **The older form** (the folders line, then a comma list of clip names) still writes `ChipArenaIntroMotion.bytes` in format 1.
+  - **Check it offline:** `CHIPARENA_INTRO_MOTION_MELEE=<out>/ChipArenaIntroMotionMelee.bytes`, then `--intro-pack`. It checks unique
+    names, the match's clips, and the limbs, ankles and feet on the model. `--intro-limits` then plays your intros' segments from it.
+  - **For a capture,** copy the bank into the Editor's `Assets/LocalAssets/ChipArenaLocal/Resources/` under the lock, with the Editor
+    on your branch's commit. The Editor's resting commit (`9319026b`) reads only `ChipArenaIntroMotion` in format 1, so it ignores
+    your bank until this framework is merged; it is harmless to leave it there.
+  - **Verified 2026-11-20 (I0e):** one Editor hold (20:27-20:31, 229 s). The Editor stayed on `9319026b` and Resources were untouched;
+    the tool is now v3487 with the patch. The request above, plus a match clip (`Unarmed-Idle`) and a wrong take, baked
+    `Mvm_Dash#test` (frames 0-8 at 30 fps: 0.27 s, 17 frames at 60 Hz) and `Esc_Slide_All#rise` (frames 20-47: 0.9 s). It refused
+    `Unarmed-Idle` (the match plays it) and listed the wrong take as missing, with the file's takes. Loaded as the Melee bank beside
+    Slipstream's (`--intro-pack`, 135 checks): 11 clips, no repeated name, none the match plays, the limbs, turns and ankles on the
+    clip, and the Dash's feet still (0.00 m/s at 9.16 m/s). The test bank was then deleted.
 - **The conversion (Core `NativeIntroPack`):** each frame is the model binding (`NativeVisualRig.Pose`) run backwards on the bank's
   skeleton. A keyed joint's turn is its chain's last bone's world turn off the aligned rest, less the chain's start. The arms' spread
   and the wrist's eased bend are undone. The pelvis's offset goes on the keyed body over the legs' ratio. So the keys drawn on the model
