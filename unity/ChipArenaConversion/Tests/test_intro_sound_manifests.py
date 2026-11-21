@@ -119,7 +119,7 @@ class IntroSoundCompiler(unittest.TestCase):
         return r.returncode, r.stdout + r.stderr
 
     def test_both_batches_are_current(self):
-        for batch in ('b1', 'b2'):
+        for batch in ('b1', 'b2', 'b3'):
             code, out = self.run_compiler('--batch', batch, '--check')
             self.assertEqual(code, 0, out)
 
@@ -131,6 +131,10 @@ class IntroSoundCompiler(unittest.TestCase):
                         'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeIntroSoundKeys.cs']:
                 (root / rel).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(REPO / rel, root / rel)
+            # (only batch 1's jobs: since release 7 the real queue's batch-2 jobs pin batch 2's manifest, which this tree rebuilds)
+            queue = json.loads((root / 'docs/audio/sound-queue.json').read_text(encoding='utf-8'))
+            queue['jobs'] = [j for j in queue['jobs'] if j.get('manifest') == 'docs/audio/' + B1]
+            (root / 'docs/audio/sound-queue.json').write_text(json.dumps(queue, indent=2), encoding='utf-8')
             shutil.copytree(AUDIO / 'intros', root / 'docs/audio/intros')
             keys = root / 'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeIntroSoundKeys.cs'
             keys.write_text(keys.read_text(encoding='utf-8').replace('// ---- I3 (melee) ----', '// ---- I3 (melee) ----\n            K("intro2.zztest.cue",3f),'), encoding='utf-8')
@@ -160,6 +164,19 @@ class IntroSoundCompiler(unittest.TestCase):
             code, out = self.run_compiler('--root', tmp, '--batch', 'b2')
             self.assertEqual(code, 1, out)
             self.assertIn('already requested by batch b1', out)
+            # a retry batch (b3) may re-request batch 2's keys, and only those; batch 2 still compiles beside it
+            (root / 'docs/audio/intros-b2/I4.json').unlink()
+            (root / 'docs/audio/intros-b3').mkdir()
+            (root / 'docs/audio/intros-b3/retries.json').write_text(json.dumps(dict(author='integrator', sounds=[row])), encoding='utf-8')
+            code, out = self.run_compiler('--root', tmp, '--batch', 'b3')
+            self.assertEqual(code, 0, out)
+            self.assertEqual([s['key'] for s in json.loads((root / 'docs/audio/sound-requests-intros-b3.json').read_text(encoding='utf-8'))['sounds']], ['intro2.zztest.cue'])
+            code, out = self.run_compiler('--root', tmp, '--batch', 'b2', '--check')
+            self.assertEqual(code, 0, out)
+            (root / 'docs/audio/intros-b3/retries.json').write_text(json.dumps(dict(author='integrator', sounds=[row, dict(row, key='intro2.cloudbreak.wind')])), encoding='utf-8')
+            code, out = self.run_compiler('--root', tmp, '--batch', 'b3')
+            self.assertEqual(code, 1, out)
+            self.assertIn('is not a key of batch b2', out)
 
 
 if __name__ == '__main__':
