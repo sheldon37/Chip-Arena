@@ -90,9 +90,13 @@ contracts, set only while the bleed draws (so the bleed turned off, or a build w
    theme has none.
 2. `NativeMeridianDress.LampsReplaced = p => walkBleed.ReplacesLamps(p) && NativeCityBleedDress.NearLamp(plan, p, 14)`: the street
    dress leaves out a plain lamp only where one of the bleed's own lamps stands within 14 m, so no street goes dark.
-3. `NativeMeridianDress.FacadeCovered = (p, n) => NativeCityBleedDress.Covers(plan, p, n)`: the street dress leaves out a facade bay
-   only when nine points across it all lie under the bleed's skins (never a hole). The threshold's skins reach the wall's top,
-   so a bay can be wholly under them.
+3. `NativeMeridianDress.FacadeCovered = (p, n) => NativeCityBleedDress.Covers(plan, p, n)`: the street dress leaves out a facade
+   bay's module only when nine points across it all lie under the bleed's skins. The threshold's skins reach the wall's top, so a
+   bay can be wholly under them. Such a bay keeps the lot's own plain wall, which the skins hang on (`BleedBay` in
+   `NativeMeridianDressLots.cs`, 2026-11-20). Some skins have no wall of their own: Ward Zero's warp growth (blooms only), its
+   quarantine sheeting (hung 6-26 cm off the wall) and the Ironworks' plates (their seams). The bay was left empty, a hole through
+   the lot to the next street with the growth floating in it (owner: "Weird building bug found near ward zero"). `BleedSkinChecks`
+   (`--bleed-skins`, in the full suite) holds every given bay walled.
 
 The bleed draws nine layers up (`NativeCityBleedDraw.Lift`), over every layer the street dress uses (its paint and stacks go up to
 8), so its paint and skins never fight the dress's surfaces.
