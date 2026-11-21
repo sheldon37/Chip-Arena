@@ -16,7 +16,8 @@ namespace ChipArena.UnityConversion
         /// light all round read as no pool at all once the flat disc was gone); its reach over its pool's radius; the light's drop under
         /// the bowl (inside its shade); a flush lamp's light all round and how far it stands off its wall (its lens throws forward, so
         /// the wall round it takes some: at its lens it would light only the street).</summary>
-        public const float LampIntensity=3f,LampReach=1.35f,BowlDrop=.15f,FlushOut=.3f,FlushIntensity=1.6f;
+        /// (2026-11-21, owner, Crown Hill's plaza at night: "Theres very big empty areas": 3.0 then, a fifth more now for the open grounds.)
+        public const float LampIntensity=3.6f,LampReach=1.35f,BowlDrop=.15f,FlushOut=.3f,FlushIntensity=1.6f;
         /// <summary>A flickering lamp's steps a second (the photosensitivity rule: under 3) and, with Reduced effects, its slow breath (Hz)
         /// between <see cref="ReducedFloor"/> and full, without the dark beats.</summary>
         public const float FlickerHz=2.7f,ReducedHz=.35f,ReducedFloor=.6f;
