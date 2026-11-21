@@ -53,11 +53,13 @@ namespace ChipArena.UnityConversion
         /// Legs, Torso, Arms...) eased in over `blendIn` and out over `blendOut` from what the keys put there, the keyed body where the
         /// clip's pelvis is (with the legs' mask), the planting let go while the clip's legs play. `root`: the intro's path (move it at the
         /// clip's Speed for the drawn feet to hold) or the clip's own travel (Kept). Without the bank the keys play as keyed. The keys still
-        /// key the joints a segment leaves out (a weapon carry over a pack run: mask Legs | Torso).
+        /// key the joints a segment leaves out (a weapon carry over a pack run: mask Legs | Torso). `body` (opt-in; with the pelvis in the
+        /// mask): what the keys' body turn, a keyed lean, does under the clip: Keyed turns the whole clip (as before), Clip eases it out, Pelvis
+        /// rides it on the pelvis with the legs kept the clip's (NativeIntroPack.BodyTurn).
         /// </summary>
-        public NativeEntranceKeys FromPack(string clip,float from,float to,float start=0,float speed=1,bool loop=false,NativeIntroPack.RootMode root=NativeIntroPack.RootMode.Path,int mask=NativeIntroPack.All,float blendIn=.1f,float blendOut=.1f)
+        public NativeEntranceKeys FromPack(string clip,float from,float to,float start=0,float speed=1,bool loop=false,NativeIntroPack.RootMode root=NativeIntroPack.RootMode.Path,int mask=NativeIntroPack.All,float blendIn=.1f,float blendOut=.1f,NativeIntroPack.BodyTurn body=NativeIntroPack.BodyTurn.Keyed)
         {
-            Array.Resize(ref Packs,Packs.Length+1);Packs[Packs.Length-1]=new NativeIntroPack.Segment(clip,from,to,start,speed,loop,root,mask,blendIn,blendOut);return this;
+            Array.Resize(ref Packs,Packs.Length+1);Packs[Packs.Length-1]=new NativeIntroPack.Segment(clip,from,to,start,speed,loop,root,mask,blendIn,blendOut,true,body);return this;
         }
         public NativeEntranceKeys PassKey(){Pass|=1u<<(count-1);return this;}
         public NativeEntranceKeys ImpactKey(){Impact|=1u<<(count-1);return this;}
