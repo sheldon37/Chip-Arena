@@ -76,13 +76,13 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Weapon("greatsword",NativeIntroFaultline.Title,NativeIntroFaultline.Total,NativeIntroFaultline.CardAt,()=>new NativeIntroFaultline(),"I3","The weight that cracks the ground: a plunging slam breaks the quarry floor."),
             //
-            // pistol
+            NativeIntroEntry.Weapon("pistol","Sundown",NativeIntroSundown.Total,NativeIntroSundown.CardAt,()=>new NativeIntroSundown(),"I4","A frontier street at sundown: the belfry falls, one shot rings the bell."),
             //
-            // rifle
+            NativeIntroEntry.Weapon("rifle","One Breath",NativeIntroOneBreath.Total,NativeIntroOneBreath.CardAt,()=>new NativeIntroOneBreath(),"I4","A rooftop in the rain: one held breath, one round across the avenue."),
             //
-            // machinegun
+            NativeIntroEntry.Weapon("machinegun","Brass Storm",NativeIntroBrassStorm.Total,NativeIntroBrassStorm.CardAt,()=>new NativeIntroBrassStorm(),"I4","A depot yard at night: the belt runs dry and the light pours through the holes."),
             //
-            // bow
+            NativeIntroEntry.Weapon("bow","Lightfall",NativeIntroLightfall.Total,NativeIntroLightfall.CardAt,()=>new NativeIntroLightfall(),"I4","A moonlit shrine: one arrow of light climbs, blooms and rains down."),
             //
             NativeIntroEntry.Weapon("fire",NativeIntroForgeborn.Name,NativeIntroForgeborn.Total,NativeIntroForgeborn.CardAt,()=>new NativeIntroForgeborn(),"I5"),
             //

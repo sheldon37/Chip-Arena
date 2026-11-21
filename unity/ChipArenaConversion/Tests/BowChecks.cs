@@ -366,7 +366,8 @@ internal static class BowChecks
     private static void Entrance(string root,List<string> log)
     {
         var sc=(NativeBowEntrance)NativeEntranceDirector.Script(NativeBowEntrance.Id);sc.Prepare();
-        Check(NativeIntroRules.Pickable(NativeBowEntrance.Id)&&NativeIntroRules.Signature(NativeBowWire.Spec)==NativeBowEntrance.Id&&NativeIntroRules.IntroWeapon(NativeBowEntrance.Id)==NativeBowEntrance.Id,"Arrowfall is the Bow's signature and holds the bow");
+        // Intros v2: once the Bow's v2 intro is registered, Signature returns it (as the check below expects); Arrowfall still stages when picked.
+        Check(NativeIntroRules.Pickable(NativeBowEntrance.Id)&&NativeIntroRules.Signature(NativeBowWire.Spec)==(NativeIntroCatalog.WeaponIntro(NativeBowWire.Spec)??NativeBowEntrance.Id)&&NativeIntroRules.IntroWeapon(NativeBowEntrance.Id)==NativeBowEntrance.Id,"Arrowfall holds the bow and is the Bow's signature until its v2 intro is registered");
         Check(NativeIntroRules.StyleName(NativeBowEntrance.Id)=="Arrowfall"&&NativeSoundKeys.Intro(NativeBowEntrance.Id)=="intro.weapon-bow","its name and music key");
         string sting=NativeIntroRules.IntroSting(NativeBowEntrance.Id);Check(sting=="audio/intros/neon-drop"&&File.Exists(Path.Combine(root,"Assets/Conversion/Resources/Audio",sting+".mp3")),"its built-in sting fallback ("+sting+")");
         Check(NativeIntroRules.Duration(NativeBowEntrance.Id)==4.8&&NativeIntroRules.NameAt(NativeBowEntrance.Id)==3.2,"the standard 4.8 s entrance and 3.2 s name card");

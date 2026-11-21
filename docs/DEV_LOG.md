@@ -311,6 +311,82 @@ Editor (two holds, both under 25 min):
 - Compile the sound rows into the queue job (`tools/intros/compile_sound_requests.py`).
 - Pack `ChipArenaIntroElemental.bytes` (+ meta) into the Drive zip from `F:/Chip Arena Development/scratch/intro-elemental/bank/`.
 
+## 2026-11-21 — Claude (I4, batch 2 review): the arms the owner flagged on the machine gun and the bow (presentation only)
+Owner on the batch-2 clips: "Arm doing weird things on machine gun intro again, and check that bow one again as well." Brass Storm's
+trigger elbow was chicken-winged up beside the helmet through the burst. Lightfall's raised arm crossed the face in the low full-draw
+shot, and the head and arms read oddly at 3.7-4.1 s of the clip (the slowed release, seen from low behind).
+- **Branch/base:** `claude/intro-ranged`, code at `d10ba85e` (fix `712f74a7`, cameras `de9a52c7`, `84a8d231`, `d10ba85e`; on `4bfd14b3`).
+  Pushed, not merged, not released.
+- **Why the limits missed it:** the canonical long-gun hold (`NativeIntroPoses.AimRifle`) keys a straight trigger arm on the keyed
+  rig's wide shoulders. With the stock in the drawn shoulder, the drawn elbow had no side to keep and landed level with the shoulder
+  (the canonical machine-gun pose does the same on the model: 92°). One Breath had it too (+0.07 m over the shoulder). The canonical
+  bow pole (back and up) took the drawn string elbow 0.25 m over the shoulder at the 50° sky shot, and the forearm through the helmet.
+- **Long guns:** `NativeRangedIntro.ShoulderGun` (Brass Storm and One Breath) keeps the match's hold but brings the keyed trigger wrist
+  back, down and out, with the elbow pole down and out. The drawn trigger elbow sits .13-.18 m under the shoulder (the upper arm 50-60°
+  off hanging), with the stock in the shoulder pocket and the forearms along the gun. Brass Storm's sweep is on the hips and the chest
+  (the arms keep the hold), and the rack slides .2 m (.3 put the off elbow in the chest).
+- **Bow:** `DrawElbow` points back along the arrow and a little down, in the leaned side-on chest's frame. The drawn string elbow sits
+  on the arrow's line at the shoulder's height (at most +0.04 m), with the forearm beside the head to the jaw. The grip takes the string
+  hand over the hook's last 30% (no flip).
+- **Bow cameras:** the slowed release is in profile from the chest's side at the head's height, held through the bloom. Hold 7's bloom
+  shot, and a first rework of it, looked up through the canopy and showed only leaves.
+- **One Breath:** a cut into the name's shot (the 0.5 s blend took the eye under the parapet's coping for a frame, in hold 7 too).
+- **New checks** (`Tests/IntroRangedChecks`, in the suite; `--intro-ranged-arms ID` prints the measures per frame). They run every
+  1/30 s of all four intros through their own shot cameras:
+  - no arm through the drawn head (+3 cm);
+  - no arm over 15% of the face's disc on screen;
+  - a long gun's trigger elbow at least 8 cm under its shoulder while shouldered;
+  - the pistol's arm straight on its line through the aim;
+  - the bow's string elbow under 10 cm over its shoulder through the draw.
+  They fail on hold 7's poses and pass on these.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; durations,
+  shots and name beats unchanged).
+- **Checks:**
+  - full CoreTests the relgen5 way at `712f74a7`: exit 0 (1,095 PASS); at `d10ba85e`: exit 0 (1,095 PASS);
+  - at `d10ba85e`: `--intro-ranged` 4,714 checks; `--intros-v2` 6,819; `--intro-limits` exit 0 (none for the four);
+    `--intro-pack` 127 (at `712f74a7`); Unity compile 4/4; `git diff --check` clean.
+- **Editor holds** (by the integrator's queue): 8 (01:02-01:08, on `712f74a7`: the three intros at High, proofs, Low); 9 (01:14-01:18,
+  on `84a8d231`: bow and rifle High and Low); 10 (01:19-01:22, on `d10ba85e`: bow High and Low). Each play took 25-41 s. The Editor is
+  back on `9319026b`, banks unchanged. Every frame of the three High captures was looked at through the shot cameras.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-ranged/clips/b2/`:
+  - `machinegun-`, `rifle-`, `bow-fix-before-after.mp4`: hold 7 as reviewed beside the fix;
+  - High, before beside after (the first v2), proof and Low strips, beat and stick sheets;
+  - the pistol is unchanged from hold 7.
+- **Not run:** a Windows build; sound in a capture; generated sounds.
+- **Risks / next:** the sets show only with `ChipArenaIntroRanged.bytes` installed (7,212,499 bytes). The bloom itself is still not
+  framed (the canopy hides that part of the sky). Next: the owner's review of the three re-captured intros.
+
+## 2026-11-20 — Claude (I4, batch 2): the ranged intros' bodies on the model, a trained shooter's holds (owner: "arms looked really odd"; presentation only)
+Owner on One Breath: "almost all have weird orientations lol ... Like the rifle one you did, arms looked really odd?" (a limp front hand under the barrel, tangled arms on the aim, arms crossed at the end). Batch 2 of the intros revamp.
+- **Branch/base:** `claude/intro-ranged` at `f79564a6`, with shared `57110fe9` and `claude/intro-framework` `510cbd09` merged in. Pushed, not merged, not released.
+- **One Breath (rifle):** a high kneel on the model (`ModelFeet`, `ModelKneel`), the torso bladed as `RifleAim`, the cheek on the stock with the visor at the scope, the match's long-gun hold, the off fist on the handguard by the grip IK, the stock in the drawn shoulder; the rise off the knee to the low carry (rest low). The camera, the lens and the case on the drawn rifle.
+- **Brass Storm (machine gun):** the low carry and the head to each flood; the step in with the rack (the grip's slide); the burst from the shoulder, the cheek on the stock, walked in one smooth sweep (shutter, drum, wall, crate; it whipped 30° each way before), the hips taking three quarters, each round's aim from the drawn grip.
+- **Sundown (pistol):** the framework's walk on the model, the gun low by the thigh; the draw to the high ready, snapped onto the falling bell along a straight arm, the shot from the drawn muzzle; the barrel up beside the right cheek for the blow (the pistol is 0.5 m long). One-handed: a duelist's shot.
+- **Lightfall (bow):** side-on to the shot (`BowDraw`), the string hand on the nock by the grip, the bow arm straight and the string at the drawn jaw (pull 0.6 on a full extension; the canonical 0.55 bent the drawn bow arm 120°); the arrow on the string from the start (the quiver reach could not stay inside the limits), the string hooked on an arc outside the body.
+- **Camera:** framings fixed from hold 6 (Sundown's toll profile, One Breath's lens at the drawn scope and the drone's view, Brass Storm's drum shot over the left shoulder, Lightfall's hook and full draw).
+- **Checks code:** `Tests/IntroRangedChecks.cs` (`--intro-ranged`, in the suite): limits, feet and grips clean; each shot on its mark from the drawn weapon (pistol under 2.5°, rifle under 1.5°, every machine-gun round under 3°: worst 2.33°); the long guns shouldered with the cheek on the stock and resting low at the name; the bow arm straight with the string at the jaw. Probes: `--intro-ranged-dump` (stick figures), `-limits`, `-fit`, `-twist`.
+- **Sounds:** rows moved to `docs/audio/intros-b2/I4.json` (55 keys, 72 takes, 131.7 s; mins at most half of each generate length); batch 2's manifest compiled (`--batch b2`, sha `2d25a136`); batch 1's manifest byte-identical (`68c49c12`); no queue job. Every cue keeps its alt or clip.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; durations and name beats unchanged.
+- **Checks (at `f79564a6`):** full CoreTests the relgen5 way exit 0 (1,095 PASS); `--intro-limits` exit 0 (0 findings for all four); `--intros-v2` 6,819 checks; `--intro-ranged` 526 checks; `--intro-pack` 127 (no clips of mine); Unity compile 4/4; `git diff --check` clean.
+- **Editor:** hold 6 (20:32-20:57, on `c06dd973`): all four at High. Hold 7 (23:59:54-00:06:04, by the integrator's Editor queue, on `4bfd14b3`): all four at High again with the reframed shots, a proof strip each from the side or 3/4 (BoZo `introeye`, every 0.25 s) and the Low strips: 12 plays of 20-34 s (no tool version bump per play, each ended on the arena clock by `endarena`; the relaunched Editor reloads quickly). Editor back on `9319026b`, banks unchanged.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-ranged/clips/b2/` from hold 7: High (7.7-8.2 s, each intro's own length; 1.2-1.8 MB), before beside after, Low strips, proof strips (pistol and machine gun at 3/4, rifle and bow from the side), beat sheets; stick-figure sheets of the drawn model. A capture runs on into the next pilot's entrance, so each clip ends on its intro's last frame.
+- **Not run:** a Windows build; sound in a capture; generated sounds; pack clips (none used; candidates in `docs/INTROS-RANGED.md`).
+- **Risks / next:** the sets show only with `ChipArenaIntroRanged.bytes` installed (7,212,499 bytes). The rifle's scope height (.055) came from hold 6's lens macro; hold 7's puts the drone's red in the glass. The proof eyes see the rifle and the bow from behind as much as from the side; the arms read right in all four. Next: the owner's review of the clips.
+
+## 2026-11-20 — Claude: the ranged weapons' new intros: Sundown, One Breath, Brass Storm, Lightfall (owner request; presentation only)
+Owner (2026-11-20): "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" I4 of the Intros v2 overnight run (contract `docs/INTROS-V2.md`, framework I0).
+- **Branch/base:** `claude/intro-ranged` from shared `8d56f015`, with `claude/intro-framework` merged in (through `545faef6`, the card fix). Pushed, not merged, not released.
+- **What:** four weapon intros registered on their slots, replacing the archived signatures (Deadeye, Longwatch, Belt Rattle, Arrowfall): pistol **Sundown** (7.8 s, name 6.0), rifle **One Breath** (8.4 s, 6.4), machine gun **Brass Storm** (7.8 s, 6.0), bow **Lightfall** (8.0 s, 6.2). Stories, beats, sets, motion and sound in `docs/INTROS-RANGED.md`.
+- **Sets:** four modelled sets (a frontier street at sundown with its belfry, a night rooftop over a city avenue with a drone, a depot yard with a roll-up shutter, a moonlit forest shrine) scripted in Blender (`tools/intros/ranged_*.py`, on stagekit) into the local bank `ChipArenaIntroRanged` (7.2 MB, not committed; master in `F:/Chip Arena Development/scratch/intro-ranged/bank/`). Skies and far scenery inside the 200 m far plane, drawn round the eye. Without the bank each draws the dark lit void.
+- **Systems:** Core `NativeIntroRanged.cs` (shared), `NativeIntroSundown.cs`, `NativeIntroOneBreath.cs`, `NativeIntroBrassStorm.cs`, `NativeIntroLightfall.cs`; four registry lines in `NativeIntroCatalog.cs`; the I4 slot in `NativeIntroSoundKeys.cs`; `docs/audio/intros/I4.json` (55 keys, 110 takes, about 200 s, for the integrator's compiled job). One test line: `Tests/BowChecks.cs` now expects the Bow's signature to be its v2 intro once registered (as the check after it already did; it failed the suite at the registration).
+- **Motion:** the pistol plays motion-bank clips on the model (`Armed-Walk-Slow`, `Armed-Unsheath-R-FromArmed-Hips`, `Armed-Idle-Pistol-R`, `Pistol-Attack-R1`); the rifle and machine gun are keyed with arm IK so the drawn gun's bore points where the keys aim (the owner's rest-low rule kept at the ends); the bow uses the Bow's own arms (`NativeBowPose`) with the match's bow drawn from the intro's view (`INativeIntroBow`). No rebake.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The match reads each intro's Duration and NameAt from the registry (the old signatures were 4.8 s / 3.2 s; these are 7.8 to 8.4 s): the match start's hold is the framework's (I0). `Tests/ParityFollowupChecks` needs a pistol intro to end within 8.0 s: Sundown is 7.8 s (kept, not re-pinned).
+- **Voxel dependency:** the intros pose the keyed rig (the anchors' and the Classic body's source) as every v2 intro does through `NativeProceduralEntrance`; no new `CapturedRig.Pose` is authored in these files (the ratchet passes).
+- **Checks (final `afca30d2`; the same on `31863628` and `2dbdf869`):** full CoreTests the relgen way (throwaway worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS`): exit 0, 1,080 PASS lines; inside it `--intros-v2` PASS (2,798 checks, 5 registered intros incl. the sets check with a fake bank) and the bow checks PASS (5,050); Unity assembly compile (`tools/check_unity_compile.py` on the local 6000.3.24f1 references): all four assemblies PASS; pins against the framework: 0 broken; `git diff --check` clean; `tools/intros/compile_sound_requests.py --check`: the 55 rows validate (the manifest is the integrator's to compile). Editor captures (BoZo, High at 1/15 s and Low stills, set bank in and out): hold 1 on `54a6d5a8` (03:49-04:21), hold 2 on `2dbdf869` with the old signatures on the resting `9319026b` (04:50-05:09), hold 3 on `31863628` at High (06:18-06:27, integrator-approved after the head-lift and name-card notes), hold 4 on `afca30d2`, the pistol only (07:43-07:47, integrator-approved: the blow recalibrated from hold 3's frames now holds the barrel upright beside the visor at the mouth's height, and the card's kicker and line follow its x). Side-by-side clips and Low strips in `F:/Chip Arena Development/scratch/intro-ranged/clips/`. The stage banks and the motion bank were checked unchanged at every lock.
+- **Not run:** a Windows build or package; multiplayer (the intros are presentation only); sound in a capture (the captures are silent: the cue sync is checked by the managed cue clock at 60 Hz and 20 Hz only); the generated sounds (not generated yet).
+- **Follow-up (2026-11-20 morning, owner: bespoke animation only; framework `7c0f3783`):** Sundown plays no match clips any more: a keyed gunslinger's walk (every contact and pass), a fast draw with a high-ready flourish, a settled aim, the head following the bell (`2ef332d1`). On the model-aware anchors (`f027dfeb`): `ModelHeadLift` removed (the breath from `Anchor(Eyes)`; Sundown's blow IK stays in the keyed rig's space, where Arms runs), muzzles, tracers and brass from `RightMuzzle`/`RightGrip`/`WeaponBore`, Lightfall's arrow on `LeftMuzzle`; the sets re-lit under the intro's own light (Brass Storm's floods as the sodium key directional, Lightfall's bloom as a flash, reflections set). Checks on `f027dfeb`: full suite exit 0 (1,080 PASS; intros v2 3,800 incl. the keyed pose on the model), Unity compile 4/4. **Not captured yet:** the integrator paused the Editor for I0c's verification; the recapture of all four at High waits for the go-ahead (`F:/Chip Arena Development/scratch/intro-ranged/tools/hold5.sh f027dfeb`), so the light re-tune and the keyed Sundown are unverified in the Editor.
+- **Risks / next:** the sets show only where `ChipArenaIntroRanged.bytes` is installed (LocalAssets): the integrator adds it to the zip for the builder, else the void. The match now holds 7.8 to 8.4 s per ranged intro (was 4.8 s). The grove's night air is silent until generated. The rifle, machine gun and bow clips (hold 3) predate the framework's card fix (`545faef6`): their kicker and line sit at screen centre there. The Low strips show `2dbdf869` (before the card placement, the head lift and the softer rays). Editor hold 1 ran 32 minutes (over the 25-minute brief: every capture ran to its 220 s run limit; later holds sized the limits).
+
 ## 2026-11-20 — Claude (I0e): intros v2 framework for batch 2: its own sound manifest, a motion bank per author, the bake request, I2b's two pack notes, the pack index (presentation only)
 
 **Branch and status:** `claude/intro-framework` on shared `3f788a3d`, with shared `3accbc3c` (release 4) merged in (`0e48f980`).
