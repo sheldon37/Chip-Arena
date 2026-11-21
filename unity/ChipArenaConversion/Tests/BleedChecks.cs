@@ -158,6 +158,17 @@ internal static class BleedChecks
                         return Math.Abs(V3.Dot(dp,al)/la)<=la*NativeMeridianDress.Bay*.5f+.05f&&p.y>=x.V0-.05f&&p.y<=x.V1+.05f&&Math.Abs(V3.Dot(dp,n)/ln)<.5f;
                     });
                     if(module)continue;
+                    // (a fire escape's side is its grille, flat bars 0.3 m apart before the stair's soffit and the wall behind it, under
+                    // its stringer: an open cage, never a slab; NativeMeridianDressStairs)
+                    if(NativeMeridianDress.IsFireEscape(blk.id)&&blk.id.Contains("-tread-"))
+                    {
+                        string flight=blk.id.Substring(0,blk.id.IndexOf("-tread-",StringComparison.Ordinal)+7);var nrm=dir*-1f;
+                        bool caged=dress.Quads.Any(q=>q.Block>=0&&map.blocks[q.Block].id.StartsWith(flight,StringComparison.Ordinal)&&Math.Abs(V3.Dot(p-q.O,nrm))<.1f&&
+                            (q.Free?Math.Abs(V3.Dot(p-(q.O+q.U*.5f),lat))<=NativeMeridianDress.BarStep*.75f&&p.y>=Math.Min(q.O.y,q.O.y+q.V.y)-.01f&&p.y<=Math.Max(q.O.y,q.O.y+q.V.y)+.01f
+                                   :q.Fin==NativeMeridianSurfaces.IronBlack&&Math.Abs(q.N.y)<.5f&&InQuad(q,p)));
+                        if(!caged)throw new Exception(map.name+": the cache "+c.id+"'s "+name+" wall "+blk.id+" is neither caged nor under its stringer at "+Show(p));
+                        continue;
+                    }
                     int fin=-1;
                     foreach(var q in dress.Quads)
                     {
@@ -166,13 +177,20 @@ internal static class BleedChecks
                         float su=V3.Dot(dp,q.U)/lu,sv=V3.Dot(dp,q.V)/lv;if(su<-.01f||su>1.01f||sv<-.01f||sv>1.01f)continue;fin=q.Fin;break;
                     }
                     if(fin<0)throw new Exception(map.name+": the cache "+c.id+"'s "+name+" wall "+blk.id+" is bare at "+Show(p));
-                    // (a fire escape's iron stringer along a step's top is no wall)
+                    // (a fire escape landing's iron edge is no wall)
                     if(fin==NativeMeridianSurfaces.IronBlack&&p.y>blk.pos.y+blk.size.y*.5f-NativeMeridianDress.Stringer-.05f)continue;
                     if(Luma(NativeMeridianSurfaces.Fins[fin].Rgb)<56)throw new Exception(map.name+": the cache "+c.id+"'s "+name+" wall "+blk.id+" is black ("+fin+") at "+Show(p));
                 }
             }
         }
         return walls;
+    }
+    /// <summary>Whether a point lies on a generated surface (within 6 cm of its plane, inside its rectangle or trapezoid).</summary>
+    private static bool InQuad(NativeMeridianDress.Quad q,V3 p)
+    {
+        var dp=p-q.O;float nl=q.N.Length;if(nl<1e-4f||Math.Abs(V3.Dot(dp,q.N)/nl)>.06f)return false;float lu=V3.Dot(q.U,q.U);if(lu<1e-6f)return false;
+        float s=V3.Dot(dp,q.U)/lu;if(s<-.01f||s>1.01f)return false;var v=q.V+(q.Vb-q.V)*Math.Max(0,Math.Min(1,s));float lv=V3.Dot(v,v);if(lv<1e-6f)return false;
+        float t=V3.Dot(dp-q.U*s,v)/lv;return t>=-.01f&&t<=1.01f;
     }
 
     private static void Curve()
