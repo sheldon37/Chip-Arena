@@ -12,8 +12,10 @@ namespace ChipArena.UnityConversion
     /// nothing stands on the plaza floor a pilot could walk through). Lamps on the fence and gates, masts clamped to the fence, bulb
     /// strings and sails from 3.5 m, half-drum fires against the fence's inner face within 0.25 m, the war board and the MISSING board
     /// flat on the fence, cables, the fuse board and the camp's sound. <see cref="Live"/>.</item>
-    /// <item><b>Part 2, the DEV preview:</b> the whole W5 camp from the hub plan table (<see cref="Table"/>: A1's blocks, their art, the
-    /// machines and the survivors at their posts), drawn only in the Developer walk, never in a live run. <see cref="Preview"/>.</item>
+    /// <item><b>Part 2, live with A1:</b> the structures' art on A1's blocks (<see cref="Table"/>, Astra's NativeExpeditionHubPlan; each
+    /// block's greybox gives way where its art draws, <see cref="ArtOf"/>), the survivors at their posts (the rescued once their instance
+    /// is cleared, <see cref="Joined"/>), and the same camp as a DEV preview in the Developer walk, with its clearance overlay.
+    /// <see cref="Structures"/>, <see cref="Preview"/>.</item>
     /// </list>
     /// The fixed frame (Core/NativeLayeredCityWalk.cs:64-66, Core/NativeExpeditionGeneratedWorld.cs:86-98): the sanctuary is 49.6 m
     /// square at the origin, its fence sections 0.2 m thick with their inner faces at ±24.8 and 3.2 m tall, four 10 m metal gates on
@@ -295,13 +297,34 @@ namespace ChipArena.UnityConversion
         }
 
         // =====================================================================================================================
-        // Part 2: the DEV preview of the whole camp (the Developer walk only; never a live run).
+        // Part 2: the camp on A1's blocks (live since A1: the structures' art, the survivors at their posts), and the DEV preview of
+        // the same in the Developer walk (with its overlay and its U and Y keys).
         // =====================================================================================================================
-        /// <summary>A preview piece: a bank key in a row's place (axis-aligned: centre on its floor, yaw degrees).</summary>
+        /// <summary>A placed piece: a bank key in a row's place (axis-aligned: centre on its floor, yaw degrees).</summary>
         public readonly struct Shown{public readonly string Key,Post;public readonly V3 At;public readonly float Yaw;public Shown(string key,V3 at,float yaw,string post=null){Key=key;At=at;Yaw=yaw;Post=post;}}
-        /// <summary>The structures' art (one key per row kind; rows that share a model share a key), the survivors at their posts (the
-        /// rescued only up to `rescued` of them) and the landing field's pods for the seed.</summary>
-        public static List<Shown> Preview(uint seed,int rescued)
+        /// <summary>The bank key that draws a row kind's art (rows that share a model share a key: the ring's canopy and posts, the
+        /// kiosk's awning posts, the lookout's cabin and searchlight). Where the bank holds it, the row's greybox gives way to it.</summary>
+        public static string ArtOf(RowKind k)
+        {
+            switch(k)
+            {
+                case RowKind.Fountain:return "camp/row/fountain";
+                case RowKind.Canopy:case RowKind.CanopyPost:return "camp/row/ring";
+                case RowKind.Bench:return "camp/row/bench";
+                case RowKind.Kiosk:case RowKind.AwningPost:return "camp/row/kiosk";
+                case RowKind.Infirmary:return "camp/row/infirmary";
+                case RowKind.Lookout:case RowKind.LookoutCabin:case RowKind.Searchlight:return "camp/row/lookout";
+                case RowKind.Sentry:return "camp/row/sentry";
+                case RowKind.Radio:return "camp/row/radio";
+                case RowKind.Supply:return "camp/row/supply";
+                case RowKind.Generator:return "camp/row/generator";
+                case RowKind.Sandbag:return "camp/row/sandbag";
+                default:return null;
+            }
+        }
+        /// <summary>The structures' art on A1's blocks: one piece per model (the ring and the fountain once, a bench, sentry or sandbag
+        /// wall per row, the kiosk, infirmary, lookout, radio shack, supply cabin and generator).</summary>
+        public static List<Shown> Structures()
         {
             var o=new List<Shown>();
             o.Add(new Shown("camp/row/ring",new V3(0,0,0),0));
@@ -321,27 +344,54 @@ namespace ChipArena.UnityConversion
                     case RowKind.Sandbag:o.Add(new Shown("camp/row/sandbag",new V3(r.X,0,r.Z),r.Sx>r.Sz?0:90));break;
                 }
             }
-            bool attendant=false;
-            foreach(var (p,at,yaw) in PreviewPosts(rescued))
-            {
-                if(p.Id=="attendant")attendant=true;
-                int variant=(int)(Hash(seed,NativeExpeditionStates.StableHash(p.Id),7)*3);
-                o.Add(new Shown("camp/figure/"+p.Pose+"/"+variant.ToString(System.Globalization.CultureInfo.InvariantCulture),at,yaw,p.Id));
-            }
-            // the fourth bench waits for a rescued survivor: a folded blanket, a crate and a lantern keep it until then
-            if(!attendant){var b=RowOf("camp-bench-3");o.Add(new Shown("camp/row/bench-waiting",new V3(b.X,0,b.Z),90));}
             return o;
         }
-        /// <summary>The posts the preview shows (the rescued only up to `rescued` of them), each where its survivor is (Sparks at the
-        /// REVIVE-O-MATIC's works) and facing (degrees).</summary>
-        public static IEnumerable<(Post post,V3 at,float yaw)> PreviewPosts(int rescued)
+        /// <summary>The fourth bench's keep (a folded blanket, a crate and a lantern) while it waits for its rescued survivor.</summary>
+        public static Shown BenchWaiting(){var b=RowOf("camp-bench-3");return new Shown("camp/row/bench-waiting",new V3(b.X,0,b.Z),90);}
+        /// <summary>Post p's rigid figure (the bank's posed figure, seeded per run: one of three).</summary>
+        public static Shown Figure(in Post p,uint seed)
         {
-            int joined=0;
+            int variant=(int)(Hash(seed,NativeExpeditionStates.StableHash(p.Id),7)*3);
+            return new Shown("camp/figure/"+p.Pose+"/"+variant.ToString(System.Globalization.CultureInfo.InvariantCulture),PostAt(p),PostYaw(p),p.Id);
+        }
+        /// <summary>The structures, the survivors at their posts (the rescued only up to `rescued` of them) and, until its survivor
+        /// joins, the fourth bench's keep: the DEV preview's whole camp (the bank's plan dump and CampChecks read it).</summary>
+        public static List<Shown> Preview(uint seed,int rescued)
+        {
+            var o=Structures();bool attendant=false;
             foreach(var p in Posts)
             {
-                if(p.Rescued!=null&&joined++>=rescued)continue;
-                yield return (p,p.Id=="sparks"?SparksAt():p.At,p.Id=="sparks"?225:p.Yaw);
+                if(!Joined(p,rescued,null))continue;
+                if(p.Id=="attendant")attendant=true;
+                o.Add(Figure(p,seed));
             }
+            if(!attendant)o.Add(BenchWaiting());
+            return o;
+        }
+        /// <summary>Whether post p's survivor is in the camp: from the start, or once its instance is cleared. Live, `cleared` holds the
+        /// run's cleared instance ids (the live view's, replicated: NativeCityBleed.Theme matches them to the post's); in the walk
+        /// (`cleared` null) the first `rescued` of the rescued, in the table's order, have joined. Allocation free.</summary>
+        public static bool Joined(in Post p,int rescued,HashSet<string> cleared)
+        {
+            if(p.Rescued==null)return true;
+            if(cleared!=null)
+            {
+                string theme=NativeCityBleed.Theme(p.Rescued);
+                foreach(var c in cleared)if(c==p.Rescued||theme!=null&&NativeCityBleed.Theme(c)==theme)return true;
+                return false;
+            }
+            int before=0;foreach(var q in Posts){if(q.Id==p.Id)break;if(q.Rescued!=null)before++;}
+            return before<rescued;
+        }
+        /// <summary>Where post p's survivor is (Sparks at the REVIVE-O-MATIC's works) and which way it faces (degrees).</summary>
+        public static V3 PostAt(in Post p)=>p.Id=="sparks"?Sparks:p.At;
+        public static float PostYaw(in Post p)=>p.Id=="sparks"?225:p.Yaw;
+        private static readonly V3 Sparks=SparksAt();
+        /// <summary>The posts the walk's preview shows (the rescued only up to `rescued` of them), each where its survivor is and
+        /// facing (degrees).</summary>
+        public static IEnumerable<(Post post,V3 at,float yaw)> PreviewPosts(int rescued)
+        {
+            foreach(var p in Posts)if(Joined(p,rescued,null))yield return (p,PostAt(p),PostYaw(p));
         }
     }
 }

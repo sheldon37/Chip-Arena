@@ -70,7 +70,7 @@ def registry(plan):
         'camp/static/strands': (lambda T: cp.strands(T, plan), 0), 'camp/static/sails': (lambda T: cp.sails(T, plan), 0),
         'camp/static/cables': (lambda T: cp.cables(T, plan), 0),
         'camp/row/ring': (cp.ring, 1.2), 'camp/row/fountain': (cp.fountain, .8), 'camp/row/bench': (cp.bench, .4),
-        'camp/row/bench-waiting': (cp.bench_waiting, .4), 'camp/row/kiosk': (cp.kiosk, 1.0), 'camp/row/infirmary': (cp.infirmary, 1.0),
+        'camp/row/bench-waiting': (cp.bench_waiting, .4), 'camp/row/kiosk': ((lambda T: cp.kiosk(T, plan)), 1.0), 'camp/row/infirmary': (cp.infirmary, 1.0),
         'camp/row/lookout': (cp.lookout, 1.2), 'camp/row/sentry': (cp.sentry, .8), 'camp/row/radio': (cp.radio, 1.0),
         'camp/row/supply': (cp.supply, 1.0), 'camp/row/generator': (cp.generator, .5), 'camp/row/sandbag': (cp.sandbag, .4),
         'camp/glass/infirmary': (cp.glass_infirmary, 0), 'camp/glass/lookout': (cp.glass_lookout, 0), 'camp/glass/radio': (cp.glass_radio, 0),

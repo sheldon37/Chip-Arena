@@ -24,7 +24,9 @@ namespace ChipArena.UnityConversion
                 new Row("camp-bench-0",RowKind.Bench,0,3.4f,.9f,1.4f,.7f),new Row("camp-bench-1",RowKind.Bench,3.4f,0,.7f,1.4f,.9f),
                 new Row("camp-bench-2",RowKind.Bench,0,-3.4f,.9f,1.4f,.7f),new Row("camp-bench-3",RowKind.Bench,-3.4f,0,.7f,1.4f,.9f),
                 new Row("camp-kiosk",RowKind.Kiosk,16.4f,16.4f,2.6f,3.2f,2.6f),
-                new Row("camp-awning-post-0",RowKind.AwningPost,14.6f,12.4f,.3f,3.4f,.3f),new Row("camp-awning-post-1",RowKind.AwningPost,12.4f,14.6f,.3f,3.4f,.3f),
+                // The awning posts flank the chip machine 1.35 m out along its sides, 1.05 m clear of its body (owner 2026-11-21: "Move
+                // to 1 m"; the preview's 1.1 m left 0.694 m).
+                new Row("camp-awning-post-0",RowKind.AwningPost,14.85f,12.15f,.3f,3.4f,.3f),new Row("camp-awning-post-1",RowKind.AwningPost,12.15f,14.85f,.3f,3.4f,.3f),
                 new Row("camp-infirmary",RowKind.Infirmary,-16.9f,-16.9f,3f,2.6f,3f),
                 new Row("camp-lookout",RowKind.Lookout,13.5f,-13.5f,3f,9f,3f),
                 new Row("camp-lookout-cabin",RowKind.LookoutCabin,13.5f,-13.5f,3.6f,2.6f,3.6f,9f),

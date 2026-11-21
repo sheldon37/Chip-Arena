@@ -1,4 +1,3 @@
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,11 +5,12 @@ using UnityEngine.Rendering;
 
 namespace ChipArena.UnityConversion
 {
-    // Belvedere Camp's survivors on the pilot model in the DEV preview (Core NativeCampSurvivors; docs/expedition/BELVEDERE-CAMP.md "Survivors").
-    // Editor and development builds only, the Developer walk only: never a live run. The nearest six within 30 m draw on the model, dressed
+    // Belvedere Camp's survivors on the pilot model (Core NativeCampSurvivors; docs/expedition/BELVEDERE-CAMP.md "Survivors"): in the live
+    // hub since A1 built their structures, and in the Developer walk's DEV preview. The nearest six within 30 m draw on the model, dressed
     // as their roles through the zombies' dressing (clean, a human skin, human eyes), posed from the camp's own motion bank
-    // (Resources/ChipArenaCampMotion: local, never committed) and holding their props; the rest stay the bank's posed figures. Never
-    // replicated: no collider, physics or wire.
+    // (Resources/ChipArenaCampMotion: local, never committed) and holding their props; the rest stay the bank's posed figures. Without
+    // the motion bank (or the model) every survivor is its figure. Never replicated: no collider, physics or wire; who is in the camp
+    // comes from the run's cleared instances the live view already carries (NativeCamp.Joined).
     public sealed partial class ArenaPresentation
     {
         private sealed class CampSurvivor
@@ -22,10 +22,11 @@ namespace ChipArena.UnityConversion
         private readonly int[] campDrawn={-1,-1,-1,-1,-1,-1};
         private readonly NativeCampSurvivors.Scratch campScratch=new NativeCampSurvivors.Scratch();
         private readonly CapturedRig.Pose campPose=new CapturedRig.Pose();
-        private readonly List<(NativeCamp.Post post,Vector3 at,float yaw)> campShown=new List<(NativeCamp.Post,Vector3,float)>();
         private System.Numerics.Vector3[] campAt=Array.Empty<System.Numerics.Vector3>();
-        private int campMakesFrame=-1,campRescued=-1;private double campCheerAt=double.NaN,campCheerSeen=double.NaN;
-        /// <summary>DEV: the survivors drawn on the model last frame (the walk's panel and the checks' probes).</summary>
+        // How many rescued have joined (kept across the hub's visits within a run: a survivor who joined while the pilots were away is
+        // cheered as they come back), and the run it counts for.
+        private int campMakesFrame=-1,campRescued=-1;private uint campRescuedSeed;private double campCheerAt=double.NaN,campCheerSeen=double.NaN;
+        /// <summary>The survivors drawn on the model last frame (the walk's panel and the checks' probes).</summary>
         public int CampSkinnedCount{get;private set;}
 
         /// <summary>The camp's motion bank (read once; null without it: every survivor stays the bank's posed figure).</summary>
@@ -38,25 +39,33 @@ namespace ChipArena.UnityConversion
             Resources.UnloadAsset(asset);return campMotion;
         }
 
-        /// <summary>From CampScenery while the preview shows (before the camp draws: its figures skip the posts drawn here).</summary>
-        private void CampSurvivorsFrame(NativeArena arena,float now,int rescued)
+        /// <summary>From CampScenery while the camp shows (before it draws: its figures skip the posts drawn here). Who is in the camp:
+        /// NativeCamp.Joined by `rescued` (the walk) or `cleared` (live).</summary>
+        private void CampSurvivorsFrame(NativeArena arena,float now,int rescued,HashSet<string> cleared)
         {
             camp.Skinned.Clear();CampSkinnedCount=0;
             var bank=CampMotion();var eye=WorldEye;
             if(bank==null||eye==null||!ModelBody((string)null)||visualBodyPrefab==null){CampSurvivorsHide();return;}
-            // the posts shown and where they are; a rescue joining (U) or the cheer key (Y) brings the civilians' cheer
-            campShown.Clear();foreach(var (p,at,yaw) in NativeCamp.PreviewPosts(rescued))campShown.Add((p,new Vector3(at.x,at.y,at.z),yaw));
-            if(campRescued>=0&&rescued>campRescued)campCheerAt=now;campRescued=rescued;
-            if(!double.IsNaN(NativeCampWalk.CheerAt)&&NativeCampWalk.CheerAt!=campCheerSeen){campCheerSeen=NativeCampWalk.CheerAt;campCheerAt=now;}
+            // the posts shown and where they are; a survivor joining (U in the walk, a cleared instance live) or the cheer key (Y)
+            // brings the civilians' cheer
             if(campAt.Length!=NativeCamp.Posts.Length)campAt=new System.Numerics.Vector3[NativeCamp.Posts.Length];
-            for(int i=0;i<campAt.Length;i++)campAt[i]=new System.Numerics.Vector3(float.NaN,0,0);
-            foreach(var s in campShown){int i=Array.IndexOf(NativeCamp.Posts,s.post);if(i>=0)campAt[i]=new System.Numerics.Vector3(s.at.x,s.at.y,s.at.z);}
+            int joined=0;
+            for(int i=0;i<campAt.Length;i++)
+            {
+                var p=NativeCamp.Posts[i];if(!NativeCamp.Joined(p,rescued,cleared)){campAt[i]=new System.Numerics.Vector3(float.NaN,0,0);continue;}
+                var at=NativeCamp.PostAt(p);campAt[i]=new System.Numerics.Vector3(at.x,at.y,at.z);if(p.Rescued!=null)joined++;
+            }
+            if(campRescuedSeed!=camp.Seed){campRescuedSeed=camp.Seed;campRescued=-1;}
+            if(campRescued>=0&&joined>campRescued)campCheerAt=now;campRescued=joined;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(cleared==null&&!double.IsNaN(NativeCampWalk.CheerAt)&&NativeCampWalk.CheerAt!=campCheerSeen){campCheerSeen=NativeCampWalk.CheerAt;campCheerAt=now;}
+#endif
             var e=eye.transform.position;NativeCampSurvivors.Pick(new System.Numerics.Vector3(e.x,e.y,e.z),campAt,campDrawn);
             foreach(var k in campDrawn)
             {
                 if(k<0)continue;var post=NativeCamp.Posts[k];var role=NativeCampSurvivors.Of(post.Id);if(role==null)continue;
                 var s=CampSurvivorOf(role);if(s?.Body?.Root==null)continue;
-                float yaw=0;Vector3 at=default;foreach(var c in campShown)if(c.post.Id==post.Id){yaw=c.yaw;at=c.at;}
+                float yaw=NativeCamp.PostYaw(post);var w=campAt[k];var at=new Vector3(w.X,w.Y,w.Z);
                 string react=null;double reactAt=double.NaN;
                 if(role.Cheers&&!double.IsNaN(campCheerAt)){react=NativeCampSurvivors.Reaction(s.Seed);reactAt=campCheerAt+(s.Seed%7)*.12;}
                 if(!NativeCampSurvivors.Sample(role,bank,now,s.Seed,campPose,campScratch,out string prop,react,reactAt))continue;
@@ -91,6 +100,18 @@ namespace ChipArena.UnityConversion
             // the bodies not drawn this frame go hidden (kept for when the eye comes back)
             foreach(var s in campSurvivors.Values)if(s.Body?.Root!=null&&s.PosedFrame!=Time.frameCount&&s.Body.Root.activeSelf)s.Body.Root.SetActive(false);
         }
+        /// <summary>From PrewarmCamp, behind the loading screen: the bodies of everyone in the camp made before the hub's first frame (about
+        /// 8 ms each), so none is made while the pods come down. Nothing without the motion bank or the model.</summary>
+        private void CampSurvivorsPrewarm()
+        {
+            if(CampMotion()==null||!ModelBody((string)null)||visualBodyPrefab==null)return;
+            foreach(var p in NativeCamp.Posts)
+            {
+                if(!NativeCamp.Joined(p,-1,NativeCampDraw.Cleared)||campSurvivors.ContainsKey(p.Id))continue;
+                var role=NativeCampSurvivors.Of(p.Id);if(role==null)continue;var s=CampSurvivorMake(role);if(s!=null)campSurvivors[role.Post]=s;
+            }
+        }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         /// <summary>The REVIVE-O-MATIC where the live hub stands it (NativeReviveMachine.Spot on the generated map): Sparks works at it in the
         /// preview. Idle (its sequence's rest), its lights on the presentation clock; drawn with the preview's machines.</summary>
         private readonly List<(string id,System.Numerics.Matrix4x4 m)> campReviveParts=new List<(string,System.Numerics.Matrix4x4)>(96);
@@ -101,20 +122,22 @@ namespace ChipArena.UnityConversion
             var root=Matrix4x4.TRS(new Vector3(at.X,at.Y,at.Z),Quaternion.Euler(0,yaw*Mathf.Rad2Deg,0),Vector3.one);
             for(int i=0;i<campReviveParts.Count;i++){var (id,m)=campReviveParts[i];sourceModels.Queue(id,root*UnityM(m));}
         }
-        /// <summary>The preview off, or a frame without the bank: every survivor's body hidden, every figure drawn.</summary>
+#endif
+        /// <summary>The camp not shown (the walk's preview off), or a frame without the bank: every survivor's body hidden, every figure drawn.</summary>
         private void CampSurvivorsHide()
         {
             camp?.Skinned.Clear();CampSkinnedCount=0;for(int k=0;k<campDrawn.Length;k++)campDrawn[k]=-1;
             foreach(var s in campSurvivors.Values)if(s.Body?.Root!=null&&s.Body.Root.activeSelf)s.Body.Root.SetActive(false);
         }
-        /// <summary>The walk closed (the camp's map gone): the survivors' bodies let go.</summary>
+        /// <summary>The camp's map gone (an instance, the walk closed): the survivors' bodies let go (the joined count is kept for the run).</summary>
         private void CampSurvivorsRelease()
         {
             if(campSurvivors.Count==0)return;
             foreach(var s in campSurvivors.Values)if(s.Body?.Root!=null)VisualBodyGone(s.Body.Root);
-            campSurvivors.Clear();for(int k=0;k<campDrawn.Length;k++)campDrawn[k]=-1;campRescued=-1;campCheerAt=double.NaN;
+            campSurvivors.Clear();for(int k=0;k<campDrawn.Length;k++)campDrawn[k]=-1;campCheerAt=double.NaN;
         }
-        // A role's body: made once (one a frame at most, about 8 ms), dressed as its role, kept for the walk.
+        // A role's body: made once (one a frame at most, about 8 ms; the hub's are made behind its loading screen), dressed as its role,
+        // kept while the camp's map stands.
         private CampSurvivor CampSurvivorOf(NativeCampSurvivors.Role role)
         {
             if(campSurvivors.TryGetValue(role.Post,out var s))return s;
@@ -152,4 +175,3 @@ namespace ChipArena.UnityConversion
         }
     }
 }
-#endif
