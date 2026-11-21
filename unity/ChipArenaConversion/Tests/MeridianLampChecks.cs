@@ -64,6 +64,14 @@ internal static class MeridianLampChecks
             }
             report.Add(FormattableString.Invariant($"{name}: {plan.Lamps.Count} lamps; walls under {walls} swan-necks at least {minNear:F2} (1 m) and {minFar:F2} (2 m), round {flushes} flush lenses {minFlush:F2}, {floors} pools' floors {minFloor:F2} ({unreached} pools out of their lamp's reach); grid {table.Nx} x {table.Nz}, fullest cell {table.Fullest}"));
         }
+        // the whole city's grid as the live run fills it (the bleed drawn): the dress's lamps, the street life's lit pieces, the bleed's
+        // lamps and the camp's lights, as their drawers add them: no cell over its PerCell
+        foreach(var live in HubZFightChecks.Worlds(root))
+        {
+            var lamps=CityTable(live,out int dress,out int street,out int bleed,out int camp);var table=NativeCityLamps.Build(lamps);string name=NativeCityLayout.Plans[live.Plan].Name;
+            Check(table.Dropped==0&&lamps.Count<=NativeCityLamps.Capacity,name+": the whole city's grid lists every light in every cell it reaches (fullest "+table.Fullest+", dropped "+table.Dropped+")");
+            report.Add(FormattableString.Invariant($"{name}, the whole city: {lamps.Count} lights ({dress} street lamps, {street} street life, {bleed} bleed, {camp} camp), the fullest cell {table.Fullest} of {NativeCityLamps.PerCell}"));
+        }
         // the owner's view: Crown Hill's sunken west street from its foot (xseed 2027808452, the capture's), the eye 2.4 m over it looking up
         // it; shared lit only the eight lamps its slots held (five once the camp's three kit lights took the weakest), the grid lights all
         {
@@ -102,6 +110,34 @@ internal static class MeridianLampChecks
         Console.WriteLine("PASS meridian lamps: "+count+" checks over the five plans' live deals: every lamp lights the wall under it and its pool's floor through the city's lamp grid, none dropped, flicker under 3 Hz");
     }
     private static bool Near(V3 a,V3 b)=>Math.Abs(a.x-b.x)<1e-4f&&Math.Abs(a.y-b.y)<1e-4f&&Math.Abs(a.z-b.z)<1e-4f;
+    private static float Lin(uint hex,int shift){double v=((hex>>shift)&255)/255.0;return (float)(v<=.04045?v/12.92:Math.Pow((v+.055)/1.055,2.4));}
+    /// <summary>A live deal's lights as its drawers add them to the grid (Runtime NativeMeridianDressDraw, NativeMeridianStreetLifeDraw,
+    /// NativeCityBleedDraw, NativeCampDraw), the bleed drawn.</summary>
+    public static List<NativeCityLamps.Lamp> CityTable(HubZFightChecks.Live live,out int dress,out int street,out int bleed,out int camp)
+    {
+        var world=live.World;var city=world.City;var map=city.Map;uint seed=world.Blueprint.worldSeed;
+        var plan=HubZFightChecks.Dress(live,null,true);var lamps=new List<NativeCityLamps.Lamp>(NativeMeridianDress.LightsOf(plan));dress=lamps.Count;
+        var all=Enumerable.Range(0,map.blocks.Length).ToList();
+        var bleedPlan=NativeCityBleedDress.ForWalk(city,world.Bleed,seed);
+        var life=NativeMeridianStreetLife.Build(NativeMeridianStreetLife.InputOf(city,NativeCityLayout.Plans[live.Plan].Seed,seed,world.HallSlots,plan,world.Bleed,bleedPlan));
+        street=0;
+        foreach(var p in life.Pieces)
+        {
+            var k=NativeMeridianStreetLife.Kinds[p.Kind];if(!k.Lit||p.Life==NativeMeridianStreetLife.Life.Dead||p.Life==NativeMeridianStreetLife.Life.Spent)continue;
+            var h=NativeMeridianStreetLife.Local(p,k.Head);float floor=NativeCityBleedDress.FloorBelow(map.blocks,all,new V3(h.x,h.y-.02f,h.z));if(floor<-1e8f)floor=p.At.y;
+            var pc=k.Glow==NativeMeridianStreetLife.Glow.Flood?NativeMeridianStreetLife.Local(p,new V3(0,0,k.Pool*.55f)):h;
+            lamps.Add(NativeMeridianStreetLife.CityLight(k,h,new V3(pc.x,floor+.04f,pc.z),Lin(k.Light,16),Lin(k.Light,8),Lin(k.Light,0)));street++;
+        }
+        bleed=0;
+        foreach(var p in bleedPlan.Pieces)
+        {
+            var K=NativeCityBleedDress.Kinds[p.Kind];if(!K.Lamp||p.Lamp==NativeCityBleedDress.LampState.Dead)continue;var head=NativeCityBleedDress.Local(p,K.Head);
+            float floor=NativeCityBleedDress.FloorBelow(map.blocks,all,new V3(head.x,head.y-.05f,head.z));if(floor<-1e8f)floor=head.y-4.6f;bool ceiling=K.Key.StartsWith("level0.ceiling",StringComparison.Ordinal);
+            float s=ceiling?.8f:1.2f;uint c=p.Light!=0?p.Light:0xFFFFFF;lamps.Add(new NativeCityLamps.Lamp{At=head,Range=Math.Max(5f,Math.Min(10f,(head.y-floor)*1.8f)),R=Lin(c,16)*s,G=Lin(c,8)*s,B=Lin(c,0)*s});bleed++;
+        }
+        var campLights=new NativeCampFx(NativeCamp.Live(seed)).CityLamps();lamps.AddRange(campLights);camp=campLights.Length;
+        return lamps;
+    }
     private static void Pins(string root)
     {
         string R(string f)=>System.IO.File.ReadAllText(System.IO.Path.Combine(root,f));
@@ -125,6 +161,15 @@ internal static class MeridianLampChecks
         Check(up.Contains("bool on=table!=null&&light!=null&&map!=null&&map==tableMap&&!NativeLighting.IntroOwned&&!NativeLighting.StageOwned;")&&up.Contains("else Shader.SetGlobalVector(GridId,Vector4.zero);")&&up.Contains("[DefaultExecutionOrder(1100)]"),
             "the grid lights only the lamps' own map, never a stage or an intro, after every drawer wrote its levels");
         Check(!System.Text.RegularExpressions.Regex.IsMatch(Body(up,"private void LateUpdate()"),@"\bnew (?!Vector4\()"),"the upload allocates nothing per frame");
+        // the street life, the bleed and the camp light the same way (their flat pools gone)
+        var life=R("Assets/ChipArena/Runtime/NativeMeridianStreetLifeDraw.cs");
+        Check(life.Contains("lampBlock=NativeCityLampLight.Add(map.id,lampLights);")&&life.Contains("NativeMeridianStreetLife.CityLight(")&&life.Contains("NativeCityLampLight.Remove(lampBlock);")&&!life.Contains("Meridian street pools")
+            &&life.Contains("if(plan!=null&&Hidden&&lampBlock!=null)for(int j=0;j<lit.Length;j++)lampBlock.Level[j]=0;"),"the street life's lit pieces light through the grid (none while hidden), no pool discs");
+        var bleed=R("Assets/ChipArena/Runtime/NativeCityBleedDraw.cs");
+        Check(bleed.Contains("lampBlock=NativeCityLampLight.Add(map.id,lamps.ToArray());")&&bleed.Contains("lampBlock.Level[j]=Intensity(lampPieces[j],time);")&&!bleed.Contains("floor+.06f")&&bleed.Contains("NativeCityLampLight.Remove(lampBlock);"),"the bleed's lamps light through the grid at their flicker, no pool discs");
+        var camp=R("Assets/ChipArena/Runtime/NativeCampDraw.cs");var campFx=R("Assets/ChipArena/Core/NativeCampFx.cs");
+        Check(camp.Contains("cityLamps=lampMap!=null?NativeCityLampLight.Add(lampMap,fx.CityLamps()):null;")&&camp.Contains("NativeLighting.KitLights(fx.LightPos,fx.LightRgb,fx.LightCount,at,CampSlots);")&&camp.Contains("CampSlots={-1,-1,-1}")
+            &&!campFx.Contains("Pools++"),"the camp's lights light through the grid, its slots marked for the pilots, no pool discs");
         foreach(var f in new[]{"Core/NativeCityLamps.cs","Core/NativeMeridianDressLight.cs","Runtime/NativeCityLampLight.cs","Resources/NativeCityLamps.cginc"})Check(System.IO.File.Exists(System.IO.Path.Combine(root,"Assets/ChipArena",f+".meta")),f+" has its meta");
     }
     private static int Regex(string s,string what){int n=0,i=0;while((i=s.IndexOf(what,i,StringComparison.Ordinal))>=0){n++;i+=what.Length;}return n;}

@@ -14,9 +14,11 @@ namespace ChipArena.UnityConversion
     ///    mount out to its own reach (litter is not drawn 100 m away), at most 500 to a draw; each instance's glow (a sign, a signal, a
     ///    fire, a flare, a flood, a festoon at its state and level: NativeMeridianStreetLife.Level) and tint (graffiti, chalk,
     ///    canvas, banners) set per draw;
-    ///  - the light: under each lit piece near the eye a soft pool on the floor (the floods' long over the plaza), a halo at its head,
-    ///    flames over the fires and the flares; steam rising from the grates. Reduced effects slow every flicker under 3 Hz (the
-    ///    Core's Level) and halve the steam and the flames; the Low tier keeps the pools and drops halos, flames and steam.
+    ///  - the light: every lit piece lights the walls and floors round it through the city's lamp grid (NativeCityLampLight; a flood
+    ///    as a cone down its aim over the plaza, a sign's spill on its wall, a fire's and a flare's glow), on every tier (2026-11-21:
+    ///    a flat pool disc under each read as light laid over the floor, not on it); near the eye a halo at its head, flames over the
+    ///    fires and the flares; steam rising from the grates. Reduced effects slow every flicker under 3 Hz (the Core's Level) and
+    ///    halve the steam and the flames; the Low tier drops halos, flames and steam.
     /// Without the bank (CI, a build without the Drive zip, --ca-no-pack-banks, --ca-no-city-streets) <see cref="Open"/> returns null
     /// and nothing is drawn. Never a collider, a rule or a record. Allocation free per frame once open.
     /// </summary>
@@ -31,13 +33,13 @@ namespace ChipArena.UnityConversion
         public static float ReachOf(NativeMeridianStreetLife.Mount m,bool lit)=>lit?175f:m==NativeMeridianStreetLife.Mount.Floor?85f:m==NativeMeridianStreetLife.Mount.Wall||m==NativeMeridianStreetLife.Mount.Low?110f:150f;
         /// <summary>The Low tier's share of a mount's reach (the overhead pieces go first: the fog ends at 100 m there).</summary>
         public static float LowShare(NativeMeridianStreetLife.Mount m,bool lit)=>lit||m==NativeMeridianStreetLife.Mount.Floor||m==NativeMeridianStreetLife.Mount.Wall||m==NativeMeridianStreetLife.Mount.Low?.7f:.55f;
-        /// <summary>The light's effects' reach (m): pools, halos, flames and steam.</summary>
+        /// <summary>The light's effects' reach (m): halos, flames and steam (the light itself is the grid's, everywhere).</summary>
         public const float FxReach=70f,SteamReach=45f;
 
         private sealed class Kind{public Mesh Near,Far;public bool Casts;public float Reach,Low;}
         private NativeMeridianStreetLife.Plan plan;private Camera eye;private Kind[] kinds;
         private Matrix4x4[] place;private Bounds[] box;private Vector4[] tint;private Vector4[] lightOf;
-        private Material solid,glow,poolMat,haloMat,steamMat;private MaterialPropertyBlock block;
+        private Material solid,glow,haloMat,steamMat;private MaterialPropertyBlock block;
         private readonly Plane[] planes=new Plane[6];
         // the per-frame sort: each visible piece's key (kind x 2 + tier) and its slot, counted then placed
         private int[] visible,keyOf,counts,starts,order;private int visibleCount;
@@ -45,8 +47,9 @@ namespace ChipArena.UnityConversion
         // the lights: each lit piece's head, its floor, its pool's centre and radius (Core kinds' Head and Pool)
         private int[] lit;private Vector3[] heads,poolAt;private float[] poolR;private Color[] lightColour;
         private int[] steamers;
-        private FxMesh pools,halos,steam;
-        private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow"),LiftId=Shader.PropertyToID("_StageLift");
+        private FxMesh halos,steam;
+        // the lit pieces' light on the city's lamp grid (in `lit`'s order)
+        private NativeCityLamps.Lamp[] lampLights;private NativeCityLampLight.Block lampBlock;
         /// <summary>Last frame: pieces drawn, draws, and the effects' quads.</summary>
         public int Drawn{get;private set;}public int Draws{get;private set;}public int FxQuads{get;private set;}
         public NativeMeridianStreetLife.Plan Plan=>plan;
@@ -129,14 +132,21 @@ namespace ChipArena.UnityConversion
                 poolAt[j]=new Vector3(pc.x,floor+.04f,pc.z);poolR[j]=k.Pool;
                 var c=NativeArena.ColorOf((int)k.Light);lightColour[j]=c;
             }
-            var pool=Resources.Load<Shader>("NativeFieldGlow");var halo=Resources.Load<Shader>("NativeGlow");
-            if(pool!=null)
+            var puff=Resources.Load<Shader>("NativeFieldGlow");var halo=Resources.Load<Shader>("NativeGlow");
+            if(puff!=null)
             {
-                poolMat=new Material(pool){name="Meridian street pools",renderQueue=2991};poolMat.SetFloat("_Radial",1.6f);poolMat.SetFloat("_Offset",-2);poolMat.SetFloat("_Cull",0);
-                steamMat=new Material(pool){name="Meridian street steam",renderQueue=3005};steamMat.SetFloat("_Radial",2.2f);steamMat.SetFloat("_Offset",0);steamMat.SetFloat("_Cull",0);
-                pools=new FxMesh("Meridian street pools",lit.Length+4);steam=new FxMesh("Meridian street steam",(steamers.Length+lit.Length)*8+4);
+                steamMat=new Material(puff){name="Meridian street steam",renderQueue=3005};steamMat.SetFloat("_Radial",2.2f);steamMat.SetFloat("_Offset",0);steamMat.SetFloat("_Cull",0);
+                steam=new FxMesh("Meridian street steam",(steamers.Length+lit.Length)*8+4);
             }
             if(halo!=null){haloMat=new Material(halo){name="Meridian street halos"};halos=new FxMesh("Meridian street halos",lit.Length*3+4);}
+            // every lit piece's light on the walls and floors round it (the city's lamp grid): from its head, a flood's down its aim
+            lampLights=new NativeCityLamps.Lamp[lit.Length];
+            for(int j=0;j<lit.Length;j++)
+            {
+                var c=lightColour[j].linear;
+                lampLights[j]=NativeMeridianStreetLife.CityLight(K[plan.Pieces[lit[j]].Kind],new V3(heads[j].x,heads[j].y,heads[j].z),new V3(poolAt[j].x,poolAt[j].y,poolAt[j].z),c.r,c.g,c.b);
+            }
+            lampBlock=NativeCityLampLight.Add(map.id,lampLights);
             Debug.Log(FormattableString.Invariant($"Meridian street life: {n} pieces of {found} kinds, {lit.Length} lit, {steamers.Length} steaming"));
             return true;
         }
@@ -156,6 +166,8 @@ namespace ChipArena.UnityConversion
                 catch(Exception ex){Debug.LogWarning("Meridian street life disabled: "+ex.Message);enabled=false;return;}
                 Debug.Log(FormattableString.Invariant($"Meridian street life planned in {PlanMs:F0} ms on a worker"));
             }
+            // hidden (the DEV walk's L key): its light goes with it
+            if(plan!=null&&Hidden&&lampBlock!=null)for(int j=0;j<lit.Length;j++)lampBlock.Level[j]=0;
             if(plan==null||Hidden)return;var cam=eye!=null?eye:Camera.main;if(cam==null)return;
             var e=cam.transform.position;var tier=NativeAdvancedLighting.Tier;bool low=tier==NativeGraphicsTier.Low,reduced=NativeAdvancedLighting.Reduced;float time=Time.time;
             float scale=low?.7f:1f;GeometryUtility.CalculateFrustumPlanes(cam,planes);
@@ -207,29 +219,23 @@ namespace ChipArena.UnityConversion
         }
 
         // ------------------------------------------------------------------------------------------------------------------
-        // The light's effects: pools on the floor, halos at the heads, flames over the fires and flares, the grates' steam
+        // The light: every lit piece on the walls and floors round it (the city's lamp grid), halos at the heads near the eye, flames
+        // over the fires and flares, the grates' steam
         // ------------------------------------------------------------------------------------------------------------------
         private void Light(Camera cam,Vector3 e,float time,bool low,bool reduced)
         {
-            FxQuads=0;if(pools==null&&halos==null)return;
+            FxQuads=0;
+            // each lit piece's level this frame on the grid (NativeCityLampLight uploads after every drawer)
+            if(lampBlock!=null)for(int j=0;j<lit.Length;j++){var lp=plan.Pieces[lit[j]];lampBlock.Level[j]=NativeMeridianStreetLife.Level(lp.Life==NativeMeridianStreetLife.Life.None?NativeMeridianStreetLife.Life.Steady:lp.Life,lp.Seed,time,reduced);}
+            if(halos==null)return;
             var right=cam.transform.right;var up=cam.transform.up;
-            pools?.Begin();halos?.Begin();steam?.Begin();
+            halos.Begin();steam?.Begin();
             for(int j=0;j<lit.Length;j++)
             {
                 var p=plan.Pieces[lit[j]];float d=Vector3.Distance(heads[j],e);if(d>FxReach*(low?.7f:1f))continue;
                 float level=NativeMeridianStreetLife.Level(p.Life==NativeMeridianStreetLife.Life.None?NativeMeridianStreetLife.Life.Steady:p.Life,p.Seed,time,reduced);if(level<.02f)continue;
-                var c=lightColour[j];var k=NativeMeridianStreetLife.Kinds[p.Kind];float r=poolR[j];
-                if(pools!=null)
-                {
-                    if(k.Glow==NativeMeridianStreetLife.Glow.Flood)
-                    {
-                        // the flood's pool lies long down its aim
-                        var aim=new Vector3(Mathf.Sin(p.Yaw),0,Mathf.Cos(p.Yaw));var side=new Vector3(aim.z,0,-aim.x);
-                        pools.Quad(poolAt[j],side*(r*.55f),aim*r,new Color(c.r,c.g,c.b,.22f*level));
-                    }
-                    else pools.Quad(poolAt[j],new Vector3(r,0,0),new Vector3(0,0,r),new Color(c.r,c.g,c.b,(k.Glow==NativeMeridianStreetLife.Glow.Festoon?.12f:.3f)*level));
-                }
-                if(low||halos==null)continue;
+                var c=lightColour[j];var k=NativeMeridianStreetLife.Kinds[p.Kind];
+                if(low)continue;
                 float s=k.Glow==NativeMeridianStreetLife.Glow.Flood?.9f:k.Glow==NativeMeridianStreetLife.Glow.Sign?.75f:k.Glow==NativeMeridianStreetLife.Glow.Festoon?.35f:k.Glow==NativeMeridianStreetLife.Glow.Signal?.5f:.55f;
                 halos.Quad(heads[j],right*s,up*s,new Color(c.r,c.g,c.b,.45f*level),0);
                 if(k.Glow==NativeMeridianStreetLife.Glow.Fire||k.Glow==NativeMeridianStreetLife.Glow.Flare)Flames(j,p,time,reduced,right,up);
@@ -248,7 +254,6 @@ namespace ChipArena.UnityConversion
                     Plume(heads[j],p.Seed,time,reduced,right,up,new Color(.55f,.28f,.26f,1),.12f,reduced?2:3,2.2f);
                 }
             }
-            if(pools!=null){FxQuads+=pools.Count;pools.Draw(poolMat,e);}
             if(halos!=null){FxQuads+=halos.Count;halos.Draw(haloMat,e);}
             if(steam!=null){FxQuads+=steam.Count;steam.Draw(steamMat,e);}
         }
@@ -307,8 +312,8 @@ namespace ChipArena.UnityConversion
 
         private void OnDestroy()
         {
-            if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);if(poolMat!=null)Destroy(poolMat);if(haloMat!=null)Destroy(haloMat);if(steamMat!=null)Destroy(steamMat);
-            pools?.Release();halos?.Release();steam?.Release();plan=null;
+            if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);if(haloMat!=null)Destroy(haloMat);if(steamMat!=null)Destroy(steamMat);
+            halos?.Release();steam?.Release();plan=null;NativeCityLampLight.Remove(lampBlock);lampBlock=null;
         }
     }
 }
