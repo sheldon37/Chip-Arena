@@ -85,12 +85,11 @@ namespace ChipArena.UnityConversion
                .Dolly(NockFrom-.03f,L(1.0f,1.3f,1.4f),L(.9f,1.35f,1.25f),L(0,1.3f,.1f),L(-.1f,1.45f,.05f),36,33).Focus(0,0,.6f)
                .Orbit(DrawFrom-.1f,Vector3.Zero,-72,-22,2.65f,2.4f,.45f,.62f,new Vector3(0,1.4f,0),new Vector3(0,1.9f,.3f),40,38).Focus(0,0,.35f)
                .Hold(Full-.08f,L(.35f,1.3f,1.25f),L(-.04f,1.66f,.06f),40).Focus(0,0,.75f)
-               // the release (slowed) in profile from the chest's side at the head's height: the string hand flying back past the ear, the bow
-               // arm up, the bolt leaving up along the line (owner 2026-11-21: the low shot from behind under the shoulders read the head and the
-               // arms oddly)
-               .Dolly(Release-.03f,L(-.7f,1.5f,1.81f),L(-.64f,1.52f,1.68f),L(-.02f,1.82f,.02f),L(0,1.9f,.05f),46,44).Focus(0,0,.45f)
-               // the bloom: from beside the archer, up along the bolt to where it blooms and splits (the bolt's line at the release: Planned)
-               .Dolly(3.6f,L(-.5f,1.4f,1.2f),L(-.45f,1.35f,1.1f),L(14.8f,22.3f,8.8f),L(14.8f,21.5f,8.8f),56,54).Focus(0,0,.05f)
+               // the release (slowed) in profile from the chest's side at the head's height, held as the bolt climbs and blooms above: the string
+               // hand flying back past the ear, the bow arm up, the bolt's beam up through the frame, the bloom's light on the archer (owner
+               // 2026-11-21: the low shot from behind under the shoulders read the head and the arms oddly; a shot up at the bloom from under the
+               // canopy showed only leaves)
+               .Dolly(Release-.03f,L(-.7f,1.5f,1.81f),L(-.6f,1.53f,1.6f),L(-.02f,1.82f,.02f),L(.02f,1.94f,.06f),46,43).Focus(0,0,.45f)
                .Spline(RainFrom-.06f,new[]{L(5.6f,11.2f,-7.2f),L(5.0f,10.2f,-6.4f),L(4.5f,9.4f,-5.7f)},L(0,0,1.0f),L(0,.2f,.6f),56,54).Focus(0,0,.1f)
                .Dolly(LowerFrom,L(-2.25f,1.2f,1.2f),L(-2.05f,1.26f,1.42f),L(0,1.2f,.2f),L(0,1.22f,.2f),34,33).Focus(0,0,.45f)
                .Dolly(LowerTo+.2f,L(1.62f,.56f,3.45f),L(1.25f,.62f,2.95f),L(.23f,1.26f,-.1f),L(.23f,1.3f,-.1f),34,30).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
