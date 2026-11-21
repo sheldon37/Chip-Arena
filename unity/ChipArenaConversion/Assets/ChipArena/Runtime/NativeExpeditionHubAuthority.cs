@@ -133,16 +133,20 @@ namespace ChipArena.UnityConversion
             // and entry queue limits, including during a bounded population ramp.
             for(int spawned=0;spawned<ExpeditionHubRules.SpawnBurst&&Minions.Count(m=>m.Hp>0&&m.Pve!=null&&!m.DevMonster)<Pve.Cap;spawned++)
             {
+            bool surprise=Pve.SpawnRandom.Next()<ExpeditionHubRules.SurpriseChance;
             var candidates=new List<(ExpeditionHubZone zone,PveEntry entry,double weight)>();
             foreach(var zone in hubAuthority.Layout.Zones)foreach(int id in zone.Spawns)
             {
-                var entry=Pve.Content.entries.FirstOrDefault(e=>e.e==id);if(entry==null||!WardLandingClear(entry)||EntryQueue(id)>0||entry.kind=="vent"&&VentHazard(id)||entry.kind=="breach"&&!BreachAvailable(entry)||entry!=null&&UnsafeStagePath(Vec(entry.@exit.Position(.9f)),Vec(entry.@exit.Position(.9f))))continue;
-                if(!Pve.Content.adds.Any(a=>(Mutator("hulkamania")?a.id=="hulk":ExpeditionHubRules.Kind(zone.Ring,a.id,state.elapsed))&&NativeWardEntries.Allows(entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)))continue;
+                var entry=Pve.Content.entries.FirstOrDefault(e=>e.e==id);
+                if(entry==null)continue;
                 var at=Vec(entry.@exit.Position(.85f));
-                float nearest=hubLiving.Min(p=>(p.Body.position-at).sqrMagnitude);
-                if(HubInside(at)||Minions.Any(m=>m.Hp>0&&(m.Body.position-at).sqrMagnitude<9)||hubLiving.Any(p=>(p.Body.position-at).sqrMagnitude<144||((p.Body.position-at).sqrMagnitude<324&&!SceneLinecast(p.Body.position,at,WorldMask))))continue;
+                double proximity=LocalSpawnWeight(at,hubLiving,surprise);
+                if(proximity==0||HubInside(at))continue;
+                if(!WardLandingClear(entry)||EntryQueue(id)>0||entry.kind=="vent"&&VentHazard(id)||entry.kind=="breach"&&!BreachAvailable(entry)||UnsafeStagePath(at,at))continue;
+                if(Minions.Any(m=>m.Hp>0&&(m.Body.position-at).sqrMagnitude<9))continue;
+                if(!Pve.Content.adds.Any(a=>(Mutator("hulkamania")?a.id=="hulk":ExpeditionHubRules.Kind(zone.Ring,a.id,state.elapsed))&&NativeWardEntries.Allows(entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)))continue;
                 int nearby=Minions.Count(m=>m.Hp>0&&m.Pve!=null&&(m.Body.position-at).sqrMagnitude<144);
-                double weight=ExpeditionHubRules.SpawnWeight(nearest,nearby);
+                double weight=proximity/(1+nearby);
                 if(weight>0)candidates.Add((zone,entry,weight));
             }
             if(candidates.Count==0)break;

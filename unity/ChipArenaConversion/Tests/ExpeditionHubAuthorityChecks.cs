@@ -69,6 +69,9 @@ internal static class ExpeditionHubAuthorityChecks
         Check(Math.Abs(ExpeditionHubRules.SpawnInterval-.5)<1e-6&&ExpeditionHubRules.SpawnBurst==4,"spawn rate ramps the larger city without unbounded single-tick bursts");
         Check(runtime.Contains("Run.PartySnapshot().members.Count(m=>m.connected&&!m.extracted)")&&runtime.Contains("ExpeditionHubRules.Cap(lobby,hubLiving.Count)"),"split-area city population uses the whole lobby");
         Check(runtime.Contains("Math.Min(8,excess.Length-Pve.Cap)")&&runtime.Contains("SpawnBurst"),"population trims and refill are tick-bounded");
+        Check(ExpeditionHubRules.SpawnWeight(36,0,true)>0&&ExpeditionHubRules.SpawnWeight(35,0,true)==0,"rare spawn still clears six metres");
+        Check(ExpeditionHubRules.SpawnWeight(100,0)==0&&ExpeditionHubRules.SpawnWeight(144,0)>0,"ordinary twelve-metre exclusion");
+        Check(ExpeditionHubRules.SpawnWeight(52*52,0)>0&&ExpeditionHubRules.SpawnWeight(52*52+1,0,true)==0&&ExpeditionHubRules.SpawnWeight(float.PositiveInfinity,0)==0,"hard local range and empty area");
         Check(ExpeditionHubRules.SpawnWeight(143,0)==0&&ExpeditionHubRules.SpawnWeight(3601,0)==0,"spawn window excludes point-blank and remote streets");
         Check(ExpeditionHubRules.SpawnWeight(400,0)>ExpeditionHubRules.SpawnWeight(2500,0)*8,"nearby eligible streets dominate distant slots");
         Check(ExpeditionHubRules.SpawnWeight(400,0)>ExpeditionHubRules.SpawnWeight(400,5)*5,"crowded entrances yield to underpopulated streets");
