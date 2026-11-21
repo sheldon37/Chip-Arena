@@ -1,3 +1,26 @@
+## 2026-11-21 — Claude: release 6: Meridian's lamps light the surfaces round them (integrator)
+Owner: "the light doesn't seem to be on the material properly? (Like this seems to be flat, in the air light)".
+- **Published:** shared and the builder at `019bb497`. Test channel revision `639308417386012753` (build `6a00a90f`, 384.3 MiB).
+- **Merged:** `claude/meridian-lamp-light` `380bccf9` (M3):
+  - the city lamp grid in StageLit, on Meridian only, off during intros and stages;
+  - street lamps that throw their light down;
+  - no pool discs, and fainter, depth-faded beams;
+  - Reduced effects breathe instead of flicker, and DARKNESS puts the street lamps out;
+  - the same for the street life, the bleed and the camp.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `a27f1ec8`;
+  - the full suite at `a27f1ec8` (1,095 groups, exit 0);
+  - the Unity compile;
+  - the build's package validation.
+  - The pin scan flagged 6 strings from the removed pool code (NativeFieldGlow, the street pools); the suite passes with M3's updated checks.
+  - No zip change.
+  - Not run: GPU profiling on the owner's machine, two Windows clients.
+- **Risk:** from a distance the streets read darker than with the old orange discs. `NativeMeridianDress.LampIntensity` raises it if the owner wants.
+- **Since release 5:**
+  - the Editor relaunch after the PC slept, with the scene-backup dialog answered No (the backup is kept in `scratch/editor-recovery-2026-11-20`);
+  - the Editor queue, `F:/Chip Arena Development/.editor-queue`, used through the notes' `editor-queue.md`;
+  - `headgib/common.sh` now holds the lock path in a readonly `EDITOR_LOCK`, so a script that reuses `L` can't leak the lock.
+
 ## 2026-11-21 — Claude (M3): Meridian's lamps light the walls and floors round them, not the air (owner report; presentation only)
 
 Owner (2026-11-20, Crown Hill at night): "the light doesn't seem to be on the material properly? (Like this seems to be flat, in the
