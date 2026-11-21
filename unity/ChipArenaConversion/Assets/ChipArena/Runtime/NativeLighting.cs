@@ -462,6 +462,7 @@ namespace ChipArena.UnityConversion
         // arena-lighting.ts palette, adapted to the built-in Unity renderer: the rig and the defaults each map's look (Apply) then sets.
         public static void Create(Transform parent)
         {
+            bool sceneKey=SceneKeyLight();
             RenderSettings.ambientMode=AmbientMode.Trilight;
             RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;
             RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;
@@ -479,6 +480,39 @@ namespace ChipArena.UnityConversion
             Vector3 Rig(float[] p)=>new Vector3(p[0],p[1],p[2]);
             RenderSettings.sun=moon=Directional("Moon key",Rig(NativeMapLooks.RigKey),0xb2c6ff,.9f,true);
             rim=Directional("Teal rim",Rig(NativeMapLooks.RigRim),0x58aab4,.24f,false);rimFrom=rim.transform.position;rimHome=rim.transform.rotation;
+            if(!sceneKey)ParityKey(parent);
+            DefaultReflection();
+        }
+        // Editor parity (2026-11-21): every look was tuned and approved in the Editor's Play mode, which ran in an Untitled scene, and
+        // that scene's default Directional Light keyed the world: Unity's FFF4D6 at 1.0, turned 50/-30/0, soft shadows, default biases.
+        // The player loads Prototype.unity, which has no light, so the shipped game drew only the weak moon: every night 2-7 times
+        // darker than approved. The rig now carries that key itself, untouched by the looks, stages and intros (as the scene's was);
+        // the quality level still sets its shadows (none on Performance). A scene that brings its own directional light keeps it instead.
+        public const string ParityKeyName="Key light (Editor parity)";
+        public static readonly Color ParityKeyColor=new Color(1f,244f/255f,214f/255f);public const float ParityKeyIntensity=1f;
+        public static readonly Vector3 ParityKeyEuler=new Vector3(50f,-30f,0f);
+        private static Light parityKey;
+        private static bool SceneKeyLight()
+        {
+            foreach(var l in UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None))if(l.type==LightType.Directional&&l.isActiveAndEnabled&&l!=moon&&l!=rim&&l!=parityKey)return true;
+            return false;
+        }
+        private static void ParityKey(Transform parent)
+        {
+            if(parityKey!=null)return;
+            var go=new GameObject(ParityKeyName);go.transform.SetParent(parent,false);go.transform.rotation=Quaternion.Euler(ParityKeyEuler);
+            parityKey=go.AddComponent<Light>();parityKey.type=LightType.Directional;parityKey.color=ParityKeyColor;parityKey.intensity=ParityKeyIntensity;parityKey.shadows=LightShadows.Soft;
+        }
+        /// <summary>The material in Resources whose _Tex is Unity's built-in Default-Skybox-Cubemap (fileID 20200 in unity_builtin_extra).</summary>
+        public const string DefaultReflectionResource="NativeDefaultReflection";
+        // Editor parity (2026-11-21): the scenes have no baked lighting data, so the Editor reflects Unity's default skybox
+        // (Default-Skybox-Cubemap, 128 px) on every surface while a player reflects UnityBlackCube. Both now reflect that cubemap
+        // explicitly (the Editor's look unchanged). A v2 intro's own reflection (IntroOwn) keeps this as the mode it gives back.
+        private static void DefaultReflection()
+        {
+            var cube=Resources.Load<Material>(DefaultReflectionResource)?.GetTexture("_Tex");
+            if(cube==null){Debug.LogWarning("The default reflection is missing: "+DefaultReflectionResource);return;}
+            RenderSettings.defaultReflectionMode=DefaultReflectionMode.Custom;RenderSettings.customReflectionTexture=cube;
         }
     }
     public sealed partial class NativeArena
