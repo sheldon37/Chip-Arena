@@ -1,3 +1,33 @@
+## 2026-11-21 — Claude: releases 8 and 9: batch 2's weapon-intro sounds, slices 2 and 3 (integrator)
+- **Published:** shared and the builder at `bf64a49a`, test channel revision `639308588075279543` (build `f4d8b9b5`, 393.6 MiB).
+  The intermediate release 8b was `2aa83547`, revision `639308548441164362`.
+- **Slice 2:** One Breath, Sundown, Afterimage, Apex and Orrery (98 takes).
+  - Release 8's build stopped at the import for two reasons:
+    - three takes came out short after trimming: `onebreath.crash_01`, `afterimage.name_02` and `sundown.shot_02`;
+    - EffectsAudio reached 21.7 MB, over `NativeSoundKeys.BudgetBytes` (20 MB).
+  - Release 8b (`e481f3eb`) re-split the 95 accepted originals into `intros-b2-2026-11-21-v4a/v4b`. It also raised the budget
+    to 26 MB, enough for all three slices (about 23.3 MB), and re-pinned `HazardKitChecks`.
+- **Slice 3:** Faultline, Hold the Line, Severed Dawn and Still Rain (88 takes).
+  - Release 9's build stopped on `faultline.name_02` and `stillrain.still_02`.
+  - Release 9b (`1144b001`) re-split the 86 accepted takes into `v6a/v6b`.
+- **Batch 2's sounds in all:** 268 of 282 requested takes are live.
+  - With no take, these play their bank or built-in fallbacks: `brass.hiss`, `brass.flood`, `fire.slam`, `lightfall.release`
+    and `onebreath.crash`.
+  - With one take of two: `fire.crack`, `storm.call`, `afterimage.name`, `sundown.shot`, `faultline.name` and
+    `stillrain.still`.
+  - Retrying any of them needs a new manifest batch, since the b2 manifest's SHA is pinned by its jobs. The cause is
+    `targetSeconds.min` set high for short sounds.
+- **The integrator's tools:** `integrator-tools/int/b2-jobs.py` (a slice's jobs, split by take count and checked against the
+  cap) and `resplit.py` (accepted originals into new jobs, no regeneration).
+- **Checks:**
+  - the full suite at each release (1,099 groups, exit 0);
+  - the Unity compile;
+  - the builder's sound import and package validation;
+  - dry-run imports of each re-split on the builder's base.
+  - Not run: the sounds by ear.
+- **For Astra:** `Tests/test_effects_audio.py` still pins the 18 MB budget, which has been stale since 20 MB. It is among
+  this PC's known Python test failures.
+
 ## 2026-11-21 — Claude: release 7: intros v2 batch 2, the fifteen weapon intros (integrator)
 Owner: "Yes, we can do them in batches if this will improve the quality (Hopefully dramatically)". The owner also flagged the
 machine-gun arm and the bow ("Arm doing weird things on machine gun intro again, and check that bow one again as well").
