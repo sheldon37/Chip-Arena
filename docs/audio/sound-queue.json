@@ -556,7 +556,7 @@
       "maxSeconds": 118.2
     },
     {
-      "id": "intros-b2-2026-11-21-v3a",
+      "id": "intros-b2-2026-11-21-v4a",
       "approved": true,
       "manifest": "docs/audio/sound-requests-intros-b2.json",
       "manifestSha256": "1248163e128b7de85b468f170cdf0a1d231bedf2b978719a86bc2f7616689bcb",
@@ -579,17 +579,18 @@
         "intro2.onebreath.fall",
         "intro2.onebreath.case",
         "intro2.onebreath.hiss",
-        "intro2.onebreath.crash",
-        "intro2.onebreath.rise"
+        "intro2.onebreath.rise",
+        "intro2.afterimage.name",
+        "intro2.sundown.shot"
       ],
       "variants": [
         1
       ],
-      "maxRequests": 20,
-      "maxSeconds": 38.1
+      "maxRequests": 21,
+      "maxSeconds": 39.2
     },
     {
-      "id": "intros-b2-2026-11-21-v3b",
+      "id": "intros-b2-2026-11-21-v4b",
       "approved": true,
       "manifest": "docs/audio/sound-requests-intros-b2.json",
       "manifestSha256": "1248163e128b7de85b468f170cdf0a1d231bedf2b978719a86bc2f7616689bcb",
@@ -611,7 +612,6 @@
         "intro2.afterimage.lanterns",
         "intro2.afterimage.cut2",
         "intro2.afterimage.join",
-        "intro2.afterimage.name",
         "intro2.afterimage.cross",
         "intro2.orrery.dusk",
         "intro2.orrery.wind",
@@ -627,7 +627,6 @@
         "intro2.sundown.step",
         "intro2.sundown.toll",
         "intro2.sundown.collapse",
-        "intro2.sundown.shot",
         "intro2.sundown.ring",
         "intro2.sundown.bell",
         "intro2.onebreath.heart",
@@ -638,8 +637,8 @@
         1,
         2
       ],
-      "maxRequests": 78,
-      "maxSeconds": 142.0
+      "maxRequests": 74,
+      "maxSeconds": 134.8
     }
   ]
 }
