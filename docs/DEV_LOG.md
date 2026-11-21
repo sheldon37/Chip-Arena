@@ -1,3 +1,21 @@
+## 2026-11-21 — Claude (I3): the melee intros pass the new arm check (owner: a chicken-winged arm in Brass Storm; `--intro-arms` through each intro's own shot cameras)
+
+**Branch:** `claude/intro-melee` (code `4926b080`), `claude/intro-arm-checks` `f127b094` merged in; pushed, not merged, not released.
+
+**What changed:** three of the seven failed the check (an arm through the head, or over 15% of the face covered); all seven pass now.
+- **Apex:** the fangs spread wide at shoulder height through the dive (they were raised before the face; both arms went through the head), with a mid-dive key turning them out level so the forearms keep their twist.
+- **Still Rain:** shot 5 (time back, wide on the stalks) from higher and further to the pilot's left, looking down onto it, so the kirioroshi's raise no longer crosses the face and the cut sits in the frame.
+- **Faultline:** the grip at the leap's top further right, and the leap shot from chest height rather than the floor, so the left arm stays off the face.
+`Tests/IntroArmChecks.cs` and its Known list are unchanged (the integrator removes the three ids).
+
+**Checks:** full CoreTests the relgen5 way on `4926b080`: exit 0, 1098 PASS; in it the arm check passes all seven (the arms at least 1.15 of the head's reach + 3 cm out; at most 11% of the face, Faultline; 6% Still Rain; 0% Apex), only I5's lightning still listed as known; `--intro-arms` per id passes for each of the seven; `--intro-limits` 0 for all seven; `--intro-melee` 1258; `--intros-v2` 12344 (21 intros); `--intro-pack` 132; Unity compile gate PASS; `compile_sound_requests.py --batch b2 --check` up to date (160 keys with I4's and I5's), manifest tests 7 OK; `git diff --check origin/claude/sleepy-ritchie-g8ruhv` clean.
+
+**Editor:** hold 10 (02:46-02:53: Still Rain, Apex, Faultline at High and Low on `018df53e`) and hold 11 (02:57-03:00: Still Rain again on `4926b080`, its shot 5 reframed to hold the pilot after hold 10 showed it at the frame's bottom edge), through the queue; the Editor back on `9319026b` after each, stage and motion banks as released.
+
+**Clips:** remade for the three in `F:/Chip Arena Development/scratch/intro-melee/clips/b2/` (`katana-`, `fangs-`, `greatsword-` `high.mp4`, `old-vs-new.mp4`, `low-strip.jpg`, `side-3q.jpg`, `sheet.jpg`); the High frames reviewed through the shot cameras at the fixed beats.
+
+**Animation impact:** none (intro presentation only).
+
 ## 2026-11-21 — Claude (I4): arm checks for every v2 intro: none through the head, none across the face (tests only)
 The coordinator, after the ranged arm fixes: generalise the two weapon-agnostic arm checks to every registered v2 intro.
 - **Branch/base:** `claude/intro-arm-checks` from shared `57110fe9`, with these merged in:
