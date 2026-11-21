@@ -341,6 +341,10 @@ namespace ChipArena.UnityConversion
             TwoHands=both;
         }
         private const int PoleSamples=24;private const float PoleSoft=.35f;
+        /// <summary>How much of the hand's roll the keyed forearm carries (rad): the drawn forearm keeps the keyed one's twist only within
+        /// 60 degrees (IntroPoseChecks' mapping: the binding swings and seats the drawn arm and fist its own way), so at most 45 here and the
+        /// rest in the wrist (within its 50), the elbow's place carrying the roll first.</summary>
+        private const float ForearmCarry=45*(float)Math.PI/180;
         private readonly Vector3[] poleTry=new Vector3[PoleSamples];private readonly float[] poleCost=new float[PoleSamples];
         /// <summary>One solve of the hold for elbow pole `pole` (chest frame): the elbow, then the hand straight along its forearm with the
         /// weapon's axis `z` and its roll, then the roll the elbow left carried by the forearm.</summary>
@@ -370,7 +374,7 @@ namespace ChipArena.UnityConversion
                 var y=-(fore-z*Vector3.Dot(fore,z));if(y.LengthSquared()<1e-6f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-6f)y=Vector3.UnitZ;}
                 y=Vector3.Normalize(y);hand=Quaternion.Normalize(CapturedRig.Basis(Vector3.Cross(y,z),y,z)*HandNatural);
             }
-            CapturedRig.Arm(pose,left,w,hand,pole);NativeIntroGrip.Forearm(pose,left,HandNatural);pose.World();
+            CapturedRig.Arm(pose,left,w,hand,pole);NativeIntroGrip.Forearm(pose,left,HandNatural,ForearmCarry);pose.World();
         }
         /// <summary>What a solved hold costs the body (the pose-craft limits as soft walls, in their own degrees): the forearm's whole roll past
         /// 70, the upper arm's twist past 80, the wrist's bend past 55, the elbow inside the torso, and the elbow's way off the rest pole.</summary>

@@ -62,18 +62,18 @@ namespace ChipArena.UnityConversion
             k.Key(Total,NativeIntroPoses.HeroWide()).Root(0,.88f,0,Facing).Planted(1).Drop(-.16f).J(B,.14f).J(Sp,.04f).J(C,0,.04f,0).J(Hd,-.08f,.04f,0);Keys=k;
             // ---- the fangs' ways (each hand's grip and its blade, in the keyed chest's frame) ----
             RightFang.InChest().Key(0,V(-.2f,-.33f,.32f),V(-.22f,-.7f,.68f)).Key(CoilAt-.2f,V(-.2f,-.32f,.32f),V(-.22f,-.69f,.69f))
-                .Key(LeapAt-.06f,V(-.4f,.02f,.02f),V(-.3f,.51f,.81f))
+                .Key(LeapAt-.06f,V(-.46f,0,.08f),V(-.3f,.51f,.81f))
                 .Key(LeapAt+.12f,V(-.2f,.15f,.35f),V(0,.69f,.72f)).Pass()
-                .Key(ApexAt,V(-.2f,.42f,.25f),V(-.53f,.51f,.68f)).Pass()
+                .Key(ApexAt,V(-.3f,.38f,.3f),V(-.74f,.4f,.54f)).Pass()
                 .Key(LandAt-.1f,V(-.2f,.4f,.3f),V(0,-.71f,.71f))
                 .Key(TouchAt+.02f,V(-.22f,-.15f,.36f),V(-.41f,-.65f,.65f))
                 .Key(RiseAt+.15f,V(-.42f,-.25f,.2f),V(-.35f,-.5f,.8f))
                 .Key(StandAt+.5f,V(-.4f,-.3f,.18f),V(-.25f,-.45f,.86f))
                 .Key(Total,V(-.4f,-.3f,.18f),V(-.25f,-.45f,.86f));
             LeftFang.InChest().Key(0,V(.38f,.02f,.04f),V(.3f,.51f,.81f)).Key(CoilAt-.2f,V(.38f,.03f,.04f),V(.3f,.52f,.8f))
-                .Key(LeapAt-.06f,V(.4f,.02f,.02f),V(.3f,.51f,.81f))
+                .Key(LeapAt-.06f,V(.46f,0,.08f),V(.3f,.51f,.81f))
                 .Key(LeapAt+.12f,V(.2f,.15f,.35f),V(0,.69f,.72f)).Pass()
-                .Key(ApexAt,V(.2f,.42f,.25f),V(.53f,.51f,.68f)).Pass()
+                .Key(ApexAt,V(.3f,.38f,.3f),V(.74f,.4f,.54f)).Pass()
                 .Key(LandAt-.1f,V(.2f,.4f,.3f),V(0,-.71f,.71f))
                 .Key(TouchAt+.02f,V(.22f,-.15f,.36f),V(.41f,-.65f,.65f))
                 .Key(RiseAt+.15f,V(.42f,-.25f,.2f),V(.35f,-.5f,.8f))
