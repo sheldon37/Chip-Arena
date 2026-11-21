@@ -19,6 +19,9 @@ namespace ChipArena.UnityConversion
         {
             if(e.kind=="breach")return(NativeBreach.Knock,NativeBreach.Knock+NativeBreach.Through);
             if(Drop(e))return(0,NativeHordeDrop.Duration(NativeHordeDrop.HeightOf(e,kind=="hulk"?NativeHordeDrop.Hulk:NativeHordeDrop.Brute),kind=="hulk"?NativeHordeDrop.Hulk:NativeHordeDrop.Brute));
+            // A door or cell with no opening (its from is its exit) is an emergence from the floor (Core/NativeHordeEmerge): the torso
+            // out (ExposedAt = WalkAt) at PopTorso, risen at PopSpan, queued or not (2026-11-21; was walk .6/0, 1.8/1.2 s).
+            if(NativeHordeEmerge.PopIn(e)&&!NativeHordeEmerge.OwnEntrance(kind))return(NativeHordeEmerge.PopTorso,NativeHordeEmerge.PopSpan);
             return NativeEntryRules.Timeline(e.kind,first);
         }
         public static void Validate(NativePveContent data,ContentMap map)

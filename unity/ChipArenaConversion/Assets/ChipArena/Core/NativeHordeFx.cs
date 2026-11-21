@@ -190,26 +190,8 @@ namespace ChipArena.UnityConversion
             length=radius*(.45f+.5f*Hash(seed,i,26))*Sm(since/.12f);alpha=.85f*(1-Sm((since-.9f)/.7f));return true;
         }
 
-        // ---- the brute's jump-down (Core/NativeHordeDrop) ----
-        /// <summary>The landing spot's telegraph `age` s after SpawnAt (`land` the touchdown age): the ring's radius (m, closing in to
-        /// the slam's) and opacity, and the ink tear's size over the spot at the drop height; false once it has landed.</summary>
-        public static bool DropMark(float age,float land,out float radius,out float alpha,out float tear)
-        {
-            radius=alpha=tear=0;if(age<0||age>land+.02f)return false;float u=Clamp01(age/Math.Max(.1f,land));
-            radius=NativeHordeDrop.SlamRadius*(1.35f-.35f*u*u);alpha=(.25f+.55f*u)*Sm(age/.15f)*(.85f+.15f*(float)Math.Sin(age*24));
-            tear=Sm(age/.25f)*(1-Sm((age-(land-.35f))/.35f));return true;
-        }
-        /// <summary>The landing slam's ring `since` s after touchdown: radius (m), width share, opacity; false when done.</summary>
-        public static bool LandWave(float since,out float radius,out float inner,out float alpha)
-        {
-            radius=inner=alpha=0;if(since<0||since>.6f)return false;float u=since/.6f;
-            radius=.4f+(NativeHordeDrop.SlamRadius+.6f)*(1-(1-u)*(1-u)*(1-u));inner=.7f+.22f*u;alpha=.9f*(1-u)*(1-u);return true;
-        }
-        /// <summary>Debris piece i of the landing (a smaller throw than the smash's).</summary>
-        public static bool LandDebris(uint seed,int i,float since,out Vector3 offset,out float size,out float spin,out float alpha)
-        {
-            bool ok=Debris(seed^0x51ed,i,since,out offset,out size,out spin,out alpha);offset*=.8f;size*=.85f;return ok;
-        }
+        // (The brute's jump-down marks, the landing spot's ring and the landing slam's wave and debris, went with the drop-in, owner
+        // 2026-11-21: Core/NativeHordeEmerge draws the emergence that replaced it.)
 
         // ---- camera shake near a slam (position offset and a short pitch kick; Settings · camera shake gates it) ----
         public const int ShakeSlots=6;

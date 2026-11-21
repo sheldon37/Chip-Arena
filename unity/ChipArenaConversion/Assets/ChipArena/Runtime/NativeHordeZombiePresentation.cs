@@ -3,16 +3,15 @@ using NVector=System.Numerics.Vector3;
 
 namespace ChipArena.UnityConversion
 {
-    // The Siren zombies' entrance and slam effects (owner 2026-10-12: "Brutes can be big muscle versions, that knockbacks and
-    // slam. For now, we will have them enter from the middle of the map by jumping down and creating a small slam effect on
-    // their landing"; 2026-10-13, the Hulk: "huge knockback ... The jump in too, shaking the ground and a even bigger stage effect
-    // when landing"). Presentation only, from what host, guests and the killcam all hold:
-    //  - The heavy kinds' jump-down (Core/NativeHordeDrop on the kind's profile, an add whose replicated entry is a map entry of
-    //    kind "drop"): the landing spot's ink ring closing in, the ink tear above it the add leaps out of, and at touchdown the
-    //    slam: a shockwave ring, cracks, thrown debris, a dust ring and an ink splash, an existing-bank thud and a camera shake
-    //    for a pilot near it. The Hulk's warning is wider and longer and rumbles the ground; its landing craters the floor,
-    //    throws a wall of dust, cracks the floor far out, jolts the props near it (drawn jolted, presentation only: their colliders
-    //    never move) and shakes the camera hard and long, falling off with distance. Map data places the drop, never this file.
+    // The Siren zombies' emergence and slam effects (owner 2026-10-12: "Brutes can be big muscle versions, that knockbacks and
+    // slam"; 2026-11-21: "rework zombie spawn animation ... Can we animate them digging out of the ground? Or have them laying
+    // there, and just rising? The hit indicator from the old drop in effect is massive and inaccurate, so I want to remove that
+    // drop in animation entirely"). Presentation only, from what host, guests and the killcam all hold:
+    //  - The emergence (Core/NativeHordeEmerge, an add whose replicated entry emerges: a drop entry, a ceiling vent, a door with
+    //    no opening), on its entry's clock: the ground cracking and bulging a beat before, then the dig-out's broken ground
+    //    (plates thrown aside, clods, toon dust, grit, the hole) or the lie-and-rise's stain (NativeZombieEmergeDraw), a heavy
+    //    kind's bigger with a shake at the break and a scar that stays a while. No ring, no ink tear, no slam: the drop-in's are
+    //    gone (and the rules' landing slam with them).
     //  - The smashes: dust thrown round the authority's disc and cracks run out of it at the strike, and a shake for pilots near
     //    it; a pilot inside the disc (whom the authority knocks back) also gets a kick of the view up and back, so the shove is
     //    felt (the Hulk's rolled and bigger). Settings · camera shake gates all of them (Reduced effects halves them).
@@ -28,8 +27,8 @@ namespace ChipArena.UnityConversion
     // Fixed pools: no allocation per frame.
     public sealed partial class ArenaPresentation
     {
-        private struct HordeDropDraw{public int Id,Kind;public Vector3 Land;public float Age,Span,Height;public uint Seed;}
-        private readonly HordeDropDraw[] hordeDrops=new HordeDropDraw[8];private int hordeDropCount;
+        private struct HordeEmergeRec{public bool Live;public int Id,Kind;public Vector3 At;public float SpawnAt,Scale;public NativeHordeEmerge.Marks Marks;public NativeHordeEmerge.Style Style;public uint Seed;}
+        private readonly HordeEmergeRec[] hordeEmerges=new HordeEmergeRec[48];
         private struct HordeLanding{public bool Live,Heavy;public int Id;public Vector3 At;public float Born,Radius;public uint Seed;public NativeZombieFx.Impact Profile;public int Ink;}
         private readonly HordeLanding[] hordeLandings=new HordeLanding[16];
         private NativeZombieFxDraw zombieFx;
@@ -42,19 +41,31 @@ namespace ChipArena.UnityConversion
         private readonly HordeJolt[] hordeJolts=new HordeJolt[24];
         public const float JoltSeconds=.75f;
 
-        /// <summary>HordeKindAdd and the gallery: one dropping add this frame (its touchdown spot, the entrance's age and span).</summary>
-        private void HordeDropJob(int id,int kind,Vector3 land,float yaw,float height,float age,float span,uint seed)
+        /// <summary>HordeKindAdd and the galleries: one emerging add this frame (its spot on the floor, its replicated SpawnAt and
+        /// marks): its ground effects are remembered by the add's id and SpawnAt (so its scar stays after it has risen) and a heavy
+        /// kind's breaking-through shakes the ground once (the brute's a little, the Hulk's hard, falling off with distance).</summary>
+        private void HordeEmergeJob(int id,int kind,Vector3 at,float spawnAt,in NativeHordeEmerge.Marks marks,NativeHordeEmerge.Style style,uint seed,float scale)
         {
-            var p=NativeHordeDrop.Profile(kind);
-            if(hordeDropCount<hordeDrops.Length)hordeDrops[hordeDropCount++]=new HordeDropDraw{Id=id,Kind=kind,Land=land,Age=age,Span=span,Height=height,Seed=seed};
-            // The Hulk's warning rumbles the ground under the spot as it builds.
-            float rumble=NativeHordeDrop.Rumble(age,span,height,p);if(rumble>0)NativeHordeFx.AddShake(hordeShakes,ToN(land),hordeClock-(age%.3f),.018f*rumble,p.ShakeRange*.6f,0,seed^(uint)(int)(age/.3f),.32f,0);
-            // Touchdown (once per drop): the slam's effects, the shake and the cue run on from here.
-            float landAge=span-p.Recover;if(age<landAge||age>landAge+.6f)return;float born=hordeClock-(age-landAge);
-            for(int i=0;i<hordeLandings.Length;i++)if(hordeLandings[i].Live&&hordeLandings[i].Id==id&&Mathf.Abs(hordeLandings[i].Born-born)<.1f)return;
-            HordeImpactAt(id,land,born,seed,NativeZombieFx.Landing(p),NativeHordeKinds.SeamOf(p.Heavy?NativeHordeKinds.Hulk:NativeHordeKinds.Brute));
-            NativeHordeFx.AddShake(hordeShakes,ToN(land),born,p.ShakePeak,p.ShakeRange,p.Heavy&&hordeLocalKnown&&Vector3.Distance(hordeLocalAt,land)<p.SlamRadius?p.ShakeKick:0,seed,p.Heavy?1.3f:NativeHordeFx.ShakeSeconds,p.Heavy?3:0);
-            if(p.Heavy)HordeJoltProps(land,p.SlamRadius*1.6f,born,seed);
+            int o=-1;
+            for(int i=0;i<hordeEmerges.Length;i++){ref var r=ref hordeEmerges[i];if(r.Live&&r.Id==id&&Mathf.Abs(r.SpawnAt-spawnAt)<.05f){r.At=at;r.Marks=marks;r.Style=style;r.Kind=kind;r.Scale=scale;o=i;break;}}
+            if(o<0)
+            {
+                for(int i=0;i<hordeEmerges.Length;i++){if(!hordeEmerges[i].Live){o=i;break;}if(o<0||hordeEmerges[i].SpawnAt<hordeEmerges[o].SpawnAt)o=i;}
+                hordeEmerges[o]=new HordeEmergeRec{Live=true,Id=id,Kind=kind,At=at,SpawnAt=spawnAt,Scale=scale,Marks=marks,Style=style,Seed=seed};
+            }
+            if(style!=NativeHordeEmerge.Style.Dig)return;var look=NativeHordeEmerge.LookOf(kind);if(!(look.Shake>0))return;
+            // The heavy kinds' break and haul shake the ground near them (Settings · camera shake gates it; Reduced effects halves it).
+            float range=kind==NativeHordeKinds.Hulk?26:12;
+            for(int b=0;b<2;b++){float born=spawnAt+(b==0?marks.Break:marks.Torso-.15f);if(hordeClock>=born&&hordeClock-born<.4f)NativeHordeFx.AddShake(hordeShakes,ToN(at),born,look.Shake*(b==0?1:.6f),range,0,seed^(uint)(b*7919),kind==NativeHordeKinds.Hulk?.9f:NativeHordeFx.ShakeSeconds,0);}
+        }
+        /// <summary>The emergence's style for an add (Core NativeHordeEmerge.Choose: open ground digs out; inside, under a ceiling vent
+        /// or in the bleed most lie and rise; the heavy kinds dig), picked once per add and SpawnAt from facts every peer shares.</summary>
+        private NativeHordeEmerge.Style HordeEmergeStyle(NativeArena arena,HordeKindState s,int kind,PveEntry e,Vector3 spot,uint seed,float spawnAt)
+        {
+            if(s.EmergeStyle>=0&&s.EmergeFor==spawnAt)return (NativeHordeEmerge.Style)s.EmergeStyle;
+            bool interior=!NativeHordeEmerge.Outdoor(arena?.MapId)||e?.surface=="ceiling",bleed=false;var theme=NativeMeridianDress.ThemeAt;
+            if(theme!=null)bleed=theme(new V3(spot.x,spot.y,spot.z))!=null;
+            var style=NativeHordeEmerge.Choose(interior,bleed,NativeHordeEmerge.Heavy(kind),seed);s.EmergeStyle=(int)style;s.EmergeFor=spawnAt;return style;
         }
         /// <summary>An impact (a smash's strike, a landing, a crash) at `at` on the floor, born at `born`: kept where it struck until
         /// its marks are gone; the same one twice (an add's id and its birth) is ignored, so the first sight fixes its place.</summary>
@@ -123,41 +134,22 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        /// <summary>DevEffects (from DrawHordeKindFx): the drops' telegraphs and the landings' slams.</summary>
-        private void DrawHordeDrops(NativeFxDraw draw,float now,Vector3 right,Vector3 up,bool low)
+        /// <summary>DevEffects (from DrawHordeKindFx): the emergences' ground and the impacts.</summary>
+        private void DrawHordeEmerges(NativeFxDraw draw,float now,Vector3 right,Vector3 up,bool low)
         {
-            var violet=NativeArena.ColorOf(NativeMinionFx.Violet);
-            for(int i=0;i<hordeDropCount;i++)
-            {
-                var d=hordeDrops[i];var p=NativeHordeDrop.Profile(d.Kind);var ink=NativeArena.ColorOf(NativeHordeKinds.SeamOf(d.Kind));float landAge=d.Span-p.Recover,k=p.SlamRadius/NativeHordeDrop.SlamRadius;
-                if(NativeHordeFx.DropMark(d.Age,landAge,out float r,out float a,out float tear))
-                {
-                    var c=d.Land+Vector3.up*.015f;r*=k;draw.Ring(draw.Effects,c,r-.14f*k,r,Alpha(ink,a),NativeFxDraw.Authored+NativeFxDraw.Additive);
-                    draw.Ring(draw.Effects,c-Vector3.up*.004f,0,r*.82f,new Color(.02f,.01f,.03f,.45f*a),NativeFxDraw.Authored);
-                    // The Hulk's: an inner ring pulsing in, cracks creeping out of the spot as the ground gives.
-                    if(p.Heavy){float pulse=Mathf.Repeat(d.Age*1.6f,1);draw.Ring(draw.Effects,c+Vector3.up*.002f,r*(1-pulse)*.9f,r*(1-pulse)*.9f+.1f,Alpha(ink,a*(1-pulse)),NativeFxDraw.Authored+NativeFxDraw.Additive);
-                        HordeHeavyCracks(draw,c,Mathf.Min(d.Age,landAge)*.5f,d.Seed^0x2b,p.SlamRadius*.6f*Mathf.Clamp01(d.Age/Mathf.Max(.1f,landAge)),99,ink);}
-                    // The ink tear it leaps out of, over the spot at the drop's height.
-                    if(tear>.01f){var top=d.Land+Vector3.up*(d.Height+1.3f*k);draw.Sprite(draw.Effects,top,right,up,2.2f*k*tear,Alpha(violet,.55f*tear),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Sprite(draw.Effects,top,right,up,1.5f*k*tear,new Color(.01f,0,.02f,.85f*tear),NativeFxDraw.Authored);}
-                }
-            }
-            hordeDropCount=0;
-            // The impacts: the landings, the smashes and the crashes, each where it struck, on its own profile (NativeZombieFxDraw).
             var z=zombieFx;
+            // The emergences (NativeZombieEmergeDraw): each on its add's replicated clock, kept until its scar or stain has gone.
+            for(int i=0;i<hordeEmerges.Length;i++)
+            {
+                ref var r=ref hordeEmerges[i];if(!r.Live)continue;float age=now-r.SpawnAt;var look=NativeHordeEmerge.LookOf(r.Kind);bool rise=r.Style==NativeHordeEmerge.Style.Rise;
+                if(age>NativeHordeEmerge.Life(r.Marks,look,rise)||age<-5){r.Live=false;continue;}
+                if(z!=null&&z.Within(Vector3.Distance(z.Eye,r.At),look.Heavy))z.Emerge(r.At,age,r.Marks,r.Style,look,r.Scale,r.Seed);
+            }
+            // The impacts: the smashes, a Rigger's landing and a Hulk's crash, each where it struck, on its own profile (NativeZombieFxDraw).
             for(int i=0;i<hordeLandings.Length;i++)
             {
                 var l=hordeLandings[i];if(!l.Live)continue;float since=now-l.Born,stay=NativeZombieFx.Life(l.Profile);if(since<-.05f||since>stay){if(since>stay)hordeLandings[i].Live=false;continue;}
                 if(z!=null&&z.Within(Vector3.Distance(z.Eye,l.At),l.Heavy))z.Impact(l.At+Vector3.up*.012f,since,l.Seed,l.Profile,l.Ink);
-            }
-        }
-        /// <summary>Long cracks run out of a heavy impact to `radius`, staying `stay` s (the seam's light in them at first).</summary>
-        private void HordeHeavyCracks(NativeFxDraw draw,Vector3 c,float since,uint seed,float radius,float stay,Color seam)
-        {
-            for(int k=0;k<NativeHordeFx.BigCracks;k++)if(NativeHordeFx.BigCrack(seed,k,since,radius,stay,out float ang,out float len,out float ca))
-            {
-                var dir=new Vector3(Mathf.Cos(ang),0,Mathf.Sin(ang));var side=new Vector3(-dir.z,0,dir.x)*.045f;var p0=c+dir*.4f+Vector3.up*.005f;var bend=new Vector3(-dir.z,0,dir.x)*len*.12f*(k%2==0?1:-1);var mid=p0+dir*len*.55f+bend;var p1=p0+dir*len;
-                draw.Quad(draw.Effects,p0-side,mid-side*.6f,mid+side*.6f,p0+side,new Color(.015f,.01f,.02f,ca),NativeFxDraw.Authored);draw.Quad(draw.Effects,mid-side*.6f,p1-side*.1f,p1+side*.1f,mid+side*.6f,new Color(.015f,.01f,.02f,ca),NativeFxDraw.Authored);
-                if(since<.8f)draw.Quad(draw.Effects,p0-side*.4f,mid-side*.25f,mid+side*.25f,p0+side*.4f,Alpha(seam,ca*(1-since/.8f)),NativeFxDraw.Authored+NativeFxDraw.Additive);
             }
         }
         /// <summary>The shove a Hulk's smash gives the pilots in its disc (they fly; the authority throws them): a burst at their feet
@@ -183,10 +175,10 @@ namespace ChipArena.UnityConversion
                 if(z!=null&&z.Within(Vector3.Distance(z.Eye,s.At),true))z.StompCracks(s.At,since,s.Seed);
             }
         }
-        /// <summary>A new arena or a rewind: the drops, landings, shakes and jolts in flight are forgotten (the props given back).</summary>
+        /// <summary>A new arena or a rewind: the emergences, landings, shakes and jolts in flight are forgotten (the props given back).</summary>
         private void ClearHordeZombieFx()
         {
-            hordeDropCount=0;for(int i=0;i<hordeLandings.Length;i++)hordeLandings[i].Live=false;for(int i=0;i<hordeShakes.Length;i++)hordeShakes[i].Live=false;for(int i=0;i<hordeStomps.Length;i++)hordeStomps[i].Live=false;
+            for(int i=0;i<hordeEmerges.Length;i++)hordeEmerges[i].Live=false;for(int i=0;i<hordeLandings.Length;i++)hordeLandings[i].Live=false;for(int i=0;i<hordeShakes.Length;i++)hordeShakes[i].Live=false;for(int i=0;i<hordeStomps.Length;i++)hordeStomps[i].Live=false;
             for(int i=0;i<hordeJolts.Length;i++){if(hordeJolts[i].Live&&hordeJolts[i].Renderer!=null)hordeJolts[i].Renderer.enabled=true;hordeJolts[i]=default;}
         }
     }

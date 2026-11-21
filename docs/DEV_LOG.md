@@ -1,3 +1,41 @@
+## 2026-11-21 — Claude (Z1): zombies emerge from the floor; the drop-in removed (owner: "Can we animate them digging out of the ground? Or have them laying there, and just rising? ... I want to remove that drop in animation entirely")
+- **Branch:** `claude/zombie-emerge` from shared `89be9868` (pushed, not merged). Doc: `docs/ZOMBIE-EMERGE.md`.
+- **Spawn paths:** drop entries (Ward Zero, `exp-city`, Meridian's roof hatches for every kind), ceiling vents and doors with no
+  opening (Meridian's street and hub spawns) used the drop-in or popped in. Doors with an opening, floor/wall vents and breaches
+  keep theirs; so do boss summons, the Rigger's hang, the Backrooms entities and DEV monsters.
+- **Now:** those three emerge on their entry's own replicated clock (no wire field). Open ground digs out (cracks and a bulge, a
+  hand, the other, head and shoulders, the haul, a knee, the pack's crawl-to-stand); inside, under a ceiling vent and in the bleed
+  most lie face down in a stain and get up; the brute and the Hulk dig out bigger, with a shake and a scar (24/40 s).
+- **Rules (for Astra; the owner's word covers the slam):** `PveDropSlam`, `WardLandingSlam`, `StepPveDrop`, the `minion-drop`
+  event and `NativeHordeDropRules.Touch/Damage/DamageCentre/DamageRim/Impulse/AddImpulse` removed (no landing damage 10-5, 12-5,
+  Hulk 25-10, no 380/400/900 knockback, no add shove). Every entering add is held in `WardEntryPose` (a dropping brute no longer
+  turns physical, ticks DoTs or is shoved in its .9 s recovery). An emerging add is a height under the floor (collider off,
+  `EmergeHeld` in `CanHit`/`Enemy`) until ExposedAt (the old LandAt), then its capsule rises on `NativeHordeEmerge.Sink` to
+  stand at ActiveAt. Pop-in doors: exposed at 1.0 s (was .6, or 0 queued), active at 1.8 s queued or not (was 1.2 queued);
+  lock-on and melee targeting open at ExposedAt for them.
+- **Animation impact:** hit timing, damage, cooldowns, attacks and movement unchanged after ActiveAt; nothing struck while it
+  emerges; no hitbox under the floor, then the capsule's top within .09 m over the drawn head (radius unchanged); guests derive
+  ExposedAt from the existing clocks; the replicated body is under the floor and rising (it used to hang in the air).
+- **Also removed:** the ink ring and tear, the touchdown impact/shake/jolt, the Hulk's rumble, `NativeHordeFx.DropMark/LandWave/
+  LandDebris`, `NativeHordeDrop.Rumble`, Ward Zero's hatch shaft. `NativeHordeGait.Drop` stays for the Rigger's chain drop.
+- **Voxel dependency:** `Core/NativeHordeEmerge.cs` authors on the horde's capture rig (pin 8 in `Tests/voxel-ratchet.txt`), as
+  every zombie take does (the ZOMBIE PRO pack is exported to it). Pack takes used: crawl-stand, wake, death-front-2; the
+  `Zombie_27` extract is not on this PC, so the dig and the push-up are keyed. **Banks:** none to pack.
+- **Checks:** the full CoreTests the relgen5 way in a clean worktree at `940c9eca` (expedition_path.patch, banks-next:
+  1,100 groups, exit 0) and the pack scans there (`--zombie-loco`, `--zombie-flow`, `--horde-roam`, `--hulk-charge`: exit 0);
+  `--zombie-emerge` (new `EmergeChecks`: no drop-in left, timing equals activation per kind and entry, no damage path, capsule
+  over the head, continuity, determinism, no allocation); the Unity compile 4/4; `git diff --check` clean; live Expedition runs
+  in the Editor, base and branch, High and Low; PrototypeBuild.Validate in the Editor on `940c9eca` ok, with the rewritten
+  `ValidateHordeDrops` (the real authority through an emergence). Not run: two clients, a Windows build.
+- **Clips:** `F:/Chip Arena Development/scratch/zombie-spawn/clips/` (12 MP4s, half speed; before and after are different
+  runs and cities, at the same entry kinds; the bleed forced for the lie-and-rise ones).
+- **Tool:** the Editor's BoZo tool gained `spawnadd` and an eye target `spawn:i` (patches in `scratch/zombie-spawn/tools/`).
+  Hold 3's patch broke the tool's compile on the Editor's checkout `9319026b` for about 90 s (13:09:37-13:11:08); fixed by
+  reflection under the lock, no other session held the Editor meanwhile.
+- **Risks:** the stain hardly shows on dark asphalt; a kneeling body leans up to .43 m ahead of its capsule; the zone kinds'
+  emergence is not seen in the Editor. **Next:** owner review; the integrator merges; Astra reviews the rules and whether boss
+  summons and DEV monsters should emerge too (both need a rules delay).
+
 ## 2026-11-21 — Claude: releases 10 and 11: the eleven retried intro sounds, and Meridian's textured grounds (integrator)
 **Release 10.** Owner: "Yes, retry them".
 - **Published:** shared and the builder at `89be9868`. Test channel revision `639308740698722227` (build `da7b3b65`).

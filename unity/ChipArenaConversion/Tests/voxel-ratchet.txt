@@ -84,6 +84,7 @@ Core/NativeFighterPose.cs                                  0   0   0  13   0
 Core/NativeFirstPersonPose.cs                              0   0   0   2   0
 Core/NativeGunKitMotion.cs                                 0   0   0   6   0
 Core/NativeHitReact.cs                                     0   0   0  25   0
+Core/NativeHordeEmerge.cs                                  0   0   0   8   0   # Voxel dependency: the zombies' emergence (claude/zombie-emerge) poses the horde's 22-joint capture rig, as every zombie take does (the pack is exported to it; no model motion bank for zombies)
 Core/NativeHordeHeavy.cs                                   0   0   0   6   0
 Core/NativeHordeLife.cs                                    0   0   0   6   0
 Core/NativeHordeLoco.cs                                    0   0   0   2   0

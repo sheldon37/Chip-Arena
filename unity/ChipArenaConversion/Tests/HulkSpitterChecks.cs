@@ -108,14 +108,12 @@ namespace ChipArena.UnityConversion
             Check(b.Warn==NativeHordeDrop.Warn&&b.Recover==NativeHordeDrop.Recover&&b.SlamRadius==NativeHordeDrop.SlamRadius&&NativeHordeDrop.Duration(6.5f)==NativeHordeDrop.Duration(6.5f,b),"the brute's drop is the original contract");
             float h=p.DefaultHeight,span=NativeHordeDrop.Duration(h,p),land=NativeHordeDrop.LandAt(span,p);var pose=new CapturedRig.Pose();
             Check(Math.Abs(span-(p.Warn+p.Leap+NativeHordeDrop.Fall(h,p)+p.Recover))<1e-5f&&Math.Abs(land-(span-p.Recover))<1e-6f,"its timeline: warn, leap, fall, recover");
-            var prev=NativeHordeDrop.Phase.Warn;float rumble=0;
+            var prev=NativeHordeDrop.Phase.Warn;
             for(float a=0;a<=span+.01f;a+=1/120f)
             {
                 bool shown=NativeHordeGait.Drop(pose,4,a,span,h,p,out float lift,out var ph);Check(ph>=prev,"the phases in order");prev=ph;Check(shown==(ph!=NativeHordeDrop.Phase.Warn),"hidden only in the warning");
                 if(a<land-1e-3f)Check(lift>0,"in the air until it lands");
                 if(ph==NativeHordeDrop.Phase.Land)for(int j=0;j<2;j++)Check(Math.Abs(pose.WorldPosition[j==0?CapturedRig.LFoot:CapturedRig.RFoot].Y-(NativeHordeGait.Floor+NativeHordeGait.AnkleHeight))<.012f,"landed on its feet");
-                float r=NativeHordeDrop.Rumble(a,span,h,p);Check(r>=0&&r<=1,"the rumble is bounded");if(ph==NativeHordeDrop.Phase.Warn)Check(r>=rumble-1e-5f,"the rumble builds to the leap");rumble=r;
-                Check(NativeHordeDrop.Rumble(a,span,h,b)==0,"a brute's drop does not rumble");
             }
         }
         // ---- the breach ----
@@ -267,7 +265,7 @@ namespace ChipArena.UnityConversion
                 float t=i/60f;var f=new HordeMotionInput{Kind=k,Id=85000,Seed=NativeHordeKinds.Seed(85000),Time=t,Root=new Vector3(0,.85f,t*.4f),Velocity=new Vector3(0,0,.4f),Health=1,AttackAge=(i%240)<200?(i%240)/60f:float.NaN,Attack=NativeHordeKinds.Attack.Smash,Strike=st.hit,Recover=st.cycle,Side=1};
                 f.RoarAge=NativeHordeRoar.Age(k,f.Seed,t,0,f.AttackAge,st.cycle);f.Roaring=!float.IsNaN(f.RoarAge);g.Pose(f,pose);
                 var s=new HordeMotionInput{Kind=NativeHordeKinds.Spitter,Id=85001,Seed=NativeHordeKinds.Seed(85001),Time=t,Root=new Vector3(2,.85f,0),Health=1,AttackAge=(i%180)/60f,Attack=NativeHordeKinds.Attack.Spit,Strike=sst.hit,Recover=sst.cycle,Side=1};sg.Pose(s,pose);
-                NativeHordeGait.Drop(pose,3,t%5,NativeHordeDrop.Duration(9,p),9,p,out _,out _);NativeHordeDrop.Rumble(t%5,4.5f,9,p);
+                NativeHordeGait.Drop(pose,3,t%5,NativeHordeDrop.Duration(9,p),9,p,out _,out _);NativeHordeGait.Emerge(pose,k,3,NativeHordeEmerge.Style.Dig,t%5,NativeHordeEmerge.Of(0,3,4.5f),out _);
                 var ph=NativeBreach.At(t%20,1,3,15,out float into);for(int c=0;c<hole.Chunks;c++)NativeBreach.PieceAt(hole,c,ph,into,t%20-3,out _,out _,out _,out _);NativeBreach.Scan(hole,t%3,out _,out _);NativeBreach.Shudder(t%2);NativeBreach.KnockAge(t%3,.42f);
                 for(int c=0;c<NativeBreach.CrackLines;c++)NativeBreach.Crack(hole,c,NativeBreach.Cracked(t%2),out _,out _,out _);NativeBreach.InHole(hole,t%1,0);
                 NativeHordeJaw.Open(NativeHordeKinds.Spitter,NativeHordeKinds.Attack.Spit,t%1,.8f,float.NaN,float.NaN,t,3);NativeHordeJaw.Open(k,NativeHordeKinds.Attack.Smash,t%3,1.1f,float.NaN,t%2,t,3);

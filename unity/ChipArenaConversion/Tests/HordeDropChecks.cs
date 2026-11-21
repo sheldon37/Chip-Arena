@@ -43,20 +43,16 @@ namespace ChipArena.UnityConversion
             Check(NativeHordeDropRules.Next(entries,ref cursor,e=>true)==drop&&NativeHordeDropRules.Next(entries,ref cursor,e=>true)==second&&NativeHordeDropRules.Next(entries,ref cursor,e=>true)==drop,"round robin excludes legacy");
             int before=cursor;Check(NativeHordeDropRules.Next(entries,ref cursor,e=>false)==null&&cursor==before,"full queues do not fall back or rotate");
             Check(NativeHordeDropRules.Next(entries,ref cursor,e=>e==drop)==drop,"skip unavailable drop");
-            Check(NativeHordeDropRules.Touch(new V3(2.4f,1.49f,0))&&!NativeHordeDropRules.Touch(new V3(2.401f,0,0))&&!NativeHordeDropRules.Touch(new V3(0,1.5f,0))&&!NativeHordeDropRules.Touch(new V3(0,-1.5f,0)),"disc radius and strict vertical bound");
-            Check(NativeHordeDropRules.Damage(0,false)==10&&NativeHordeDropRules.Damage(1.2f,false)==7.5f&&NativeHordeDropRules.Damage(2.4f,false)==5&&NativeHordeDropRules.Damage(0,true)==0,"falloff and block");
-            float rim=NativeHordeDrop.SlamRadius;
-            float inside=BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(rim)-1);
-            float outside=BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(rim)+1);
-            foreach(var axis in new[]{new V3(1,0,0),new V3(-1,0,0),new V3(0,0,1),new V3(0,0,-1)})
-                Check(NativeHordeDropRules.Touch(axis*inside)&&NativeHordeDropRules.Touch(axis*rim)&&!NativeHordeDropRules.Touch(axis*outside),"inclusive rim and adjacent float values on both axes");
+            // The landing slam went with the drop-in (owner 2026-11-21): no touch disc, damage falloff, landing impulse or add shove left.
+            var rules=typeof(NativeHordeDropRules);
+            foreach(var gone in new[]{"Touch","Damage","DamageCentre","DamageRim","Impulse","AddImpulse"})Check(rules.GetMember(gone).Length==0,"the landing slam's "+gone+" is gone");
             var full=NativeHordeDropRules.Shove(new V3(1,0,0),new V3(0,0,1),380,false);var half=NativeHordeDropRules.Shove(new V3(1,0,0),new V3(0,0,1),380,true);
-            Check(Near(full.x,380f/65)&&full.y==2.5f&&Near(half.x,full.x*.5f)&&half.y==1.25f,"drop shove and half blocked shove");
+            Check(Near(full.x,380f/65)&&full.y==2.5f&&Near(half.x,full.x*.5f)&&half.y==1.25f,"the shove and half blocked shove");
             var smash=NativeHordeDropRules.Shove(new V3(0,0,-.2f),new V3(0,0,1),420,false);
             Check(Near(smash.z,-420f/65)&&smash.y==2.5f,"smash pushes out from disc even on the near side");
             Check(NativeHordeDropRules.Shove(new V3(),new V3(0,0,1),420,false).z>0,"exact centre has deterministic direction");
             var brute=data.adds.Single(a=>a.id=="brute");Check(brute.impulse==420&&brute.hit==.43f&&NativeHordeKinds.SmashRadius==1.6f&&NativeHordeKinds.SmashAhead==1.2f,"smash content and unchanged geometry/timing");
-            Console.WriteLine("PASS horde drop rules ("+count+" checks: height timeline, hold/exposure, round robin/fallback, radius/falloff/block, outward smash shove)");
+            Console.WriteLine("PASS horde drop rules ("+count+" checks: height timeline, hold/exposure, round robin/fallback, no landing slam, outward smash shove)");
         }
     }
 }

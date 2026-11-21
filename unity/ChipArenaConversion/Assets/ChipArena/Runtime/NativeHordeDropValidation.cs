@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         // Real authority paths and isolated-scene PhysX LOS, run by NativeBuildChecks on Ward Zero.
         public void ValidateHordeDrops()
         {
-            void Check(bool ok,string why){if(!ok)throw new Exception("Native brute drop gate: "+why);}
+            void Check(bool ok,string why){if(!ok)throw new Exception("Native drop entry gate: "+why);}
             bool Near(float a,float b)=>Math.Abs(a-b)<.002f;
             foreach(var n in Minions.ToArray())RemoveMinion(n,false);
             Pve.Holding=false;Pve.Rate=0;Pve.DropCursor=0;pveEntries.Clear();
@@ -19,7 +19,6 @@ namespace ChipArena.UnityConversion
             var fixtureDrop=new PveEntry{e=drop.e,id=drop.id,kind="drop",height=drop.height,from=new PvePoint{x=0,z=1000},@exit=new PvePoint{x=0,z=1000}};
             Pve.Content.entries=(PveEntry[])entries.Clone();Pve.Content.entries[drop.e]=fixtureDrop;drop=fixtureDrop;
             var pilot=Members().First();var landing=Vec(drop.@exit.Position());
-            var wall=GameObject.CreatePrimitive(PrimitiveType.Cube);wall.name="Brute slam LOS gate";wall.transform.SetParent(root.transform);wall.layer=PropLayer;wall.SetActive(false);
             void Pilot(Vector3 delta,bool block=false)
             {
                 foreach(var p in Pilots.Where(p=>p!=pilot&&!p.Seat.AuthorityBoss)){p.Body.position=landing+Vector3.one*30;p.Collider.enabled=false;}
@@ -29,36 +28,31 @@ namespace ChipArena.UnityConversion
             }
             try
             {
+                // The drop entry is an emergence from the floor on the same clock (Core/NativeHordeEmerge; owner 2026-11-21: the drop-in
+                // and its landing slam removed): under the floor with no collider until the torso is out (ExposedAt = the old LandAt),
+                // then the capsule rises with the drawn body, hittable, standing at ActiveAt; nothing near it is struck or shoved.
                 Pilot(Vector3.up*.9f+Vector3.right*4);
-                var brute=SpawnPveAdd("brute",true,drop.e);var a=brute.Pve;
-                Check(a.Entry==drop&&Near(a.ActiveAt-a.SpawnAt,NativeHordeDrop.Duration(drop.height)),"data selection/timeline");
+                var brute=SpawnPveAdd("brute",true,drop.e);var a=brute.Pve;float height=brute.Collider.height,standing=height/2+.025f;
+                Check(a.Entry==drop&&Near(a.ActiveAt-a.SpawnAt,NativeHordeDrop.Duration(drop.height))&&Near(a.ExposedAt,NativeHordeDrop.LandAt(a.ActiveAt)),"data selection/timeline unchanged");
                 brute.Body.position+=Vector3.one*3;StepPveHorde();
-                Check(brute.Body.isKinematic&&!brute.Collider.enabled&&Vector3.Distance(brute.Body.position,landing+Vector3.up*.9f)<.001f,"held at authored exit, no blocking collider");
-                Check(!Enemy(pilot,brute)&&!CanHit(pilot,brute)&&HitMinion(brute,pilot,10,Vector3.forward,0)==0,"held add untargetable and immune");
-                // Place the timeline boundary at the current clock without running unrelated match AI.
-                a.ActiveAt=Time+.899f;a.ExposedAt=NativeHordeDrop.LandAt(a.ActiveAt);a.SpawnAt=a.ActiveAt-NativeHordeDrop.Duration(drop.height);
-                Pilot(new Vector3(1.2f,.9f,0));Events.Clear();StepPveHorde();
-                Check(a.DropLanded&&!brute.Body.isKinematic&&brute.Collider.enabled&&Enemy(pilot,brute)&&CanHit(pilot,brute),"touchdown enables physics and targeting");
-                Check(Near(pilot.Hp,92.5f)&&Near(pilot.Knockback.x,380f/65)&&Near(pilot.Knockback.y,2.5f),"actual landing damage/falloff and pop");
-                Check(a.Struck&&Events.Count(e=>e.Detail=="minion-drop")==1,"recovery does not attack; one landing event");
-                StepPveHorde();Check(Near(pilot.Hp,92.5f)&&Events.Count(e=>e.Detail=="minion-drop")==1,"slam is once only");
-                Check(HitMinion(brute,pilot,1,Vector3.forward,0)>0,"hittable during recovery");
-                foreach(var sample in new[]{(0f,10f),(2.4f,5f),(2.41f,0f)})
+                Check(brute.Body.isKinematic&&!brute.Collider.enabled&&Vector3.Distance(brute.Body.position,landing+Vector3.up*(standing-height))<.001f,"held under the authored exit, no blocking collider");
+                Check(!Enemy(pilot,brute)&&!CanHit(pilot,brute)&&HitMinion(brute,pilot,10,Vector3.forward,0)==0,"under the floor: untargetable and immune");
+                var other=SpawnPveAdd("shambler",true);other.Pve.ActiveAt=other.Pve.ExposedAt=Time-1;other.Body.position=landing+new Vector3(0,.9f,1);other.Collider.enabled=true;other.Pve.StaggerAt=Time+100;Physics.SyncTransforms();
+                // The torso comes out at the old touchdown: no damage, no knockback, no event, no shove, whoever stands at the old slam's radius.
+                foreach(float x in new[]{0f,1.2f,2.4f})
                 {
-                    Pilot(new Vector3(sample.Item1,.9f,0));
-                    var delta=pilot.Body.position-(landing+Vector3.up*.9f);
-                    bool touch=NativeHordeDropRules.Touch(Vec(delta));
-                    bool visible=MeleeVisible(landing+Vector3.up*.45f,pilot.Body.position,brute.Owner,pilot.Collider,true);
-                    PveDropSlam(brute,landing);
-                    Check(Near(pilot.Hp,100-sample.Item2),$"actual radius/falloff {sample.Item1:R}; hp={pilot.Hp:R} expected={100-sample.Item2:R}; delta=({delta.x:R},{delta.y:R},{delta.z:R}); touch={touch} visible={visible} holding={Pve.Holding}");
+                    a.ActiveAt=Time+.899f;a.ExposedAt=NativeHordeDrop.LandAt(a.ActiveAt);a.SpawnAt=a.ActiveAt-NativeHordeDrop.Duration(drop.height);
+                    Pilot(new Vector3(x,.9f,0));Events.Clear();other.Pve.External=Vector3.zero;StepPveHorde();
+                    Check(pilot.Hp==100&&pilot.Knockback==Vector3.zero&&!Events.Any(e=>e.Detail=="minion-drop"||e.Target==pilot.Seat.id)&&other.Pve.External==Vector3.zero,"no slam at "+x+" m: hp="+pilot.Hp+" knockback="+pilot.Knockback);
                 }
-                Pilot(new Vector3(1,2.41f,0));PveDropSlam(brute,landing);Check(pilot.Hp==100,"strict vertical exclusion");
-                Pilot(new Vector3(1,.9f,0),true);Events.Clear();PveDropSlam(brute,landing);
-                Check(pilot.Hp==100&&Near(pilot.Knockback.x,190f/65)&&Near(pilot.Knockback.y,1.25f)&&Events.Any(e=>e.Detail=="clash"),"block clashes with half shove");
-                Pilot(new Vector3(2,.9f,0));wall.transform.position=landing+new Vector3(1,1,0);wall.transform.localScale=new Vector3(.2f,3,3);wall.SetActive(true);Physics.SyncTransforms();PveDropSlam(brute,landing);
-                Check(pilot.Hp==100&&pilot.Knockback==Vector3.zero,"world cover stops slam");wall.SetActive(false);Physics.SyncTransforms();
-                var other=SpawnPveAdd("shambler",true);other.Pve.ActiveAt=other.Pve.ExposedAt=Time-1;other.Body.position=landing+new Vector3(0,.9f,1);other.Collider.enabled=true;Physics.SyncTransforms();
-                PveDropSlam(brute,landing);Check(Near(other.Pve.External.z,NativePveParity.AddImpulse(200)),"nearby add shove");RemoveMinion(other,false);
+                RemoveMinion(other,false);
+                float sink=brute.Body.position.y-(landing.y+standing);
+                Check(a.DropLanded&&brute.Body.isKinematic&&brute.Collider.enabled&&Enemy(pilot,brute)&&CanHit(pilot,brute),"torso out: targetable, still held");
+                Check(sink<-.25f*height&&sink>-.55f*height&&Near(sink,NativeHordeEmerge.Sink(Time-a.SpawnAt,a.ExposedAt-a.SpawnAt,a.ActiveAt-a.SpawnAt,height)),"the capsule rises with the drawn body ("+sink+")");
+                Check(a.Struck&&HitMinion(brute,pilot,1,Vector3.forward,0)>0,"hittable while it rises; it does not attack");
+                a.ActiveAt=Time+.3f;a.ExposedAt=Time-.6f;StepPveHorde();Check(brute.Body.position.y>landing.y+standing+sink+.05f&&brute.Body.position.y<landing.y+standing-.05f&&brute.Body.isKinematic,"still rising");
+                a.ActiveAt=Time;StepPveHorde();Check(!brute.Body.isKinematic&&brute.Collider.enabled,"risen at ActiveAt: physical");
+                Check(pilot.Hp>=99&&pilot.Knockback==Vector3.zero,"nothing struck on the way out");
                 brute.Yaw=0;brute.Body.position=landing+Vector3.up*.9f;a.DamageScale=1;
                 Pilot(new Vector3(0,.9f,1));Events.Clear();PveAddStrike(brute);
                 Check(pilot.Hp<100&&Near(pilot.Knockback.z,-420f/65)&&Near(pilot.Knockback.y,2.5f)&&pilot.Down==null&&pilot.Juggle==null&&Events.Any(e=>e.Detail=="minion-slam"),"smash outward from disc, upward, no knock-down");
@@ -70,16 +64,16 @@ namespace ChipArena.UnityConversion
                 try
                 {
                     guest.ApplyFrame(frame,LocalId);var replica=guest.Minions.Single(n=>n.Id==brute.Id);
-                    Check(replica.Pve.Entry.e==drop.e&&replica.Collider.enabled&&Near(replica.Pve.ExposedAt,NativeHordeDrop.LandAt(a.ActiveAt)),"replica derives touchdown from existing clocks/index");
-                    var airborne=frame.minions.Single(n=>n.id==brute.Id);airborne.activeAt=(float)frame.time+2;guest.ApplyFrame(frame,LocalId);
-                    Check(!guest.Minions.Single(n=>n.Id==brute.Id).Collider.enabled,"replica airborne body does not block");
+                    Check(replica.Pve.Entry.e==drop.e&&replica.Collider.enabled&&Near(replica.Pve.ExposedAt,NativeHordeDrop.LandAt(a.ActiveAt)),"replica derives the torso-out time from existing clocks/index");
+                    var under=frame.minions.Single(n=>n.id==brute.Id);under.activeAt=(float)frame.time+2;guest.ApplyFrame(frame,LocalId);
+                    Check(!guest.Minions.Single(n=>n.Id==brute.Id).Collider.enabled,"replica under the floor does not block");
                 }
                 finally{guest.Dispose();}
                 RemoveMinion(brute,false);Pve.Content.entries=entries.Where(e=>!NativeHordeDrop.Is(e)).ToArray();
                 var fallback=SpawnPveAdd("brute",true);Check(fallback!=null&&!NativeHordeDrop.Is(fallback.Pve.Entry),"legacy fallback with no drops");RemoveMinion(fallback,false);
-                Debug.Log("PASS native brute drop hold/landing, target/damage gates, recovery, radius/falloff/block/LOS/add shove, smash shove/block, network and legacy fallback");
+                Debug.Log("PASS native drop entry emergence: under-floor hold, torso-out targeting, rising capsule, no slam (damage/knockback/event/add shove), smash shove/block, network and legacy fallback");
             }
-            finally{Pve.Content.entries=entries;UnityEngine.Object.DestroyImmediate(wall);}
+            finally{Pve.Content.entries=entries;}
         }
     }
 }

@@ -88,6 +88,10 @@ unity/ChipArenaConversion/tools/export_pack_zombie.mjs <pack>/Assets/Zombie_27` 
 
 ## 2. The jump-down: presentation contract (`Core/NativeHordeDrop.cs`)
 
+> **Superseded 2026-11-21** (owner: "remove that drop in animation entirely"): drop entries, ceiling vents and doors with no
+> opening now emerge from the floor on the same clocks, and the landing slam is gone (`docs/ZOMBIE-EMERGE.md`). The jump-down
+> below is kept as history; only the Ironworks Rigger still lands with `NativeHordeGait.Drop`.
+
 An add whose replicated entry (`NativeMinionFrame.entry`) is a map entry of kind `"drop"` drops onto that entry's `exit`
 point, facing its `yaw`, from `height` m above it (today `NativeHordeDrop.DefaultHeight` 6.5 m: `PveEntry` has no height
 field yet). Timeline from the replicated `spawnAt` to `activeAt`:

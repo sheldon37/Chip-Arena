@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
     /// blotches, a wall's cracks) are one premultiplied mesh in <see cref="DecalQueue"/>, before the effect billboards, so smoke
     /// and fumes over them stay in front. No allocation per frame: fixed scratch rings, the renderers' reused buffers.
     /// </summary>
-    public sealed class NativeZombieFxDraw : IDisposable
+    public sealed partial class NativeZombieFxDraw : IDisposable
     {
         /// <summary>The decals' queue: after the opaque scene (depth tested against it), before the effect billboards and the
         /// Tidal Wave's body (Transparent - 1).</summary>

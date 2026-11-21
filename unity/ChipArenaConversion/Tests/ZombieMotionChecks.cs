@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             Tracks(root);Sets();Planted();Strikes();Entrances();Deaths();Drop(root);Shake();Allocation();Runtime(root);
-            Console.WriteLine("PASS zombie motion ("+count+" checks: "+NativeZombieClips.Count+" tracks match the exporter's provenance, every kind's takes decode and phase, planted ankles still on the drawn rig at the authority's speeds, captured blows land on their impact at LastAttack + hit, vent climb, door walk-in, dive and jump-down on the zombie model, deaths on the floor, the drop from map data, bounded slam shake, no allocation, presentation-only runtime)");
+            Console.WriteLine("PASS zombie motion ("+count+" checks: "+NativeZombieClips.Count+" tracks match the exporter's provenance, every kind's takes decode and phase, planted ankles still on the drawn rig at the authority's speeds, captured blows land on their impact at LastAttack + hit, vent climb, door walk-in, dive and the emergence on the zombie model, deaths on the floor, the drop entries emerging on their own clock, bounded slam shake, no allocation, presentation-only runtime)");
         }
         // ---- the exporter's tracks, and nothing of the pack ----
         private static void Tracks(string root)
@@ -174,31 +174,26 @@ namespace ChipArena.UnityConversion
                 if(push.X>0)Check(head.X>.15f,"pushed to its left, it falls to its left");if(push.X<0)Check(head.X<-.15f,"pushed to its right, it falls to its right");
             }
         }
-        // ---- the brute's jump-down ----
+        // ---- the drop entries: an emergence from the floor on the drop's clock (the jump-down was removed, owner 2026-11-21) ----
         private static void Drop(string root)
         {
-            var p=new CapturedRig.Pose();float h=NativeHordeDrop.DefaultHeight,span=NativeHordeDrop.Duration(h),land=NativeHordeDrop.LandAt(span);float prevLift=float.NaN;var prevPhase=NativeHordeDrop.Phase.Warn;
+            var p=new CapturedRig.Pose();float h=NativeHordeDrop.DefaultHeight,span=NativeHordeDrop.Duration(h),land=NativeHordeDrop.LandAt(span);
+            var m=NativeHordeEmerge.Of(0,land,span);Check(m.Torso==land&&m.Span==span&&m.Break>0&&m.Break<m.Torso,"the emergence runs on the drop's clock: torso out at the old touchdown");
+            foreach(var style in new[]{NativeHordeEmerge.Style.Dig,NativeHordeEmerge.Style.Rise})
             for(int i=0;i<=(int)(span*120);i++)
             {
-                float age=i/120f;bool shown=NativeHordeGait.Drop(p,7,age,span,h,out float lift,out var phase);
-                Check(phase>=prevPhase,"the phases run in order");prevPhase=phase;
-                Check(shown==(phase!=NativeHordeDrop.Phase.Warn),"only the warning is drawn without the brute");
-                if(!float.IsNaN(prevLift)&&phase!=NativeHordeDrop.Phase.Warn)Check(Math.Abs(lift-prevLift)<.25f,"the fall is continuous");prevLift=lift;
-                if(age<land-1e-3f)Check(lift>0,"it is in the air until the landing");else Check(lift==0,"it is on the floor from the landing");
-                if(phase==NativeHordeDrop.Phase.Land)for(int j=0;j<2;j++)Check(Math.Abs(p.WorldPosition[j==0?CapturedRig.LFoot:CapturedRig.RFoot].Y-(NativeHordeGait.Floor+NativeHordeGait.AnkleHeight))<.012f,"landed, its feet are on the floor");
-                Check(NativeHordeFx.DropMark(age,land,out _,out _,out _)==(age<=land+.02f),"the landing spot is marked until the touchdown");
+                float age=i/120f;bool shown=NativeHordeGait.Emerge(p,NativeHordeKinds.Brute,7,style,age,m,out float lift);
+                if(age<m.Break*.45f)Check(!shown,"nothing of it shows through the start of the tell");
+                if(age>=m.Break)Check(shown,"shown from the break");Check(lift<=0,"never above its standing height");
             }
-            Check(Math.Abs(NativeHordeDrop.LandAt(10)-(10-NativeHordeDrop.Recover))<1e-6f&&Math.Abs(span-(NativeHordeDrop.Warn+NativeHordeDrop.Leap+NativeHordeDrop.Fall(h)+NativeHordeDrop.Recover))<1e-5f,"the timeline: warn, leap, fall, recover");
-            NativeHordeDrop.At(land-NativeHordeDrop.Fall(h)-.001f,span,h,out _,out float top);Check(Math.Abs(top-(h+NativeHordeDrop.Hop))<.01f,"the leap tops out at the drop height plus the hop");
-            Check(NativeHordeFx.LandWave(0,out _,out _,out float a0)&&a0>.8f&&!NativeHordeFx.LandWave(-.01f,out _,out _,out _),"the landing slam starts at the touchdown, never before");
+            Check(Math.Abs(NativeHordeDrop.LandAt(10)-(10-NativeHordeDrop.Recover))<1e-6f&&Math.Abs(span-(NativeHordeDrop.Warn+NativeHordeDrop.Leap+NativeHordeDrop.Fall(h)+NativeHordeDrop.Recover))<1e-5f,"the drop entry's timeline is unchanged (warn, leap, fall, recover)");
             Check(NativeHordeDrop.Is(new PveEntry{kind="drop"})&&!NativeHordeDrop.Is(new PveEntry{kind="vent"})&&!NativeHordeDrop.Is(null),"a drop is an entry of kind \"drop\"");
-            // Map data, not coordinates: the landing point is the entry's, the height the entry's (or the default fall height).
+            // Map data, not coordinates: the spot is the entry's exit, the clock its own (and its height still times it).
             var pres=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
-            Check(pres.Contains("NativeHordeDrop.Is(a.Entry)")&&pres.Contains("float height=NativeHordeDrop.HeightOf(a.Entry,profile);var land=NativeArena.Vec(a.Entry.@exit.Position(0));"),"the drop lands on its entry's point at its entry's height");
+            Check(pres.Contains("else if(entering&&NativeHordeEmerge.Emerges(a.Entry,a.Stats?.id))")&&pres.Contains("var spot=NativeArena.Vec(a.Entry.@exit.Position(0));var marks=NativeHordeEmerge.Of(a.SpawnAt,a.ExposedAt,a.ActiveAt);"),"an emerging add comes out at its entry's exit on its replicated clock");
             var source=R(root,"Assets/ChipArena/Core/NativeHordeDrop.cs");
             Check(source.Contains("e.height")&&source.Contains("e!=null"),"drop height comes from entry data with a legacy default");
             Check(NativeHordeDrop.HeightOf(new PveEntry{height=13})==13&&NativeHordeDrop.HeightOf(new PveEntry{height=7},NativeHordeDrop.Hulk)==7,"authored heights override both profiles");
-
         }
         // ---- the slams' camera shake: bounded, by distance, a kick only for a pilot in the disc ----
         private static void Shake()
@@ -217,12 +212,12 @@ namespace ChipArena.UnityConversion
             void Frame(int i)
             {
                 float t=i/60f;var climb=NativeEntryRules.Climb(t%1.95f,1.95f);NativeHordeGait.VentClimb(p,0,3,t%1.95f,new Vector3(0,climb.y,climb.z));NativeHordeGait.Dive(p,0,3,t%.9f);
-                NativeHordeGait.Drop(p,3,t%3,3,6.5f,out _,out _);NativeHordeGait.Death(p,i%3,(uint)(i%5),t%2.3f,new Vector2(i%2,1-i%2));
+                NativeHordeGait.Drop(p,3,t%3,3,6.5f,out _,out _);NativeHordeGait.Emerge(p,i%3,3,(NativeHordeEmerge.Style)(i%2),t%3,NativeHordeEmerge.Of(0,2.1f,3),out _);NativeHordeGait.Death(p,i%3,(uint)(i%5),t%2.3f,new Vector2(i%2,1-i%2));
                 var f=new HordeMotionInput{Kind=0,Id=72000,Seed=NativeHordeKinds.Seed(72000),Time=t,Root=new Vector3(0,.9f,t),Velocity=new Vector3(0,0,1),Health=1,AttackAge=float.NaN,Entering=true,EntryAge=t%2,EntryWalk=.6f};g.Pose(f,p);
-                NativeHordeFx.ShakeAt(slots,Vector3.Zero,t,out _);NativeHordeFx.DropMark(t%3,2,out _,out _,out _);NativeHordeFx.LandWave(t%1,out _,out _,out _);for(int k=0;k<NativeHordeFx.SlamDust;k++)NativeHordeFx.SlamPuff(3,k,t%1,2,out _,out _,out _);for(int k=0;k<NativeHordeFx.Cracks;k++)NativeHordeFx.Crack(3,k,t%1.6f,2,out _,out _,out _);
+                NativeHordeFx.ShakeAt(slots,Vector3.Zero,t,out _);for(int k=0;k<NativeHordeFx.SlamDust;k++)NativeHordeFx.SlamPuff(3,k,t%1,2,out _,out _,out _);for(int k=0;k<NativeHordeFx.Cracks;k++)NativeHordeFx.Crack(3,k,t%1.6f,2,out _,out _,out _);
             }
             for(int i=0;i<300;i++)Frame(i);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=300;i<1500;i++)Frame(i);long used=GC.GetAllocatedBytesForCurrentThread()-before;
-            Check(used==0,"no allocation per frame over 1200 frames of entrances, drops, deaths and shakes ("+used+" bytes)");
+            Check(used==0,"no allocation per frame over 1200 frames of entrances, emergences, deaths and shakes ("+used+" bytes)");
         }
         // ---- the runtime: the zombie paths are the presentation's only, hooked where the adds are drawn ----
         private static void Runtime(string root)
@@ -230,12 +225,12 @@ namespace ChipArena.UnityConversion
             var p=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             foreach(var old in new[]{"horde-0-vent","horde-0-door","horde-0-cell","horde-0-dive"})Check(!p.Contains(old),"the entrances never play the old bank clip "+old);
             Check(p.Contains("NativeHordeGait.VentClimb(minionPose,kind,seed,tau,")&&p.Contains("NativeHordeGait.Dive(minionPose,kind,seed,now-a.DiveAt)")&&p.Contains("Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt"),"vents, dives and doors pose the zombie on its kind's model");
-            Check(p.Contains("NativeHordeGait.Drop(minionPose,seed,t,GalleryEntrance,NativeHordeDrop.DefaultHeight")&&p.Contains("NativeHordeGait.VentClimb(minionPose,k,seed,tau,"),"the Dev Sandbox gallery previews the jump-down and the entrances");
+            Check(p.Contains("bool shown=NativeHordeGait.Emerge(minionPose,k,seed,style,t,marks,out float lift);")&&p.Contains("NativeHordeGait.VentClimb(minionPose,k,seed,tau,"),"the Dev Sandbox gallery previews the emergence and the entrances");
             var z=R(root,"Assets/ChipArena/Runtime/NativeHordeZombiePresentation.cs");
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Body.position=","linearVelocity=","AddComponent<"})Check(!z.Contains(bad)&&!p.Contains(bad),"the zombie presentation never writes `"+bad+"`");
             Check(R(root,"Assets/ChipArena/Runtime/ConversionGame.cs").Contains("if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.HordeShake(cameraView.transform,prefs.reducedEffects?.5f:1);"),"the slams' shake follows Settings · camera shake on the live local view");
             Check(p.Contains("HordeImpactAt(j.Id,c,now-(a-H),j.Seed^0x5a3,NativeZombieFx.Smash(j.Kind),")&&p.Contains("HordeSmashShake(c,"),"the smash throws dust and cracks and shakes");
-            Check(p.Contains("BankPlay(NativeHordeKinds.StrikeCue(NativeHordeKinds.Attack.Smash),m.Body.position"),"the landing thuds on existing bank keys");
+            Check(p.Contains("BankPlay(\"structure.debris\",at,")&&p.Contains("ZombieCall(m.Id,NativeZombieCall.Groan,at,seed,kind,t)"),"the emergence breaks the earth and groans on existing bank keys and voices");
             foreach(var f in new[]{"NativeZombieClips.cs","NativeZombieMotion.cs","NativeZombieModels.cs","NativeHordeDrop.cs"}){var t=R(root,"Assets/ChipArena/Core/"+f);Check(!t.Contains("NativeArena")&&!t.Contains("NativePilot")&&!t.Contains("UnityEngine")&&!t.Contains("new Random("),f+" reads no authority state, no engine and no clock-free randomness");}
         }
     }
