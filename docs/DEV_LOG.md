@@ -1,3 +1,28 @@
+## 2026-11-21 — Claude (I4): arm checks for every v2 intro: none through the head, none across the face (tests only)
+The coordinator, after the ranged arm fixes: generalise the two weapon-agnostic arm checks to every registered v2 intro.
+- **Branch/base:** `claude/intro-arm-checks` from shared `57110fe9`, with these merged in:
+  - `claude/intro-framework` `510cbd09`, `claude/intro-melee` `c372d16f`, `claude/intro-elemental` `d44f1f24`, `claude/intro-ranged` `ace64237`;
+  - DEV_LOG and PROJECT_STATE keep both sides' entries, each once;
+  - batch 2's sound manifest recompiled from I3, I4 and I5's rows (160 keys, sha `1248163e`); batch 1's unchanged (`68c49c12`).
+  No intro file edited. Pushed, not merged.
+- **Check:** `Tests/IntroArmChecks.cs` (`--intro-arms`, in the full run) covers every `INativeIntroV2` intro: 21 now (the dev intro,
+  five generic, seven melee, four ranged, four elemental). Each is bound on the model as the pose checks bind it, plus the guns' and the
+  bow's holds and the intro's grip. Every 1/30 s, through its own shot cameras:
+  - no arm through the drawn head (+3 cm);
+  - no arm over 15% of the face's disc on screen.
+  `--intro-arms` is strict. The full run lists the intros found failing (`IntroArmChecks.Known`) and fails on any other.
+- **Found, routed to the authors** (clip time; the shot by its start in intro time):
+  - `intro2-weapon-fangs` (Apex, I3): clip 3.87-4.03 s, both arms through the head (depth 0.51), the left across the face (92%), shot 3 (3.33 s);
+  - `intro2-weapon-katana` (Still Rain, I3): clip 4.60-4.77 s, the right arm across the face (83%), the left (66%), shot 5 (4.45 s);
+  - `intro2-weapon-greatsword` (Faultline, I3): clip 2.47-2.50 s, the left arm across the face (37%), shot 1 (2.05 s);
+  - `intro2-weapon-lightning` (Strike Point, I5): clip 3.63-3.70 s, the left arm across the face (35%), shot 4 (2.75 s).
+  The results are the same with the local intro motion banks loaded. The other 17 intros are clean.
+- **Checks:**
+  - full CoreTests the relgen5 way at `36680e14`: exit 0 (1,098 PASS, the four known intros listed);
+  - `--intro-arms` (strict) fails as designed: 31 frame-measures in the four;
+  - Unity compile 4/4; `git diff --check` clean.
+- **Next:** each author fixes their frames and removes their intro's id from `IntroArmChecks.Known`.
+
 ## 2026-11-21 — Claude (I3): intros v2 batch 2: the seven melee weapon intros re-keyed for the model, the Glaive's Orrery, Afterimage's walk on a pack clip, filmed (owner: batches "if this will improve the quality (Hopefully dramatically)"; presentation only)
 
 Owner: "a much higher quality standard, great animations and effects ... great camera work", then "think like the top dog and Bombardier ones, they have unique animations". Batch 2's melee part (`docs/INTROS-MELEE.md`; contract `docs/INTROS-V2.md` 9a-9d).

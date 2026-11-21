@@ -133,12 +133,12 @@ namespace ChipArena.UnityConversion
                     (face*100).ToString("0")+"% of the face covered (clip "+faceAt.ToString("0.00",CultureInfo.InvariantCulture)+" s)"+(found.Count>0?": "+found.Count+" failing frame-measure(s)"+(known?" (known, routed)":""):known?" (passes now: remove it from IntroArmChecks.Known)":""));
                 foreach(var span in Spans(found))lines.Add((known?"KNOWN ":"")+e.Id+": "+span);
             }
-            if(only!=null&&intros==0)throw new Exception("Intro arms: no registered v2 intro "+only);
+            if(only!=null&&intros==0)throw new Exception("V2 intro arms: no registered v2 intro "+only);
             var failing=all.Where(f=>strict||!Known.Contains(f.Id)).ToList();
-            if(all.Count>0)Console.WriteLine((failing.Count>0?"FAIL":"KNOWN")+" intro arms: "+all.Count+" failing frame-measure(s) in "+all.Select(f=>f.Id).Distinct().Count()+" intro(s):");
+            if(all.Count>0)Console.WriteLine((failing.Count>0?"FAIL":"KNOWN")+" v2 intro arms: "+all.Count+" failing frame-measure(s) in "+all.Select(f=>f.Id).Distinct().Count()+" intro(s):");
             foreach(var l in lines)Console.WriteLine("  "+l);
-            if(failing.Count>0)throw new Exception("Intro arms: "+failing.Count+" failing frame-measure(s) in "+string.Join(", ",failing.Select(f=>f.Id).Distinct())+" (listed above)");
-            Console.WriteLine("PASS intro arms: "+checks+" checks ("+intros+" v2 intros every 1/30 s through their own shot cameras"+(all.Count>0?"; "+all.Select(f=>f.Id).Distinct().Count()+" known intro(s) listed, routed to their authors":"")+(pack?", pack arms from "+packPath:", no local intro motion bank")+
+            if(failing.Count>0)throw new Exception("V2 intro arms: "+failing.Count+" failing frame-measure(s) in "+string.Join(", ",failing.Select(f=>f.Id).Distinct())+" (listed above)");
+            Console.WriteLine("PASS v2 intro arms: "+checks+" checks ("+intros+" v2 intros every 1/30 s through their own shot cameras"+(all.Count>0?"; "+all.Select(f=>f.Id).Distinct().Count()+" known intro(s) listed, routed to their authors":"")+(pack?", pack arms from "+packPath:", no local intro motion bank")+
                 ": no arm through the drawn head, the arms at least "+least.ToString("0.00",CultureInfo.InvariantCulture)+" of its reach + 3 cm out; no arm across more than "+(FaceMost*100).ToString("0")+"% of the face, at most "+(most*100).ToString("0")+"%)");
         }
     }
