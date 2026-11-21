@@ -94,6 +94,223 @@ Owner: "I want to move the intros to a much higher quality standard, great anima
 - Left for I0, written up in the notes' framework requests: dressed, clip-free ghosts (the echoes in the pilot's outfit), and a `Line` virtual (the drawn blade handed in for every weapon).
 - Left to build: the Glaive's Orrery (designed, its set modelled in `tools/intros/melee_observatory.py`, not banked or built).
 
+## 2026-11-20 — Claude (I5): elemental intros, batch 2: re-keyed on the framework's pose tools, Still Tide's wave and ice rebuilt, Black Sun's dusk sky (owner's intro revamp; presentation only)
+Owner: "Yes, we can do them in batches if this will improve the quality (Hopefully dramatically)"; the bar: "great animations and effects, non-block based background and designs ... great camera work".
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged. Shared `57110fe9` and the framework `510cbd09` merged in (DEV_LOG and PROJECT_STATE keep both sides). Code `2864afbf` (head `e6fdf0ac` adds only merges). Bank v10 (`F:/Chip Arena Development/scratch/intro-elemental/bank/ChipArenaIntroElemental.bytes`, 6,442,001 bytes, never committed). Notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **Every body re-keyed on the framework's pose tools** (`docs/INTROS-V2.md` 9a-9c). The staff's fist is keyed in the chest's frame (`NativeIntroGrip.Hold`) and held out at the side, so the drawn staff never stands across the face. The right hand goes on the shaft by the grip IK (`GripAt`) where both hands hold it. The feet and drops are in the model's metres (`ModelFeet`; Strike Point's kneel `ModelKneel`), the walks on `NativeIntroFeet`. `--intro-limits`: 48 findings → 0.
+  - Forgeborn: a crouch in the column, three heavy steps out, the free arm raised under the crown, both arms up, a deep one-handed slam beside the foot.
+  - Still Tide: the look back, the staff low across the body in both hands, the arms swept wide as the wave parts, the tap.
+  - Strike Point: a three-point landing on the right knee with the fist on the stone, the rise stepping through, the call with the staff high at its side.
+  - Black Sun: a low stalking walk, the head level as the eye lights, both arms thrown up wide for the wings, the snap.
+- **Cameras:** close and hero shots favour the pilot's right (Forgeborn's crown orbit, Strike Point's landing orbit, rise and hero, Black Sun's eye), so the staff at its left never stands between the lens and the head.
+- **Still Tide** (the integrator's review: "pillow wave", "flat magenta polygon ice"): the wave is a plunging breaker's section with a thin lip curling over a hollow barrel. It is dark glossy water mirroring the hall's own sky, lit through where the lip thins, with foam on the crest and in streaks. The ice is the same breaker frozen and lit from within: deep blue where thick, pale at its thin edges, clouded, cracked, rimed on the crest, with icicles and veins of light. The halves stand 3.5 m apart. (A bake bug left the mirrored right half dark; fixed.)
+- **Black Sun** ("reads plain still grey"): a dusk sky dome burning amber and rose along the horizon, cooled and dimmed through the eclipse to totality's sunset all round; polished obsidian mirrors it; the fog is held off the dome.
+- **Tests:** `--intro-elemental-limits` (the framework's findings for these four), `--intro-elemental-model DIR` (the body as the model draws it, for side and three-quarter stick reviews).
+- **Sounds:** the 31 rows moved to `docs/audio/intros-b2/I5.json` and compiled into batch 2's manifest (`--batch b2`; batch 1's sealed manifest byte-identical); each `targetSeconds.min` is at most 0.45 of its `generateSeconds`. No queue job.
+
+**Checks:** at `e6fdf0ac`:
+- Full CoreTests the relgen5 way: PASS (1,095 groups, exit 0); also at `2864afbf` (1,090) and `c09def1f` (1,092).
+- `--intro-limits`: none for all ten intros.
+- `--intros-v2`: PASS (6,688). `--intro-elemental`: PASS (20,523). `--voxel`: PASS (at `2864afbf`).
+- `check_unity_compile.py` (local Unity root): PASS. `git diff --check origin/claude/sleepy-ritchie-g8ruhv`: clean.
+- `compile_sound_requests.py --check` (b1 sealed, as pinned) and `--batch b2 --check`: PASS. `Tests/test_intro_sound_manifests.py`: 7 tests OK.
+- `--intro-pack`: not run (no pack clips played).
+
+**Captures** (clips `F:/Chip Arena Development/scratch/intro-elemental/clips/*-b2.*`):
+- Hold 7 (bank v9): all four at High in Cyber City, Still Tide on Polar (the same look: the intro owns its light). Three faults, all fixed: the staff passing the head from left-side cameras, Still Tide's mirrored half baked dark, the ice too close and flat.
+- Hold 8 (bank v10): Still Tide at High: the breaker lit through its lip, the ice lit from within. Hold 9 was cut off when the PC slept at 21:06.
+- Hold A (00:06-00:15, bank v10, on `e6fdf0ac`, through the Editor queue): Forgeborn and Strike Point at High on their final cameras, Black Sun at High, Still Tide on Polar (the same look as in Cyber City), and per intro one Low capture that is both its Low strip and its side and three-quarter proof at the beats. The proofs show no sideways legs, the heads on their bodies and the staff in hand, clear of the face from the right; model stick proofs as well (`clips/*-sticks-b2.png`).
+
+**Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
+
+**Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's keyed pose), as every v2 intro's does. No new voxel reads (the ratchet passes; the file is unpinned at zero).
+
+**Risks:**
+- The ice is lit from within (emissive), bright in the hero frame; the wave reads best from the low front.
+- No pack clips (the per-author bake reached the queue late); the walks and the rise are keyed and mostly framed close or partly hidden.
+- Hold 7 ran 30 minutes, over the 25-minute guide; later holds were cut short for the queue. The relaunched Editor films a capture in about 70 s (it took about 5 min before the PC slept).
+
+**Next:** the integrator's review and `PrototypeBuild.Validate`; bank v10 into the Drive zip; batch 2's sound job at release. Mocap through `ChipArenaIntroMotionElemental` could later replace Black Sun's walk (`2Hand-Staff-Crouch-Walk-Forward`, legs and torso) and Strike Point's rise.
+
+## 2026-11-20 — Claude (I5): elemental intros, bespoke keyed animation (owner), the framework's drawn anchors and own light — PARTIAL, paused for batch 2 (presentation only)
+Owner: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these".
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged; **partial**. Code `905db5c9`, with I0 merged up to `d0138423` (which includes `17380adb`). Bank v8. Paused by the owner's batching: the elemental intros are batch 2, after the framework's pose tools (every-bone mapping, joint limits, staff and two-hand grip IK, a pose-craft guide). Status note: `intro-elemental-status.md` in the notes folder. Design notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **No match clips:** the four intros play no motion-bank clip (`Clip` never true). Every beat is keyed (`NativeEntranceKeys`), as the Top Dog's and the Bombadier's are:
+  - Forgeborn: rises out of the fire, walks out heavily, goes up on its toes for the crown, takes the staff high in both hands and drives it down.
+  - Still Tide: looks back, braces with the staff level overhead, sweeps it across into a lunge, taps the water.
+  - Strike Point: lands kneeling with a hand on the stone; rises, dips and thrusts the staff up for the call, is rocked back by the bolt, plants the staff.
+  - Black Sun: a low walk out of the void, a hunch, the wings thrown open, the snap.
+  - The right hand rides the staff for the two-handed moves.
+  - Every hold grips the staff out at the side. Hold 5 showed a staff held close in front standing across the face, because the model copies the keyed joints' turns.
+- **On the framework's model-aware anchors** (`INTROS-V2` 2a): the crown sits on `Anchor(Head)`, the eye on `Anchor(Visor)`, the breath under `Anchor(Eyes)`, the staff's head on `Anchor(LeftMuzzle)`. `HeadShift`, `ModelHeadLift`, the drawn-wrist shift and the clip machinery are gone; only the eye close-up keeps a keyed framing (`CameraEyeLift`).
+- **Its own light** (`INTROS-V2` 3a): each set is lit by its own directional and ambient and mirrors its own sky (warm fire key; moon through the rose window; flashing cloud light; a violet horizon on the obsidian). With the arena's probe gone, the occlusion caps that hid it are lifted (bank v8).
+- **Still Tide** (bank v7):
+  - The ice's faces toward the barrel glow a faceted cyan to white, so it reads as ice in any arena.
+  - The liquid barrel is darker at its foot, its lip bright, and whitewater churns along the lip.
+- **Checks:** `--intro-elemental` fails on any match clip, a non-finite joint or a head turned more than .62 rad from its chest. `--intro-elemental-pose` dumps the keyed joints for stick-figure sheets, so the animation was checked before the Editor.
+
+**Checks:**
+- `--intros-v2`: PASS (3703, with the framework's model-aware anchor, socket, own-light and keyed-pose-on-model checks).
+- `--intro-elemental`: PASS (20438).
+- Full CoreTests the relgen5 way: PASS at `905db5c9` (1081 groups, exit 0).
+- `check_unity_compile.py`: PASS at `905db5c9`. After the `d0138423` merge, `--intros-v2` (3704), `--intro-elemental` and `--voxel` were re-run: PASS.
+- `git diff --check`: clean.
+- **Hold 5** (09:08-09:25): all four at High, plus Still Tide and Forgeborn at Low, on `e431f8d7` with bank v7, before the framework's drawn anchors and own light. It showed the keyed animation on the model, and the staff held close in front standing across the face (fixed in `905db5c9`, not captured).
+- **Not captured yet:** the drawn anchors, the own light, the side-held staff and bank v8. A hold queued for them was stopped at the integrator's word before it took the lock.
+- Clips: `F:/Chip Arena Development/scratch/intro-elemental/clips/` holds `*-v1` (the first pass) and `*-v2` (the polish pass). Hold 5's frames are in `cap/*-high5`; no new clips were made from them.
+
+**Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
+
+**Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's Classic pose), as the Top Dog and Bombadier intros do. No new voxel reads.
+
+**Risks:**
+- The re-light for the intro's own light was set blind (directionals, ambient and reflections, with the occlusion caps lifted). Nothing has been seen in the Editor since the framework change.
+- **Still Tide:**
+  - The wave reads as a glowing slab with a lip more than a breaking wave.
+  - The ice is unproven under the intro's own light: its faces toward the barrel glow cyan (bank v7/v8), and its lit outer faces read purple under the arena's light in hold 5.
+
+**Next:** batch 2: re-pose with the framework's pose tools, then capture all four at High, with Still Tide on Cyber City and Polar.
+
+## 2026-11-20 — Claude (I5): elemental intros polish pass (the integrator's review; presentation only)
+The integrator's review: the concepts are strong, but several elements read as placeholders under the owner's bar (Top Dog and Bombardier are the floor).
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged. Code at `d955fb94` (`5ff44c11` and the crest fix); the set script at `9b786b22` (bank v6). Notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **Forgeborn:**
+  - The flat forge "sun" is now a modelled firebox. Its lining is graded from a white-yellow core to a deep red lip, on a bed of coals, with heat shimmer, sparks and embers.
+  - The column is layered flame tongues (white at the foot, orange, red tips) round a white-hot heart, with little smoke.
+  - The crown is a hot ring at the brow with curling tongues of uneven height, on the model's head (`ModelHeadLift`).
+  - The crown shot frames the whole figure.
+  - The dais is irregular fitted stones with the lava only in their cracks (no ring joints). The vent keeps a round lava throat, but its rim is broken by jagged rock lips and uneven crust.
+- **Still Tide:**
+  - The wave is a breaking curl: a hollow face, a barrel, and a thin lip lit through from dark teal to white. It rolls forward as it rears, with foam riding the crest and the lip spilling.
+  - The frozen halves are faceted cyan-white ice with a bright rim, frost and glints, and the hanging spray glitters.
+  - The frost over the water is broken, irregular patches. There are no rings (the owner's standing rule).
+  - Crest effects follow the wave's taper.
+- **Strike Point:**
+  - The floor is wet dark rock, with pools that catch every flash and a scorch with cooling cracks from the strike.
+  - The 4.3 s call shot is low and close, so the pilot reads.
+- **Black Sun:**
+  - The plain is near-black obsidian, with less ambient and a violet rim.
+  - The shadows stream in along the ground from all sides, seen from above.
+  - The eye has its own beat: a slow ramp and a slower push.
+  - The wings stand against the eclipse, five feathers a side edged with violet.
+- **All four:**
+  - The name sits in a band under the feet (card `Y` .86).
+  - Each ending has its own camera:
+    - Forgeborn: a low crane rising from its right.
+    - Still Tide: still and centred down the ice.
+    - Strike Point: a Dutch low orbit.
+    - Black Sun: a pull back under the black sun.
+- **Sets** (bank v6, 6,484,699 bytes):
+  - The dark sets bake a low occlusion, which NativeStageLit uses to scale the arena probe's reflection and the ambient.
+  - New props: `lightning/puddles` and `lightning/scorch`.
+
+**Systems touched:** `Core/NativeIntroElemental.cs`, `Tests/IntroElementalChecks.cs` (`FIRE_HEARTH`; the probe prints screen positions), `tools/intros/elemental_set.py`, and the docs. No runtime, wire, save or rule file.
+
+**Checks:**
+- On `d955fb94`:
+  - `--intros-v2`: PASS (2699).
+  - `--intro-elemental`: PASS (6820; peak FX: fire 372, water 313, lightning 486, darkness 295; Low peak 205 or fewer).
+- Full CoreTests the relgen5 way: PASS at `d955fb94` (1081 groups, exit 0). Later commits change only the set script (bank v6), the docs and the framework merge (`545faef6`, the Runtime card screen); `--intro-elemental` and `--intros-v2` were re-run after them: PASS.
+- `check_unity_compile.py`: PASS at `d262cb30` (the merge; all 4 assemblies).
+- `git diff --check`: clean.
+- **Editor holds:**
+  - **Hold 3** (05:42-05:59): all four at High (1/30 s) and Low (0.5 s) on `d955fb94` with bank v2, Black Sun's eye beat included. The Strike Point clip comes from it; bank v6 builds its set from the same source.
+  - **Hold 4** (06:45-07:00, the integrator's approved follow-up of about 12-13 min): Forgeborn, Still Tide and Black Sun again on `d955fb94` with bank v6. The reasons, from hold 3:
+    - the ice read lavender (the arena probe), with bright rim bars down the taper;
+    - the obsidian was still dark grey;
+    - the frost and Forgeborn's dais and vent showed ring shapes (the owner's standing rule: none).
+  - The clips reuse hold 2's archived captures.
+  - **Clips:** `F:/Chip Arena Development/scratch/intro-elemental/clips/` under the same names; the first ones are `*-v1.mp4`.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The intros' lengths and name times are unchanged.
+
+**Voxel dependency:** unchanged; the keyed `CapturedRig` pose is the anchors' source, as before.
+
+**Seen in hold 4, not fixed (no more Editor time):**
+- **Still Tide's ice** now reads purple in the Cyber City capture: the rim bars and the frost rings are gone, but the hue is wrong. The set takes the arena's own light volume (`ArenaGI` in NativeStageLit) and its probe. Cutting the probe exposed the volume's magenta.
+  - Candidates: a neutral light volume and probe while an intro set is drawn (a framework change, for I0), or a dim cyan emissive base on the ice.
+- **Black Sun's plain** is darker but still dark grey, not near-black. Its probe and ambient are already cut to 7%, so the grey is likely the direct key and fill lights' highlight on the glossy plates; the framework's void lights add a white key.
+  - Candidate: lower gloss on the plain, or no white key for this set.
+
+**Risks:**
+- The name's `X` stays .5; the framework now centres the kicker and the line on `X` too (`545faef6`, merged).
+- The occlusion trick also dims these sets' ambient on every map.
+- The wave and the ice are still set pieces, not a fluid.
+
+**Next:** the integrator reviews the new clips; the sound job and the Drive zip (bank and meta) as before.
+
+## 2026-11-20 — Claude (I5): the magic weapons' new intros: Forgeborn, Still Tide, Strike Point, Black Sun (owner request; presentation only)
+Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!"
+
+**Branch and status:** `claude/intro-elemental`, from shared `8d56f015`, with the framework `claude/intro-framework` merged up to its final `2da9c7fc`. Pushed, not merged. Design and as-built notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:** four v2 weapon intros, each registered on its weapon's slot. They replace Cinder Crown, Tidal Serpent, Thunderstep and Eventide Gate (archived by the framework, code kept).
+- **Forgeborn** (fire, 7.8 s, name at 6.0): in a caldera forge the lava cracks light in from the rim and a fire column erupts from the dais. The pilot walks out of it, the fire gathers into a crown of flame on its head, and the staff sends fire racing across the floor.
+- **Still Tide** (water, 8.2 s, name at 6.4): in a moonlit drowned hall the tide rises into a wave behind the pilot. At a sweep of the staff the wave parts round the pilot, then freezes mid-curl at a tap, the spray hanging as glints.
+- **Strike Point** (lightning, 7.2 s, name at 5.5): on a storm summit six spires charge, and the bolt comes down as the pilot, landing white-hot in a crouch. The pilot then calls a second bolt into the staff and sends it to every spire.
+- **Black Sun** (darkness, 8.4 s, name at 6.6): on an obsidian plain the moon covers the sun and every shadow pours into a void. The pilot steps out of it with one eye of light, the dark spreading like wings.
+
+How it is built:
+- **Core** `NativeIntroElemental.cs` (one family file).
+  - A keyed rig with the staff placed by arm IK, plus the model's own staff casts from the motion bank (`INativeIntroBody` windows, never back to the keys).
+  - The crown, the eye and the breath follow the drawn head (`INativeIntroHead`).
+  - Authored camera rigs with speed ramps. Lights and effects stay inside the v2 budgets. Every streak over 1 m is laid on its head's camera plane; one behind the lens is not drawn.
+  - Fractal bolts, name cards (Rise, Wipe, Slam, Assemble) and cue timelines.
+- **Sets:** `tools/intros/elemental_set.py` (Blender and the stage kit). The local bank `ChipArenaIntroElemental.bytes` (6,065,215 bytes) is never committed; without it the intros play on the framework's void.
+- **Sounds:**
+  - **Requested:** 31 sounds in `docs/audio/intros/I5.json`, with their keys on the I5 slot of `Core/NativeIntroSoundKeys.cs`.
+  - **Until they are generated:** each cue plays a one-shot key the installed bank fills (per the 2026-11-16 audio inventory), and a built-in clip if the bank is missing.
+  - **Fallback fix:** seven of the first fallbacks were loop keys or empty keys, which `BankPlay` skips, so they were swapped (`0b71051d`).
+- **Checks:** `Tests/IntroElementalChecks.cs` (`--intro-elemental`, one Program line).
+
+**Systems touched:** the new Core file and its checks; one registry line per intro (`NativeIntroCatalog`); the I5 sound-key slot; the sound rows; the set script; the docs. No runtime, wire, save or rule file.
+
+**Checks:**
+- `--intros-v2`: PASS (2699 checks; every registered intro: determinism, no allocation, budgets, Reduced effects, streaks, cues, sets). Run at the final code.
+- `--intro-elemental`: PASS (6697 checks), at the final code.
+- `--voxel`: PASS (no new ratchet counts), at the final code.
+- Full CoreTests the relgen5 way: PASS at `7f3f05bf` (1081 PASS lines, exit 0). The later commits change only fallback keys, one check, the eye's height and docs; the three runs above cover them.
+- `check_unity_compile.py`: PASS at `b83501d8` (Unity.InputSystem, ChipArena.Player, Assembly-CSharp, Assembly-CSharp-Editor; exit 0).
+- `git diff --check`: clean.
+
+Editor (two holds, both under 25 min):
+- **Hold 1** (03:25-03:49) filmed the first cut. Fixes came from it:
+  - Forgeborn: a darker caldera lit by its lava, the crown on the head, thin fire on the slam, the falls on the rim.
+  - Still Tide: a wave that reads as one wall with a curl.
+  - Strike Point: fractal bolts.
+  - All four: the staff beside the body, and low gloss on the sets.
+- **Hold 2** (04:21-04:43) filmed the final cut at High (1/30 s) and at Low (every 0.5 s), and the archived signatures on `8d56f015`. The Editor went back to `9319026b`, with its banks unchanged.
+- **After hold 2:** its frames showed Black Sun's eye on the collar, and its close-up framing the chest. The drawn head is the game joint's frame, which sits about 20 cm under the model's head bone. The eye and the close-up are now raised .16 m, measured from those frames (`b83501d8`). This has not been captured yet.
+- **Clips and strips:** `F:/Chip Arena Development/scratch/intro-elemental/clips/`. The captures have no sound; the cue clock is checked by the managed tests.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; these are intro presentations only. The match reads each intro's Duration and NameAt from the v2 registry, so these four weapons' intro phases run 7.2-8.4 s instead of 4.8 s, as the v2 contract defines.
+
+**Voxel dependency:** the keyed `CapturedRig` pose is the anchors' source and the Classic pose, as the v2 contract sets it. No new voxel reads; the ratchet is unchanged.
+
+**Risks:**
+- **Black Sun's raised eye** has not been seen in the Editor.
+- **Look, to review in the clips:**
+  - Still Tide's wave reads as a smooth wall more than a curling crest, and the frozen halves look lavender and matte.
+  - Forgeborn's column reads as much as smoke as fire.
+  - The name card sits over the pilot's legs in the hero frames.
+- **Reflections:** set finishes take the arena's reflection probe, so their gloss is held at .35 or less.
+- **The water:** the wave is two set pieces lifted, swung and swapped for their frozen form, not a fluid.
+- **Sound:** not heard. The generated sounds wait for the integrator's compiled queue job and a builder run.
+
+**Next:**
+- The integrator reviews the clips and captures Black Sun's eye beat once.
+- Compile the sound rows into the queue job (`tools/intros/compile_sound_requests.py`).
+- Pack `ChipArenaIntroElemental.bytes` (+ meta) into the Drive zip from `F:/Chip Arena Development/scratch/intro-elemental/bank/`.
+
 ## 2026-11-20 — Claude (I0e): intros v2 framework for batch 2: its own sound manifest, a motion bank per author, the bake request, I2b's two pack notes, the pack index (presentation only)
 
 **Branch and status:** `claude/intro-framework` on shared `3f788a3d`, with shared `3accbc3c` (release 4) merged in (`0e48f980`).

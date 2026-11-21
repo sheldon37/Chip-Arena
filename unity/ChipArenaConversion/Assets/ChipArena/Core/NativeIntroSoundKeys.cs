@@ -165,6 +165,37 @@ namespace ChipArena.UnityConversion
             // ---- I4 (ranged) ----
             //
             // ---- I5 (elemental) ----
+            K("intro2.fire.rumble",1.9f,H),
+            K("intro2.fire.crack",1.4f,H),
+            K("intro2.fire.erupt",2.1f,H),
+            K("intro2.fire.column",2.7f),
+            K("intro2.fire.step",0.6f),
+            K("intro2.fire.crown",1.2f,H),
+            K("intro2.fire.slam",1.3f,H),
+            K("intro2.fire.name",1.5f),
+            K("intro2.water.drips",1.6f),
+            K("intro2.water.rise",1.6f,H),
+            K("intro2.water.rear",1.3f,H),
+            K("intro2.water.part",1.7f,H),
+            K("intro2.water.freeze",1.5f,H),
+            K("intro2.water.settle",0.9f),
+            K("intro2.water.name",2.1f),
+            K("intro2.storm.bed",2.6f),
+            K("intro2.storm.charge",1.3f,H),
+            K("intro2.storm.gather",0.7f,H),
+            K("intro2.storm.strike",1.5f,H),
+            K("intro2.storm.after",1.7f),
+            K("intro2.storm.crackle",1f),
+            K("intro2.storm.call",1.2f,H),
+            K("intro2.storm.name",2.1f),
+            K("intro2.void.wind",1.6f),
+            K("intro2.void.pour",1.9f,H),
+            K("intro2.void.totality",1.7f,H),
+            K("intro2.void.emerge",1.1f,H),
+            K("intro2.void.eye",1f,H),
+            K("intro2.void.wings",1f),
+            K("intro2.void.snap",0.8f,H),
+            K("intro2.void.name",1.7f),
             //
         };
         private static Dictionary<string,int> index;

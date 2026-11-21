@@ -84,13 +84,13 @@ namespace ChipArena.UnityConversion
             //
             // bow
             //
-            // fire
+            NativeIntroEntry.Weapon("fire",NativeIntroForgeborn.Name,NativeIntroForgeborn.Total,NativeIntroForgeborn.CardAt,()=>new NativeIntroForgeborn(),"I5"),
             //
-            // water
+            NativeIntroEntry.Weapon("water",NativeIntroStillTide.Name,NativeIntroStillTide.Total,NativeIntroStillTide.CardAt,()=>new NativeIntroStillTide(),"I5"),
             //
-            // lightning
+            NativeIntroEntry.Weapon("lightning",NativeIntroStrikePoint.Name,NativeIntroStrikePoint.Total,NativeIntroStrikePoint.CardAt,()=>new NativeIntroStrikePoint(),"I5"),
             //
-            // darkness
+            NativeIntroEntry.Weapon("darkness",NativeIntroBlackSun.Name,NativeIntroBlackSun.Total,NativeIntroBlackSun.CardAt,()=>new NativeIntroBlackSun(),"I5"),
             //
             NativeIntroEntry.Weapon(NativeKatana.Spec,NativeIntroStillRain.Title,NativeIntroStillRain.Total,NativeIntroStillRain.CardAt,()=>new NativeIntroStillRain(),"I3","Rain, stillness and one cut: the rain stops in the air."),
             //
