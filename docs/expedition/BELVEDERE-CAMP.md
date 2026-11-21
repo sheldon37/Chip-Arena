@@ -44,9 +44,12 @@ plans. The run's world seed varies only the dead bulbs, the fires' phases and th
 | Notices | CURFEW 6:47, STAY IN THE LIGHT, BOIL ALL WATER, RADIO 64.7 FM |
 
 **Light** (art bible 3.2: warm light means people):
-- Each lamp, flood and fire lays a warm pool on the plaza and a halo, and every lit bulb near the eye has a soft halo.
-- The camp takes up to three practical slots through `NativeLighting.KitLights`: two with reduced effects, one on the Low tier. They
-  go to the lights that matter most at the eye, chosen by the hazard kit's own score and eased in and out.
+- Each lamp, flood and fire lights the fence, the plaza and the tents round it through the city's lamp grid (`NativeCityLamps`,
+  2026-11-21, with Meridian's street lamps: `docs/expedition/MERIDIAN-DRESS.md` "The light"), and has a halo; every lit bulb near
+  the eye has a soft halo. (Before, each laid a flat pool disc on the plaza, and only the three in the practical slots lit anything.)
+- The camp still takes up to three practical slots through `NativeLighting.KitLights` (two with reduced effects, one on the Low tier),
+  for the pilots' light: the lights that matter most at the eye, by the hazard kit's own score, eased in and out. They are marked
+  (-1), so ChipArena/StageLit takes them from the grid and never lights a surface twice.
 - The fires breathe under 2.4 Hz (under 0.7 Hz with reduced effects, which also drops their embers). Lamps and bulbs are steady.
   Nothing flashes.
 - The war board's desk lamp clicks on while the eye's pilot is within 4 m of the board.

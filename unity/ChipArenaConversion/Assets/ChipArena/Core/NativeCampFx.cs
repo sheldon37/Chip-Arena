@@ -5,8 +5,11 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Belvedere Camp's light and fire each frame (Core NativeCamp's live layout; docs/expedition/BELVEDERE-CAMP.md "Light"):
     /// <list type="bullet">
-    /// <item>the fires' flames, halos, embers and smoke, and a warm pool on the floor in front of each drum;</item>
-    /// <item>a soft halo round every lit bulb and lamp head near the eye, and the lamps' pools on the plaza;</item>
+    /// <item>the fires' flames, halos, embers and smoke;</item>
+    /// <item>a soft halo round every lit bulb and lamp head near the eye;</item>
+    /// <item>every lamp's, flood's and fire's light on the fence, the plaza and the tents round it through the city's lamp grid
+    /// (<see cref="CityLamps"/>, <see cref="CityLevels"/>: Runtime NativeCityLampLight; 2026-11-21: a flat pool disc under each read as
+    /// light laid over the floor, not on it, and only the three in the slots lit anything);</item>
     /// <item>the camp's share of the practical light slots (<see cref="LightPos"/>, <see cref="LightRgb"/>, at most three, two with
     /// reduced effects, one on the low graphics tier: NativeLighting.KitLights merges them into the map's weakest slots at the eye),
     /// picked by the hazard kit's own score (NativeKitLightPool.Score) and eased in and out so nothing pops;</item>
@@ -118,8 +121,6 @@ namespace ChipArena.UnityConversion
                     double big=bowl?2.2:1;Upright(s.X+ox*big+nx*.02,s.Y-(bowl?.38:.08),s.Z+oz*big+nz*.02,w*big,hgt*big,1.0,core?.62:.4,core?.22:.08,(core?.78:.52)*k);Flames++;
                 }
                 Sprite(s.X+nx*.15,s.Y+.25,s.Z+nz*.15,1.5,.95*k,.36*k,.08*k,.17,true);Halos++;
-                // the warm pool on the plaza in front of the drum (a half disc off the fence, flat paint of light)
-                if(!bowl){Flat(s.X+nx*1.5,.03,s.Z+nz*1.5,1.9,0,0,1.9,.5*k,.19*k,.05*k,.26);Pools++;}
                 if(d<45)for(int e=0;e<embers;e++)
                 {
                     double life=1.4+H(f,e,6)*1.4,ph=Frac(time/life+H(f,e,7)),y=s.Y+.15+ph*2.4,x=s.X+(H(f,e,8)-.5)*.3+nx*ph*.3+Math.Sin(time*2.1+e)*.18,z=s.Z+(H(f,e,9)-.5)*.3+nz*ph*.3+Math.Cos(time*1.7+e)*.18;
@@ -146,7 +147,6 @@ namespace ChipArena.UnityConversion
                 if(kind[i]==KindFire)continue;if(kind[i]==KindBoard&&!BoardLamp)continue;var s=sources[i];double d=Dist(s.X,s.Y,s.Z);if(d>140)continue;
                 double m=Math.Max(s.R,Math.Max(s.G,s.B));if(m<=0)continue;double r=s.R/m,g=s.G/m,b=s.B/m;
                 Sprite(s.X,s.Y,s.Z,Math.Max(s.Range*.09,d*.012),r,g,b,.24,true);Halos++;
-                if(d<80&&s.Y>2){double pr=s.Range*.38;Flat(s.X,.028,s.Z,pr,0,0,pr,r*.42,g*.42,b*.42,.2);Pools++;}
             }
         }
 
@@ -160,6 +160,25 @@ namespace ChipArena.UnityConversion
                 if(!lit[i])continue;var p=bulbs[i];double d=Dist(p.x,p.y,p.z);if(d>55)continue;
                 double fade=d<40?1:(55-d)/15;Sprite(p.x,p.y,p.z,Math.Max(.32,d*.011),br/m,bg/m,bb/m,.3*fade,true);Halos++;n++;
             }
+        }
+
+        // ---------------- the city's lamp grid ----------------
+        /// <summary>Every light of the camp (lamps, floods, the fires, the board lamp, the preview's brazier last) on the city's lamp
+        /// grid, at its place, reach and colour (made once, when the drawer adds the camp to the grid).</summary>
+        public NativeCityLamps.Lamp[] CityLamps()
+        {
+            var o=new NativeCityLamps.Lamp[sources.Length];
+            // a lamp, flood or the board's lamp throws its light down (NativeCityLamps.Overhead: sideways its light as before); a fire glows all round
+            for(int i=0;i<o.Length;i++){var s=sources[i];var at=new V3(s.X,s.Y,s.Z);float k=1/NativeCityLamps.DownFloor;
+                o[i]=kind[i]==KindFire?new NativeCityLamps.Lamp{At=at,Range=s.Range,R=s.R,G=s.G,B=s.B}:NativeCityLamps.Overhead(at,s.Range,s.R*k,s.G*k,s.B*k);}
+            return o;
+        }
+        /// <summary>Each light's level this frame on the grid (`into` as <see cref="CityLamps"/>): the lamps steady, a fire breathing
+        /// (<see cref="FireLevel"/>), the board lamp while on, the brazier only in the preview. Allocation free.</summary>
+        public void CityLevels(double time,bool reduced,float[] into)
+        {
+            for(int i=0;i<sources.Length&&i<into.Length;i++)
+                into[i]=i==brazier&&!Brazier||kind[i]==KindBoard&&!BoardLamp?0:kind[i]==KindFire?FireLevel(seed[i],time,reduced):1;
         }
 
         // ---------------- the practical slots ----------------

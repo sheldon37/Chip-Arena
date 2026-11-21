@@ -12,9 +12,10 @@ namespace ChipArena.UnityConversion
     ///    a wall never fights what lies under it), each instance's tier by its distance from the eye (NativeStageArt.TierAt; the
     ///    Low tier on the low graphics tier), culled against the eye's frustum, at most 500 to a draw.
     ///  - The light: lamp heads glow in each lamp's colour; 1 in 5 dead and 1 in 10 flickering as the plan dealt them, Ward
-    ///    Zero's beacons turning, Level 0's troffers buzzing on one circuit; under each working lamp a soft pool on the floor,
-    ///    and over each door a glow in its instance's colour on the cloud deck (ChipArena/NativeGlow, additive, no fog: the
-    ///    rumour band's sky reads from the camp).
+    ///    Zero's beacons turning, Level 0's troffers buzzing on one circuit; each working lamp lights the walls and floors round it
+    ///    in its colour through the city's lamp grid (NativeCityLampLight; 2026-11-21: a flat pool disc under it read as light laid
+    ///    over the floor, not on it), a halo at its head; over each door a glow in its instance's colour on the cloud deck
+    ///    (ChipArena/NativeGlow, additive, no fog: the rumour band's sky reads from the camp).
     ///  - The atmosphere: fog, ambient and their colours drift toward the dominant instance's by the camera's share
     ///    (eased over about a second), and are given back when the drawer closes.
     /// Without the bank (CI, a build without the Drive zip, --ca-no-pack-banks) <see cref="Open"/> returns null and nothing
@@ -55,6 +56,8 @@ namespace ChipArena.UnityConversion
         private Kind[] kinds;private Matrix4x4[] place;private Bounds[] box;private Vector4[] baseGlow;private Batch batch;
         private Material solid,glow,fxMaterial;private MaterialPropertyBlock block;private Mesh fx;private Color[] fxColors;private Color[] fxBase;
         private readonly List<(int piece,int from,int count)> fxLamps=new List<(int,int,int)>();
+        // the working lamps' light on the city's lamp grid, and each one's piece
+        private NativeCityLampLight.Block lampBlock;private int[] lampPieces;
         private readonly Plane[] planes=new Plane[6];
         private float[] shares;private Mood[] moods;
         // the atmosphere: what the look set, what this drawer last wrote, and the eased share
@@ -128,6 +131,7 @@ namespace ChipArena.UnityConversion
             fxMaterial=new Material(sh){name="City bleed light"};
             var v=new List<Vector3>();var c=new List<Color>();var uv=new List<Vector3>();var tri=new List<int>();
             var all=new int[map.blocks.Length];for(int i=0;i<all.Length;i++)all[i]=i;
+            var lamps=new List<NativeCityLamps.Lamp>();var pieces=new List<int>();
             void Quad(Vector3 o,Vector3 u,Vector3 w,Color col)
             {
                 int b=v.Count;v.Add(o-u-w);v.Add(o+u-w);v.Add(o+u+w);v.Add(o-u+w);
@@ -140,9 +144,11 @@ namespace ChipArena.UnityConversion
                 var head=NativeCityBleedDress.Local(p,K.Head);var h=new Vector3(head.x,head.y,head.z);
                 float floor=NativeCityBleedDress.FloorBelow(map.blocks,all,new V3(head.x,head.y-.05f,head.z));if(floor<-1e8f)floor=head.y-4.6f;
                 var lc=baseGlow[i];var col=new Color(lc.x,lc.y,lc.z,1);int from=v.Count;
-                float over=head.y-floor;float r=Mathf.Clamp(over*.75f,1.6f,4.2f);
+                float over=head.y-floor;
                 bool ceiling=K.Key.StartsWith("level0.ceiling",StringComparison.Ordinal);
-                Quad(new Vector3(h.x,floor+.06f,h.z),new Vector3(r,0,0),new Vector3(0,0,r),new Color(col.r,col.g,col.b,ceiling?.12f:.2f));
+                // its light on the walls and floors round it, in its colour, reaching its floor and past it (the grid)
+                // thrown down from its head (NativeCityLamps.Overhead: sideways 1.2, a troffer's 0.8, as a slot's all round)
+                float strength=(ceiling?.8f:1.2f)/NativeCityLamps.DownFloor;lamps.Add(NativeCityLamps.Overhead(head,Mathf.Clamp(over*1.8f,5f,10f),lc.x*strength,lc.y*strength,lc.z*strength));pieces.Add(i);
                 float s=K.Key=="poolrooms.poollamp"?.45f:ceiling?.6f:.35f;
                 Quad(h,new Vector3(s,0,0),new Vector3(0,s,0),new Color(col.r,col.g,col.b,.5f));Quad(h,new Vector3(0,0,s),new Vector3(0,s,0),new Color(col.r,col.g,col.b,.5f));
                 if(p.Lamp!=NativeCityBleedDress.LampState.Steady)fxLamps.Add((i,from,v.Count-from));
@@ -156,6 +162,7 @@ namespace ChipArena.UnityConversion
                 var toward=new Vector3(a.x,0,a.z);toward=toward.sqrMagnitude>1?toward.normalized:Vector3.forward;var across=new Vector3(toward.z,0,-toward.x);
                 Quad(new Vector3(a.x,a.y+30,a.z)+toward*20,across*110,new Vector3(0,42,0),new Color(dome.r,dome.g,dome.b,.28f));
             }
+            lampPieces=pieces.ToArray();lampBlock=NativeCityLampLight.Add(map.id,lamps.ToArray());
             if(v.Count==0)return;
             fx=new Mesh{name="City bleed light",indexFormat=v.Count>65000?IndexFormat.UInt32:IndexFormat.UInt16};
             fx.SetVertices(v);fx.SetColors(c);fx.SetUVs(0,uv);fx.SetTriangles(tri,0);fx.RecalculateBounds();fx.MarkDynamic();
@@ -184,6 +191,8 @@ namespace ChipArena.UnityConversion
                     if(batch.Count>0)Submit(kind,mesh,K.Casts);
                 }
             }
+            // the lamps' levels this frame on the grid (steady 1; flickering and turning as their glow)
+            if(lampBlock!=null)for(int j=0;j<lampPieces.Length;j++)lampBlock.Level[j]=Intensity(lampPieces[j],time);
             if(fx!=null)
             {
                 foreach(var (piece,from,count) in fxLamps)
@@ -244,6 +253,7 @@ namespace ChipArena.UnityConversion
             // give the look back, unless someone else wrote it since
             if(wrote&&RenderSettings.fogColor==fogWrote&&RenderSettings.ambientSkyColor==skyWrote){RenderSettings.fogColor=fogBase;RenderSettings.ambientSkyColor=skyBase;RenderSettings.ambientEquatorColor=equatorBase;RenderSettings.ambientGroundColor=groundBase;RenderSettings.fogEndDistance=fogEndBase;}
             if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);if(fxMaterial!=null)Destroy(fxMaterial);if(fx!=null)Destroy(fx);
+            NativeCityLampLight.Remove(lampBlock);lampBlock=null;
         }
     }
 }

@@ -90,6 +90,11 @@ internal static class Program
             if(args.Length==1&&args[0]=="--meridian-stairs")return 0;
             if(args.Length==2&&args[0]=="--meridian-stairs-zfight"){MeridianStairsChecks.ZFight(ProjectRoot(),int.Parse(args[1]));return 0;}
             if(args.Length==1&&args[0]=="--meridian-stairs-probe"){MeridianStairsChecks.Probe(ProjectRoot());return 0;}
+            // Meridian's street lamps on the surfaces round them (owner 2026-11-20: "the light doesn't seem to be on the material properly?"): the city's lamp grid.
+            if(args.Length==0||args.Length==1&&args[0]=="--meridian-lamps")MeridianLampChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--meridian-lamps")return 0;
+            if(args.Length==1&&args[0]=="--meridian-lamps-stats"){MeridianLampStats.Run(ProjectRoot());return 0;}
+            if(args.Length==5&&args[0]=="--meridian-lamps-probe"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianLampChecks.Probe(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv));return 0;}
             if((args.Length==6||args.Length==7)&&args[0]=="--meridian-stairs-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianStairsChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv),args[5],args.Length==7&&args[6]=="roles");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
