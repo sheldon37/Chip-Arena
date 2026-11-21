@@ -1,3 +1,136 @@
+## 2026-11-21 — Claude (I3): intros v2 batch 2: the seven melee weapon intros re-keyed for the model, the Glaive's Orrery, Afterimage's walk on a pack clip, filmed (owner: batches "if this will improve the quality (Hopefully dramatically)"; presentation only)
+
+Owner: "a much higher quality standard, great animations and effects ... great camera work", then "think like the top dog and Bombardier ones, they have unique animations". Batch 2's melee part (`docs/INTROS-MELEE.md`; contract `docs/INTROS-V2.md` 9a-9d).
+
+**Branch:** `claude/intro-melee`, code at `fc1cec00` (shared `57110fe9` and `claude/intro-framework` `510cbd09` merged in); pushed, not merged, not released.
+
+**What changed:**
+- **Bodies on the framework's pose tools:** hinged legs, `ModelFeet`, weapon paths re-keyed in the keyed chest's frame, and a new hold (`NativeIntroMeleeBlade.HoldAt`: the elbow by a soft minimum over 24 poles against the pose-craft limits, the hand along the forearm, at most 45° of roll in the forearm, two hands sharing a hilt); contacts on the model by `HoldDrawn`.
+- **Known issues fixed:** Severed Dawn's salute lowered to the right (the hilt hid the visor); Hold the Line braces the shield before the chest and lowers it (it hid the face; the guard read as rain cover); Afterimage's daggers rest low, points forward; Apex lit brighter, and its pounce now filmed from beside the arc (it read as a small vertical hop); Faultline chops into the floor and rests the blade on its point (the shoulder rest read as raised behind); Still Rain on the +z Katana with a two-handed kirioroshi, the chiburi and the noto along the saya.
+- **Orrery (Glaive), new:** the ring thrown round a summit observatory's four armillary rings and caught back; the rings lock into a sphere under starlight. On the Glaive's slot (Crescent Return archived).
+- **Afterimage's walk on a pack clip** (guide 9d; owner on a keyed run: "can we make this more realistic? Could use the running pack I have"): the owner's Frank Platformer everyday walk (`Frank_Platformer@Walk02_InPlace#melee-walk02`, not a clip the match plays), legs and torso, over the keyed walk at the clip's cadence; the only pack clip.
+- **Checks:** `Tests/IntroMeleeChecks` (`--intro-melee`, in the full suite): slots, no drawn weapon through the head or torso, the contacts each story makes, Afterimage's walk segment.
+- **Sound:** 74 rows in batch 2 (`docs/audio/intros-b2/I3.json`), 15 new keys; `sound-requests-intros-b2.json` (148 takes, 273 s); batch 1's manifest unchanged; no queue job; every cue keeps an alt and a clip.
+- **Banks (local, never committed; both in the Editor's Resources):** sets `F:/Chip Arena Development/scratch/intro-melee/bank/b2/ChipArenaIntroMelee.bytes` (11,933,443 bytes); motion `F:/Chip Arena Development/scratch/intro-melee/motion/ChipArenaIntroMotionMelee.bytes` (31,388 bytes, sha `e5a2f8ab`, one clip).
+
+**Systems touched:** Core (the seven intro files, `NativeIntroMelee.cs`, one registry line, the sound keys), Tests (`IntroMeleeChecks`, one Program line), docs and sound rows. No Runtime change. No voxel dependency.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; registry lengths unchanged, Orrery 7.6/6.0 s).
+
+**Checks:** full CoreTests the relgen5 way on `fc1cec00`: exit 0, 1095 PASS (a first run during hold 9 stopped at BootIntroChecks' 20 ms timing of the archived weapon-sword entrance, 20.5 ms with the Editor compiling; rerun quiet: pass); `--intro-limits` 0 findings for all seven (intro poses 660 with the melee bank); `--intro-melee` 1258 (1257 without the bank); `--intros-v2` 8135; `--intro-pack` 132 (the final bank beside Slipstream's: 10 clips); Unity compile gate PASS (local 6000.3.24f1); `git diff --check origin/claude/sleepy-ritchie-g8ruhv` clean; `compile_sound_requests.py --batch b2 --check` up to date, `test_intro_sound_manifests` 7 OK.
+
+**Editor (queue rule, notes `editor-queue.md`):** hold 7 (23:45-23:56: the bake, Crescent Return, six intros High and Low), hold 8 (00:31-00:38: the one-clip rebake into Resources, Afterimage, Faultline, Apex; the walk drawn from the author bank in the Editor on this branch), hold 9 (00:45-00:50: Apex and Faultline again). After each the Editor went back to `9319026b`, stage and motion banks as released.
+
+**Not checked:** a Windows player build; multiplayer and a late joiner's view; Low graphics on a low-end GPU; sound in a capture (nothing generated yet).
+
+**Risks:** Faultline's hilt still passes the lower visor for about 0.3 s as the sword rises from the guard (front camera; three re-keys narrowed it); the Katana's saya hangs at the match's angle (48° under level); Orrery's last shot has a ring of the locked sphere across its right side.
+
+**Next:** the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-melee/clips/b2/`), merges, packs both banks into the Drive zip and writes the batch-2 sound job.
+
+## 2026-11-20 — Claude: intros v2, the melee weapon intros: Still Rain, Apex, Faultline, Severed Dawn, Hold the Line, Afterimage (owner request; presentation only)
+
+Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" Then, the same morning: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these". I3, the melee family of the intros v2 work, on I0's contract (`docs/INTROS-V2.md`). Design and status: `docs/INTROS-MELEE.md`.
+
+**Branch and status:** `claude/intro-melee` from shared `8d56f015`, with `claude/intro-framework` merged in (last at `17380adb`). Pushed (head `b25e8047` and the docs commit after it). Not merged, not released.
+
+**What changed:**
+- **Six new weapon intros**, each registered on its weapon's slot (`intro2-weapon-<spec>`):
+  - Still Rain (Katana): an iai in the rain; the rain stops in the air for the one cut.
+  - Apex (Fangs): a predator's leap off a temple lintel, both fangs into the earth.
+  - Faultline (greatsword): a leaping blow that breaks the quarry floor into heaving slabs.
+  - Severed Dawn (sword): one cut severs a shaft of dawn light; a salute.
+  - Hold the Line (shield): a barrage breaks on the planted shield; the bash.
+  - Afterimage (daggers): a walk up a lantern lane; two echoes cut a beat behind.
+- **Glaive:** its Orrery is designed and its set modelled, but not built; it keeps Crescent Return.
+- **Bodies: bespoke keyed animation, no match clips** (the owner's direction):
+  - Each intro keys its own choreography on `NativeEntranceKeys`, with planted feet and `Steps` for foot contacts, impact and pass keys.
+  - The weapon moves on its own keyed path (`NativeIntroWield`: the grip and the blade's or shield's way in the pilot's frame). The arm is solved onto it (`Wield`), and the match's grip holds the weapon on the drawn hand.
+  - Still Rain's hilt and sheathing are solved against the saya on the keyed pelvis. Apex's feet stand on the lintel by leg IK.
+  - The living hold breathes under every key.
+- **Effects and shots on the body as drawn:**
+  - Blade effects follow the drawn hand joint's frame: the sweeps are Catmull-Rom arcs, and the sword holds the light.
+  - The shield's hits and heat ride the drawn shield.
+  - Two shots follow the drawn head or hand: Severed Dawn's visor and Still Rain's grab.
+  - Helpers in `NativeIntroMelee.cs`: DrawnBlade, BladeSweep, DrawnFrame, DrawnHand, Eyes, Frame and NearFade.
+- **Sets:** six modelled sets (`tools/intros/melee_*.py` on `melee_kit.py` and the stage kit), banked locally as `ChipArenaIntroMelee.bytes` (never committed; master in `F:/Chip Arena Development/scratch/intro-melee/bank/`, 10.2 MB).
+- **Sound:** cue timelines on filled one-shot keys and built-in clips. The 59 generated-sound requests are in `docs/audio/intros/I3.json`, their contract lines in `Core/NativeIntroSoundKeys.cs`.
+
+**Systems touched:** Core only: the six intro files, the shared `NativeIntroMelee.cs`, one registry line each and the sound key lines. Also the set scripts and docs. No Runtime change.
+
+**Voxel dependency:** none. The capture-driven keyed rig, and its `CapturedRig.Sample` pin in `Tests/voxel-ratchet.txt`, went with the clips.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. This is intro presentation only; the match reads the registry's Duration and NameAt, all within 7.2-8.2 s.
+
+**Checks:**
+- `CoreTests --intros-v2` (IntroV2Checks): PASS at `b25e8047`. It covers the seven registered intros: entry, determinism, allocation, budgets, Reduced effects, streaks and cues; 3643 checks.
+- `--voxel` (ratchet, style, draw): PASS.
+- Full CoreTests suite, the relgen5 way: 1080 groups PASS, exit 0, at `0a015455`; on the framework merge `17380adb` and the last fixes `--intros-v2` PASS (4652 checks), the full suite not re-run. It runs in a separate LF worktree, with `CHIPARENA_STAGE_BANKS` at the Editor's LocalAssets and one local uncommitted path fix in `ExpeditionEndingChecks` for that Windows worktree.
+- `tools/check_unity_compile.py` against the installed 6000.3.24f1: Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor PASS.
+- `git diff --check` clean.
+- `tools/intros/compile_sound_requests.py --check`: the 59 keys are valid against the contract. The merged manifest and the job are the integrator's.
+- Offline: the keyed poses were drawn as stick figures (front, side and the intro's camera) for every beat.
+- Editor holds, each under the lock with the checkout put back and the stage and motion banks checked before and after: hold 1 05:59-06:18 (`c5fcb8ff`, the clip version); hold 2 07:24-07:43 (`9775e4cf`, the clip version); hold 4 08:44-09:08 (`7b7f74d3`: the six archived signatures every 0.1 s, five keyed intros at High); hold 5 09:36-09:50 (`97206313`: five keyed intros at High; ended early for batch 2).
+- Clips: `F:/Chip Arena Development/scratch/intro-melee/clips/<spec>-old-vs-new-high.mp4` (keyed pass 1 beside the archived signature; no Low strips yet).
+
+**Not checked:**
+- A Windows player build or package.
+- Multiplayer, and a late joiner's view.
+- Low graphics on a low-end GPU.
+- Sound in a capture: none is generated yet, so cue timing rests on the managed checks.
+- The Katana's +y fix (`7a253f69`), the dressed ghosts and the hidden map (`17380adb`) in the Editor; Low strips.
+
+**Risks:**
+- The keyed weapon paths assume the drawn weapon lies along the keyed wrist's +z, as the match's grip holds it. Check the captures, the Fangs' and the Katana's palm grips most of all.
+- The shield's face point in its frame is estimated from the match's block socket.
+- The shots that follow the drawn head or hand fall back to the keyed rig where no model is drawn.
+- Afterimage's echoes are the runtime's live ghosts. They draw the pilot's base body without its outfit, so the hair shows and they read as a different figure.
+- The bank is local and not committed. Without it each intro draws its plain lit floor.
+
+**Status: paused for batch 2** (the owner, 2026-11-20: the intros in batches "if this will improve the quality (Hopefully dramatically)"; the melee intros are batch 2, after the framework's pose tools). The keyed choreography here is a first pass; batch 2 re-poses it with the framework's every-bone mapping, joint limits, two-handed grip IK and canonical poses. Per-intro state and known issues are in the notes' `intro-melee-status.md`.
+
+**Next:**
+- Batch 2: re-pose the six intros, capture them again with Low strips, finish the clips.
+- Then the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-melee/clips/`), merges after the framework, packs `ChipArenaIntroMelee.bytes` into the LocalAssets zip, and compiles the one sound job (`I3.json`, 59 keys).
+- Left for I0, written up in the notes' framework requests: dressed, clip-free ghosts (the echoes in the pilot's outfit), and a `Line` virtual (the drawn blade handed in for every weapon).
+- Left to build: the Glaive's Orrery (designed, its set modelled in `tools/intros/melee_observatory.py`, not banked or built).
+
+## 2026-11-20 — Claude (I0e): intros v2 framework for batch 2: its own sound manifest, a motion bank per author, the bake request, I2b's two pack notes, the pack index (presentation only)
+
+**Branch and status:** `claude/intro-framework` on shared `3f788a3d`, with shared `3accbc3c` (release 4) merged in (`0e48f980`).
+Commits `802e79ca` (sound), `f3dfea64` (banks), `7385d6de` (I2b's notes), `9c58c0f5` (a test pin), then this docs commit. Pushed,
+not merged, nothing released. The integrator forwarded each commit to I3, I4 and I5.
+
+**What it gives batch 2:**
+- **Sound** (`docs/audio/intros/README.md` 2a): `tools/intros/compile_sound_requests.py --batch b2` turns `docs/audio/intros-b2/*.json`
+  into `docs/audio/sound-requests-intros-b2.json` and its bundle copy. Batch 1's manifest (`68c49c12`) is sealed by its approved jobs:
+  the compiler refuses to change it or to repeat a key across batches. `Tests/test_intro_sound_manifests.py` pins it.
+- **Banks** (guide 9d): `NativeIntroPack.Banks` = `ChipArenaIntroMotion` (Slipstream's) + `...Melee`, `...Ranged`, `...Elemental`,
+  each optional, merged at runtime. `IntroPackChecks` fails on a name in two banks or a clip the match plays (by name, take or file).
+  The checks find banks at `CHIPARENA_INTRO_MOTION[_MELEE|_RANGED|_ELEMENTAL]`. Format "CAIM" 2 adds each clip's bake source.
+- **Bake** (guide 9d): scratch patch `i0e/motion/intromotion2_patch.py` (over I0d's): `bank=` plus `clip=<FBX>|<take>|<range>|<label>`
+  lines; it refuses the match's clips and repeated names and never writes Resources. One hold (229 s, the Editor on `9319026b`
+  throughout, Resources untouched; tool v3487) baked a 2-clip test bank, refused a match clip and listed a wrong take. The bank
+  loaded beside Slipstream's (`--intro-pack`, 135 checks) and was deleted.
+- **I2b's notes:** opt-in `FromPack(..., body: BodyTurn.Pelvis|Clip)` (a keyed lean rides the clip's pelvis, or the clip stands as
+  baked; the default is unchanged), and `IntroPoseChecks.Mapping` skips joints a clip plays in full. Slipstream is unchanged.
+- **Index:** notes folder `intro-pack-clips-index.md`, the owner's packs by weapon and body mechanic without the match's 497 clips,
+  with licences (the Unreal Archer and Dual Sword packs are not usable).
+
+**Checks (actual, at `9c58c0f5`; the docs commit changes no code):**
+- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, banks-next; the local intro and match banks
+  found): 1,091 PASS lines, exit 0, 1,190 s.
+- `--intro-pack` 127, `--intros-v2` 4,649, `--intro-generic` 29,960, `--intro-limits` 485 (0 findings). Slipstream's model dumps
+  are byte-identical to `802e79ca`'s. Unity compile (no download): all four assemblies pass. `git diff --check`: clean.
+- Python (`PYTHONUTF8=1`): `test_intro_sound_manifests` 7 OK, `test_generate_sound_requests` 9 OK; `test_sound_queue` (2 F, 1 E) and
+  `test_import_sound_requests` (5 F) fail as on shared before this work.
+
+**Not verified:** a new-form bank drawn in the Editor (needs this Core there); batch 2's real manifest, job and import (no rows yet).
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. **Voxel dependency:** none added.
+
+**Risks and next step:** the bake patch lives in scratch (re-apply if the tool is regenerated); authors' banks must ship in the Drive
+zip. `test_effects_audio`, `test_import_sound_requests` and `test_intro_music` write this PC's live `Latest-Sound-Status.json` and
+its mirror (mine did at 19:58; restored from the builder's own copy): for Astra. Next: I3-I5 merge this branch and bake their banks.
+
 ## 2026-11-20 — Claude: release 5: Meridian's street life (part 1) and the bleed's lamps under 3 Hz (integrator)
 Owner: "streets seem very empty ... it still feels kind of 'grey box-ish'".
 - **Published:** shared and the builder at `e9b3441a`. Test channel revision `639308227806636494` (build `cd771ad8`, 384.3 MiB).
@@ -58,43 +191,6 @@ and `8181bc56` (`ddeb4ce8`: the camp's walk hooks and checks beside ours, both k
   the world seed at world build, before the lattice, spawns, caches and exits; make the lattice treat `prop-` tops like
   `fire-escape-`); the Stride's live exits would shift for 3 of 110, the rest 0. **Next (Claude):** the live dresser keyed to
   `prop-` blocks with the props bank, landing with or before the blocks; the integrator packs the two banks.
-
-## 2026-11-20 — Claude (I0e): intros v2 framework for batch 2: its own sound manifest, a motion bank per author, the bake request, I2b's two pack notes, the pack index (presentation only)
-
-**Branch and status:** `claude/intro-framework` on shared `3f788a3d`, with shared `3accbc3c` (release 4) merged in (`0e48f980`).
-Commits `802e79ca` (sound), `f3dfea64` (banks), `7385d6de` (I2b's notes), `9c58c0f5` (a test pin), then this docs commit. Pushed,
-not merged, nothing released. The integrator forwarded each commit to I3, I4 and I5.
-
-**What it gives batch 2:**
-- **Sound** (`docs/audio/intros/README.md` 2a): `tools/intros/compile_sound_requests.py --batch b2` turns `docs/audio/intros-b2/*.json`
-  into `docs/audio/sound-requests-intros-b2.json` and its bundle copy. Batch 1's manifest (`68c49c12`) is sealed by its approved jobs:
-  the compiler refuses to change it or to repeat a key across batches. `Tests/test_intro_sound_manifests.py` pins it.
-- **Banks** (guide 9d): `NativeIntroPack.Banks` = `ChipArenaIntroMotion` (Slipstream's) + `...Melee`, `...Ranged`, `...Elemental`,
-  each optional, merged at runtime. `IntroPackChecks` fails on a name in two banks or a clip the match plays (by name, take or file).
-  The checks find banks at `CHIPARENA_INTRO_MOTION[_MELEE|_RANGED|_ELEMENTAL]`. Format "CAIM" 2 adds each clip's bake source.
-- **Bake** (guide 9d): scratch patch `i0e/motion/intromotion2_patch.py` (over I0d's): `bank=` plus `clip=<FBX>|<take>|<range>|<label>`
-  lines; it refuses the match's clips and repeated names and never writes Resources. One hold (229 s, the Editor on `9319026b`
-  throughout, Resources untouched; tool v3487) baked a 2-clip test bank, refused a match clip and listed a wrong take. The bank
-  loaded beside Slipstream's (`--intro-pack`, 135 checks) and was deleted.
-- **I2b's notes:** opt-in `FromPack(..., body: BodyTurn.Pelvis|Clip)` (a keyed lean rides the clip's pelvis, or the clip stands as
-  baked; the default is unchanged), and `IntroPoseChecks.Mapping` skips joints a clip plays in full. Slipstream is unchanged.
-- **Index:** notes folder `intro-pack-clips-index.md`, the owner's packs by weapon and body mechanic without the match's 497 clips,
-  with licences (the Unreal Archer and Dual Sword packs are not usable).
-
-**Checks (actual, at `9c58c0f5`; the docs commit changes no code):**
-- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, banks-next; the local intro and match banks
-  found): 1,091 PASS lines, exit 0, 1,190 s.
-- `--intro-pack` 127, `--intros-v2` 4,649, `--intro-generic` 29,960, `--intro-limits` 485 (0 findings). Slipstream's model dumps
-  are byte-identical to `802e79ca`'s. Unity compile (no download): all four assemblies pass. `git diff --check`: clean.
-- Python (`PYTHONUTF8=1`): `test_intro_sound_manifests` 7 OK, `test_generate_sound_requests` 9 OK; `test_sound_queue` (2 F, 1 E) and
-  `test_import_sound_requests` (5 F) fail as on shared before this work.
-
-**Not verified:** a new-form bank drawn in the Editor (needs this Core there); batch 2's real manifest, job and import (no rows yet).
-**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. **Voxel dependency:** none added.
-
-**Risks and next step:** the bake patch lives in scratch (re-apply if the tool is regenerated); authors' banks must ship in the Drive
-zip. `test_effects_audio`, `test_import_sound_requests` and `test_intro_music` write this PC's live `Latest-Sound-Status.json` and
-its mirror (mine did at 19:58; restored from the builder's own copy): for Astra. Next: I3-I5 merge this branch and bake their banks.
 
 ## 2026-11-20 — Claude: releases 3 and 4: Slipstream on the Runner Action pack, Belvedere Camp's part 1, Meridian's stairs and the Ward Zero wall (integrator)
 **Release 3**
@@ -921,8 +1017,6 @@ Low draws without tone mapping, so a warm glow over a warm finish clips (fixed w
 Flashbulb is silent until its generated take lands. Next: the integrator merges the branch with the framework and packs the bank
 into the Drive zip; the generated sounds come with the builder's next audio run.
 
-
-
 ## 2026-11-20 — Claude (I0d): intros v2: pack clips as keys from the intros' own motion bank (Slipstream's run), and the name card on bright sets (owner request; presentation only)
 
 Owner (2026-11-20, on Slipstream): "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I
@@ -1580,6 +1674,7 @@ None.
 - **Checks:** `--bleed` PASS (11,025 pieces, 74 draws); `zfight.py` on the same three scenes and modes: no bleed pair; the compile gate PASS; `git diff --check` clean. Bank: 1,820,244 bytes. No captures in this pass.
 
 **Next:** the integrator reviews the clips; D3 wires ThemeAt after D1 merges; Astra takes the contracts above.
+
 ## 2026-11-19 — Claude: the Meridian dress's fix pass on the integrator's review (D1; presentation only)
 
 Branch `claude/meridian-dress` (base shared `8790610c`; shared has since moved to `821d75c4`, which merges with only the usual DEV_LOG/PROJECT_STATE conflicts). D2's `origin/claude/meridian-landmarks` (`345657a4`) merged in as `1f059828` (both sides kept); the fix pass is `85e62d07` and `8dcebbfc`. Pushed, not merged; not released. No Editor capture this time (the integrator's call): D3 makes the night captures of the complete look.
@@ -2392,6 +2487,7 @@ Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientati
   model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
   **Next:** review of the landing fix; then merge.
 - **Released:** shared `1b356c0c` (the builder at `1b356c0c`), test channel revision `639306602307778517` (build `3e6ba858`); the suite at `86a37fce` (1,040 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
 ## 2026-11-18 — Claude: Expedition W0, the generated city's latent fixes and its frame budget (owner report; presentation only)
 
 Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`. The overhaul's first package for Claude (`docs/EXPEDITION-OVERHAUL.md` W0, release 1), approved with every default ("Yes, use defaults").
@@ -2896,7 +2992,6 @@ Branch `codex/expedition-a4-greybox`, base `15dab150`. Editor and Development Bu
 
 The managed `--layered-walk` sweep passed eight seeds at each size, checking gate-to-hall distances, continuous Hulk-width support and headroom. Measurements and controls are in `docs/EXPEDITION-OVERHAUL-ASTRA.md`. The owner walk and native frame captures are pending. The full surface graph, the chunked city kit, enemy spawning and the deployment swap belong to M5. This preview has no combat or network changes.
 - **Merged and released (Claude, integrator, so the owner can walk it):** PR #413 (`codex/expedition-a4-greybox` at `35eb821f`) merged on `claude/merge-astra-greybox` into shared `859a90c6` (the builder at `859a90c6`), test channel revision `639306350457222805` (build `dc56acbc`); the suite at `35eb821f` (1,037 groups, exit 0), the Unity compile. A0 (PR #412) is held for Claude's pod crash (`claude/exp-w4-crash`), with which it ships.
-
 
 ## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
 

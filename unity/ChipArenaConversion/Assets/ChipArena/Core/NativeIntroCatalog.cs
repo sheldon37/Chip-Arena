@@ -68,13 +68,13 @@ namespace ChipArena.UnityConversion
             //
             // ---- weapon intros: NativeIntroEntry.Weapon("<spec>", ...) ----
             //
-            // sword
+            NativeIntroEntry.Weapon("sword",NativeIntroSeveredDawn.Title,NativeIntroSeveredDawn.Total,NativeIntroSeveredDawn.CardAt,()=>new NativeIntroSeveredDawn(),"I3","A cut so fast it severs the dawn's light."),
             //
-            // daggers
+            NativeIntroEntry.Weapon("daggers",NativeIntroAfterimage.Title,NativeIntroAfterimage.Total,NativeIntroAfterimage.CardAt,()=>new NativeIntroAfterimage(),"I3","Faster than its own image: two echoes cut a beat behind."),
             //
-            // shield
+            NativeIntroEntry.Weapon("shield",NativeIntroHoldTheLine.Title,NativeIntroHoldTheLine.Total,NativeIntroHoldTheLine.CardAt,()=>new NativeIntroHoldTheLine(),"I3","An immovable wall in the breach: a barrage breaks on the shield."),
             //
-            // greatsword
+            NativeIntroEntry.Weapon("greatsword",NativeIntroFaultline.Title,NativeIntroFaultline.Total,NativeIntroFaultline.CardAt,()=>new NativeIntroFaultline(),"I3","The weight that cracks the ground: a plunging slam breaks the quarry floor."),
             //
             // pistol
             //
@@ -92,11 +92,11 @@ namespace ChipArena.UnityConversion
             //
             // darkness
             //
-            // katana
+            NativeIntroEntry.Weapon(NativeKatana.Spec,NativeIntroStillRain.Title,NativeIntroStillRain.Total,NativeIntroStillRain.CardAt,()=>new NativeIntroStillRain(),"I3","Rain, stillness and one cut: the rain stops in the air."),
             //
-            // glaive
+            NativeIntroEntry.Weapon(NativeGlaive.Spec,NativeIntroOrrery.Title,NativeIntroOrrery.Total,NativeIntroOrrery.CardAt,()=>new NativeIntroOrrery(),"I3","The ring that sets the heavens in order: it strikes round the orrery and comes home."),
             //
-            // fangs
+            NativeIntroEntry.Weapon(NativeFangs.Spec,NativeIntroApex.Title,NativeIntroApex.Total,NativeIntroApex.CardAt,()=>new NativeIntroApex(),"I3","A predator's pounce from the ruins: both fangs into the earth."),
             //
             NativeIntroEntry.Dev("architect","DEV · Architect of Reality",NativeIntroArchitect.Total,NativeIntroArchitect.CardAt,()=>new NativeIntroArchitect(),"I1","The arena dissolves into code and light, and you rebuild it around you. The world obeys."),
             //
