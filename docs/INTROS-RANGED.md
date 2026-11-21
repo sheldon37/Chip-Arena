@@ -94,12 +94,20 @@ a western duelist's shot, so no support grip.
 Motion (batch 2; owner on the first version: "arms looked really odd": a limp front hand, tangled arms, crossed arms at the end):
 a high kneel on the model (`ModelKneel`: the right knee on the floor, the left foot planted ahead), square to the drone, the torso
 bladed as the match aims a long gun (`NativeIntroPoses.RifleAim`), the neck bowed and the head tilted back level and rolled onto the
-stock, so the visor sits at the scope's eyepiece (searched with `--intro-ranged-fit kneel`). The main hand is the match's long-gun
-hold (`NativeIntroPoses.AimRifle`), the off fist on the handguard by the grip IK (`GripAt`), the stock in the drawn shoulder
-(`Shoulder` 1). The fore-end lies over the coping. One breath (the chest filling, the clavicle settling), the shot's kick rocking the
+stock, so the visor sits at the scope's eyepiece (searched with `--intro-ranged-fit kneel`). The main hand is the long guns' shouldered
+hold (`NativeRangedIntro.ShoulderGun`: the match's long-gun hold with the trigger elbow down and out, below), the off fist on the
+handguard by the grip IK (`GripAt`), the stock in the drawn shoulder (`Shoulder` 1). The fore-end lies over the coping. One breath (the chest filling, the clavicle settling), the shot's kick rocking the
 body back. The rise: the weight over the front foot, the knee lifting, the back foot stepping up beside it as the hips rise, the
 rifle down from the shoulder to the low carry (the owner's rest-low rule), the off hand still on the handguard. The camera's lens,
-scope and shot frames and the spent case's port are on the drawn rifle (`AimWrist`, the scope .175 over the bore).
+scope and shot frames and the spent case's port are on the drawn rifle (`AimWrist`; the lens .055 over the weapon frame, as hold 7's
+macro shows it in the glass).
+
+**The trigger elbow (owner 2026-11-21 on Brass Storm, "Arm doing weird things on machine gun intro again"; One Breath had the same, milder):**
+the match's long-gun hold (`NativeIntroPoses.AimRifle`, the wrist under the cheek) keys a straight trigger arm on the keyed rig's wide
+shoulders, so when the stock goes into the drawn shoulder the drawn elbow has no side to keep and lands level with the shoulder (the
+upper arm raised 90-100°): a chicken wing. `ShoulderGun` brings the keyed wrist back, down and out toward the shoulder (−.08, −.12, −.14
+in the chest's frame) so the keyed arm bends with its elbow down and out, and the drawn arm keeps that side: the drawn trigger elbow
+.13-.18 m under the shoulder, the upper arm 50-60° off hanging, through the whole aim.
 
 ## Brass Storm (machine gun)
 
@@ -116,9 +124,13 @@ scope and shot frames and the spent case's port are on the drawn rifle (`AimWris
 Motion (batch 2): `ModelFeet` on. In the dark the gun at the low carry, the head snapping to each flood as it bangs on (left, right,
 then up the yard). The step in to the bags (the left foot forward, the stance of the canonical machine-gun aim), the gun up into the
 shoulder as the off hand racks the handle (the grip IK's `Along` slides it back along the gun and home). The burst: RifleAim's blade
-with the cheek on the stock (`--intro-ranged-fit stand-mg`), the knees soft and the weight in the gun; the hips take three quarters of
-the sweep (keyed on its turns), the arms the rest; each round's aim is from the drawn grip as the hips swing it, so every round leaves
-the drawn bore onto its strike (`Tests/IntroRangedChecks`: within 2.4°); a small kick per round (a steady lean in Reduced effects).
+with the cheek on the stock (`--intro-ranged-fit stand-mg`), the knees soft and the weight in the gun. The trigger arm is
+`ShoulderGun`'s (the right elbow down and a little out under the shoulder, the stock in the shoulder pocket, the forearms along the
+gun; the owner's "Arm doing weird things" was the canonical hold's chicken wing, the elbow up by the helmet), the off hand on the
+handguard. The torso and the hips carry the sweep (the hips three quarters, keyed on its turns; the spine and the chest the rest), so
+the arms keep their hold; each round's aim is from the drawn grip as the body swings it, so every round leaves the drawn bore onto its
+strike (`Tests/IntroRangedChecks`: within 2.4°); a small kick per round (a steady lean in Reduced effects). The rack slides the off
+hand .2 m back along the gun (further put the off elbow in the chest with the gun held in at the shoulder).
 Dry: a beat on the stock, then the head up and the gun down to the carry. Reduced effects: the muzzle burns steady instead of
 strobing, the floods rise smoothly, no glints.
 
@@ -131,7 +143,7 @@ strobing, the floods rise smoothly, no glints.
 | 1.95 | Side-on to the shot, the draw toward the sky (a low orbit); the fireflies spiral into the arrowhead, the gate's glyphs wake |
 | 2.75 | Full draw: the arrowhead's star (close); the leaves stop in the air |
 | 3.25 | The release, slowed: a bolt of light climbs (low under the bow) |
-| 3.72 | It blooms high above and splits (from the terrace's edge, looking up) |
+| 3.6–4.1 | The archer in profile at the head's height, looking up along the shot; the bolt blooms high above and splits (3.72), its light on the face |
 | 4.12–5.2 | The volley of light rains round the shrine (high wide); each landing a burst of petals; the lanterns light |
 | 4.9–5.45 | The bow comes down |
 | 6.2 | The name (Assemble), the moon behind, the arrows standing in the moss |
@@ -140,11 +152,31 @@ Motion (batch 2): `ModelFeet` on. The draw is the canonical bow draw (`NativeInt
 the shot, the feet across the line), the Bow's own arms (`NativeBowPose`, procedural) with the string hand on the nock by the grip IK
 (`GripAt`, its `Pull` the bow view's). On the model the bow arm is kept straight (the bow's full extension) and the string drawn to
 0.6, which puts the string hand at the drawn jaw (`Tests/IntroRangedChecks`: under 0.25 m from the eyes, the bow elbow under 25°); the
-canonical 0.55 with its matching extension bent the drawn bow arm 120°. The arrow is on the string from the start (the bow hand's
+canonical 0.55 with its matching extension bent the drawn bow arm 120°. The string elbow (owner 2026-11-21: "check that bow one again"):
+the canonical bow pole (back and up) took the drawn elbow 0.25 m over the shoulder at this 50° sky shot, the forearm through the helmet
+to the jaw, and the raised arm across the face in the low full-draw shot. `DrawElbow` (−.8, −.2, −.55 in the leaned, side-on chest's
+frame: back along the arrow, a little down and behind) puts the drawn elbow on the arrow's line at the shoulder's height (at most
++0.04 m through the draw), the forearm beside the head to the jaw; the grip takes the string hand over the hook's last 30%, so the
+drawn elbow arrives on its side without a flip. The arrow is on the string from the start (the bow hand's
 finger keeps it on the shelf, as the match's carry): the reach to the back quiver kept twisting the keyed arm past its limits, and a
 v2 bow intro draws no arrow in the hand. The string hand hooks the string on an arc outside the body as the bow comes up, and after the
 release it flies back straight on its forearm. The bow, string, arrow and quiver are the match's, drawn by the runtime from the
-intro's view (`INativeIntroBow`).
+intro's view (`INativeIntroBow`). The bloom (3.6-4.1 s) is seen from the chest's side at the head's height (the low shot from behind
+under the shoulders read the head and the arms oddly).
+
+## The arms as they read (all four; owner 2026-11-21)
+
+`--intro-limits` passed while the machine gun's and the bow's arms looked wrong, so `Tests/IntroRangedChecks` also reads every arm
+of each intro every 1/30 s through its own shot camera (`--intro-ranged-arms ID [FROM TO]` prints the measures per frame):
+- **no arm through the head:** the drawn arm's bone lines stay out of the drawn head's ellipsoid (NativeVisualRig's, the one fists and
+  weapons are kept out of) widened by 3 cm;
+- **no arm across the face:** in the shot camera, no arm in front of the face covers more than 15% of the face's disc (0.11 m round
+  the drawn eyes);
+- **the aiming elbows:** a long gun's trigger elbow at least 8 cm under its shoulder while the gun is shouldered (no chicken wing); the
+  pistol's elbow within 5 cm over its shoulder and 4 cm over its shoulder-wrist line through the aim (a straight arm); the bow's string
+  elbow under 10 cm over its shoulder through the draw (on the arrow's line, not over the head).
+On the batch-2 poses of hold 7 these fail (One Breath's trigger elbow +0.07 m, Brass Storm's level with the shoulder, Lightfall's
+forearm through the helmet); on the reworked ones every arm passes (the trigger elbows −0.14 and −0.15 m, the string elbow +0.04 m).
 
 ## Sound
 
