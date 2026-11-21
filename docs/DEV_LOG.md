@@ -1,3 +1,39 @@
+## 2026-11-21 — Claude: release 7: intros v2 batch 2, the fifteen weapon intros (integrator)
+Owner: "Yes, we can do them in batches if this will improve the quality (Hopefully dramatically)". The owner also flagged the
+machine-gun arm and the bow ("Arm doing weird things on machine gun intro again, and check that bow one again as well").
+- **Published:** shared `765d4b96`, then `afa871a9` (release 7b), with the builder at `afa871a9`. Test channel revision
+  `639308507010898052` (build `4bd4b3c3`, 391.8 MiB).
+- **Merged:**
+  - framework `510cbd09` (I0e);
+  - melee `d5a88437` (I3): Still Rain, Apex, Faultline, Severed Dawn, Hold the Line, Afterimage (on the owner's Frank walk),
+    and the new Orrery for the Glaive;
+  - ranged `ace64237` (I4): Sundown, One Breath, Brass Storm and Lightfall, with the arm and bow fixes;
+  - elemental `5b3621f5` (I5): Forgeborn, Still Tide, Strike Point and Black Sun;
+  - `claude/intro-arm-checks` `f127b094`. `IntroArmChecks` holds all 21 v2 intros strictly: no arm through the head, and no
+    arm across more than 15% of the face through each intro's shot cameras.
+- **Drive zip:** 178,647,427 bytes, sha `73f931a3`. It adds `ChipArenaIntroMelee` (11,933,443 bytes),
+  `ChipArenaIntroRanged` (7,212,499), `ChipArenaIntroElemental` (6,442,001) and `ChipArenaIntroMotionMelee` (31,388), with
+  their metas. The backup is `LocalAssets-2026-11-21-before-release7.zip`.
+- **Sounds, slice 1 of 3:** the elemental four, Brass Storm and Lightfall.
+  - The first build stopped at the import: 9 of 96 takes were shorter than their minimum after trimming.
+  - `ea3f40c3` re-split the 87 accepted originals into jobs `intros-b2-2026-11-21-v2a/v2b/v2c`.
+  - `brass.hiss`, `brass.flood`, `fire.slam` and `lightfall.release` play their fallbacks.
+  - Retrying those four needs a new manifest batch, because the b2 manifest's SHA is pinned by its jobs.
+  - Slices 2 and 3 (One Breath, Sundown and the seven melee intros: 186 takes, about 351 s) follow in later releases, under
+    the builder's cap of 115 requests and 185 s.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `17b1710c`;
+  - the full suite at `17b1710c` and at `ea3f40c3` (1,099 groups, exit 0);
+  - `--intro-arms` strict: 20,712 checks;
+  - the Unity compile;
+  - the build's sound import and package validation.
+  - Not run: two Windows clients, the sounds by ear.
+- **For Astra:** confirm the relay's `NATIVE_INTROS` accepts the `intro2-weapon-*` ids, so batch 2's picks roam.
+- **Known nits:**
+  - Faultline's hilt passes the lower visor for about 0.3 s;
+  - Orrery's last shot has a ring across its right side;
+  - Still Rain's saya hangs at the match angle.
+
 ## 2026-11-21 — Claude (I5): Strike Point's arm off the face (the v2 arm check; presentation only)
 The coordinator, after the new arm check: Strike Point's left arm covered 35% of the face at clip 3.63-3.70 s (camera shot 4).
 - **Branch/base:** `claude/intro-elemental`, with `claude/intro-arm-checks` `f127b094` merged in (`187d2c39`; it already held my
