@@ -10,8 +10,9 @@ namespace ChipArena.UnityConversion
     /// the lane and stops; two echoes of it peel off to either side, one teal and one magenta, each a beat behind the body. It cuts, and the
     /// echoes cut after it, each throwing its edge up through a lantern's cord: the lanterns drop and roll on the cobbles. A second exchange;
     /// then the echoes slide back into the body as it crosses its daggers, three images landing as one, and it stands under the name.
-    /// The model plays the daggers' clips (NativeBladeIntro); the keyed rig plays the game's own captures of them (the holds are the match's),
-    /// and the echoes are that rig's ghosts a moment behind, drawn as the model. Presentation only.
+    /// The body is keyed (no match clips), its walk up the lane played from an everyday walk of the owner's packs over the keyed walk
+    /// (WalkClip: legs and torso; the keys play without the bank); the daggers on their keyed paths; the echoes are the rig's ghosts a
+    /// moment behind, drawn as the model. Presentation only.
     /// </summary>
     public sealed class NativeIntroAfterimage:NativeIntroMeleeBlade
     {
@@ -24,10 +25,21 @@ namespace ChipArena.UnityConversion
             Night=NativeEntranceFx.Hex(0x06070c),Steam=new Vector3(.36f,.38f,.42f);
         public override string Spec=>"daggers";
         protected override float TipLength(bool left)=>.84f;
-        private static readonly Vector3 WalkFrom=Local(0,0,-1.85f);// (up the lane along its facing)
-        /// <summary>The walk up the lane: the hips' line from WalkFrom to the mark (NativeIntroFeet.Track: a start-up, a steady pace, a
-        /// slow-down to the stop), three steps on the model's feet.</summary>
-        private static readonly NativeIntroFeet.Track Lane=new NativeIntroFeet.Track(WalkFrom,Facing,0,StopAt-.05f,1.85f,.35f,.4f);
+        /// <summary>The walk's pack clip (docs/INTROS-V2.md 9d; owner on a keyed run: "can we make this more realistic? Could use the
+        /// running pack I have"): the owner's Frank Platformer everyday walk (Walk02; not a clip the match plays), in the melee intros' own
+        /// motion bank (ChipArenaIntroMotionMelee, local). Its legs and torso play over the keyed walk at the lane's pace (WalkRate: the
+        /// clip's foot speed times it is the lane's steady pace), the left foot lifting with the keyed walk's first step (WalkPhase), and
+        /// hand over to the keys as the last step lands (WalkOut); the daggers stay on their keyed paths. Without the bank the keyed walk
+        /// under it plays (its steps at the clip's cadence, WalkCadence and WalkSwing).</summary>
+        public const string WalkClip="Frank_Platformer@Walk02_InPlace#melee-walk02";
+        public const float WalkPhase=.148f,WalkRate=.926f,WalkOut=1.55f,WalkIn=.02f,WalkBlend=.3f,WalkCadence=.486f,WalkSwing=.54f;
+        /// <summary>The walk's pack segment (null without one) and the lane's steady pace (m/s), for the checks.</summary>
+        public NativeIntroPack.Segment Walk=>Keys!=null&&Keys.Packs.Length>0?Keys.Packs[0]:null;
+        public static float LanePace=>Lane.V;
+        private static readonly Vector3 WalkFrom=Local(0,0,-2.085f);// (up the lane along its facing)
+        /// <summary>The walk up the lane: the hips' line from WalkFrom to the mark (NativeIntroFeet.Track: at its pace from the start, as it
+        /// walks into the shot, and a slow-down to the stop), three steps on the model's feet.</summary>
+        private static readonly NativeIntroFeet.Track Lane=new NativeIntroFeet.Track(WalkFrom,Facing,0,StopAt-.05f,2.085f,.05f,.4f);
         // The lanterns (the alley set's rigs: their cords' rings, Unity space) and which echo's cut drops which (-1: none).
         private static readonly Vector3[] Lanterns={new Vector3(.1f,3.35f,6.0f),new Vector3(-.35f,3.55f,3.4f),new Vector3(.25f,3.2f,.8f),new Vector3(-.15f,3.45f,-1.8f),new Vector3(.4f,3.6f,-4.4f),new Vector3(-.3f,3.3f,-7.0f),new Vector3(.15f,3.5f,-9.5f),new Vector3(-.4f,3.25f,-12.0f)};
         private static readonly string[] lanternProps={"alley/lantern-0","alley/lantern-1","alley/lantern-2","alley/lantern-3","alley/lantern-4","alley/lantern-5","alley/lantern-6","alley/lantern-7"};
@@ -42,8 +54,8 @@ namespace ChipArena.UnityConversion
             // the stop with the right foot coming beside, the lunge's step and back.
             Start=Stance(.1f,.02f,.08f,-.1f,-.06f,-.1f,Facing,WalkFrom.X,WalkFrom.Z);
             var k=new NativeEntranceKeys();var plan=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            NativeIntroPoses.Walk(k,plan,Lane,.02f,3,.5f,.42f,true,.6f);
-            plan.Add(Step(false,1.45f,1.76f,-.15f,-.1f,-.38f,.06f));
+            NativeIntroPoses.Walk(k,plan,Lane,.02f,3,WalkCadence,WalkSwing,true,.6f);
+            plan.Add(Step(false,1.5f,1.8f,-.15f,-.1f,-.38f,.06f));
             plan.Add(Step(true,CutCAt+.2f,CutCAt+.45f,.2f,.46f,.15f,.08f));plan.Add(Step(true,ConvergeAt,ConvergeAt+.3f,.13f,.1f,.15f,.06f));
             Steps=plan.ToArray();
             var stand=NativeEntranceKeys.Stand();
@@ -65,6 +77,8 @@ namespace ChipArena.UnityConversion
             // The stance under the name: low and easy, the daggers low at the sides, their points forward.
             k.Key(StanceAt+.3f,NativeIntroPoses.HeroWide()).Root(0,.88f,0,Facing).Planted(1).Drop(-.12f).J(B,.08f).J(C,0,.06f,0).J(Hd,-.04f,0,0).PassKey();
             k.Key(Total,NativeIntroPoses.HeroWide()).Root(0,.88f,0,Facing).Planted(1).Drop(-.12f).J(B,.07f).J(C,0,.08f,0).J(Hd,-.05f,.04f,0);Keys=k;
+            // The walk's pack clip over the keyed walk (its legs and torso): walking from the start, out into the keyed stop.
+            k.FromPack(WalkClip,0,WalkOut,WalkPhase,WalkRate,true,NativeIntroPack.RootMode.Path,NativeIntroPack.Legs|NativeIntroPack.Torso,WalkIn,WalkBlend,NativeIntroPack.BodyTurn.Clip);
             // ---- the daggers' ways (each hand's grip and blade, in the keyed chest's frame) ----
             RightDagger.InChest().Key(0,V(-.38f,-.3f,.12f),V(-.15f,-.45f,.88f)).Key(StopAt,V(-.38f,-.3f,.12f),V(-.15f,-.45f,.88f))
                 .Key(SplitAt+.1f,V(-.2f,-.05f,.38f),V(0,.2f,.98f))

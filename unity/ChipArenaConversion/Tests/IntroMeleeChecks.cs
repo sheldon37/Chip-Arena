@@ -30,8 +30,21 @@ internal static class IntroMeleeChecks
             var s=e.Make();Check(s.GetType()==type,spec+"'s intro is "+type.Name);
             Clear(e,s,rig);
         }
-        Faultline(rig);StillRain(rig);Apex(rig);Orrery(rig);
-        Console.WriteLine("PASS melee intros ("+count+" checks: seven on their slots; on the model no drawn weapon through the head or torso, the great sword's point in the floor, the saya in the left hand, the Fangs on the lintel, the Glaive's ring out of the hand and back, the orrery's rings over the floor)");
+        Faultline(rig);StillRain(rig);Apex(rig);Orrery(rig);Afterimage();
+        Console.WriteLine("PASS melee intros ("+count+" checks: seven on their slots; on the model no drawn weapon through the head or torso, the great sword's point in the floor, the saya in the left hand, the Fangs on the lintel, Afterimage's walk on its legs and torso only, the Glaive's ring out of the hand and back, the orrery's rings over the floor)");
+    }
+
+    // ---- Afterimage's walk: an everyday pack walk over the keyed walk (docs/INTROS-V2.md 9d), its legs and torso only (the daggers keyed) ----
+    private static void Afterimage()
+    {
+        var s=(NativeIntroAfterimage)NativeIntroCatalog.Find(NativeIntroCatalog.WeaponPrefix+"daggers").Make();var g=s.Walk;
+        Check(g!=null&&g.Clip==NativeIntroAfterimage.WalkClip,"Afterimage's walk is its pack segment");
+        Check(g.From==0&&g.To<=NativeIntroAfterimage.StopAt&&g.Loop&&g.Root==NativeIntroPack.RootMode.Path,"Afterimage's walk plays on the lane until the stop");
+        Check(g.Mask==(NativeIntroPack.Legs|NativeIntroPack.Torso)&&g.Body==NativeIntroPack.BodyTurn.Clip,"Afterimage's walk takes the legs and the torso, never the arms (the daggers stay keyed)");
+        // (with the local melee bank: the clip at its rate walks at the lane's pace, so the drawn feet hold)
+        if(NativeIntroPack.Local==null)IntroPackChecks.LoadLocal(IntroPackChecks.Root(),out _);
+        if(NativeIntroPack.Local!=null&&NativeIntroPack.Local.TryGet(NativeIntroAfterimage.WalkClip,out var c))
+            Check(Math.Abs(c.Speed*NativeIntroAfterimage.WalkRate-NativeIntroAfterimage.LanePace)<.1f,"Afterimage's walk clip at its rate keeps the lane's pace ("+(c.Speed*NativeIntroAfterimage.WalkRate).ToString("0.00")+" against "+NativeIntroAfterimage.LanePace.ToString("0.00")+" m/s)");
     }
 
     // ---- the body as the runtime binds it, and the drawn weapon on it ----
