@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
                .Dolly(GrabAt-.08f,Grip+V(.35f,1.05f,.9f),Grip+V(.3f,.95f,.8f),Grip,Grip+V(0,.02f,0),34,30).Focus(0,0,.4f)
                .Hold(CutAt-.04f,V(-2.7f,.95f,1.9f),V(.35f,1.15f,-.25f),46)
                .Spline(FreezeAt,new[]{a,b,c,d},LineAt(1.4f)+new Vector3(0,.05f,0),LineAt(6.4f),36,31).Ease(NativeIntroEase.InOut)
-               .Dolly(ResumeAt,V(-1.65f,1.25f,3.95f),V(-1.75f,1.3f,4.15f),V(1.3f,1.75f,-2.5f),V(1.5f,1.6f,-2.7f),45,44)
+               .Dolly(ResumeAt,V(-2.9f,2.8f,2.7f),V(-3.05f,2.9f,2.85f),V(1.3f,1.35f,-2.5f),V(1.5f,1.25f,-2.7f),45,44)
                .Dolly(SheatheAt,V(1.6f,1.15f,1.8f),V(1.3f,1.12f,1.52f),V(.1f,1.0f,.05f),V(.12f,1.02f,.05f),36,33)
                .Dolly(ClickAt-.05f,V(.45f,.34f,3.05f),V(.38f,.38f,2.8f),V(0,.9f,0),V(0,.95f,0),40,38);
             HeroFull(StillAt,1,4.6f,32,.42f);
