@@ -617,18 +617,22 @@ def water_finishes():
     F['tile'] = sk.fin('water-tile', 0x3c4a4c, sk.DETAIL_TILE, smooth=.35, dirt=.9, moss=.5, param=.6)
     F['vault'] = sk.fin('water-vault', 0x353d40, sk.DETAIL_ASHLAR, smooth=.2, dirt=1.0, moss=.3)
     F['rib'] = sk.fin('water-rib', 0x59625f, sk.DETAIL_CARVED, smooth=.3, dirt=1.0, wear=.4)
-    F['water'] = sk.fin('water-surface', 0x10384a, sk.DETAIL_NONE, smooth=.32, dirt=0.0)
-    F['wave'] = sk.fin('water-wave', 0x1d7fa3, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
-    F['wave-deep'] = sk.fin('water-wave-deep', 0x0e4664, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
+    F['water'] = sk.fin('water-surface', 0x0c3142, sk.DETAIL_NONE, smooth=.86, dirt=0.0)
+    # The wave: dark wet water, glossy enough to mirror the intro's own sky (INTROS-V2 3a), lit through where the lip runs thin (the
+    # glow sub-mesh), foam on the crest and in streaks down the face (wave_colours paints them per vertex).
+    F['wave'] = sk.fin('water-wave', 0x0b3a4a, sk.DETAIL_NONE, smooth=.9, dirt=0.0)
+    F['wave-deep'] = sk.fin('water-wave-deep', 0x062330, sk.DETAIL_NONE, smooth=.88, dirt=0.0)
     F['wave-light'] = sk.fin('water-wave-light', 0x3fb6e2, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
-    F['wave-glow'] = sk.fin('water-wave-glow', 0x5fe0ff, sk.DETAIL_GLOW, glow=1.1)
-    F['foam'] = sk.fin('water-foam', 0xdff6ff, sk.DETAIL_NONE, smooth=.2, dirt=0.0)
-    F['ice'] = sk.fin('water-ice', 0xc4f2fc, sk.DETAIL_NONE, smooth=.18, dirt=0.0)
-    F['ice-deep'] = sk.fin('water-ice-deep', 0x5cc6e6, sk.DETAIL_NONE, smooth=.18, dirt=0.0)
-    F['ice-glow'] = sk.fin('water-ice-glow', 0x8ff4ff, sk.DETAIL_GLOW, glow=1.7)
-    F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=1.4)
-    F['ice-glass'] = sk.fin('water-ice-glass', 0x9fecff, sk.DETAIL_GLOW, glow=.5)  # light through the ice (ice_colours facets it)
-    F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.12, dirt=0.0)
+    F['wave-glow'] = sk.fin('water-wave-glow', 0x2cc2cc, sk.DETAIL_GLOW, glow=1.0)
+    F['foam'] = sk.fin('water-foam', 0xe4f6fb, sk.DETAIL_NONE, smooth=.22, dirt=0.0)
+    # The ice: the same wall frozen, clear and glossy, blue where it is thick, white with rime on its crest and edges, light through
+    # its curl and veins of light in it (ice_colours).
+    F['ice'] = sk.fin('water-ice', 0xb6e6f2, sk.DETAIL_NONE, smooth=.82, dirt=0.0)
+    F['ice-deep'] = sk.fin('water-ice-deep', 0x2f8fb8, sk.DETAIL_NONE, smooth=.86, dirt=0.0)
+    F['ice-glow'] = sk.fin('water-ice-glow', 0xa8f6ff, sk.DETAIL_GLOW, glow=1.5)
+    F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=1.1)
+    F['ice-glass'] = sk.fin('water-ice-glass', 0x4cc0e2, sk.DETAIL_GLOW, glow=.45)  # light through the ice (ice_colours shades it)
+    F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.2, dirt=0.0)
     F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
     F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
     F['lead'] = sk.fin('water-lead', 0x1c2224, sk.DETAIL_IRON, smooth=.4, metal=.6, dirt=.6)
@@ -789,55 +793,83 @@ def ear_clip(poly):
 
 
 def wave_colours(bk, g):
-    """A liquid wall's colour as a gradient: deep at its foot, lighter up its face and under its lip, foam white along its crest
-    (smooth, where finishes alone would band). The thin crest and the curl's inside glow, lit through: a dark teal low in the
-    curl up to a bright cyan and white at the lip. The body takes less of the arena's probe (its occlusion), so the trough is dark."""
+    """A liquid wall's colour, per vertex: deep teal-black at its foot through a clearer blue-green up the face, the foam (white,
+    rough) on the crest and the lip's edge broken into patches by noise, streaks of foam drawn down the face from the crest, a sheen
+    of lighter water under the curl. The lip (the glow sub-mesh) is lit through: a dark teal where it thickens to a clear cyan along
+    its thin edge, as a breaking wave lit from behind."""
     P, N, S_, F_ = g.arrays()
-    y = P[:, 1].astype(np.float64)
+    x, y, z = (P[:, k].astype(np.float64) for k in range(3))
+    W = P.astype(np.float64)
     glow = bk.glow.copy()
-    deep, mid, light, foam = np.array(sk.srgb(0x0b3a58)), np.array(sk.srgb(0x1a78a0)), np.array(sk.srgb(0x52c4ea)), np.array(sk.srgb(0xe2f8ff))
-    u = np.clip((y + .2) / 4.4, 0, 1)
-    col = np.where(u[:, None] < .55, deep + (mid - deep) * (u[:, None] / .55), mid + (light - mid) * ((u[:, None] - .55) / .45))
-    up = np.clip(N[:, 1].astype(np.float64), -1, 1)
-    col = col + (light - col) * np.clip(-up, 0, 1)[:, None] * .6 * (y > 2.4)[:, None]
-    f = np.clip((y - 4.3) / .35, 0, 1)
-    col = col + (foam - col) * f[:, None]
     lit = ~glow
+    deep, mid, clear = np.array(sk.srgb(0x041a24)), np.array(sk.srgb(0x0b4456)), np.array(sk.srgb(0x157a86))
+    foam = np.array(sk.srgb(0xe8f8fc))
+    u = np.clip((y + .3) / 4.6, 0, 1)
+    col = np.where(u[:, None] < .5, deep + (mid - deep) * (u[:, None] / .5), mid + (clear - mid) * ((u[:, None] - .5) / .5))
+    # the face under the curl is lighter (the barrel's water is thinner)
+    under = np.clip((x - .5) / 1.0, 0, 1) * np.clip((y - 1.6) / 1.6, 0, 1)
+    col = col + (clear * 1.25 - col) * (under * .45)[:, None]
+    # foam: the crest and the lip's rolled edge, broken by noise; streaks raking down the face from the crest
+    nz = sk.fbm(W, 1.7, 3, 811) - .5
+    streak = sk.fbm(np.stack([x * .6, y * .05, z * 2.6], axis=1), 1.0, 3, 812) - .5
+    crest = np.clip((y - 4.15) / .35, 0, 1) * np.clip(1.2 + nz * 2.2, 0, 1)
+    edge = np.clip((x - 2.1) / .5, 0, 1) * np.clip((y - 2.7) / .8, 0, 1) * np.clip(1.1 + nz * 2.0, 0, 1)
+    streaks = np.clip((streak - .12) * 5.0, 0, 1) * np.clip((y - .8) / 3.0, 0, 1) * (x > -.2) * .55
+    f = np.clip(np.maximum(np.maximum(crest, edge), streaks), 0, 1)
+    col = col + (foam - col) * f[:, None]
     bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
-    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.85 * 255))
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.9 * 255))
+    sm = .9 - .7 * f
+    bk.uv0[lit, 0] = sm[lit].astype(np.float32)
     if glow.any():
-        teal, cyan, white = np.array(sk.srgb(0x063a52)), np.array(sk.srgb(0x5edfff)), np.array(sk.srgb(0xdffcff))
-        u = np.clip((y - 2.55) / 1.75, 0, 1) ** 1.3
-        c = teal + (cyan - teal) * u[:, None]
-        c = c + (white - c) * np.clip((y - 4.3) / .3, 0, 1)[:, None]
+        teal, cyan, white = np.array(sk.srgb(0x06343e)), np.array(sk.srgb(0x2fd2d6)), np.array(sk.srgb(0xd8fbff))
+        # thin toward the lip's edge (x out, y down the lip): bright there, dark teal where it thickens back toward the crest
+        thin = np.clip((x - 1.3) / 1.3, 0, 1) ** 1.2
+        c = teal + (cyan - teal) * thin[:, None]
+        c = c + (white - c) * (np.clip((x - 2.45) / .3, 0, 1) * np.clip(.9 + nz * 2, 0, 1))[:, None]
         bk.colour[glow, :3] = np.round(np.clip(c[glow], 0, 1) * 255).astype(np.uint8)
-        bk.uv1[glow, 1] = (.15 + 1.45 * u[glow] ** 1.6).astype(np.float32)
+        bk.uv1[glow, 1] = (.25 + 1.15 * thin[glow] ** 1.3).astype(np.float32)
 
 
 def ice_colours(bk, g):
-    """A frozen wall as faceted ice: each facet a little lighter or deeper, cyan to white, and less of the arena's probe (its
-    occlusion), so it reads cold and clear rather than taking the arena's colour."""
+    """A frozen wall as clear ice, per vertex: pale blue-white where it faces the sky, a deep clear blue in the curl and down the
+    face where it is thick, rime (white, rough) on the crest, the lip's edge and in drifts, each facet a touch lighter or deeper so
+    it glitters; the curl's inner faces (the glow sub-mesh) lit through, cyan to pale, the veins bright."""
     P, N, S_, F_ = g.arrays()
     nf = len(S_)
     face = np.repeat(np.arange(nf), S_)
     rnd = np.array([H(k, 977) for k in range(nf)])[face]
-    rnd2 = np.array([H(k, 978) for k in range(nf)])[face]
+    W = P.astype(np.float64)
+    x, y = W[:, 0], W[:, 1]
+    up = np.clip(N[:, 1].astype(np.float64), -1, 1)
     lit = ~bk.glow
-    c = bk.colour[:, :3].astype(np.float64) / 255
-    c = c * (.88 + .24 * rnd)[:, None]
-    white = np.array(sk.srgb(0xf2feff))
-    c = c + (white - c) * (np.clip(rnd2 - .78, 0, 1) * 1.4)[:, None]
-    bk.colour[lit, :3] = np.round(np.clip(c[lit], 0, 1) * 255).astype(np.uint8)
-    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.85 * 255))
-    # the faces toward the barrel glow: each facet its own cyan to near white, a little brighter or dimmer (light through the ice)
     fc = np.repeat(F_, S_)
-    glass = np.array([sk.FINS[i].name == 'water-ice-glass' for i in fc], dtype=bool)
+    names = [sk.FINS[i].name for i in fc]
+    clear, sky, deep = np.array(sk.srgb(0x9fd9ea)), np.array(sk.srgb(0xd8f4fb)), np.array(sk.srgb(0x2a7fa6))
+    rime = np.array(sk.srgb(0xf4fdff))
+    # thick: low on the face and in the curl's hollow
+    thick = np.clip(1 - (y + .3) / 3.2, 0, 1) * .7 + np.clip((x - .4) / 1.2, 0, 1) * np.clip((3.9 - y) / 1.6, 0, 1) * .6
+    col = clear + (sky - clear) * np.clip(up * .8 + .2, 0, 1)[:, None]
+    col = col + (deep - col) * np.clip(thick, 0, .85)[:, None]
+    col = col * (.9 + .2 * rnd)[:, None]
+    nz = sk.fbm(W, 1.4, 3, 977) - .5
+    frost = np.clip((y - 4.0) / .4, 0, 1) * np.clip(1.1 + nz * 2.4, 0, 1) + np.clip((x - 2.2) / .4, 0, 1) * np.clip((y - 2.7) / .6, 0, 1) * .8
+    frost = np.maximum(frost, np.clip((nz - .18) * 4, 0, 1) * np.clip(up, 0, 1) * .8)
+    is_frost = np.array([n == 'water-frost' for n in names], dtype=bool)
+    frost = np.where(is_frost, np.maximum(frost, .85), frost)
+    frost = np.clip(frost, 0, 1)
+    col = col + (rime - col) * frost[:, None]
+    bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.92 * 255))
+    sm = .86 - .62 * frost
+    bk.uv0[lit, 0] = sm[lit].astype(np.float32)
+    glass = np.array([n == 'water-ice-glass' for n in names], dtype=bool)
     if glass.any():
-        deep, pale = np.array(sk.srgb(0x2fb8e6)), np.array(sk.srgb(0xd6fbff))
-        u = np.clip(rnd * .8 + np.clip((P[:, 1].astype(np.float64) - 1.0) / 3.4, 0, 1) * .35, 0, 1)
-        col = deep + (pale - deep) * u[:, None]
-        bk.colour[glass, :3] = np.round(np.clip(col[glass], 0, 1) * 255).astype(np.uint8)
-        bk.uv1[glass, 1] = (.3 + .42 * rnd2[glass]).astype(np.float32)
+        dk, pale = np.array(sk.srgb(0x1f8fbf)), np.array(sk.srgb(0xb8f2ff))
+        v = np.clip(rnd * .55 + np.clip((x - .6) / 1.8, 0, 1) * .45, 0, 1)
+        c = dk + (pale - dk) * v[:, None]
+        bk.colour[glass, :3] = np.round(np.clip(c[glass], 0, 1) * 255).astype(np.uint8)
+        bk.uv1[glass, 1] = (.22 + .4 * v[glass]).astype(np.float32)
 
 
 def hearth_colours(bk, g):
@@ -877,72 +909,97 @@ def wave_env(u):
     return max(0.0, math.sin(math.pi / 2 * min(1.0, (1.0 - u) / .32))) ** .6
 
 
+# A breaking wave's section in a half's frame (x toward the curl, y up from the floor; m): up the long back, over the crest, out
+# along the lip as it is thrown forward and curls down, back under its thin underside into the barrel and down the barrel's
+# wall and the face to the trough. Clockwise seen from +z, so the sweep's normals face out.
+WAVE_SECTION = [(-2.5, -.45), (-1.95, .35), (-1.45, 1.2), (-.95, 2.1), (-.5, 2.95), (-.05, 3.65), (.4, 4.2), (.9, 4.55), (1.42, 4.68),
+                (1.95, 4.52), (2.38, 4.12), (2.66, 3.58), (2.76, 3.0), (2.62, 2.72), (2.5, 3.02), (2.3, 3.45), (1.96, 3.76), (1.52, 3.9),
+                (1.1, 3.76), (.8, 3.38), (.62, 2.82), (.56, 2.15), (.62, 1.45), (.84, .8), (1.22, .2), (1.7, -.45)]
+
+
 def water_half(T, frozen):
     """A wave half in its own frame: the wall along +z (0 .. WATER_HALF), its back on -x, its curl toward +x (the right half;
-    the left is its mirror). Liquid: smooth water with a foam crest; frozen: faceted ice, icicles off the lip, a lit vein."""
+    the left is its mirror). Liquid: a plunging breaker, glossy dark water lit through its thin lip, foam on the crest and in
+    streaks; frozen: the same wave as clear faceted ice (a crystalline roughening of its skin), rime on its crest, icicles off
+    the lip, light through its curl and veins of light in it."""
     F = water_finishes()
     g = Geo()
-    prof = [(-1.45, -.4), (-1.2, .55), (-.9, 1.6), (-.55, 2.65), (-.18, 3.55), (.25, 4.25), (.72, 4.66), (1.25, 4.76), (1.78, 4.56), (2.2, 4.12),
-            (2.45, 3.5), (2.42, 2.85), (2.2, 3.05), (1.95, 3.7), (1.5, 4.05), (1.0, 4.0), (.62, 3.55), (.42, 2.75), (.38, 1.85), (.55, .9), (.95, -.4)]
-    nz = (22, 12, 7)[T.i]
-    P = np.zeros((nz + 1, len(prof), 3))
+    prof = WAVE_SECTION
+    nz = (30, 14, 8)[T.i]
+    nj = len(prof)
+    P = np.zeros((nz + 1, nj, 3))
     for i in range(nz + 1):
         u = i / nz
         z = WATER_HALF * u
         sy = wave_env(u)
-        sx = .75 + .25 * sy
+        sx = .72 + .28 * sy
         for j, (x, y) in enumerate(prof):
-            wob = .06 * math.sin(u * 7 + j * .9) * (y / 4.8) if not frozen else .05 * S(i, j, 7) * (y / 4.8)
-            P[i, j] = (x * sx + wob, y * sy + (.0 if y > 0 else 0), z)
-    end = [tuple(P[0, j]) for j in range(len(prof))]
-    for tri in ear_clip([(q[0], q[1]) for q in end]):
-        g.face([end[k] for k in tri], F['ice-deep'] if frozen else F['wave-deep'], normal=(0, 0, -1))
+            # (the liquid wall rolls along its length; the ice keeps a frozen ripple)
+            wob = .07 * math.sin(u * 7.3 + j * .8) * max(0.0, y / 4.7)
+            P[i, j] = (x * sx + wob, y * sy, z)
     if frozen:
-        pick = lambda nn, cc: F['frost'] if (cc[1] > 4.2 or cc[1] < .45) else (F['ice'] if nn[0] < .2 else F['ice-glass'])
-        grid(g, P, F['ice'], flat=True, inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
-        # a bright rim along the crest and down the curl's edge, proud of the ice
-        rim = Geo()
-        for i in range(nz):
-            if (i + 1) / nz > .64:
-                break
-            for j0, j1, nrm in ((5, 6, (0, 1, 0)), (6, 7, (0, 1, 0)), (8, 9, (1, .4, 0)), (9, 10, (1, 0, 0))):
-                a0, a1, b0, b1 = P[i, j0], P[i + 1, j0], P[i + 1, j1], P[i, j1]
-                lift = np.array(nrm, dtype=np.float64) * .012
-                mid_ = [(a0[c] + b1[c]) / 2 for c in range(3)]
-                mid1 = [(a1[c] + b0[c]) / 2 for c in range(3)]
-                q = [tuple(a0 + lift), tuple(a1 + lift), tuple(np.array(mid1) + lift), tuple(np.array(mid_) + lift)]
-                rim.face(q, F['ice-rim'], normal=nrm)
-        g.extend(rim)
-        # icicles off the lip, a vein of light inside the curl
+        # a crystalline skin: each point pushed in or out a little (facets that catch the light), more on the crest and the lip
+        Q = P.reshape(-1, 3)
+        k = (sk.fbm(Q, 2.3, 2, 641) - .5) * .16 + (sk.fbm(Q, 5.5, 1, 642) - .5) * .06
+        cen = np.array([1.0, 2.6, 0.0])
+        d = Q - cen
+        d[:, 2] = 0
+        d /= np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-6)
+        P = (Q + d * k[:, None]).reshape(P.shape)
+    end = [tuple(P[0, j]) for j in range(nj)]
+    for tri in ear_clip([(q[0], q[1]) for q in end]):
+        g.face([end[kk] for kk in tri], F['ice-deep'] if frozen else F['wave-deep'], normal=(0, 0, -1))
+    if frozen:
+        def pick(nn, cc):
+            if cc[1] > 4.25 or cc[1] < .35:
+                return F['frost']
+            # the curl's inner faces (under the lip, the barrel's wall), lit through
+            if cc[1] > 2.4 and cc[0] > .5 * (.72 + .28 * wave_env(cc[2] / WATER_HALF)) and nn[1] < .35 and (nn[0] > .2 or nn[1] < -.3):
+                return F['ice-glass']
+            return F['ice'] if nn[1] > -.2 or cc[0] < .3 else F['ice-deep']
+        grid(g, P, F['ice'], inside=(-.6, 1.6, 2.5), wrap_j=True, pick=pick)
+        # icicles off the lip
         for i in range(1, nz):
-            if H(i, 3) < (.35 if T.i == 0 else .6):
+            if H(i, 3) < (.3 if T.i == 0 else .6):
                 continue
             u = i / nz
             sy = wave_env(u)
-            base = (2.3 * (.75 + .25 * sy), 2.95 * sy, WATER_HALF * u)
-            L = (.25 + .45 * H(i, 4)) * sy
+            base = (2.62 * (.72 + .28 * sy), 2.72 * sy, WATER_HALF * u)
+            L = (.22 + .5 * H(i, 4)) * sy
             if L > .08:
                 cone = Geo()
-                sk.lathe(cone, [(.07, 0), (0, -L)], base, F['ice'], 5)
+                sk.lathe(cone, [(.06 + .03 * H(i, 5), 0), (0, -L)], base, F['ice'], 5)
                 g.extend(cone)
+        # veins of light frozen in the curl: two wandering threads along the barrel's ceiling and down its wall, each a thin strip
+        # just inside the ice's skin
         vein = Geo()
-        for i in range(nz):
-            u0, u1 = i / nz, (i + 1) / nz
-            if u1 > .64:
-                break
-            a = [(1.9 * (.75 + .25 * wave_env(u)), 3.62 * wave_env(u) - .012, WATER_HALF * u) for u in (u0, u1)]
-            b = [(1.05 * (.75 + .25 * wave_env(u)), 3.95 * wave_env(u) - .012, WATER_HALF * u) for u in (u0, u1)]
-            vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(.3, -1, 0))
+        for (xa, ya, nrm, ph) in ((1.5, 3.84, (0, -1, 0), 0.0), (.6, 2.3, (1, 0, 0), 2.1)):
+            for i in range(nz):
+                u0, u1 = i / nz, (i + 1) / nz
+                if u1 > .7:
+                    break
+                pts = []
+                for uu in (u0, u1):
+                    e = wave_env(uu)
+                    sx = .72 + .28 * e
+                    w = .018 * (.6 + .4 * math.sin(uu * 23 + ph))
+                    wx = .16 * math.sin(uu * 9.0 + ph) + .07 * math.sin(uu * 21.0 + ph * 2)
+                    if nrm[1] < 0:
+                        c = (xa * sx + wx, ya * e - .03, WATER_HALF * uu)
+                        pts.append(((c[0] - w, c[1], c[2]), (c[0] + w, c[1], c[2])))
+                    else:
+                        c = (xa * sx + .03, ya * e + wx * 1.6, WATER_HALF * uu)
+                        pts.append(((c[0], c[1] - w, c[2]), (c[0], c[1] + w, c[2])))
+                vein.face([pts[0][0], pts[1][0], pts[1][1], pts[0][1]], F['ice-glow'], normal=nrm)
         g.extend(vein)
     else:
         def pick(nn, cc):
-            if cc[1] > 4.5:
-                return F['foam']
-            # the curl's inside and the lip, thin enough to be lit through
-            if cc[1] > 2.55 and cc[0] > .35 * (.75 + .25 * wave_env(cc[2] / WATER_HALF)):
+            # the lip, thin enough to be lit through: its outer curl and its underside
+            sx = .72 + .28 * wave_env(cc[2] / WATER_HALF)
+            if cc[1] > 2.6 * wave_env(cc[2] / WATER_HALF) and cc[0] > 1.25 * sx and cc[1] < 4.3:
                 return F['wave-glow']
             return F['wave']
-        grid(g, P, F['wave'], inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
+        grid(g, P, F['wave'], inside=(-.6, 1.6, 2.5), wrap_j=True, pick=pick)
     return g
 
 
@@ -1200,12 +1257,14 @@ def lightning_set(T):
 # ---------------------------------------------------------------------------------------------------------------------------
 DARK_MONOLITHS = (55.0, 95.0, 135.0, -55.0, -95.0, -135.0)  # degrees from the hero facing
 DARK_RING, DARK_GATE_Z, DARK_MOON_R = 11.5, -14.0, 5.4
+DARK_SKY_R = 120.0  # the sky's dome (inside the camera's 200 m far plane; Core NativeIntroBlackSun keeps its fog off most of it)
 
 
 def dark_finishes():
     F = {}
-    F['obsidian'] = sk.fin('dark-obsidian', 0x070609, sk.DETAIL_NONE, smooth=.35, dirt=.1, wear=.25)
-    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x110e18, sk.DETAIL_NONE, smooth=.3, dirt=.3)
+    # polished volcanic glass: dark, mirroring the intro's own sky (the dusk's warm horizon, then the eclipse's violet; INTROS-V2 3a)
+    F['obsidian'] = sk.fin('dark-obsidian', 0x08070b, sk.DETAIL_NONE, smooth=.84, dirt=.1, wear=.25)
+    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x141020, sk.DETAIL_NONE, smooth=.6, dirt=.3)
     F['ash'] = sk.fin('dark-ash', 0x24202a, sk.DETAIL_PLASTER, smooth=.05, dirt=.4)
     F['ash-dark'] = sk.fin('dark-ash-dark', 0x18151d, sk.DETAIL_PLASTER, smooth=.05, dirt=.5)
     F['basalt'] = sk.fin('dark-basalt', 0x1f1c26, sk.DETAIL_CARVED, smooth=.35, dirt=.7, wear=.55)
@@ -1214,7 +1273,50 @@ def dark_finishes():
     F['glyph'] = sk.fin('dark-glyph', 0xb07aff, sk.DETAIL_GLOW, glow=1.8)
     F['crack'] = sk.fin('dark-crack', 0x7a3cd8, sk.DETAIL_GLOW, glow=.8)
     F['moon'] = sk.fin('dark-moon', 0x020104, sk.DETAIL_NONE, smooth=0.0, dirt=0.0)
+    F['sky'] = sk.fin('dark-sky', 0x5a2a6a, sk.DETAIL_GLOW, glow=1.0)  # sky_colours paints its gradient
     return F
+
+
+def sky_colours(bk, g):
+    """The dusk sky's dome, per vertex (the glow sub-mesh; Core tints it as the light drains): a burning band of amber and rose
+    along the whole horizon, hottest under the sun behind the gate, through violet and a deep indigo to a near-black zenith. Under
+    the eclipse Core cools and dims it, and the horizon band that is left all round reads as totality's sunset on every side."""
+    P, N, S_, F_ = g.arrays()
+    W = P.astype(np.float64)
+    r = np.maximum(np.linalg.norm(W, axis=1), 1e-6)
+    el = np.degrees(np.arcsin(np.clip(W[:, 1] / r, -1, 1)))
+    # the sun's side: behind the mark (-FWD)
+    flat = W.copy()
+    flat[:, 1] = 0
+    flat /= np.maximum(np.linalg.norm(flat, axis=1, keepdims=True), 1e-6)
+    sun = np.clip(-(flat[:, 0] * FWD[0] + flat[:, 2] * FWD[2]), -1, 1)
+    near = (sun + 1) * .5
+    stops = ((-12.0, 0x3a1430, .8), (-1.0, 0xa0402e, 1.25), (2.0, 0xff8a46, 1.6), (6.0, 0xd8566a, 1.3), (14.0, 0x8a3478, 1.05), (26.0, 0x46205e, .85),
+             (45.0, 0x1e1238, .7), (90.0, 0x080614, .6))
+    far = ((-12.0, 0x24102a, .7), (-1.0, 0x6a2a4a, 1.0), (2.0, 0xb04a5a, 1.2), (6.0, 0x8a3a6e, 1.05), (14.0, 0x56286a, .9), (26.0, 0x30185a, .8),
+           (45.0, 0x160e32, .65), (90.0, 0x080614, .6))
+
+    def ramp(stops_):
+        col = np.zeros((len(W), 3))
+        gain = np.zeros(len(W))
+        e = np.clip(el, stops_[0][0], stops_[-1][0])
+        for (e0, c0, g0), (e1, c1, g1) in zip(stops_[:-1], stops_[1:]):
+            m = (e >= e0) & (e <= e1)
+            u = ((e - e0) / (e1 - e0))[m][:, None]
+            col[m] = np.array(sk.srgb(c0)) * (1 - u) + np.array(sk.srgb(c1)) * u
+            gain[m] = g0 * (1 - u[:, 0]) + g1 * u[:, 0]
+        return col, gain
+    c0, g0 = ramp(stops)
+    c1, g1 = ramp(far)
+    k = (near ** 1.6)[:, None]
+    col = c1 + (c0 - c1) * k
+    gain = g1 + (g0 - g1) * k[:, 0]
+    # a few long bands of high cloud catching the light low over the horizon
+    band = np.clip((sk.fbm(np.stack([flat[:, 0] * 3.0, el * .12, flat[:, 2] * 3.0], axis=1), 1.0, 3, 1201) - .52) * 4, 0, 1) * np.clip(1 - np.abs(el - 9) / 7, 0, 1)
+    col = col * (1 - .35 * band[:, None]) + np.array(sk.srgb(0xffb070)) * (.35 * band * near)[:, None]
+    m = bk.glow
+    bk.colour[m, :3] = np.round(np.clip(col[m], 0, 1) * 255).astype(np.uint8)
+    bk.uv1[m, 1] = gain[m].astype(np.float32)
 
 
 def monolith_at(i, y=0.0):
@@ -1238,7 +1340,7 @@ def darkness_set(T):
     nr, na = (10, 6, 5)[T.i], (64, 32, 20)[T.i]
     P = np.zeros((nr, na, 3))
     for i in range(nr):
-        r = 19.5 + (150 - 19.5) * (i / (nr - 1)) ** 1.5
+        r = 19.5 + (112 - 19.5) * (i / (nr - 1)) ** 1.5
         for j in range(na):
             a = 2 * math.pi * j / na
             y = FLOOR - .2 + (i > 0) * (1.2 * (1 + n1(math.cos(a) * r * .06, 0, math.sin(a) * r * .06, .8, 91, 3) * 2) * min(1, (r - 19.5) / 25) + .02 * r)
@@ -1315,10 +1417,10 @@ def darkness_set(T):
     # the far mesas
     for i in range((10, 7, 5)[T.i]):
         a = 2 * math.pi * (i + .6 * H(i, 31)) / 10
-        r = 95 + 70 * H(i, 32)
+        r = 72 + 32 * H(i, 32)
         base = (math.sin(a) * r, -1, math.cos(a) * r)
-        w = 14 + 16 * H(i, 33)
-        hgt = 9 + 14 * H(i, 34)
+        w = 10 + 11 * H(i, 33)
+        hgt = 6 + 10 * H(i, 34)
         me = Geo()
         k = 8
         ring0 = [(math.cos(2 * math.pi * j / k) * w * (.8 + .35 * H(i, j, 35)), 0, math.sin(2 * math.pi * j / k) * w * .55 * (.8 + .35 * H(i, j, 36))) for j in range(k)]
@@ -1332,7 +1434,17 @@ def darkness_set(T):
     moon = Geo()
     n = (48, 32, 20)[T.i]
     moon.face([(math.cos(2 * math.pi * k / n) * DARK_MOON_R, math.sin(2 * math.pi * k / n) * DARK_MOON_R, 0) for k in range(n)], F['moon'], normal=(0, 0, 1))
-    props = {'darkness/plain': plain, 'darkness/stones': stones, 'darkness/far': far, 'darkness/moon': moon}
+    # the sky: a dome over everything (its foot under the horizon), the glow sub-mesh painted by sky_colours
+    sky = Geo()
+    nl, na = (14, 9, 6)[T.i], (48, 28, 18)[T.i]
+    P = np.zeros((nl, na, 3))
+    for i in range(nl):
+        el = math.radians(-12 + 102 * (i / (nl - 1)) ** 1.25)
+        for j in range(na):
+            a = 2 * math.pi * j / na
+            P[i, j] = (math.cos(el) * math.sin(a) * DARK_SKY_R, math.sin(el) * DARK_SKY_R, math.cos(el) * math.cos(a) * DARK_SKY_R)
+    surf(sky, P, F['sky'], wrap_j=True, facing=(0, -1, 0))  # (its faces turned in, toward the plain)
+    props = {'darkness/plain': plain, 'darkness/stones': stones, 'darkness/far': far, 'darkness/moon': moon, 'darkness/sky': sky}
     for i, g in enumerate(glyphs):
         props['darkness/glyphs/%d' % i] = g
     return props
@@ -1350,7 +1462,7 @@ def fire_props(T):
 
 BUILDERS = {'fire': fire_props, 'water': water_set, 'lightning': lightning_set, 'darkness': darkness_set}
 TIERS = ((0, ''), (2, '/low'))
-NO_AO = {'lightning/puddles', 'lightning/scorch'}  # insets a few mm over the slabs: kept out of the occlusion bake   # docs/INTROS-V2.md: "<prop>" the Fine tier, "<prop>/low" the Low tier
+NO_AO = {'lightning/puddles', 'lightning/scorch', 'darkness/sky'}  # insets a few mm over the slabs: kept out of the occlusion bake   # docs/INTROS-V2.md: "<prop>" the Fine tier, "<prop>/low" the Low tier
 
 
 def bake(geos, ao, floors):
@@ -1366,6 +1478,8 @@ def bake(geos, ao, floors):
             ice_colours(out[k], geos[k])
         if k == 'fire/hearth':
             hearth_colours(out[k], geos[k])
+        if k == 'darkness/sky':
+            sky_colours(out[k], geos[k])
         if k in DARKENED:
             darken(out[k], geos[k], *DARKENED[k])
         if k.startswith('water/ice/'):

@@ -538,7 +538,7 @@ namespace ChipArena.UnityConversion
             turn=Quaternion.Normalize(NativeEntranceMath.Yaw(yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,-lean));
         }
         /// <summary>A point on half `left`'s crest (u 0..1 along it) at `t`.</summary>
-        private static Vector3 Crest(bool left,float t,float u,float height=4.72f,float reach=1.15f){Half(left,t,out var at,out var q);float e=Env(u);return at+Vector3.Transform(new Vector3((left?-1:1)*reach*(.75f+.25f*e),height*e,HalfLength*u),q);}
+        private static Vector3 Crest(bool left,float t,float u,float height=4.68f,float reach=1.42f){Half(left,t,out var at,out var q);float e=Env(u);return at+Vector3.Transform(new Vector3((left?-1:1)*reach*(.72f+.28f*e),height*e,HalfLength*u),q);}
         /// <summary>A half's height along its length (tools/intros/elemental_set.py wave_env): full where the halves meet (u 0), tapering
         /// into the water over its outer third, so what rides the crest follows it down.</summary>
         public static float Env(float u)=>(float)Math.Pow(Math.Max(0,Math.Sin(Math.PI/2*Math.Min(1,(1-u)/.32f))),.6f);
@@ -612,8 +612,8 @@ namespace ChipArena.UnityConversion
                 for(int i=0,n=N(22,q);i<n;i++){float u=((i+.5f)/n+t*.11f)%1;var c=Crest(left,t,u)+new Vector3(0,.04f+.08f*NativeEntranceMath.Rand(9301+h,i),0);fx.Smoke(c,Foam,.5f*liquid,.22f+.16f*NativeEntranceMath.Rand(9300+h,i),((t*1.5f+i*.17f)%1),9300+h*40+i,floor);}
                 for(int i=0,n=N(8,q);i<n;i++){float u=((i+.3f)/n+t*.16f)%1;fx.Glow(Crest(left,t,u,4.78f,.95f),Foam*(.9f*liquid*(.6f+.4f*(float)Math.Sin(t*2.1f+i*2.3f))),0,.07f,3,0,9330+h*20+i);}
                 // whitewater along the lip's edge, churning
-                for(int i=0,n=N(12,q);i<n;i++){float u=((i+.5f)/n+t*.07f)%1;var lip=Crest(left,t,u,2.95f,2.4f)+new Vector3(0,.05f*(float)Math.Sin(t*2.3f+i),0);fx.Smoke(lip,Foam,.55f*liquid,.2f+.12f*NativeEntranceMath.Rand(9540+h,i),((t*1.2f+i*.21f)%1),9540+h*20+i,floor);}
-                for(int i=0,n=N(10,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.4f+i*.37f)%1);var top=Crest(left,t,u,2.85f,2.42f);var p=top+new Vector3(0,-1.2f*a,0)+Vector3.Normalize(Crest(left,t,u,2.85f,1.4f)-top)*(.25f*a);Beam(fx,view,p,top+new Vector3(0,-.9f*a+.15f,0),Foam*(.55f*liquid*(1-a)),.02f,.5f,a,9520+h*20+i);}
+                for(int i=0,n=N(12,q);i<n;i++){float u=((i+.5f)/n+t*.07f)%1;var lip=Crest(left,t,u,2.9f,2.7f)+new Vector3(0,.05f*(float)Math.Sin(t*2.3f+i),0);fx.Smoke(lip,Foam,.55f*liquid,.2f+.12f*NativeEntranceMath.Rand(9540+h,i),((t*1.2f+i*.21f)%1),9540+h*20+i,floor);}
+                for(int i=0,n=N(10,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.4f+i*.37f)%1);var top=Crest(left,t,u,2.72f,2.62f);var p=top+new Vector3(0,-1.2f*a,0)+Vector3.Normalize(Crest(left,t,u,2.72f,1.5f)-top)*(.25f*a);Beam(fx,view,p,top+new Vector3(0,-.9f*a+.15f,0),Foam*(.55f*liquid*(1-a)),.02f,.5f,a,9520+h*20+i);}
                 for(int i=0,n=N(14,q);i<n;i++){float u=NativeEntranceMath.Rand(9350+h,i),age=((t*1.8f+i*.11f)%1)*.55f;var c=Crest(left,t-age,u,4.1f,2.2f);var v=(Crest(left,t,u,4.1f,2.2f)-Crest(left,t-.05f,u,4.1f,2.2f))*20+new Vector3(0,1.4f,0)+Fwd*1.6f;var p=c+v*age+new Vector3(0,-4.9f*age*age,0);if(p.Y<level)continue;var vel=v+new Vector3(0,-9.8f*age,0);Beam(fx,view,p,p-vel*.035f,Foam*(.9f*liquid*(1-age/.55f)),.018f,.6f,age,9350+h*40+i);}
                 for(int i=0,n=N(14,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.2f+i*.31f)%1);var top=Crest(left,t,u,2.9f-2.4f*a,.52f+.1f*a);var bot=Crest(left,t,u,2.45f-2.4f*a,.5f+.12f*a);Beam(fx,view,bot,top,Hex(0xbff0ff)*(.5f*liquid*(1-a)),.02f,.6f,a,9420+h*20+i);}
             }
@@ -722,7 +722,7 @@ namespace ChipArena.UnityConversion
                .Orbit(StrikeAt+.3f,Vector3.Zero,40,-140,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
                .Crane(RiseFrom,L(1.1f,.55f,2.3f),L(.95f,.55f,2.05f),.9f,new Vector3(0,-.1f,0),Vector3.Zero,38,36).Follow(NativeEntranceAnchor.Head,.04f)
                .Dolly(CallAt-.05f,L(.35f,.5f,6.4f),L(.3f,.55f,5.8f),L(0,2.3f,0),L(0,2.1f,0),58,56)
-               .Orbit(CardAt-.55f,Vector3.Zero,38,26,4.3f,4.1f,.8f,.85f,L(.5f,.85f,0),L(.45f,.86f,0),46,44).Roll(-9,-7).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.4f)
+               .Orbit(CardAt-.55f,OnLine(.3f),38,26,4.3f,4.1f,.8f,.85f,L(.5f,.85f,.3f),L(.45f,.86f,.3f),46,44).Roll(-9,-7).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.4f)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
             Ramps.Ramp(StrikeAt,.22f,.38f,.9f);
         }
@@ -921,8 +921,8 @@ namespace ChipArena.UnityConversion
                .Dolly(TotalityAt-.05f,L(0,.3f,5.2f),L(0,.32f,4.8f),L(0,4.0f,-9),L(0,4.6f,-10),50,48)
                .Hold(OpenAt-.05f,L(0,1.3f,3.9f),OnLine(-1.0f,1.2f),38)
                .Dolly(EyeAt-.12f,Fwd*1.32f+Left*.12f+new Vector3(0,1.42f+CameraEyeLift,0),Fwd*1.12f+Left*.1f+new Vector3(0,1.44f+CameraEyeLift,0),new Vector3(0,CameraEyeLift-.1f,0),new Vector3(0,CameraEyeLift-.1f,0),26,22).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.75f).Ease(NativeIntroEase.Out)
-               .Dolly(WingsAt-.05f,L(0,.3f,3.9f),L(0,.28f,4.5f),L(0,1.95f,-1.5f),L(0,2.05f,-1.5f),44,42).In(NativeIntroCut.Cut,.1f)
-               .Dolly(CardAt-.6f,L(0,.55f,6.2f),L(0,.6f,8.0f),L(0,1.4f,0),L(0,1.4f,0),40,40).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
+               .Dolly(WingsAt-.05f,L(0,.3f,3.25f),L(0,.28f,3.85f),L(0,1.95f,-2.2f),L(0,2.05f,-2.2f),44,42).In(NativeIntroCut.Cut,.1f)
+               .Dolly(CardAt-.6f,L(0,.55f,5.5f),L(0,.6f,7.3f),L(0,1.4f,-.7f),L(0,1.4f,-.7f),40,40).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
             Ramps.Ramp(TotalityAt,.4f,.26f,.5f).Ramp(EyeAt-.03f,.35f,.3f,.6f);
         }
@@ -946,13 +946,18 @@ namespace ChipArena.UnityConversion
         /// <summary>The visor's lit eye (the pilot's left), from the head anchor.</summary>
         private Vector3 Eye(float t)=>Anchor(NativeEntranceAnchor.Visor,t)+ForwardOf(t)*.01f+RightOf(t)*-.055f;
         public static Vector3 Moon(float t){float e=Eclipse(t);return Sun+Fwd*2.5f+Left*(7.2f*(1-e))+new Vector3(0,1.8f*(1-e),0);}
+        /// <summary>The sky dome's tint (tools/intros/elemental_set.py sky_colours): the dusk's warm light, draining and cooling to the
+        /// eclipse's violet, the burning horizon band left all round at totality.</summary>
+        public static Vector3 SkyGlow(float t){float e=Eclipse(t);return Vector3.Lerp(new Vector3(1f,.86f,.8f),new Vector3(.62f,.4f,.92f),e)*(1-.38f*e);}
         public override void Lights(float t,NativeEntranceLights l)
         {
             base.Lights(t,l);float e=Eclipse(t),tot=NativeEntranceMath.Ramp(t,TotalityAt-.1f,TotalityAt+.3f);
-            l.FogNear=16;l.FogFar=90;var far=Vector3.Lerp(Hex(0x15111c),Hex(0x020104),e);l.Fog=far;l.Background=far;
-            l.Sky=Vector3.Lerp(Hex(0x6a5f86,.16f),Hex(0x1e1030,.06f),e);l.Ground=Vector3.Lerp(Hex(0x2a2232,.12f),Hex(0x080510,.06f),e);
+            // (the fog held off the near plain and most of the sky's dome, 120 m out: its own gradient is the distance)
+            l.FogNear=35;l.FogFar=300;var far=Vector3.Lerp(Hex(0x2a1428),Hex(0x0c0612),e);l.Fog=far;l.Background=far;
+            l.Sky=Vector3.Lerp(Hex(0x7a4a6a,.22f),Hex(0x2a1240,.09f),e);l.Ground=Vector3.Lerp(Hex(0x3a2030,.14f),Hex(0x10061a,.07f),e);
             if(e<.98f)l.Directional(Sun-new Vector3(0,8,0),Dusk*(.8f*(1-e)));
-            l.ReflectSky=Vector3.Lerp(Hex(0x3a3048,.6f),Hex(0x0a0414),e);l.ReflectHorizon=Vector3.Lerp(Hex(0x5a4060,.5f),Rim*.45f,tot);l.ReflectGround=Hex(0x020104);
+            // the obsidian mirrors the sky: the dusk's amber horizon, then the eclipse's violet
+            l.ReflectSky=Vector3.Lerp(Hex(0x4a2a5a,.7f),Hex(0x0c0418),e);l.ReflectHorizon=Vector3.Lerp(Hex(0xe07a48,.75f),Vector3.Lerp(Hex(0x8a3aa0,.6f),Rim*.55f,tot),e);l.ReflectGround=Hex(0x020104);
             if(tot>.01f)l.Add(-Fwd*5+new Vector3(0,3.6f,0),Rim*(5.5f*tot),12);
             l.Add(-Fwd*7.5f+new Vector3(0,.4f,0),Rim*(1.4f+2.6f*tot),15);
             float rise=VoidSize(t);if(rise>.01f)l.Add(Void+Fwd*.6f,Violet*(3*rise),5);
@@ -967,6 +972,7 @@ namespace ChipArena.UnityConversion
             set.Piece("darkness/plain",Vector3.Zero,q,1,one,one);set.Piece("darkness/stones",Vector3.Zero,q,1,one,one);set.Piece("darkness/far",Vector3.Zero,q,1,one,one);
             float e=Eclipse(t),glyph=.2f+.8f*NativeEntranceMath.Ramp(t,PourFrom,TotalityAt)+1.2f*Flash(t,SnapAt+.15f,.05f,.5f);for(int i=0;i<GlyphProps.Length;i++)set.Piece(GlyphProps[i],Vector3.Zero,q,1,one,one*glyph);
             set.Piece("darkness/moon",Moon(t),NativeEntranceMath.Yaw(Facing),1,one,one);
+            set.Piece("darkness/sky",Vector3.Zero,q,1,one,SkyGlow(t));
             return true;
         }
         public override void Card(float t,ref NativeIntroCardState card){base.Card(t,ref card);card.Style=NativeIntroCardStyle.Assemble;card.Ink=new Vector3(.93f,.88f,1);card.Glow=Hex(0xaf6eff,1.7f);card.Y=CardBand;}
