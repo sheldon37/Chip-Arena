@@ -641,7 +641,22 @@
       "maxSeconds": 134.8
     },
     {
-      "id": "intros-b2-2026-11-21-v5a",
+      "id": "intros-b2-2026-11-21-v6a",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros-b2.json",
+      "manifestSha256": "1248163e128b7de85b468f170cdf0a1d231bedf2b978719a86bc2f7616689bcb",
+      "keys": [
+        "intro2.stillrain.still",
+        "intro2.faultline.name"
+      ],
+      "variants": [
+        1
+      ],
+      "maxRequests": 2,
+      "maxSeconds": 3.5
+    },
+    {
+      "id": "intros-b2-2026-11-21-v6b",
       "approved": true,
       "manifest": "docs/audio/sound-requests-intros-b2.json",
       "manifestSha256": "1248163e128b7de85b468f170cdf0a1d231bedf2b978719a86bc2f7616689bcb",
@@ -651,7 +666,6 @@
         "intro2.stillrain.stance",
         "intro2.stillrain.koiguchi",
         "intro2.stillrain.cut",
-        "intro2.stillrain.still",
         "intro2.stillrain.resume",
         "intro2.stillrain.bamboo",
         "intro2.stillrain.slide",
@@ -665,7 +679,6 @@
         "intro2.faultline.rumble",
         "intro2.faultline.hiss",
         "intro2.faultline.lift",
-        "intro2.faultline.name",
         "intro2.severeddawn.hall",
         "intro2.severeddawn.grip",
         "intro2.severeddawn.cut",
@@ -695,8 +708,8 @@
         1,
         2
       ],
-      "maxRequests": 88,
-      "maxSeconds": 170.8
+      "maxRequests": 84,
+      "maxSeconds": 163.8
     }
   ]
 }
