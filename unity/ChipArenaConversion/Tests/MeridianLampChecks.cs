@@ -83,7 +83,24 @@ internal static class MeridianLampChecks
                 var n=WallNormal(l);var a=(l.Kind==NativeMeridianDress.Pendant?l.Pool:l.Mount-new V3(0,1,0))+n*.002f;if(Luma(table.Light(a,n))>=FlushWall)lit++;
             }
             Check(lit==inView&&inView>8,"every lamp ahead in the owner's view lights its wall ("+lit+" of "+inView+"; shared's slots held 8, 5 beside the camp)");
-            report.Add("Crown Hill's west street from its foot: "+lit+" of the "+inView+" lamps within 60 m ahead light their wall (shared: the slots' 8, 5 beside the camp)");
+            // the cause, at the owner's third-person view (the camera 4.5 m behind a pilot at the street's foot, looking up it): shared's
+            // drawer gave its eight slots to the lamps nearest the camera in 3D (three of them up on the terraces, unseen from the sunken
+            // street), then the camp's three kit lights (70 m off) took the slots NativeKitLightPool.Merge judged worth least at the eye:
+            // the swan-neck on the left wall 22 m ahead among them. The drawer still drew that lamp's beam (from its own pick) and its pool,
+            // so its cone hung in the air over a dark wall. Now its wall takes its light from the grid.
+            var cam=new V3(-94.5f,-5.2f,0);var look=new V3(1,-.2f,0);look=look/look.Length;int swan=-1;
+            for(int i=0;i<plan.Lamps.Count;i++){var l=plan.Lamps[i];if(l.Kind==NativeMeridianDress.Swan&&Math.Abs(l.Bowl.x+72.8f)<.1f&&l.Bowl.z>0)swan=i;}
+            Check(swan>=0,"Crown Hill's live deal hangs a swan-neck on the west street's north wall at x -72.8");
+            var pick=SharedPick(plan,cam,look,NativeMapLooks.MaxLights);var pos=new float[NativeMapLooks.MaxLights*4];var rgb=new float[NativeMapLooks.MaxLights*3];
+            for(int s=0;s<pick.Length;s++){var l=plan.Lamps[pick[s]];var c=(l.Protected?NativeMeridianDress.RouteSodium:NativeMeridianDress.Sodium)*1.35f;pos[s*4]=l.Bowl.x;pos[s*4+1]=l.Bowl.y-.2f;pos[s*4+2]=l.Bowl.z;pos[s*4+3]=l.Radius*1.25f;rgb[s*3]=c.x;rgb[s*3+1]=c.y;rgb[s*3+2]=c.z;}
+            var fx=new NativeCampFx(NativeCamp.Live(live.World.Blueprint.worldSeed));fx.Build(30,cam.x,cam.y,cam.z,0,0,-1,0,1,0,null,1,false,false,0);
+            NativeKitLightPool.Merge(pos,rgb,NativeMapLooks.MaxLights,fx.LightPos,fx.LightRgb,fx.LightCount,cam.x,cam.y,cam.z);
+            var swanAt=plan.Lamps[swan].Bowl-new V3(0,.2f,0);bool slotted=false;for(int s=0;s<NativeMapLooks.MaxLights;s++)if(Math.Abs(pos[s*4]-swanAt.x)<.01f&&Math.Abs(pos[s*4+2]-swanAt.z)<.01f)slotted=true;
+            var sw=plan.Lamps[swan];var wn=WallNormal(sw);var wallPt=sw.Mount-new V3(0,1,0)+wn*.002f;
+            Check(Array.IndexOf(pick,swan)>=0&&fx.LightCount==3&&!slotted,"shared's view: the swan-neck ahead was in the drawer's pick (its beam drew) but the camp's kit lights took its slot (its wall unlit)");
+            Check(Luma(table.Light(wallPt,wn))>=WallNear,"now the grid lights that swan-neck's wall ("+Luma(table.Light(wallPt,wn)).ToString("F2",Inv)+")");
+            int terraces=0;foreach(int i in pick)if(plan.Lamps[i].Pool.y>-1)terraces++;
+            report.Add("Crown Hill's west street from its foot: "+lit+" of the "+inView+" lamps within 60 m ahead light their wall; shared's eight slots there: "+terraces+" lamps up on the terraces (unseen), then the camp's 3 kit lights took the weakest, the swan-neck 22 m ahead on the left wall among them (its beam drawn, its wall dark)");
         }
         // flicker: at most three changes a second; Reduced: a breath, never under ReducedFloor
         {
@@ -201,6 +218,13 @@ internal static class MeridianLampChecks
         var ev=eyeSpec.Split(',').Select(s=>float.Parse(s,Inv)).ToArray();var e=new V3(ev[0],ev[1],ev[2]);var fw=new V3(ev[3],ev[4],ev[5]);fw=fw/fw.Length;
         var order=Enumerable.Range(0,plan.Lamps.Count).Where(i=>plan.Lamps[i].State!=NativeMeridianDress.Dead).Select(i=>{var l=plan.Lamps[i];var d=l.Bowl-e;float s=V3.Dot(d,d)*(V3.Dot(d,fw)<-l.Radius?3f:1f);return (i,s);}).OrderBy(p=>p.s).Take(12).ToList();
         foreach(var (i,s) in order){var l=plan.Lamps[i];Console.WriteLine(string.Format(Inv,"pick lamp {0} kind {1} score {2:F0} dist {3:F1} bowl {4}",i,l.Kind,s,(l.Bowl-e).Length,F(l.Bowl)));}
+    }
+    /// <summary>Shared's drawer's pick (before 2026-11-21): the nearest lit lamps to the camera, one behind it (past its pool's radius)
+    /// at three times its distance squared.</summary>
+    private static int[] SharedPick(NativeMeridianDress.Plan plan,V3 e,V3 fwd,int slots)
+    {
+        return Enumerable.Range(0,plan.Lamps.Count).Where(i=>plan.Lamps[i].State!=NativeMeridianDress.Dead)
+            .Select(i=>{var l=plan.Lamps[i];var d=l.Bowl-e;return (i,s:V3.Dot(d,d)*(V3.Dot(d,fwd)<-l.Radius?3f:1f));}).OrderBy(p=>p.s).ThenBy(p=>p.i).Take(slots).Select(p=>p.i).ToArray();
     }
     /// <summary>The face a lamp hangs on, outward (a pendant's: up).</summary>
     private static V3 WallNormal(NativeMeridianDress.Lamp l)
