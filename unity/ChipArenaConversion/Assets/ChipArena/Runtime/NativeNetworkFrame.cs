@@ -145,12 +145,13 @@ namespace ChipArena.UnityConversion
         }
         public void ApplyFrame(NativeGameFrame f,int localId)
         {
-            ExpeditionSpectatorSeat=f.expeditionSpectatorSeat;PodRecords=f.pods?.Select(r=>r.Copy()).ToArray()??Array.Empty<NativePodRecord>();
+            ExpeditionSpectatorSeat=f.expeditionSpectatorSeat;
             f.RestorePresence();
 
             TrainingRemote=f.trainingReadouts??Array.Empty<TrainingReadout>();Replica=true;LocalId=localId;bool reset=replicaFrame==null||replicaFrame.generation!=f.generation;Match.ApplyNetwork(f);
             foreach(var sf in f.seats){var seat=Match.Seat(sf.id);if(seat==null){seat=new NativeSeat{id=sf.id};Match.Seats.Add(seat);}seat.clearOwner=sf.clearOwner;seat.clearMask=sf.clearMask;seat.devRevealed=sf.devRevealed;seat.devCommandsRan=sf.devCommandsRan;seat.devDummy=sf.devDummy;seat.devScale=sf.devScale;seat.pickTicket=sf.pickTicket;seat.respawnAt=sf.respawnAt;seat.name=sf.name;seat.spec=sf.spec;seat.team=sf.team;seat.bot=sf.bot;seat.connected=sf.connected;seat.alive=sf.alive;seat.score=sf.score;seat.roundWins=sf.roundWins;seat.AuthorityBoss=sf.boss;seat.bodyColor=sf.bodyColor;seat.accentColor=sf.accentColor;seat.hat=sf.hat;seat.lobbyPose=NativeLobbyPoses.Normalize(sf.lobbyPose);seat.lobbyBack=NativePortraitBacks.Normalize(sf.lobbyBack);seat.hatColor=NativeHatLooks.Normalize(sf.hatColor);seat.backColor=NativeHatLooks.Normalize(sf.backColor);seat.weaponTechniques=sf.bot?"":NativeTechniqueLoadout.Normalize(sf.weaponTechniques);seat.weaponSkins=NativeWeaponSkins.Normalize(sf.weaponSkins);seat.look=NativeLook.Normalize(sf.look);seat.pod=NativePodRun.Look(sf.pod);seat.motion=NativeDevMotions.Clean(sf.motion,sf.spec);seat.killEffect=sf.killEffect;seat.intro=sf.intro;seat.overrideIntro=sf.overrideIntro;NativeIntroRules.Migrate(ref seat.intro,ref seat.overrideIntro);seat.introText=sf.introText;seat.offers=sf.offers.ToList();seat.chips.Clear();foreach(var c in sf.chips)seat.chips[c.id]=c.count;}
             Match.Seats.RemoveAll(s=>!f.seats.Any(x=>x.id==s.id));if(reset){Reset();Generation=f.generation;}DevTimeScale=f.devTimeScale;DevHazardPulses.Clear();if(f.devHazards!=null)DevHazardPulses.AddRange(f.devHazards);
+            PodRecords=f.pods?.Select(r=>r.Copy()).ToArray()??Array.Empty<NativePodRecord>();
             if(f.pve!=null&&Pve==null)
             {
                 var data=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text);

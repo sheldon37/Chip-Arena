@@ -1,3 +1,11 @@
+## 2026-11-21 — Astra: Belvedere camp A1 (draft integration)
+
+Branch `codex/belvedere-camp-a1`, based on shared `8ffefafd`. The generated hub builds its collision, machines and pod reservations from the camp table. The kiosk is 3.2 m tall. The camp-connected lattice starts on the north lane, excludes the structures and machine bodies, and supplies the actual street elevation beyond each gate. PvP rows clear the ring. The v6 world receipt includes both machine records. F uses the existing run-wide chip ladder and med service. E still uses the revive machine. The two crossed pod colliders follow the authoritative records on both peers, and extraction uses the door relative to the ramp foot.
+
+The existing transfer transaction moves the same NativePveRow with the pilot on the shared clock, so outstanding heal pulses and recharge follow a committed transfer and rollback. Reconnection to the running host retains authority. The current split run has no live host endpoint migration; the branch does not advertise it. Lobby promotion reconstructs the seeded camp.
+
+Managed checks exercise all five plans, gate approaches, both services, 2,000 landing fields and the boarding angles. Native builder fixtures exercise purchases, replica machine collision, touchdown and extraction. Release blockers: the exact preview puts both awning posts 0.694 m from the chip machine body (1 m specified); the owner has been asked which to preserve. Claude owns the paired survivor/art and ramp climb-out change, including the ExitReach assertion in PodDropChecks. Run full CoreTests and native Unity builder acceptance on the integrated revision before merge or test-channel publication.
+
 ## 2026-11-21 — Claude: release 12: zombies emerge from the floor; the drop-in removed (integrator)
 Owner: "Can we animate them digging out of the ground? Or have them laying there, and just rising? ... I want to remove that
 drop in animation entirely".

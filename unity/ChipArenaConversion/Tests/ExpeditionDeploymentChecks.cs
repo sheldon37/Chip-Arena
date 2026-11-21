@@ -133,6 +133,7 @@ namespace ChipArena.UnityConversion
             Check(generated.Map.blocks.Length>100&&generated.Map.nav.nodes.Length>1000,"roll creates real collision and navigation");
             Check(!NativeMapRules.ArenaSelectable(generated.Map)&&!generated.Map.rotation,"generated map never enters PvP");
             Check(generated.Area.doors.Length==3&&generated.Hub.Gates.Length==4&&generated.Area.gates.Single().opens=="final","three instances and separate final court");
+            Check(generated.Compatibility=="6d460013e11cae9421001421c70c8b774225178d2e3499090d1cdbc534e5042f"&&bundle.Identity=="a5a4dac78102bad80d62fd0b4d1a712db905b74c0ea267550050e1812d3f7bcd","Belvedere world and layout identity for seed 123");
             Check(NativeExpeditionGeneratedWorld.Build(room).Compatibility==generated.Compatibility,"deterministic generated geometry receipt");
             Check(generated.Hub.Routes.Length==3&&generated.Hub.Routes.All(r=>r.Path>=r.Straight),"street routes and measured distances");
             var composed=NativeExpeditionGeneratedWorld.ComposeLayout(generated,layoutJson,bundle.Backrooms==null?null:NativeBackroomsExpedition.Area(bundle.Backrooms),bundle.Poolrooms==null?null:NativePoolroomsExpedition.Area(bundle.Poolrooms));

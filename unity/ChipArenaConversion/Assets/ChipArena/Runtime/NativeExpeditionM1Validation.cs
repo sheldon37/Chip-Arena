@@ -6,6 +6,33 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        public void ValidateHubMachines()
+        {
+            var run=Expedition.Session.Run;
+            var pilot=Local;
+            var member=ExpeditionMemberFor(pilot);
+            var chip=Pve.Content.machines.Single(m=>m.kind=="chip");
+            var med=Pve.Content.machines.Single(m=>m.kind=="med");
+            int price=NativeExpeditionMutators.CachePrice(ActiveMutators,NativePveRules.ChipPrice(Pve.Rows[pilot.Seat.id].Bought));
+            int wallet=member.wallet;
+            void Use(PveMachine machine)
+            {
+                pilot.Body.position=Vec(machine.front.Position())+Vector3.up*NativeLocomotionRules.HalfHeight;
+                Physics.SyncTransforms();
+                if(!TryExpeditionInteract(pilot,out var notice))throw new Exception("Hub machine interaction failed: "+machine.id+" "+notice);
+            }
+            if(!run.Credit(member.account,"hub-machine-check",price+75))throw new Exception("Hub fixture funding failed");
+            pilot.Hp=(float)pilot.Stats["hp"]*.25f;
+            Use(med);
+            var row=Pve.Rows[pilot.Seat.id];
+            if(ExpeditionMemberFor(pilot).wallet!=wallet+price||row.HealPulses!=0||Math.Abs(row.HealReady-Time-12)>.01f)
+                throw new Exception("Hub med charge or pulse schedule failed");
+            Use(med);
+            Use(chip);
+            if(ExpeditionMemberFor(pilot).wallet!=wallet||!run.Snapshot().rewards.Any(r=>r.owner==member.account&&r.id.Contains(":chest:ward-machine:")))
+                throw new Exception("Hub chip payment or run-wide reward failed");
+        }
+
         public void ValidateGeneratedFinal(ExpeditionRunBundle bundle)
         {
             void Check(bool ok,string what){if(!ok)throw new InvalidOperationException("Generated NOCTIEL: "+what);}

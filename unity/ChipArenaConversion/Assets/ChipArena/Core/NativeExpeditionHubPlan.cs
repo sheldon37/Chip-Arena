@@ -1,43 +1,85 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Row=ChipArena.UnityConversion.NativeCamp.Row;
+using RowKind=ChipArena.UnityConversion.NativeCamp.RowKind;
 
 namespace ChipArena.UnityConversion
 {
     public static class NativeExpeditionHubPlan
     {
-        public const float ExitReach=0, HullRadius=1.17f, SkidLength=2.5f, MinimumSpacing=12;
+        public const float ExitReach=2.4f, HullRadius=1.17f, SkidLength=2.5f, MinimumSpacing=12;
         private const float Clearance=1;
+        public static readonly Row[] Table=BuildTable();
+        private static Row[] BuildTable()
+        {
+            var t=new List<Row>
+            {
+                new Row("camp-fountain",RowKind.Fountain,0,0,3.6f,.9f,3.6f),
+                new Row("camp-canopy-n",RowKind.Canopy,0,3.4f,9.2f,.2f,2.4f,2.6f),new Row("camp-canopy-s",RowKind.Canopy,0,-3.4f,9.2f,.2f,2.4f,2.6f),
+                new Row("camp-canopy-e",RowKind.Canopy,3.4f,0,2.4f,.2f,4.4f,2.6f),new Row("camp-canopy-w",RowKind.Canopy,-3.4f,0,2.4f,.2f,4.4f,2.6f),
+                new Row("camp-canopy-post-0",RowKind.CanopyPost,4.4f,4.4f,.3f,2.6f,.3f),new Row("camp-canopy-post-1",RowKind.CanopyPost,-4.4f,4.4f,.3f,2.6f,.3f),
+                new Row("camp-canopy-post-2",RowKind.CanopyPost,4.4f,-4.4f,.3f,2.6f,.3f),new Row("camp-canopy-post-3",RowKind.CanopyPost,-4.4f,-4.4f,.3f,2.6f,.3f),
+                // the benches' long axis runs round the ring
+                new Row("camp-bench-0",RowKind.Bench,0,3.4f,.9f,1.4f,.7f),new Row("camp-bench-1",RowKind.Bench,3.4f,0,.7f,1.4f,.9f),
+                new Row("camp-bench-2",RowKind.Bench,0,-3.4f,.9f,1.4f,.7f),new Row("camp-bench-3",RowKind.Bench,-3.4f,0,.7f,1.4f,.9f),
+                new Row("camp-kiosk",RowKind.Kiosk,16.4f,16.4f,2.6f,3.2f,2.6f),
+                new Row("camp-awning-post-0",RowKind.AwningPost,14.6f,12.4f,.3f,3.4f,.3f),new Row("camp-awning-post-1",RowKind.AwningPost,12.4f,14.6f,.3f,3.4f,.3f),
+                new Row("camp-infirmary",RowKind.Infirmary,-16.9f,-16.9f,3f,2.6f,3f),
+                new Row("camp-lookout",RowKind.Lookout,13.5f,-13.5f,3f,9f,3f),
+                new Row("camp-lookout-cabin",RowKind.LookoutCabin,13.5f,-13.5f,3.6f,2.6f,3.6f,9f),
+                new Row("camp-searchlight",RowKind.Searchlight,13.5f,-13.5f,1.2f,1.2f,1.2f,11.6f),
+                new Row("camp-sentry-n",RowKind.Sentry,-11.5f,23.8f,2f,5.2f,2f),new Row("camp-sentry-e",RowKind.Sentry,23.8f,11.5f,2f,5.2f,2f),
+                new Row("camp-sentry-s",RowKind.Sentry,11.5f,-23.8f,2f,5.2f,2f),new Row("camp-sentry-w",RowKind.Sentry,-23.8f,-11.5f,2f,5.2f,2f),
+                new Row("camp-radio",RowKind.Radio,13f,23.9f,4f,3.3f,1.8f),
+                new Row("camp-supply",RowKind.Supply,-12.5f,-23.8f,3f,3.3f,2f),
+                new Row("camp-generator",RowKind.Generator,24.3f,-12.5f,1f,1.4f,2f),
+            };
+            int k=0;
+            foreach(int s in new[]{-1,1})foreach(int o in new[]{-1,1})
+            {
+                t.Add(new Row("camp-sandbag-"+(k++).ToString(System.Globalization.CultureInfo.InvariantCulture),RowKind.Sandbag,7.5f*o,20.5f*s,2.4f,1f,.6f));
+                t.Add(new Row("camp-sandbag-"+(k++).ToString(System.Globalization.CultureInfo.InvariantCulture),RowKind.Sandbag,20.5f*s,7.5f*o,.6f,1f,2.4f));
+            }
+            return t.ToArray();
+        }
+        public static PveMachine[] Machines()
+        {
+            var o=new PveMachine[NativeCamp.Machines.Length];
+            for(int i=0;i<o.Length;i++)
+            {
+                var (id,kind,x,z,yaw)=NativeCamp.Machines[i];float fx=(float)Math.Sin(yaw),fz=(float)Math.Cos(yaw);
+                PvePoint P(float d)=>new PvePoint{x=x+fx*d,y=0,z=z+fz*d};
+                o[i]=new PveMachine{m=i,id=id,kind=kind,x=x,y=0,z=z,yaw=yaw,front=P(.7f),dispense=P(1.3f),chipDrop=P(2.2f)};
+            }
+            return o;
+        }
         private static readonly List<(Vector3 centre,float width,float depth,float yaw)> Reservations=Camp();
+
+        public static IEnumerable<ContentBlock> Blocks()
+        {
+            foreach(var row in Table)
+                yield return new ContentBlock{id=row.Id,role="static",material="foundation",
+                    pos=new V3(row.X,row.Y0+row.Sy/2,row.Z),size=new V3(row.Sx,row.Sy,row.Sz),rotation=new ContentRotation()};
+        }
+
+        public static ExpeditionPoint RampFoot(ExpeditionPoint centre)
+        {
+            var forward=NativeExpeditionGeneratedWorld.CacheForward(centre.yaw);
+            return new ExpeditionPoint{x=centre.x+forward.x*ExitReach,y=centre.y,z=centre.z+forward.z*ExitReach,yaw=centre.yaw};
+        }
 
         private static List<(Vector3,float,float,float)> Camp()
         {
             var rows=new List<(Vector3,float,float,float)>();
-            void Box(float x,float z,float width,float depth)=>rows.Add((new Vector3(x,0,z),width,depth,0));
-            // The ring's bounding square includes its posts, canopy, seats and fountain.
-            Box(0,0,9.2f,9.2f);
-            Box(16.4f,16.4f,2.6f,2.6f);
-            Box(14.6f,12.4f,.3f,.3f);
-            Box(12.4f,14.6f,.3f,.3f);
-            Box(-16.9f,-16.9f,3,3);
-            Box(13.5f,-13.5f,3.6f,3.6f);
-            Box(-11.5f,23.8f,2,2);Box(23.8f,11.5f,2,2);
-            Box(11.5f,-23.8f,2,2);Box(-23.8f,-11.5f,2,2);
-            Box(13,23.9f,4,1.8f);Box(-12.5f,-23.8f,3,2);Box(24.3f,-12.5f,1,2);
-            foreach(int side in new[]{-1,1})
-            foreach(int offset in new[]{-1,1})
+            foreach(var row in Table)
+                rows.Add((new Vector3(row.X,0,row.Z),row.Sx,row.Sz,0));
+            foreach(var machine in Machines())
             {
-                Box(7.5f*offset,20.5f*side,2.4f,.6f);
-                Box(20.5f*side,7.5f*offset,.6f,2.4f);
-            }
-            foreach(int sign in new[]{-1,1})
-            {
-                var machine=new Vector3(sign*13.5f,0,sign*13.5f);
-                float yaw=(float)(sign==1?Math.PI*1.25:Math.PI*.25);
-                var forward=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
-                rows.Add((machine-forward*.25f,1.3f,.9f,yaw));
-                foreach(float distance in new[]{.7f,1.3f,2.2f})
-                    rows.Add((machine+forward*distance,.9f,.9f,yaw));
+                var body=NativeExpeditionLayout.MachineBlock(machine);
+                rows.Add((new Vector3(body.pos.x,0,body.pos.z),body.size.x,body.size.z,machine.yaw));
+                foreach(var point in new[]{machine.front,machine.dispense,machine.chipDrop})
+                    rows.Add((new Vector3(point.x,0,point.z),.9f,.9f,machine.yaw));
             }
             NativeReviveMachine.Spot(NativeExpeditionGeneratedWorld.MapId,out var at,out var turn);
             var frame=NativeReviveMachine.Frame(at,turn);
@@ -66,10 +108,16 @@ namespace ChipArena.UnityConversion
             if(Math.Min(Math.Abs(p.x),Math.Abs(p.z))<4.2f ||
                Math.Max(Math.Abs(p.x+dx),Math.Abs(p.z+dz))+edge>24.8f ||
                Math.Max(Math.Abs(p.x),Math.Abs(p.z))+edge>24.8f)return false;
+            var foot=RampFoot(p);
             foreach(var row in Reservations)
             {
                 float x=p.x-row.centre.X,z=p.z-row.centre.Z;
                 float c=(float)Math.Cos(row.yaw),s=(float)Math.Sin(row.yaw),enter=0,leave=1;
+                float px=foot.x-row.centre.X,pz=foot.z-row.centre.Z;
+                float gapX=Math.Max(0,Math.Abs(px*c-pz*s)-row.width/2);
+                float gapZ=Math.Max(0,Math.Abs(px*s+pz*c)-row.depth/2);
+                const float footGap=NativeLocomotionRules.Radius+Clearance;
+                if(gapX*gapX+gapZ*gapZ<footGap*footGap)return false;
                 if(Clip(x*c-z*s,dx*c-dz*s,row.width/2+edge,ref enter,ref leave) &&
                    Clip(x*s+z*c,dx*s+dz*c,row.depth/2+edge,ref enter,ref leave))return false;
             }

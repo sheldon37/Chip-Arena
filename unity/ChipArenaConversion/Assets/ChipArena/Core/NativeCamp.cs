@@ -80,39 +80,7 @@ namespace ChipArena.UnityConversion
             public Row(string id,RowKind kind,float x,float z,float sx,float sy,float sz,float y0=0){Id=id;Kind=kind;X=x;Z=z;Y0=y0;Sx=sx;Sy=sy;Sz=sz;}
             public V3 Min=>new V3(X-Sx/2,Y0,Z-Sz/2);public V3 Max=>new V3(X+Sx/2,Y0+Sy,Z+Sz/2);public float Top=>Y0+Sy;
         }
-        public static readonly Row[] Table=BuildTable();
-        private static Row[] BuildTable()
-        {
-            var t=new List<Row>
-            {
-                new Row("camp-fountain",RowKind.Fountain,0,0,3.6f,.9f,3.6f),
-                new Row("camp-canopy-n",RowKind.Canopy,0,3.4f,9.2f,.2f,2.4f,2.6f),new Row("camp-canopy-s",RowKind.Canopy,0,-3.4f,9.2f,.2f,2.4f,2.6f),
-                new Row("camp-canopy-e",RowKind.Canopy,3.4f,0,2.4f,.2f,4.4f,2.6f),new Row("camp-canopy-w",RowKind.Canopy,-3.4f,0,2.4f,.2f,4.4f,2.6f),
-                new Row("camp-canopy-post-0",RowKind.CanopyPost,4.4f,4.4f,.3f,2.6f,.3f),new Row("camp-canopy-post-1",RowKind.CanopyPost,-4.4f,4.4f,.3f,2.6f,.3f),
-                new Row("camp-canopy-post-2",RowKind.CanopyPost,4.4f,-4.4f,.3f,2.6f,.3f),new Row("camp-canopy-post-3",RowKind.CanopyPost,-4.4f,-4.4f,.3f,2.6f,.3f),
-                // the benches' long axis runs round the ring
-                new Row("camp-bench-0",RowKind.Bench,0,3.4f,.9f,1.4f,.7f),new Row("camp-bench-1",RowKind.Bench,3.4f,0,.7f,1.4f,.9f),
-                new Row("camp-bench-2",RowKind.Bench,0,-3.4f,.9f,1.4f,.7f),new Row("camp-bench-3",RowKind.Bench,-3.4f,0,.7f,1.4f,.9f),
-                new Row("camp-kiosk",RowKind.Kiosk,16.4f,16.4f,2.6f,3.2f,2.6f),
-                new Row("camp-awning-post-0",RowKind.AwningPost,14.6f,12.4f,.3f,3.4f,.3f),new Row("camp-awning-post-1",RowKind.AwningPost,12.4f,14.6f,.3f,3.4f,.3f),
-                new Row("camp-infirmary",RowKind.Infirmary,-16.9f,-16.9f,3f,2.6f,3f),
-                new Row("camp-lookout",RowKind.Lookout,13.5f,-13.5f,3f,9f,3f),
-                new Row("camp-lookout-cabin",RowKind.LookoutCabin,13.5f,-13.5f,3.6f,2.6f,3.6f,9f),
-                new Row("camp-searchlight",RowKind.Searchlight,13.5f,-13.5f,1.2f,1.2f,1.2f,11.6f),
-                new Row("camp-sentry-n",RowKind.Sentry,-11.5f,23.8f,2f,5.2f,2f),new Row("camp-sentry-e",RowKind.Sentry,23.8f,11.5f,2f,5.2f,2f),
-                new Row("camp-sentry-s",RowKind.Sentry,11.5f,-23.8f,2f,5.2f,2f),new Row("camp-sentry-w",RowKind.Sentry,-23.8f,-11.5f,2f,5.2f,2f),
-                new Row("camp-radio",RowKind.Radio,13f,23.9f,4f,3.3f,1.8f),
-                new Row("camp-supply",RowKind.Supply,-12.5f,-23.8f,3f,3.3f,2f),
-                new Row("camp-generator",RowKind.Generator,24.3f,-12.5f,1f,1.4f,2f),
-            };
-            int k=0;
-            foreach(int s in new[]{-1,1})foreach(int o in new[]{-1,1})
-            {
-                t.Add(new Row("camp-sandbag-"+(k++).ToString(System.Globalization.CultureInfo.InvariantCulture),RowKind.Sandbag,7.5f*o,20.5f*s,2.4f,1f,.6f));
-                t.Add(new Row("camp-sandbag-"+(k++).ToString(System.Globalization.CultureInfo.InvariantCulture),RowKind.Sandbag,20.5f*s,7.5f*o,.6f,1f,2.4f));
-            }
-            return t.ToArray();
-        }
+        public static Row[] Table=>NativeExpeditionHubPlan.Table;
         public static Row RowOf(string id){foreach(var r in Table)if(r.Id==id)return r;throw new ArgumentException("No camp row "+id);}
         /// <summary>The camp's two machines (A1's PveMachine records, plan R10): kind, place and yaw (radians, +z the front).</summary>
         public static readonly (string id,string kind,float x,float z,float yaw)[] Machines=

@@ -98,7 +98,7 @@ internal static class CampChecks
         for (uint i = 0; i < 2000; i++)
         {
             uint seed = unchecked(i * 2654435761u); var spots = NativeExpeditionHubPlan.LandingField(seed);
-            for (int k = 0; k < 4; k++)
+            for (int k = 0; k < spots.Length; k++)
             {
                 var p = spots[k]; double a = p.yaw * Math.PI / 180; float fx = (float)Math.Sin(a), fz = (float)Math.Cos(a);
                 foreach (var r in NativeCamp.Table)
@@ -113,7 +113,7 @@ internal static class CampChecks
         }
         Check(worstHull >= 1 - 1e-3f, "every pod hull 1 m clear of every block (worst " + worstHull.ToString("0.00", CultureInfo.InvariantCulture) + " m)");
         Check(worstSkid >= 1 - 1e-3f, "every skid apron 1 m clear of every block (worst " + worstSkid.ToString("0.00", CultureInfo.InvariantCulture) + " m)");
-        // (for A1: today's Clear() does not test the capsule at ExitReach 2.4 m; A1 adds it, which may move some draws)
+        Check(capsuleShort == 0, "every ramp-foot capsule clears camp structures by one metre");
         Console.WriteLine("camp: landing field over 2000 seeds: hull clear by " + worstHull.ToString("0.00", CultureInfo.InvariantCulture) + " m, skid by " + worstSkid.ToString("0.00", CultureInfo.InvariantCulture) +
             " m; the ExitReach 2.4 capsule clear by " + worstCapsule.ToString("0.00", CultureInfo.InvariantCulture) + " m (" + capsuleShort + " block pairs under 1 m)");
     }

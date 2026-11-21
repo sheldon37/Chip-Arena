@@ -76,6 +76,7 @@ namespace ChipArena.UnityConversion
         public static V3 Vec(Vector3 v)=>new V3(v.x,v.y,v.z);
         private void DestroyScene()
         {
+            podSolids.Clear();
             NativePrivateAddons.TearingDown(addonMap);addonMap=null;
             if(root!=null){foreach(var c in root.GetComponentsInChildren<Collider>())c.enabled=false;CapturedAnimation.Release(root);}
             mutatorBlasts.Clear();mutatorStorm.Clear();ResetHub();expeditionClosures.Clear();expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionBoss=null;hulkChargeIgnored.Clear();pveAcid.Clear();acidProps.Clear();hordeAdds.Clear();hordeEnemies.Clear();hordeTargets.Clear();hordeGrid.Clear();wardBreaches.Clear();wardBreachRevision=0;wardSandboxState=null;ClearCutExitCollision();stageLoads.Clear();frameProps.Clear();Pilots.Clear();Props.Clear();StaticBlocks.Clear();ResetStructureRuntime();wildAfflictions.Clear();expansionAreas.Clear();expansionEchoes.Clear();Bullets.Clear();shotEnds.Clear();Events.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();meleeFissures.Clear();meleeCarries.Clear();procLedger.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
