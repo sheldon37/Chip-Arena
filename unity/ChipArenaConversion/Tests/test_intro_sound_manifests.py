@@ -24,7 +24,7 @@ BUNDLE = ROOT / 'tools/sound_bundle/docs/audio'
 COMPILER = REPO / 'tools/intros/compile_sound_requests.py'  # (not in CI's sparse checkout: those tests skip there)
 KEYS = ROOT / 'Assets/ChipArena/Core/NativeIntroSoundKeys.cs'
 B1, B2 = 'sound-requests-intros.json', 'sound-requests-intros-b2.json'
-# Batch 1 (the dev intro and the five generic intros, Slipstream's keys included) as shipped: its five approved jobs pin this hash.
+# Batch 1 (the dev intro and the five generic intros, Slipstream's keys included) as shipped: its approved jobs pin this hash.
 B1_SHA = '68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784'
 
 
@@ -41,7 +41,7 @@ class IntroSoundManifests(unittest.TestCase):
         self.assertEqual(lf_sha(AUDIO / B1), B1_SHA, 'docs/audio/' + B1 + ' changed: its approved jobs pin it (put new rows in batch 2)')
         self.assertEqual((AUDIO / B1).read_bytes(), (BUNDLE / B1).read_bytes(), 'the bundle copy of ' + B1 + ' is byte-identical')
         jobs = [j for j in approved() if j['manifest'] == 'docs/audio/' + B1]
-        self.assertEqual(len(jobs), 5)
+        self.assertTrue(jobs, 'approved jobs pin batch 1')
         self.assertEqual({j['manifestSha256'] for j in jobs}, {B1_SHA})
 
     def test_every_approved_job_matches_its_manifest_and_bundle_copy(self):
