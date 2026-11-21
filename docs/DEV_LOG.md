@@ -65,6 +65,119 @@ Owner: "I want to move the intros to a much higher quality standard, great anima
 - Left for I0, written up in the notes' framework requests: dressed, clip-free ghosts (the echoes in the pilot's outfit), and a `Line` virtual (the drawn blade handed in for every weapon).
 - Left to build: the Glaive's Orrery (designed, its set modelled in `tools/intros/melee_observatory.py`, not banked or built).
 
+## 2026-11-20 — Claude: releases 3 and 4: Slipstream on the Runner Action pack, Belvedere Camp's part 1, Meridian's stairs and the Ward Zero wall (integrator)
+**Release 3**
+- **Published:** shared `3f788a3d`, then `8181bc56` (release 3b), to the builder. Test channel revision `639308176599373533` (build `65eed03d`, 383.3 MiB).
+- **Merged:**
+  - `claude/intro-generic` `4bc722bb` (code `89a64310`, with framework `9bbf5845`'s pack clips);
+  - `claude/camp` `abac4150` (code `9200b7d9`);
+  - `51696398`, Slipstream's sound jobs.
+- **Live:**
+  - Slipstream is registered again. Its run, take-off and slide come from the owner's Runner Action pack, through `ChipArenaIntroMotion` sampled as keys.
+  - The camp's part 1: lamps, sails, barrel fires, the war and MISSING boards, bulb strings, and placeholders for the sound bed.
+  - The survivors and the whole camp stay a DEV preview until Astra's A1.
+- **The first build failed at the sound import (gate 6).** v2a's `intro2.slipstream.chime_01` came out at 0.549 s after silence trimming, under its 0.9 s minimum; a dry run then found v2b's `slide_02` at 0.624 s, under 0.7 s.
+  - **The fix, `55b5367f`:** the 15 accepted originals were copied with filtered receipts into new jobs v2c (stop, board, slide; 1 take each) and v2d (rush, burst, run, leap, pass, name; 2 takes each).
+  - v2a and v2b left the queue. The chime and the second slide take play their fallbacks. Nothing was regenerated.
+- **The Drive zip:** 170,838,020 bytes, sha `00fd2311`. It adds `ChipArenaIntroMotion` (131,257 bytes), `ChipArenaCamp` (6,938,012) and `ChipArenaCampMotion` (1,230,604), with their metas. The backup is `LocalAssets-2026-11-20-before-release3.zip`.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `51696398`;
+  - the full suite at `51696398` and at `55b5367f` (1,089 groups, exit 0);
+  - the Unity compile;
+  - the build's sound import and package validation.
+  - The Python sound tests fail the same 8 as on shared.
+
+**Release 4**
+- **Published:** shared and the builder at `3accbc3c`. Test channel revision `639308197846323091` (build `71da4aaf`, 383.3 MiB).
+- **Merged:** `claude/meridian-stairs` `7911a128` and `claude/bleed-growth-wall` `b8214acd` (both M1).
+- **Live, presentation only:**
+  - No staircasing: flights are cut on their lines, and the fire escapes are iron and caged.
+  - Ward Zero's growth bays keep the lot's wall, so there is no hole onto the next street.
+- **Checks:**
+  - the full suite at `184feb25` (1,091 groups, exit 0);
+  - the Unity compile;
+  - M1's `--meridian-stairs`, `--bleed-skins`, `--meridian-dress` (with the bank), `--dress-seams` and `--hub-zfight`.
+- **Not in the Editor:** the stairs were filmed live there before; the wall was checked offline only.
+
+**Not run, and for Astra**
+- **Not run:** two Windows clients, and the sounds by ear.
+- **For Astra:**
+  - `test_effects_audio`, `test_import_sound_requests` and `test_intro_music` run `install_local_assets.py` against the real `%LOCALAPPDATA%/ChipArena/SoundQueue`. They overwrote the builder PC's `Latest-Sound-Status.json`, which was restored from the builder's Drive copy; the fix is to isolate LOCALAPPDATA.
+  - Meridian's solid street props are proposed in `docs/expedition/MERIDIAN-STREETS.md` part 2 (release 5), and thin fire-escape flights in the staircasing notes.
+
+**Next**
+- release 5: the street life's part 1, and the bleed's lamps under 3 Hz;
+- batch 2, the weapon intros;
+- the camp's sounds, which wait on the owner.
+
+## 2026-11-20 — Claude (M1): Meridian's flights on their lines: no staircasing; the fire escapes iron and caged (owner report; presentation only)
+
+**Branch and status:** `claude/meridian-stairs` from shared `7115bad3`; work `3113c4e0` and `1a30006f`, shared `d4ee788c` merged in
+(`6bc300fa`). Pushed, not merged. **The owner:** "a lot of unnatural staircasing (reference right of picture)".
+
+**The cause.** Every flight is Astra's MapRamp: a pilot stands on a closed wedge up to its slope, and its treads are boxes from the
+flight's bottom up to flat tops. The dress drew each tread's sides on its own:
+- fire escapes (192 of them, 527 flights) stood as solid stepped brick wedges, every upper flight hanging from its landing;
+- sloped streets' sides stepped every 3-4 m with their copings, and the walls beside them stopped at the treads' tops (notches);
+- stairs' stone sides stepped tread by tread.
+
+**What changed** (`Core/NativeMeridianDressStairs.cs`, with small changes in `NativeMeridianDressPlan.cs`, `NativeMeridianDress.cs`
+and `NativeMeridianChunks.cs`):
+- Each tread side is cut on its flight's line under a 0.3 m band, as trapezoids (`Quad.Taper`).
+- Sloped streets: brick retaining walls under a sloped coping. Stairs: stone cheeks under a sloped coping.
+- Fire escapes: iron. A stringer runs along the nosings; the wedge, solid to a pilot, is caged by bars 0.3 m apart, with a grating
+  under it and the floor running on beneath.
+- No collider or rule change.
+
+**The check:** `MeridianStairsChecks` (`--meridian-stairs`, in the full suite), which fails on the old dress.
+**Cost:** the worst views stay under budget; the Editor load is +0.03-0.07 s (figures in `docs/expedition/MERIDIAN-DRESS.md`).
+**Captures:** `F:/Chip Arena Development/scratch/meridian-stairs/clips/`, before/after in the Editor at night.
+
+**Checks:** full CoreTests the relgen5 way at `6bc300fa`, 1088 groups, exit 0. Also passing: `--meridian-dress` with the bank,
+`--dress-seams`, `--hub-zfight`, `--bleed`, the Unity compile gate, `git diff --check` and the pin scan. Not run: a Windows
+player build, multiplayer, the Low tier in the Editor.
+
+**Risks:** the cage is honest but still a cage; far bars may shimmer; two route lamps hang on cages.
+**For Astra:** thin, open fire-escape flights with rails (the notes' `meridian-staircasing-astra.md`).
+
+## 2026-11-20 — Claude (M1): no hole where the street dress gives a bay to the bleed: the lot's wall under Ward Zero's growth (owner report; presentation only)
+
+**Branch and status:** `claude/bleed-growth-wall` from shared `d4ee788c`: the fix `3b2db7e4`, shared `3f788a3d` merged in
+(`4397873c`), and `a1cd97f8` keeps the check's Program.cs lines clear of `claude/meridian-stairs`' (the two merge cleanly).
+Pushed, not merged into shared.
+**The owner:** "Weird building bug found near ward zero" (The Navigation, near the Ward Zero door, test channel `076ae3fc`).
+
+**The cause.** The street dress (D1) hands bays to the bleed (D3); not Astra's geometry:
+- The street dress leaves a facade bay's module out wherever nine points across the bay lie under the bleed's skins
+  (`NativeCityBleedDress.Covers`).
+- Ward Zero's warp skin, its containment growth, has no wall of its own: `tools/stages/meridian_bleed.py` `wall_growth` draws
+  only the violet blooms and their lit nodules.
+- On a 4 m ground storey, the growth covers the lower points and the quarantine sheeting above covers the top one. So the bay
+  was given away and left empty: a hole through the lot to the next street, the blooms floating in it. Those are the owner's
+  dark blobs with purple dots, and the lit street behind.
+- Two more skins need that wall: the quarantine sheeting hangs 6-26 cm off it, and the Ironworks' riveted plates leave 2 cm
+  seams.
+
+**What changed:** a bay given to the bleed keeps the lot's own plain wall, which the skins hang on (`BleedBay` in
+`Core/NativeMeridianDressLots.cs`; the bleed draws nine layers up, so nothing fights). Banks unchanged.
+
+**The check:** `BleedSkinChecks` (`--bleed-skins`, in the full suite). Every street plan's first four live deals and a deal
+like the owner's (`1126921887`: four growth bays in a row under the sheeting) are dressed with the bleed as the live run
+dresses them. Every bay given to the bleed must be walled. It fails on shared's code. Diagnostics come with it:
+`--bleed-skins-probe` and `--bleed-skins-export`.
+
+**Before/after:** `F:/Chip Arena Development/scratch/bleed-growth-wall/offline-wardzero-growth-before-after.jpg` (offline
+renders of that deal with both banks, back faces culled as in the game).
+
+**Checks:** the full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `a1cd97f8`:
+1,090 groups, exit 0 (`--bleed-skins`: 92 checks, 10 bays given, 4 under the growth). Also passing at `4397873c`:
+`--meridian-dress` and `--hub-zfight` with the city bank, the Unity compile gate (4 assemblies; `a1cd97f8` touches only the
+tests), `git diff --check` against shared and the pin scan (0 broken). Not run: an Editor capture (offline stills only), a Windows
+build.
+
+**Risks:** where a skin is sparse (the growth's blooms), the bay reads as the lot's plain wall with growth on it, which is the
+intent. For D3: the growth module could carry its own stained wall in a later bank pass.
+
 ## 2026-11-20 — Claude: intros v2 batch 1 released, with the hub z-fight fix and the floor seams (integrator)
 Owner: "Ship five now" (the dev intro and four generic intros; Slipstream follows on its Runner Action pack run). Shared `076ae3fc`; the builder at `076ae3fc`, test channel revision `639308124444299384` (build `a24d67a4`, 380.9 MiB). Earlier today: the hub z-fight fix alone, shared `5d54766c`, revision `639308000396336573`.
 - **Merged:** `claude/intro-v2` (framework `claude/intro-framework` to `de6c5207`, generic `claude/intro-generic` `1525dfc6`, dev `claude/intro-dev-architect` `8783ab51`) as `139b40e4`, then five fix merges; `claude/dress-seams` (`72ab4d28`) as `7115bad3`; `claude/hub-zfight` (`f279813f`, plus the PartyLoadingChecks re-pin for #437) as `5d54766c`.
