@@ -1,3 +1,39 @@
+## 2026-11-21 — Claude: releases 10 and 11: the eleven retried intro sounds, and Meridian's textured grounds (integrator)
+**Release 10.** Owner: "Yes, retry them".
+- **Published:** shared and the builder at `89be9868`. Test channel revision `639308740698722227` (build `da7b3b65`).
+- **What it is:** `claude/intro-sound-retry` `f00f6fb0`.
+  - The compiler gets a declared retry batch: `b3`, with `RETRIES {"b3": "b2"}`. A retry batch may re-request only the retried
+    batch's keys, and its accepted takes replace the key's clips.
+  - Eleven keys at two takes each, with the minimums lowered to 0.25-0.5 s. Job `intros-b3-2026-11-21-v1a`: 22 takes.
+  - The builder imported all 22; none was rejected.
+  - `test_intro_sound_manifests` fixed: since release 7 it failed on shared, because batch 2's jobs seal its temp tree.
+
+**Release 11.** Owner: "Theres very big empty areas, Like I feel the grounds should be textured?"
+- **Published:** shared and the builder at `65c0b1c6`. Test channel revision `639308820807297771` (build `6e678d44`, 393.9 MiB).
+- **What it is:** `claude/meridian-ground` `782eb386` (M4b, finishing M4, which an interrupt stopped).
+  - Ground zones: the sanctuary plaza is a York-flag square with granite bands and a setts border, route streets are asphalt,
+    and every other open floor is setts.
+  - Detail and large-scale variation in StageLit, with puddles that take the lamps.
+  - The retaining walls weather from their visible foot.
+  - Lamps go from 3.0 to 3.6, and the plaza floods' pools from 9 m to 13 m. No discs.
+  - `MeridianGroundChecks` (27,774).
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `40b9821e`;
+  - the full suite (1,100 groups, exit 0);
+  - the Unity compile;
+  - the build.
+  - No bank change.
+- **Open:**
+  - The owner's screenshot floor is about 8x darker (linear 0.0033) than the Editor's capture of the same spot (0.028). The
+    cause is not found.
+  - The repository tracks only `InputManager`, `ProjectSettings` and `ProjectVersion` under ProjectSettings. The builder's
+    `GraphicsSettings` and `QualitySettings` are Unity's defaults, while the Editor's untracked copies differ (for example
+    `m_LightsUseLinearIntensity: 0`).
+  - Colour space is Linear in both.
+  - The owner was asked which graphics quality they play on.
+- **Also:** `claude/zombie-emerge` (Z1: zombies dig out of the ground or rise from lying; the drop-in and its ring are removed) is
+  in progress.
+
 ## 2026-11-21 — Claude (M4b): Meridian's open grounds textured and readable at night (owner report; presentation only)
 
 Owner (Crown Hill's sanctuary plaza at night, build f4d8b9b5): "Theres very big empty areas, Like I feel the grounds should be textured?
