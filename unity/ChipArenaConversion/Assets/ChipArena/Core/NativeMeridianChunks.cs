@@ -181,15 +181,24 @@ namespace ChipArena.UnityConversion
                 for(int s=0;s<m.Submeshes.Length;s++){var list=s==0?into.Solid:into.Glow;foreach(int ix in m.Submeshes[s].Indices)list.Add(at+ix);}
             }
         }
-        /// <summary>A generated rectangle into the mesh, cut into cells at the tier's size.</summary>
+        /// <summary>A surface's cells at a tier along U and along V (a trapezoid's by the longer of its bottom and top, and the taller
+        /// of its sides, so a sloped coping on it and the wall under it cut their shared edge alike).</summary>
+        public static void QuadCells(in Quad q,int tier,out int nu,out int nv)
+        {
+            bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);float lu=q.U.Length,lv=q.V.Length;
+            if(q.Taper){lu=Math.Max(lu,(q.U+q.V1-q.V).Length);lv=Math.Max(lv,q.V1.Length);}
+            nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lu/cell)));nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lv/cell)));
+        }
+        /// <summary>A surface's point at (s, t) in 0..1 along U and V (a trapezoid's side edge running from V to V1 across it).</summary>
+        public static V3 QuadAt(in Quad q,float s,float t)=>q.Taper?q.O+q.U*s+(q.V+(q.V1-q.V)*s)*t:q.O+q.U*s+q.V*t;
+        /// <summary>A generated rectangle (or trapezoid) into the mesh, cut into cells at the tier's size.</summary>
         public static void AddQuad(in Quad q,int tier,NativeMeridianMesh into)
         {
-            var f=NativeMeridianSurfaces.Fins[q.Fin];float lu=q.U.Length,lv=q.V.Length;bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
-            int nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lu/cell))),nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lv/cell)));
+            var f=NativeMeridianSurfaces.Fins[q.Fin];QuadCells(q,tier,out int nu,out int nv);
             int at=into.Reserve((nu+1)*(nv+1));float kind=f.Detail+q.Layer/32f;
             for(int j=0;j<=nv;j++)for(int i=0;i<=nu;i++)
             {
-                var p=q.O+q.U*((float)i/nu)+q.V*((float)j/nv);int v=at+i+j*(nu+1);
+                var p=QuadAt(q,(float)i/nu,(float)j/nv);int v=at+i+j*(nu+1);
                 into.P[v*3]=p.x;into.P[v*3+1]=p.y;into.P[v*3+2]=p.z;into.Bound(p.x,p.y,p.z);into.N[v*3]=q.N.x;into.N[v*3+1]=q.N.y;into.N[v*3+2]=q.N.z;
                 into.Uv0[v*2]=f.Smooth;into.Uv0[v*2+1]=f.Metal;into.Uv1[v*2]=kind;into.Uv1[v*2+1]=f.Param;NativeMeridianSurfaces.Colour(f,p,q.N,q.Floor,into.C,v*4);
             }
@@ -247,11 +256,7 @@ namespace ChipArena.UnityConversion
             return units;
         }
         /// <summary>A generated surface's triangles at a tier (as AddQuad cuts it, without its seams).</summary>
-        public static int QuadTriangles(in Quad q,int tier)
-        {
-            bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
-            int nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(q.U.Length/cell))),nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(q.V.Length/cell)));return 2*nu*nv;
-        }
+        public static int QuadTriangles(in Quad q,int tier){QuadCells(q,tier,out int nu,out int nv);return 2*nu*nv;}
         /// <summary>A plan's surface's triangles at a tier, its seams' fans included (as <see cref="AddQuad(Plan,int,int,NativeMeridianMesh)"/>
         /// makes it).</summary>
         public static int QuadTriangles(Plan plan,int qi,int tier)=>plan.Seams?.Tris!=null?plan.Seams.Tris[qi*2+(tier==0?0:1)]:QuadTriangles(plan.Quads[qi],tier);
@@ -294,7 +299,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A surface's edge k, in the winding's order: 0 O to O+U, 1 O+U to O+U+V, 2 O+U+V to O+V, 3 O+V to O.</summary>
         public static void EdgeOf(in Quad q,int k,out V3 s,out V3 e)
         {
-            var c1=q.O+q.U;var c2=c1+q.V;var c3=q.O+q.V;
+            var c1=q.O+q.U;var c2=c1+q.Vb;var c3=q.O+q.V;
             s=k==0?q.O:k==1?c1:k==2?c2:c3;e=k==0?c1:k==1?c2:k==2?c3:q.O;
         }
         /// <summary>The axis an edge runs along, or -1 where it is not axis-aligned (a slope's side).</summary>
@@ -304,11 +309,7 @@ namespace ChipArena.UnityConversion
             int a=x>=y&&x>=z?0:y>=z?1:2;float rest=a==0?y+z:a==1?x+z:x+y;return rest<=l*1e-4f?a:-1;
         }
         /// <summary>A surface's cells along edge k at a tier (as AddQuad cuts it).</summary>
-        private static int Cells(in Quad q,int k,int tier)
-        {
-            bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
-            return Math.Max(1,Math.Min(48,(int)Math.Ceiling(((k&1)==0?q.U.Length:q.V.Length)/cell)));
-        }
+        private static int Cells(in Quad q,int k,int tier){QuadCells(q,tier,out int nu,out int nv);return (k&1)==0?nu:nv;}
         /// <summary>Cut i of n along an edge from s to e, its ends exactly s and e (every surface computes a cut the same way).</summary>
         private static float Cut(float s,float e,int i,int n)=>i==0?s:i==n?e:s+(e-s)*((float)i/n);
         /// <summary>The cluster (index) holding a coordinate on an axis, or -1.</summary>
@@ -332,15 +333,17 @@ namespace ChipArena.UnityConversion
         public static SeamTable BuildSeams(Plan plan)
         {
             var t=new SeamTable();var qs=plan.Quads;int nq=qs.Count,ne=nq*4;
+            // (a free surface, a grille's bar, takes no part: no corner, no line)
+            int seamed=0;for(int q=0;q<nq;q++)if(!qs[q].Free)seamed++;int nc4=seamed*4;
             // the corners' clusters per axis (the three in parallel), chained: a corner within the tolerance of the cluster's last value
             // joins it (two computations of one corner)
             System.Threading.Tasks.Parallel.For(0,3,a=>
             {
-                var all=new float[ne];
-                for(int q=0;q<nq;q++){var Q=qs[q];var c1=Q.O+Q.U;var c2=c1+Q.V;var c3=Q.O+Q.V;all[q*4]=Axis(Q.O,a);all[q*4+1]=Axis(c1,a);all[q*4+2]=Axis(c2,a);all[q*4+3]=Axis(c3,a);}
-                Array.Sort(all);int nc=ne>0?1:0;for(int i=1;i<ne;i++)if(all[i]>all[i-1]+SeamTolerance)nc++;
+                var all=new float[nc4];
+                for(int q=0,w=0;q<nq;q++){var Q=qs[q];if(Q.Free)continue;var c1=Q.O+Q.U;var c2=c1+Q.Vb;var c3=Q.O+Q.V;all[w++]=Axis(Q.O,a);all[w++]=Axis(c1,a);all[w++]=Axis(c2,a);all[w++]=Axis(c3,a);}
+                Array.Sort(all);int nc=nc4>0?1:0;for(int i=1;i<nc4;i++)if(all[i]>all[i-1]+SeamTolerance)nc++;
                 var lo=new float[nc];var hi=new float[nc];int c=-1;
-                for(int i=0;i<ne;i++){float x=all[i];if(c<0||x>hi[c]+SeamTolerance){c++;lo[c]=x;}hi[c]=x;}
+                for(int i=0;i<nc4;i++){float x=all[i];if(c<0||x>hi[c]+SeamTolerance){c++;lo[c]=x;}hi[c]=x;}
                 t.Lo[a]=lo;t.Hi[a]=hi;
             });
             // each axis-aligned edge's line (its axis and its two other coordinates' clusters; the keys in parallel), numbered as first met
@@ -349,7 +352,7 @@ namespace ChipArena.UnityConversion
             {
                 for(int q=(int)((long)nq*p/parts),q1=(int)((long)nq*(p+1)/parts);q<q1;q++)
                 {
-                    var Q=qs[q];for(int k=0;k<4;k++){EdgeOf(Q,k,out var s,out var e);int a=AxisOf(e-s);keys[q*4+k]=a<0?-1:LineKey(t,a,s);}
+                    var Q=qs[q];for(int k=0;k<4;k++){if(Q.Free){keys[q*4+k]=-1;continue;}EdgeOf(Q,k,out var s,out var e);int a=AxisOf(e-s);keys[q*4+k]=a<0?-1:LineKey(t,a,s);}
                 }
             });
             int cap=16;while(cap<ne*2)cap<<=1;var table=new long[cap];var tableLine=new int[cap];for(int i=0;i<cap;i++)table[i]=-1;
@@ -550,8 +553,10 @@ namespace ChipArena.UnityConversion
         /// <summary>Makes (into a mesh) or counts (`into` null) a surface's triangles with its seams.</summary>
         private static int Fan(Plan plan,int qi,int tier,Seam seam,NativeMeridianMesh into)
         {
-            var q=plan.Quads[qi];var f=NativeMeridianSurfaces.Fins[q.Fin];float lu=q.U.Length,lv=q.V.Length;bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
-            int nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lu/cell))),nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lv/cell)));
+            var q=plan.Quads[qi];
+            // a free surface (a grille's bar) is cut on its own grid, its corners as made
+            if(q.Free){if(into==null)return QuadTriangles(q,tier);AddQuad(q,tier,into);return 0;}
+            var f=NativeMeridianSurfaces.Fins[q.Fin];QuadCells(q,tier,out int nu,out int nv);
             bool any=false;for(int k=0;k<4;k++)any|=SeamEdge(plan,qi,k,tier,seam);
             // the extra vertices on a cell's side: edge k between its own corners m and m+1 (in the edge's order)
             int Extra(int k,int m)=>seam.On[k]?Math.Max(0,seam.Own[k][m+1]-seam.Own[k][m]-1):0;
@@ -578,7 +583,7 @@ namespace ChipArena.UnityConversion
                 if(i==0&&seam.On[3])return seam.Points[3][seam.Own[3][nv-j]];
                 // a corner no seam holds still snaps to the canonical corner (an edge that only touches another end to end shares it)
                 if((i==0||i==nu)&&(j==0||j==nv)){var t=plan.Seams;EdgeOf(q,i==0?(j==0?0:3):(j==0?1:2),out var corner,out _);return new V3(Canon(t,0,corner.x),Canon(t,1,corner.y),Canon(t,2,corner.z));}
-                return q.O+q.U*((float)i/nu)+q.V*((float)j/nv);
+                return QuadAt(q,(float)i/nu,(float)j/nv);
             }
             int at=into.Vertices;for(int j=0;j<=nv;j++)for(int i=0;i<=nu;i++)Vertex(Grid(i,j));
             int G(int i,int j)=>at+i+j*(nu+1);

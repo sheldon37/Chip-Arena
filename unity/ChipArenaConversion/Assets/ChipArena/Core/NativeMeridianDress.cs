@@ -84,8 +84,14 @@ namespace ChipArena.UnityConversion
         /// siren) 4, over everything it hangs on.</summary>
         public const int UpperLayers=1,CorniceLayers=2,MountLayers=4;
         /// <summary>A generated surface: a rectangle (origin, its two edges) on a collider's face, its finish (NativeMeridianSurfaces),
-        /// its layer (the faces it lies on), the floor below it (the grime rises from it), its chunk and block.</summary>
-        public struct Quad{public V3 O,U,V,N;public int Fin,Layer,Chunk,Block;public float Floor;}
+        /// its layer (the faces it lies on), the floor below it (the grime rises from it), its chunk and block. A tapered one
+        /// (<see cref="Taper"/>) is a trapezoid in the same plane: its far side is <see cref="V1"/> (from O+U), so its top runs from
+        /// O+V to O+U+V1 (a flight's side under its sloped coping or stringer; NativeMeridianDressStairs).</summary>
+        public struct Quad{public V3 O,U,V,N;public int Fin,Layer,Chunk,Block;public float Floor;public V3 V1;public bool Taper;
+            /// <summary>Left out of the seam table: a fire escape grille's bar, a strip that meets no other surface edge to edge.</summary>
+            public bool Free;
+            /// <summary>The far side's edge: V1 on a trapezoid, else V.</summary>
+            public V3 Vb=>Taper?V1:V;}
         /// <summary>A street lamp: its mount on the wall (or the span's middle), the light's place (its bowl), the pool's centre on
         /// the floor, its kind (0 a swan-neck bracket, 1 a span pendant), its state (0 working, 1 flickering, 2 dead), whether it
         /// is on a route home (the protected circuit: warmer glass, never dead), its seed and its placement. Kind 2 is a flush lamp
@@ -113,7 +119,7 @@ namespace ChipArena.UnityConversion
             {
                 ulong h=1469598103934665603UL;void S(string s){foreach(char c in s){h^=c;h*=1099511628211UL;}}void F(float f){h^=(ulong)BitConverter.SingleToInt32Bits(f)&0xffffffffUL;h*=1099511628211UL;}
                 foreach(var p in Placements){S(p.Key);foreach(var m in p.M)F(m);F(p.Chunk);}
-                foreach(var q in Quads){F(q.O.x);F(q.O.y);F(q.O.z);F(q.U.x);F(q.U.y);F(q.U.z);F(q.V.x);F(q.V.y);F(q.V.z);F(q.Fin);F(q.Layer);}
+                foreach(var q in Quads){F(q.O.x);F(q.O.y);F(q.O.z);F(q.U.x);F(q.U.y);F(q.U.z);F(q.V.x);F(q.V.y);F(q.V.z);F(q.Fin);F(q.Layer);if(q.Taper){F(q.V1.x);F(q.V1.y);F(q.V1.z);}}
                 foreach(var l in Lamps){F(l.Bowl.x);F(l.Bowl.y);F(l.Bowl.z);F(l.State);F(l.Kind);}
                 return h;
             }

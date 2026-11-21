@@ -69,12 +69,23 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--hub-zfight")HubZFightChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--hub-zfight")return 0;
             if(args.Length==1&&args[0]=="--hub-zfight-probe"){HubZFightChecks.Probe(ProjectRoot());return 0;}
+            // The bleed's facade skins hang on a wall (owner 2026-11-20, "Weird building bug found near ward zero"): no bay given to the bleed is left open.
+            if(args.Length==0||args.Length==1&&args[0]=="--bleed-skins")BleedSkinChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--bleed-skins")return 0;
+            if(args.Length==4&&args[0]=="--bleed-skins-probe"){BleedSkinChecks.Probe(ProjectRoot(),int.Parse(args[1]),args[2],int.Parse(args[3]));return 0;}
+            if((args.Length==4||args.Length==7)&&args[0]=="--bleed-skins-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;BleedSkinChecks.Export(ProjectRoot(),int.Parse(args[1]),args[2],args[3],args.Length==7?float.Parse(args[4],inv):float.NaN,args.Length==7?float.Parse(args[5],inv):float.NaN,args.Length==7?float.Parse(args[6],inv):70);return 0;}
             // The dress's seams: no T-junction pinholes at any LOD pair, the floor under the camp fence (the hub's follow-up).
             if(args.Length==0||args.Length==1&&args[0]=="--dress-seams")DressSeamChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--dress-seams")return 0;
             if(args.Length==1&&args[0]=="--dress-seams-load"){DressSeamChecks.Load(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dress-seams-probe"){DressSeamChecks.Probe(ProjectRoot());return 0;}
             if((args.Length==3||args.Length==4)&&args[0]=="--meridian-zfight"){MeridianDressChecks.ZFightExport(int.Parse(args[1]),args[2],args.Length==4&&args[3]=="parts");return 0;}
+            // Meridian's flights (owner 2026-11-20, "a lot of unnatural staircasing"): no stepped side, walls down to the sloped streets, iron caged fire escapes.
+            if(args.Length==0||args.Length==1&&args[0]=="--meridian-stairs")MeridianStairsChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--meridian-stairs")return 0;
+            if(args.Length==2&&args[0]=="--meridian-stairs-zfight"){MeridianStairsChecks.ZFight(ProjectRoot(),int.Parse(args[1]));return 0;}
+            if(args.Length==1&&args[0]=="--meridian-stairs-probe"){MeridianStairsChecks.Probe(ProjectRoot());return 0;}
+            if((args.Length==6||args.Length==7)&&args[0]=="--meridian-stairs-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianStairsChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv),args[5],args.Length==7&&args[6]=="roles");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
             // The bleed near each Meridian door (docs/MERIDIAN-BLEED.md): the bands, the approach dressing's plan and its rules.
