@@ -591,6 +591,29 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
   - The runner pack (BIPER "Runner Action Animation Pack", `CLazyRunnerActionAnimPack`) installs under
     `Assets/LocalAssets/CLazyRunnerActionAnimPack`. Extract only the clips you need, plus `Models/ClazyRunner.FBX`, their avatar source.
     Keep each file's `.meta` so its GUID is kept.
+- **One bank per author** (I0e, 2026-11-20): the runtime reads every bank of `NativeIntroPack.Banks`, each optional, and merges them
+  (`NativeIntroPack.Merge`, into `NativeIntroPack.Local`), so nobody rebakes another's:
+
+  | Bank (`Resources/<name>.bytes`) | Whose | The checks find it at |
+  | --- | --- | --- |
+  | `ChipArenaIntroMotion` | Slipstream's (I2b's picks), shipped: never rebake it | `CHIPARENA_INTRO_MOTION` |
+  | `ChipArenaIntroMotionMelee` | I3 (melee) | `CHIPARENA_INTRO_MOTION_MELEE` |
+  | `ChipArenaIntroMotionRanged` | I4 (ranged) | `CHIPARENA_INTRO_MOTION_RANGED` |
+  | `ChipArenaIntroMotionElemental` | I5 (elemental) | `CHIPARENA_INTRO_MOTION_ELEMENTAL` |
+
+  - **Clip names are unique across the banks.** A name a second bank repeats is left out (the first bank's plays, and the Runtime logs
+    a warning); `IntroPackChecks` fails on it. Name a ranged or relabelled clip `<take>#<label>` (the bake does).
+  - **A missing bank** leaves that bank's segments keyed: its intros play their keys, as without any bank.
+  - Each clip keeps its own bank (`clip.Owner`: its skeleton for its frames and its held feet), so banks baked apart still play right.
+  - Without its variable, the checks look for each bank in the folder `CHIPARENA_INTRO_MOTION_DIR`, then in the local assets'
+    Resources, then in `scratch/intro-framework/` up the tree. Keep your bank in your own scratch folder and point your variable at it.
+  - **The match's clips are not the intros'** (owner: the intros' motion is their own). A clip the match's motion bank plays is never
+    baked into an intro bank, matched by source clip name: the clip's name (before any `#`), its take and its file's name against the
+    match bank's clip names (`~mirror` dropped). The bake refuses one; `IntroPackChecks` fails on one (with the match bank here:
+    `CHIPARENA_VISUAL_MOTION`, the local assets' copy, or the Editor checkout's). The notes folder's `intro-pack-clips-index.md` lists
+    the owner's packs by weapon and body mechanic, with the clips the match plays marked.
+  - The packing (`tools/pack_visual_body.py`) takes every `.bytes` beside the body in the Editor's Resources, so the extra banks go
+    into the Drive zip with the integrator's next pack; nothing counts them.
 - **The conversion (Core `NativeIntroPack`):** each frame is the model binding (`NativeVisualRig.Pose`) run backwards on the bank's
   skeleton. A keyed joint's turn is its chain's last bone's world turn off the aligned rest, less the chain's start. The arms' spread
   and the wrist's eased bend are undone. The pelvis's offset goes on the keyed body over the legs' ratio. So the keys drawn on the model
@@ -612,7 +635,7 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
   | `bank.Model(clip, frame, world, at)` | The frame as baked on the model, bone by bone (for checks). |
 
 - **Without the bank** (CI, a build without the local assets), a segment does nothing and the keys under it play. Key a fallback
-  under every pack segment.
+  under every pack segment. The same holds for a segment whose clip is in a missing author's bank.
 - **Speed:** a clip samples in place. `Speed` is how fast a foot on the floor moves back under the body, which is the speed the root
   must travel for that foot to hold. Match the root to it, or use `Kept`. Where the intro's path must differ (a train, a car), plan
   the feet in the model's space from `Foot` and `OnFloor`.
@@ -627,8 +650,10 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
     Prefer the Dash, or lower the root.
   - The slides put a leg up to 6 cm into the floor (`Esc_Slide_Loop`). Lift the root by that much while sliding.
 - **Checked** (`Tests/IntroPackChecks`, `--intro-pack`, and in `--intros-v2`):
-  - always: the Euler round trip, the binding's round trip on the measured skeleton, and that sampling allocates nothing;
-  - with the local bank (`CHIPARENA_INTRO_MOTION`, the local assets' copy, or `scratch/intro-framework/ChipArenaIntroMotion.bytes`):
+  - always: the Euler round trip, the binding's round trip on the measured skeleton, and that sampling allocates nothing; banks merged
+    (a repeated name listed, the first bank's playing; a clip the same through the merged banks as through its own, allocation-free),
+    a Sourced bank's sources, and the match-clip finder on synthetic banks;
+  - with the local banks (each found as above): no clip name in two banks, no clip the match plays (with the match's bank here), and
     every clip's keys draw its limbs along the clip on the model, and its ankles where the clip's are. A grounded clip (a foot down a
     sixth of the time or more), played through `FromPack` on its own travel, keeps its feet still and out of the floor.
   - `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits. The keyed wrist
