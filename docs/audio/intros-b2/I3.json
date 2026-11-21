@@ -9,7 +9,7 @@
       "space": "2d",
       "generateSeconds": 4,
       "targetSeconds": {
-        "min": 3.3,
+        "min": 2.0,
         "max": 3.45
       },
       "levelDb": -12,
@@ -24,7 +24,7 @@
       "space": "2d",
       "generateSeconds": 3,
       "targetSeconds": {
-        "min": 2.2,
+        "min": 1.5,
         "max": 2.8
       },
       "levelDb": -10,
@@ -84,7 +84,7 @@
       "space": "2d",
       "generateSeconds": 1.5,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.75,
         "max": 1.4
       },
       "levelDb": -12,
@@ -99,7 +99,7 @@
       "space": "2d",
       "generateSeconds": 4,
       "targetSeconds": {
-        "min": 3.6,
+        "min": 2.0,
         "max": 3.9
       },
       "levelDb": -12,
@@ -114,7 +114,7 @@
       "space": "2d",
       "generateSeconds": 1,
       "targetSeconds": {
-        "min": 0.6,
+        "min": 0.5,
         "max": 0.9
       },
       "levelDb": -8,
@@ -129,7 +129,7 @@
       "space": "2d",
       "generateSeconds": 1.2,
       "targetSeconds": {
-        "min": 0.8,
+        "min": 0.6,
         "max": 1.1
       },
       "levelDb": -14,
@@ -144,7 +144,7 @@
       "space": "2d",
       "generateSeconds": 1.2,
       "targetSeconds": {
-        "min": 0.7,
+        "min": 0.6,
         "max": 1.0
       },
       "levelDb": -12,
@@ -174,7 +174,7 @@
       "space": "2d",
       "generateSeconds": 2,
       "targetSeconds": {
-        "min": 1.3,
+        "min": 1.0,
         "max": 1.8
       },
       "levelDb": -14,
@@ -189,7 +189,7 @@
       "space": "2d",
       "generateSeconds": 8,
       "targetSeconds": {
-        "min": 7.0,
+        "min": 4.0,
         "max": 7.4
       },
       "levelDb": -16,
@@ -204,7 +204,7 @@
       "space": "2d",
       "generateSeconds": 1.2,
       "targetSeconds": {
-        "min": 0.7,
+        "min": 0.6,
         "max": 1.1
       },
       "levelDb": -10,
@@ -264,7 +264,7 @@
       "space": "2d",
       "generateSeconds": 1.2,
       "targetSeconds": {
-        "min": 0.7,
+        "min": 0.6,
         "max": 1.0
       },
       "levelDb": -12,
@@ -294,7 +294,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -14,
@@ -309,7 +309,7 @@
       "space": "2d",
       "generateSeconds": 8,
       "targetSeconds": {
-        "min": 7.6,
+        "min": 4.0,
         "max": 8.0
       },
       "levelDb": -16,
@@ -339,7 +339,7 @@
       "space": "2d",
       "generateSeconds": 2,
       "targetSeconds": {
-        "min": 1.4,
+        "min": 1.0,
         "max": 1.9
       },
       "levelDb": -4,
@@ -354,7 +354,7 @@
       "space": "2d",
       "generateSeconds": 2,
       "targetSeconds": {
-        "min": 1.2,
+        "min": 1.0,
         "max": 1.7
       },
       "levelDb": -8,
@@ -369,7 +369,7 @@
       "space": "2d",
       "generateSeconds": 2.5,
       "targetSeconds": {
-        "min": 1.6,
+        "min": 1.25,
         "max": 2.2
       },
       "levelDb": -10,
@@ -384,7 +384,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -14,
@@ -414,7 +414,7 @@
       "space": "2d",
       "generateSeconds": 2,
       "targetSeconds": {
-        "min": 1.2,
+        "min": 1.0,
         "max": 1.7
       },
       "levelDb": -10,
@@ -429,7 +429,7 @@
       "space": "2d",
       "generateSeconds": 8,
       "targetSeconds": {
-        "min": 7.0,
+        "min": 4.0,
         "max": 7.4
       },
       "levelDb": -18,
@@ -474,7 +474,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.4
       },
       "levelDb": -8,
@@ -489,7 +489,7 @@
       "space": "2d",
       "generateSeconds": 2.2,
       "targetSeconds": {
-        "min": 1.5,
+        "min": 1.1,
         "max": 2.0
       },
       "levelDb": -16,
@@ -519,7 +519,7 @@
       "space": "2d",
       "generateSeconds": 2,
       "targetSeconds": {
-        "min": 1.3,
+        "min": 1.0,
         "max": 1.7
       },
       "levelDb": -14,
@@ -534,7 +534,7 @@
       "space": "2d",
       "generateSeconds": 8,
       "targetSeconds": {
-        "min": 7.4,
+        "min": 4.0,
         "max": 7.8
       },
       "levelDb": -16,
@@ -564,7 +564,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -14,
@@ -594,7 +594,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -6,
@@ -639,7 +639,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -6,
@@ -669,7 +669,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -8,
@@ -699,7 +699,7 @@
       "space": "2d",
       "generateSeconds": 2,
       "targetSeconds": {
-        "min": 1.2,
+        "min": 1.0,
         "max": 1.8
       },
       "levelDb": -14,
@@ -729,7 +729,7 @@
       "space": "2d",
       "generateSeconds": 1.6,
       "targetSeconds": {
-        "min": 1.0,
+        "min": 0.8,
         "max": 1.5
       },
       "levelDb": -10,
@@ -744,7 +744,7 @@
       "space": "2d",
       "generateSeconds": 8,
       "targetSeconds": {
-        "min": 6.8,
+        "min": 4.0,
         "max": 7.2
       },
       "levelDb": -18,
@@ -834,7 +834,7 @@
       "space": "2d",
       "generateSeconds": 1.4,
       "targetSeconds": {
-        "min": 0.8,
+        "min": 0.7,
         "max": 1.2
       },
       "levelDb": -10,
@@ -879,7 +879,7 @@
       "space": "2d",
       "generateSeconds": 1.4,
       "targetSeconds": {
-        "min": 0.9,
+        "min": 0.7,
         "max": 1.3
       },
       "levelDb": -12,
