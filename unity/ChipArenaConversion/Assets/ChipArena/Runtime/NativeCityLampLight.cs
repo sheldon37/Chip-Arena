@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A drawer's lamps on a map; it writes <see cref="Level"/> (one per lamp, 1 full) each frame.</summary>
         public sealed class Block{public string Map;public NativeCityLamps.Lamp[] Lamps;public float[] Level;internal int Base=-1;}
         private static readonly List<Block> blocks=new List<Block>();private static NativeCityLampLight runner;private static bool dirty;private static string tableMap;
-        private static NativeCityLamps table;private static Texture2D cells,data,light;private static float[] lightPix,levels;
+        private static NativeCityLamps table;private static Texture2D cells,data,lightTex;private static float[] lightPix,levels;
         private static readonly int GridId=Shader.PropertyToID("_CityLampGrid"),SizeId=Shader.PropertyToID("_CityLampGridSize"),CellsId=Shader.PropertyToID("_CityLampCells"),
             DataId=Shader.PropertyToID("_CityLampData"),LightId=Shader.PropertyToID("_CityLampLight");
         /// <summary>The table the grid draws (null: none), and whether the grid lit the last frame.</summary>
@@ -41,11 +41,11 @@ namespace ChipArena.UnityConversion
         {
             var map=NativeLighting.CurrentMap?.id;
             if(dirty||map!=tableMap)Rebuild(map);
-            bool on=table!=null&&light!=null&&map!=null&&map==tableMap&&!NativeLighting.IntroOwned&&!NativeLighting.StageOwned;
+            bool on=table!=null&&lightTex!=null&&map!=null&&map==tableMap&&!NativeLighting.IntroOwned&&!NativeLighting.StageOwned;
             if(on)
             {
                 for(int i=0;i<blocks.Count;i++){var b=blocks[i];if(b.Base>=0)Array.Copy(b.Level,0,levels,b.Base,b.Level.Length);}
-                table.PackLight(levels,lightPix);light.SetPixelData(lightPix,0);light.Apply(false,false);
+                table.PackLight(levels,lightPix);lightTex.SetPixelData(lightPix,0);lightTex.Apply(false,false);
                 Shader.SetGlobalVector(GridId,new Vector4(table.MinX,table.MinZ,NativeCityLamps.Cell,1));
             }
             else Shader.SetGlobalVector(GridId,Vector4.zero);
@@ -62,8 +62,8 @@ namespace ChipArena.UnityConversion
             var cellPix=new float[table.Nx*NativeCityLamps.CellTexels*table.Nz*4];table.PackCells(cellPix);var dataPix=new float[n*8];table.PackData(dataPix);
             cells=Texture(table.Nx*NativeCityLamps.CellTexels,table.Nz,"City lamp cells");cells.SetPixelData(cellPix,0);cells.Apply(false,true);
             data=Texture(2,n,"City lamp data");data.SetPixelData(dataPix,0);data.Apply(false,true);
-            light=Texture(1,n,"City lamp light");table.PackLight(null,lightPix);light.SetPixelData(lightPix,0);light.Apply(false,false);
-            Shader.SetGlobalTexture(CellsId,cells);Shader.SetGlobalTexture(DataId,data);Shader.SetGlobalTexture(LightId,light);
+            lightTex=Texture(1,n,"City lamp light");table.PackLight(null,lightPix);lightTex.SetPixelData(lightPix,0);lightTex.Apply(false,false);
+            Shader.SetGlobalTexture(CellsId,cells);Shader.SetGlobalTexture(DataId,data);Shader.SetGlobalTexture(LightId,lightTex);
             Shader.SetGlobalVector(SizeId,new Vector4(table.Nx,table.Nz,table.Nx*NativeCityLamps.CellTexels,n));
             if(table.Dropped>0)Debug.LogWarning("City lamps: "+table.Dropped+" lamp-cells over the "+NativeCityLamps.PerCell+" a cell holds (their light is lost there)");
             Debug.Log("City lamps on "+map+": "+n+" lamps, "+table.Nx+" x "+table.Nz+" cells, the fullest wants "+table.Fullest);
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
         private static void Release()
         {
             Shader.SetGlobalVector(GridId,Vector4.zero);On=false;
-            if(cells!=null)Destroy(cells);if(data!=null)Destroy(data);if(light!=null)Destroy(light);cells=data=light=null;table=null;
+            if(cells!=null)Destroy(cells);if(data!=null)Destroy(data);if(lightTex!=null)Destroy(lightTex);cells=data=lightTex=null;table=null;
         }
         private void OnDestroy(){if(runner==this){Release();runner=null;dirty=true;}}
     }

@@ -175,7 +175,7 @@ internal static class MeridianLampChecks
         Check(draw.Contains("dark=NativeLighting.MutatorDark")&&draw.Contains("float k=dark?0:NativeMeridianDress.LampLevel(lamps[i],time,reduced);lampBlock.Level[i]=k;"),"DARKNESS puts the street lamps out");
         Check(!draw.Contains("WardField(")&&!draw.Contains("NativeWardZeroField"),"the dress never touches Ward Zero's light field");
         var up=R("Assets/ChipArena/Runtime/NativeCityLampLight.cs");
-        Check(up.Contains("bool on=table!=null&&light!=null&&map!=null&&map==tableMap&&!NativeLighting.IntroOwned&&!NativeLighting.StageOwned;")&&up.Contains("else Shader.SetGlobalVector(GridId,Vector4.zero);")&&up.Contains("[DefaultExecutionOrder(1100)]"),
+        Check(up.Contains("bool on=table!=null&&lightTex!=null&&map!=null&&map==tableMap&&!NativeLighting.IntroOwned&&!NativeLighting.StageOwned;")&&up.Contains("else Shader.SetGlobalVector(GridId,Vector4.zero);")&&up.Contains("[DefaultExecutionOrder(1100)]"),
             "the grid lights only the lamps' own map, never a stage or an intro, after every drawer wrote its levels");
         Check(!System.Text.RegularExpressions.Regex.IsMatch(Body(up,"private void LateUpdate()"),@"\bnew (?!Vector4\()"),"the upload allocates nothing per frame");
         // the street life, the bleed and the camp light the same way (their flat pools gone)
