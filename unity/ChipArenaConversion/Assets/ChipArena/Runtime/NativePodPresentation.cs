@@ -34,11 +34,12 @@ namespace ChipArena.UnityConversion
     /// Nothing allocates per frame once a pod is made.
     /// </summary>
     /// <summary>
-    /// The cameras see through the drop pods: A1's pod solids (two crossed boxes per standing pod, NativeExpeditionPods.cs, named
-    /// "Expedition pod SEAT") stop pilots, never the eye. At GO every pilot stands 2.4 m in front of their own pod facing away from
-    /// it, so a camera pulled in by the hull would sit at the pilot's shoulder (and the directed drop's arc would pop in and out of
-    /// it); instead the eye passes through and my own pod eases into glass (ArenaPresentation.PodGhost). A sphere or ray cast
-    /// against the world that skips the pod solids, as the single casts do: the nearest hit, overlaps at its start ignored.
+    /// The directed drop sees through the drop pods: A1's pod solids (two crossed boxes per standing pod, NativeExpeditionPods.cs,
+    /// named "Expedition pod SEAT") stop pilots, not the drop's eye. Its arc ends low behind my pod, looking past it at my pilot
+    /// climbing out, so an out-of-walls pull-in on the hull would pop the eye in and out of it; instead the eye passes through and
+    /// my own pod eases into glass (ArenaPresentation.PodGhost), as W4 drew it. After GO the game's own cameras keep their casts
+    /// (the hull pulls a shoulder camera in, as any wall does). A ray or sphere cast against the world that skips the pod solids,
+    /// as the single casts do: the nearest hit, overlaps at its start ignored.
     /// </summary>
     public static class NativePodView
     {
