@@ -64,6 +64,8 @@ namespace ChipArena.UnityConversion
         private static readonly int IntroHazeId=Shader.PropertyToID("_ArenaHaze"),IntroHazeTopId=Shader.PropertyToID("_ArenaHazeTop"),IntroFlashPosId=Shader.PropertyToID("_ArenaFlashPos"),IntroFlashColorId=Shader.PropertyToID("_ArenaFlashColor"),IntroGiId=Shader.PropertyToID("_ArenaGI");
         /// <summary>Whether a v2 intro owns the stage's light now (IntroOwn until IntroRelease).</summary>
         public static bool IntroOwned=>introOwned;
+        /// <summary>Whether an entrance or the draft stage owns the light now (until EndIntro): the city's lamp grid stays off.</summary>
+        public static bool StageOwned=>introActive;
         /// <summary>A v2 intro's frame: its own ambient and reflection, none of the arena's light (after Entrance has written its rig).</summary>
         public static void IntroOwn(NativeEntranceLights l)
         {

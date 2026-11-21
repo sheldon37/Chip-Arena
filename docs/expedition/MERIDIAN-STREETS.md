@@ -25,7 +25,7 @@ Two parts:
 | The bank | `tools/stages/meridian_streets.py` (Blender 5.2, on stagekit and `meridian_bleed.py`'s finishes) | 81 kinds at LOD0 and LOD1 (`rig/streets/<key>/0`, `/2`), each checked against its envelope as it is written. `ChipArenaCityStreets.bytes`, 1.3 MB (LOD0 12,302 triangles for all 81, LOD1 4,790). Never committed: it reaches players in the LocalAssets zip like the city banks. Without it nothing draws. |
 | The table | `Core/NativeMeridianStreetLife.cs` | The kinds (key, mount, envelope, casts, glow, light), the mounts' rules, a piece's light over time (`Level`). |
 | The planner | `Core/NativeMeridianStreetLifePlan.cs` | Pure and deterministic per layout and run (no clock, no Unity). Reads the city, the D1 plan (its modules, lamps, paint, plates), the landmarks' places and the bleed's plan, and places every piece. |
-| The drawer | `Runtime/NativeMeridianStreetLifeDraw.cs` | Plans on a worker (182-315 ms in .NET per layout), then draws instanced by kind with 32 m cell culling, reach per mount and tier, per-instance glow and tint, and the lights' pools, halos, flames and steam near the eye. No colliders. `--ca-no-city-streets` switches it off. |
+| The drawer | `Runtime/NativeMeridianStreetLifeDraw.cs` | Plans on a worker (182-315 ms in .NET per layout), then draws instanced by kind with 32 m cell culling, reach per mount and tier, per-instance glow and tint, and the lights' halos, flames and steam near the eye. Every lit piece lights the walls and floors round it through the city's lamp grid (a flood as a cone down its aim; 2026-11-21, `MERIDIAN-DRESS.md` "The light"), on every tier; the flat pool discs are gone. No colliders. `--ca-no-city-streets` switches it off. |
 | The live hook | `Runtime/NativeMeridianStreetLifeLive.cs` | Two lines in `NativeExpeditionWorldPresentation.ShowMeridian`: close the old, open the new after the landmarks are built. |
 | The walk hook | `Runtime/NativeMeridianStreetLifeWalk.cs` | Two lines in `NativeLayeredCityWalkPreview` (open after the landmarks, close with them). Also the part 2 preview. |
 
@@ -81,7 +81,7 @@ burning, spent or steaming. Within the 3 Hz rule, and slower with Reduced effect
 | Blink (signals) | amber at 1 Hz, eased | steady |
 | Burning (fires, flares) | three swells under 2.4 Hz | under 0.7 Hz |
 
-The flames, halos and pools draw within 70 m of the eye, the grates' steam within 45 m.
+The flames and halos draw within 70 m of the eye, the grates' steam within 45 m; the light on the surfaces is the grid's, everywhere.
 
 ### What decides what
 

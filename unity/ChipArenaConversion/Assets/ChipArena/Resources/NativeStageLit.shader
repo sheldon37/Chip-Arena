@@ -42,6 +42,7 @@ Shader "ChipArena/StageLit"
         #include "NativeMuzzleLight.cginc"
         #include "NativeAdvancedLight.cginc"
         #include "NativeToon.cginc"
+        #include "NativeCityLamps.cginc"
         float _Glow;float _StageLift;
         // The fine surface's kind and the layer (0: none) a vertex's uv1.x carries: kind + layer / 32.
         float StageKindOf(float2 uv1){return floor(uv1.x+0.015625);}
@@ -190,13 +191,15 @@ Shader "ChipArena/StageLit"
             }
         }
         // ---- light ----
-        // The rim, the practical slots ((1 - (d/r)^2)^2), the flashes, the Ward field and the muzzle lights: their diffuse (N.L,
-        // wrapped by `wrap`) and, for the slots, a highlight of the given sharpness (spec: the specular colour times the light).
+        // The rim, the practical slots ((1 - (d/r)^2)^2), the flashes, the Ward field, the muzzle lights and the city's lamps
+        // (NativeCityLamps.cginc): their diffuse (N.L, wrapped by `wrap`) and, for the slots and the lamps, a highlight of the given
+        // sharpness (spec: the specular colour times the light). A slot carrying a city lamp (w -1) is the grid's here, never twice.
         float3 StageLights(float3 world,float3 n,float3 v,float wrap,float sharp,inout float3 spec)
         {
             float3 sum=_ArenaRimColor.rgb*saturate((dot(n,_ArenaRimDir.xyz)+wrap)/(1.0+wrap))+WardField(world,n);
             for(int k=0;k<8;k++)
             {
+                if(CityLampSlot(_ArenaLightColor[k].w))continue;
                 float3 d=_ArenaLightPos[k].xyz-world;float len=max(length(d),0.0001);float q=len/max(_ArenaLightPos[k].w,0.0001);float a=saturate(1.0-q*q);
                 float3 l=d/len;float3 c=_ArenaLightColor[k].rgb*(a*a)*WardBeam(d,_ArenaLightColor[k].w);float ndl=saturate((dot(n,l)+wrap)/(1.0+wrap));
                 sum+=c*ndl;float3 h=normalize(l+v);spec+=c*(pow(saturate(dot(n,h)),sharp)*(sharp+8.0)*0.0398*saturate(dot(n,l)));
@@ -207,6 +210,7 @@ Shader "ChipArena/StageLit"
                 sum+=_ArenaFlashColor[m].rgb*(saturate(5.0*(1.0-q))/(1.0+25.0*q)*saturate(dot(n,d/len)));
             }
             sum+=MuzzleLights(world,n,wrap);
+            sum+=CityLamps(world,n,v,wrap,sharp,spec);
             return sum;
         }
         float3 StageHaze(float3 col,float3 world,float dist)
