@@ -97,10 +97,13 @@ change. Without the city bank the walk draws its greybox exactly as before.
     first). ChipArena/StageLit lights each pixel from its cell's lights exactly as from a slot (the slots' fall-off
     (1 - (d/r)^2)^2, N.L, the same highlight, the anime steps). It is on only while the lights' own map is lit and no stage or v2
     intro owns the light; every other map draws as before.
-  - **Each lamp's light** (`Core/NativeMeridianDressLight.cs`): a swan-neck's 0.15 m under its bowl, a pendant's under its bowl, a
-    flush lamp's 0.3 m in front of its lens (at the lens it lit only the street, never its own wall); its reach the pool's radius x
-    1.25; sodium x 1.35 (flush x 0.85), a route home's warmer. A flickering lamp steps under 3 Hz; with Reduced effects it only
-    breathes, never under 0.6.
+  - **Each lamp's light** (`Core/NativeMeridianDressLight.cs`): a swan-neck's 0.15 m under its bowl and a pendant's under its bowl,
+    thrown down by its reflector (`NativeCityLamps.Overhead`: a lobe of power 1.2 straight down, keeping 0.45 sideways): sodium x 3.0
+    down and 1.35 sideways (the slots' old light all round), so the setts under a lamp take about twice and the wall under its
+    bracket about 1.4 times what a slot gave (on the dark setts, #5A5652 with its grime, and the asphalt, #2E3038, the slot's light
+    all round read as almost no pool once the flat disc was gone: the first captures); a flush lamp's 0.3 m in front of its lens,
+    all round, x 1.6 (at the lens it lit only the street, never its own wall); the reach the pool's radius x 1.35; a route home's
+    sodium warmer. A flickering lamp steps under 3 Hz; with Reduced effects it only breathes, never under 0.6.
   - **The slots** still carry the nearest lamps (8; Low 3) to the pilots and zombies (`ActorLights`), the greybox and the air's
     glow, marked (w -1) so StageLit takes them from the grid and never lights a surface twice.
   - **No pools.** A wet glint toward the eye (additive, about six metres) under each lamp within 40 m, only where the floor under
@@ -108,7 +111,9 @@ change. Without the city bank the walk draws its greybox exactly as before.
   - **Beams** on High only where the camera draws its depth (they fade into the floor and walls they meet), about a third as
     bright, narrower, a little fainter seen side on, gone 30 m from the eye, none from a flush lamp.
   - **DARKNESS** puts the street lamps out: their light, glints, beams and glass (the glass and windows at the mutator's glow).
-  - The street life's lit pieces, the bleed's lamps and the camp's lamps light through the same grid (their pools gone too).
+  - The street life's lit pieces (floods 2.8 down their aim, fires 1.8, flares 1.6, signs 1.0, festoons 0.6), the bleed's lamps
+    and the camp's lamps and floods (both thrown down, their old light sideways; the fires all round) light through the same grid,
+    their pools gone too.
 - **Toon Harbor heads and VLB** reach players only through the private zip; neither has a Meridian bridge yet (the kit bank
   is not in the Editor's Resources), so our own fixtures and beams draw.
 
@@ -163,11 +168,13 @@ layers part them. `--hub-zfight-probe` lists the hub's blocks and every pair as 
 
 `MeridianLampChecks` (`--meridian-lamps`, in the full suite): every street plan's live deal, its lamps' light as the grid holds it
 and the shader's formula: the wall 1 m and 2 m under every swan-neck's bracket at least 0.6 and 0.35 (linear luminance before the
-surface's colour; measured 0.75 and 0.45 at the least), the wall under every flush lens at least 0.2 (shared's slot gave 0.12; now
-0.26), every pool's floor its lamp reaches at least 0.25 (0.30 at the least); the grid's cells give every light that reaches them
-(none dropped, the whole city's lights as the live run adds them: the fullest cell 14 of 16, the Arcades); every lamp within 60 m
-ahead of the owner's view up Crown Hill's west street lights its wall (17 of 17; shared's slots held 8); flicker under 3 Hz and the
-Reduced breath; the shader, drawers and upload pinned; the per-frame packing allocates nothing. `--meridian-lamps-probe PLAN X Z R`
+surface's colour; measured 1.09 and 0.90 at the least), the wall under every flush lens at least 0.2 (shared's slot gave 0.12; now
+0.37), every pool's floor its lamp reaches at least 0.25 (0.42 at the least); the grid's cells give every light that reaches them
+(none dropped, the whole city's lights as the live run adds them: the fullest cell 15 of 16, the Arcades); every lamp within 60 m
+ahead of the owner's view up Crown Hill's west street lights its wall (17 of 17), and the cause there in shared (its eight slots: four
+lamps up on the terraces, unseen from the sunken street, then the camp's three kit lights took the weakest, the swan-neck 22 m ahead on
+the left wall among them, whose beam still drew over its dark wall); flicker under 3 Hz and the Reduced breath; the shader, drawers and
+upload pinned; the per-frame packing allocates nothing. `--meridian-lamps-probe PLAN X Z R`
 lists the lamps near a point with the light on their walls and floors (with `MERIDIAN_EYE=x,y,z,fx,fy,fz`, the slots' picks there);
 `--meridian-lamps-stats` the least light per kind and plan.
 
