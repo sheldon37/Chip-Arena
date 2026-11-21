@@ -1,3 +1,22 @@
+## 2026-11-21 — Claude: release 12: zombies emerge from the floor; the drop-in removed (integrator)
+Owner: "Can we animate them digging out of the ground? Or have them laying there, and just rising? ... I want to remove that
+drop in animation entirely".
+- **Published:** shared and the builder at `0ca99280`. Test channel revision `639308852901245249` (build `be1cd9e6`, 393.9 MiB).
+- **Merged:** `claude/zombie-emerge` `476b6b55` (Z1). Its DEV_LOG entry has the spawn paths, the rules written up for Astra,
+  and the impact on hit timing, hitboxes, damage, movement and networking.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `40c232eb`;
+  - the full suite at `40c232eb` (1,101 groups, exit 0);
+  - the Unity compile;
+  - the build.
+  - The pin scan flagged 19 strings from the removed drop-in (`WardLandingSlam`, `Collider.enabled`, ...). Z1's updated
+    checks pass.
+  - Z1 ran the zombie pack scans in a clean worktree.
+  - Not run: two clients, a Windows build.
+- **Open:**
+  - Boss summons and DEV monsters still appear instantly. An emergence for them needs a rules delay (Astra).
+  - The foundry and transit kinds' emergence was not seen in the Editor.
+
 ## 2026-11-21 — Claude (Z1): zombies emerge from the floor; the drop-in removed (owner: "Can we animate them digging out of the ground? Or have them laying there, and just rising? ... I want to remove that drop in animation entirely")
 - **Branch:** `claude/zombie-emerge` from shared `89be9868` (pushed, not merged). Doc: `docs/ZOMBIE-EMERGE.md`.
 - **Spawn paths:** drop entries (Ward Zero, `exp-city`, Meridian's roof hatches for every kind), ceiling vents and doors with no
