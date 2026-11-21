@@ -81,7 +81,9 @@ namespace ChipArena.UnityConversion
             // ---- the great sword's way (the right hand's grip and the blade, in the keyed chest's frame; the left on the hilt by the grip) ----
             Sword.InChest().Key(0,V(-.02f,-.13f,.3f),V(.08f,.64f,.76f))
                  .Key(1.45f,V(-.02f,-.12f,.3f),V(.08f,.66f,.75f))
-                 .Key(1.9f,V(-.18f,.1f,.25f),V(.05f,.9f,-.4f))
+                 // (the hands go out to the right before the blade rises past upright, so its hilt never crosses the visor)
+                 .Key(1.62f,V(-.18f,-.05f,.3f),V(-.4f,.78f,.48f))
+                 .Key(1.9f,V(-.2f,.1f,.25f),V(-.3f,.85f,-.42f))
                  .Key(2.02f,V(-.26f,.25f,.15f),V(-.5f,.75f,-.4f)).Pass()
                  .Key(2.12f,V(-.26f,.3f,.2f),V(-.55f,-.35f,-.76f))
                  .Key(LeapAt,V(-.24f,.34f,.2f),V(-.35f,-.39f,-.85f)).Pass()
