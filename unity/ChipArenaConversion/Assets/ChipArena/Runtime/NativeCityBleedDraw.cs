@@ -209,16 +209,12 @@ namespace ChipArena.UnityConversion
             if(p.Lamp==NativeCityBleedDress.LampState.Flicker||p.Lamp==NativeCityBleedDress.LampState.Turning){float k=Intensity(i,time);return new Vector4(g.x*k,g.y*k,g.z*k,1);}
             return g;
         }
-        // A flickering lamp stutters (seeded, a few times a second, now and then going out for a beat); a turning beacon sweeps
-        // past the eye about once a second.
+        // A flickering lamp stutters under 3 Hz (slower and shallower with Reduced effects); a turning beacon sweeps past the eye
+        // about once a second (NativeCityBleedDress.LampIntensity, checked by BleedChecks.Flicker).
         private float Intensity(int i,float time)
         {
-            var p=plan.Pieces[i];float phase=(p.Seed&1023)/1023f;
-            if(p.Lamp==NativeCityBleedDress.LampState.Turning){float c=Mathf.Cos((time*.85f+phase)*Mathf.PI*2);return .25f+.75f*Mathf.Pow(Mathf.Max(0,c),3);}
-            if(p.Lamp!=NativeCityBleedDress.LampState.Flicker)return 1;
-            int step=(int)Mathf.Floor(time*11+phase*97);uint h=NativeCityBleed.Hash((uint)step^p.Seed);
-            bool outBeat=((NativeCityBleed.Hash((uint)Mathf.Floor(time*.7f+phase*13)^p.Seed*7u)&7)==0);
-            return outBeat?.05f:(h&3)==0?.25f:1f;
+            var p=plan.Pieces[i];
+            return NativeCityBleedDress.LampIntensity(p.Lamp,p.Seed,time,NativeAdvancedLighting.Reduced);
         }
 
         // The fog and ambient toward the dominant instance's by the camera's share: from the rumour band's edge, eased.

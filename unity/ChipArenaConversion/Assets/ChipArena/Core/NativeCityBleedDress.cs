@@ -161,6 +161,23 @@ namespace ChipArena.UnityConversion
 
         /// <summary>A lamp's state (the owner's rule: about 1 in 5 dead, 1 in 10 flickering).</summary>
         public enum LampState:byte{None,Steady,Flicker,Dead,Turning}
+        /// <summary>A flickering lamp's stutter rate in steps a second: under 3 Hz so it never strobes (no more than three flashes in
+        /// any second); with Reduced effects it steps more slowly still.</summary>
+        public const float FlickerHz=2.6f,FlickerReducedHz=.8f;
+        /// <summary>A lamp's brightness (0..1) at <paramref name="time"/>, the drawer's glow and pool multiplier. A flickering lamp
+        /// stutters on seeded steps (<see cref="FlickerHz"/>), now and then going out for a beat; with Reduced effects it steps at
+        /// <see cref="FlickerReducedHz"/>, never under .6 and without the dark beats. A turning beacon sweeps past the eye about once
+        /// a second. Every other lamp is steady.</summary>
+        public static float LampIntensity(LampState lamp,uint seed,float time,bool reduced)
+        {
+            float phase=(seed&1023)/1023f;
+            if(lamp==LampState.Turning){double c=Math.Cos((time*.85f+phase)*Math.PI*2);return (float)(.25+.75*Math.Pow(Math.Max(0,c),3));}
+            if(lamp!=LampState.Flicker)return 1;
+            int step=(int)Math.Floor(time*(reduced?FlickerReducedHz:FlickerHz)+phase*97);uint h=NativeCityBleed.Hash((uint)step^seed);
+            if(reduced)return (h&3)==0?.6f:1f;
+            bool outBeat=(NativeCityBleed.Hash((uint)Math.Floor(time*.7f+phase*13)^seed*7u)&7)==0;
+            return outBeat?.05f:(h&3)==0?.25f:1f;
+        }
         /// <summary>A placed piece: its kind, place (feet or mount point), turn about +y (radians: its +z faces
         /// (sin, 0, cos)), scale, door, band, lamp state and colour, and its own seed (flicker phase, the glow's variation).</summary>
         public struct Piece

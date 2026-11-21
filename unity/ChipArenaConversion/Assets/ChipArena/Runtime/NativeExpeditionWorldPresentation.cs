@@ -96,6 +96,7 @@ namespace ChipArena.UnityConversion
             if(liveStreets!=null)Destroy(liveStreets.gameObject);
             if(liveLandmarks!=null){liveLandmarks.Release();Destroy(liveLandmarks.gameObject);}
             if(liveBleed!=null)liveBleed.Close();
+            StreetLifeClose();
             dressedMeridian=world;
             if(world==null)return;
             var city=world.City;
@@ -122,6 +123,7 @@ namespace ChipArena.UnityConversion
             }
             liveLandmarks=new GameObject("Expedition landmarks").AddComponent<NativeMeridianLandmarksDraw>();
             liveLandmarks.Build(NativeMeridianLandmarks.Place(plan.Seed,city.Map,city.Routes.Select(route=>route.Destination).ToArray(),world.HallSlots,1),cameraView);
+            StreetLifeOpen(world,plan.Seed,liveBleed!=null?bleed:null,liveBleed!=null?dress:null);
         }
         private const int MaxLabelled=256;
         private static readonly int[] labelOrder=new int[MaxLabelled];private static readonly float[] labelDepth=new float[MaxLabelled],labelK=new float[MaxLabelled];
