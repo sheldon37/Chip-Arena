@@ -8,9 +8,10 @@ namespace ChipArena.UnityConversion
     /// "Apex", the Fangs' intro (intros v2; docs/INTROS-MELEE.md): a predator's pounce. 7.4 s, the name at 5.9 s. Night in the Canopy
     /// (overgrown temple ruins: a carved gateway, a strangler fig, roots over the flagstones, fireflies in the mist). The camera drifts low
     /// through the ferns like prey looking round; two green eyes open on the gateway's lintel; it is the pilot, crouched up there, the fangs
-    /// out, venom beading on their tips. It coils, and leaps (slowed at the top of its arc) straight at the lens; both fangs go into the
-    /// earth in a bloom of venom, leaves and mist thrown out. It rises, venom dripping, under the name.
-    /// The model plays the Frank Slash Pack's assassin and rogue clips (NativeBladeIntro); the keyed root carries it off the lintel.
+    /// out, venom beading on their tips. It coils, and leaps long out over the lens (slowed at the top of its arc); its feet find the floor
+    /// a moment before both fangs go into the earth in a bloom of venom, leaves and mist. It rises into a hunter's stance, the fangs low and
+    /// forward, venom dripping, under the name.
+    /// The body is keyed (no match clips), its feet on the lintel's top on the model (ModelGround); the fangs on their keyed paths.
     /// Presentation only: pure functions of the presentation clock.
     /// </summary>
     public sealed class NativeIntroApex:NativeIntroMeleeBlade

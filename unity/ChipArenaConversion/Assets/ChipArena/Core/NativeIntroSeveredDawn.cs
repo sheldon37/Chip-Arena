@@ -8,11 +8,12 @@ namespace ChipArena.UnityConversion
     /// "Severed Dawn", the sword's intro (intros v2; docs/INTROS-MELEE.md): a draw so fast it cuts the light. 7.4 s, the name at 5.9 s. A
     /// ruined vaulted hall at dawn (the Lightwell): one shaft of light falls through a cleft in the vault onto the flagstones in front of the
     /// pilot, dust turning in it. The camera comes down the shaft to the pilot standing at its edge, the sword low; the hand tightens on
-    /// the grip; the light reaches the visor. One forehand cut, too fast to see (the frame shows it begun and ended), and the shaft of light
-    /// is severed: its lower half slides off along the cut and breaks into falling flakes, the hall going dark but for the blade, which now
-    /// holds the light. A slower backhand draws a ribbon of it; the dawn comes back softly under the name.
-    /// The model plays the sword set's clips (NativeBladeIntro), the keyed rig the game's own captures of the same clips (the hold is the
-    /// match's, and the blade's tip, Anchor RightTip, follows the captured blade for the trails). Presentation only.
+    /// the grip; the light reaches the visor. It coils, chambers the blade over its right shoulder and cuts down through the light onto a
+    /// lunging step, and the shaft of light is severed: its lower half slides off along the cut and breaks into falling flakes, the hall
+    /// going dark but for the blade, which now holds the light. A slower backhand draws a ribbon of it; a brief salute, and the blade is
+    /// lowered out to the right under the name.
+    /// The body is keyed (no match clips), the sword on its keyed path held by HoldAt; the blade's tip (Anchor RightTip) follows the drawn
+    /// blade for the trails. Presentation only.
     /// </summary>
     public sealed class NativeIntroSeveredDawn:NativeIntroMeleeBlade
     {

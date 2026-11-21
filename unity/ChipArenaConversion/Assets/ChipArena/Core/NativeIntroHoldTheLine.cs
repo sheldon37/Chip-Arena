@@ -7,11 +7,11 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// "Hold the Line", the shield's intro (intros v2; docs/INTROS-MELEE.md): an immovable wall taking a barrage. 7.8 s, the name at 6.3 s.
     /// Dusk at the Breach (a broken fortress wall, braziers smouldering either side of the gap, a scorched field out to a ridge with siege
-    /// engines). The pilot stands in the breach and plants the shield; from behind it the camera sees lights climb off the far ridge: the
-    /// barrage. Burning bolts streak in and burst on the shield face one after another, each knocking it back an inch (the block's hit),
-    /// near misses throwing up earth and fire round it; the feet never move. Silence, smoke, the shield's face glowing hot; then one bash
-    /// forward blows the smoke back, and it stands in the breach under the name.
-    /// The model plays the shield set's clips (NativeBladeIntro), the keyed rig the game's own captures of them (the hold is the match's).
+    /// engines). The pilot steps into the breach and plants the shield low; from behind it the camera sees lights climb off the far ridge:
+    /// the barrage. The shield comes up before the chest, the left fist bracing its rim, and burning bolts burst on its face one after
+    /// another, each rocking it back; near misses throw up earth and fire round it. Silence, smoke, the shield's face glowing hot; then a
+    /// bash off the back leg blows the smoke back, and it stands in the breach, the shield lowered at its side, under the name.
+    /// The body is keyed (no match clips), the shield on its keyed path, the left fist on its rim through the grip (INativeIntroGrip).
     /// Presentation only.
     /// </summary>
     public sealed class NativeIntroHoldTheLine:NativeIntroMeleeBlade,INativeIntroGrip

@@ -7,12 +7,12 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// "Faultline", the greatsword's intro (intros v2; docs/INTROS-MELEE.md): the weight that cracks the ground. 8.0 s, the name at 6.4 s.
     /// Night in the Rift (a basalt quarry: columnar walls in benches, a molten seam smouldering in a corner, a timber derrick, quarry
-    /// blocks). The camera glides low over the floor to the pilot standing with the great sword; embers drift up from the faults. It leaps
-    /// and brings the blade down two-handed on its own spot (the plunging slam, slowed into the blow): the floor round it breaks into slabs
-    /// that heave up and tilt on a wave running outward, molten light wells up through the joints, cracks race to the walls, the quarry's
-    /// seams flare, grit and sparks fly. The camera cranes up over the broken ring; the pilot rises from the blow and stands in the glow.
-    /// The model plays the great sword set's clips (NativeBladeIntro); its first frames are the set's idle, the keyed rig the game's own
-    /// capture of it, so the great sword sits in the hands as the match holds it. Presentation only.
+    /// blocks). The camera glides low over the floor to the pilot in a middle guard; embers drift up from the faults. It leaps and chops the
+    /// great sword over and down (slowed into the blow): the point bites the floor ahead, the shock throws the left hand off the hilt, and the
+    /// floor round it breaks into slabs that heave up and tilt on a wave running outward, molten light wells up through the joints, cracks
+    /// race to the walls, grit and sparks fly. The camera cranes up over the broken ring; the pilot wrenches the blade out, sets its point on
+    /// the floor ahead and stands beside it in the glow.
+    /// The body is keyed (no match clips), both hands on the hilt through the grip (INativeIntroGrip) until the shock. Presentation only.
     /// </summary>
     public sealed class NativeIntroFaultline:NativeIntroMeleeBlade,INativeIntroGrip
     {

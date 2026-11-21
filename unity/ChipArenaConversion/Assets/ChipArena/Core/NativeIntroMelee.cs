@@ -95,9 +95,9 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
-    /// The base of the melee intros whose model plays the pack's clips through the blade entrances' path (Core NativeBladeIntro: the
-    /// runtime lays Clip on the model, holds the blades as the match does (NativeBladeGrip) and hands them in each frame; the Katana's saya
-    /// by Sheathed), with the v2 contract on top: the camera rig and its speed ramps, the set from the bank with the void as its fallback,
+    /// The base of the melee intros (intros v2): the body keyed for the model (owner 2026-11-20: no match clips; Clip is off, so the model
+    /// follows the keyed rig), each weapon on a keyed path (NativeIntroWield) held by HoldAt, drawn through the blade entrances' path (Core
+    /// NativeBladeIntro: the runtime draws the blades in the drawn hands and hides the held one while Sheathed), with the v2 contract on top: the camera rig and its speed ramps, the set from the bank with the void as its fallback,
     /// the name card, the lens, the cues. No pylon arena, no warp at Hit, no camera jolt but the rig's own moves.
     /// </summary>
     public abstract class NativeIntroMeleeBlade:NativeBladeIntro,INativeIntroV2,INativeIntroHands

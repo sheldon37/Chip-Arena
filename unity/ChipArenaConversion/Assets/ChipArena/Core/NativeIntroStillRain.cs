@@ -8,11 +8,12 @@ namespace ChipArena.UnityConversion
     /// "Still Rain", the Katana's intro (intros v2; docs/INTROS-MELEE.md): rain, stillness and one cut. 8.2 s, the name at 6.6 s. Night in
     /// the Rain Garden (a walled stone courtyard: the granite path between two rain pools, the roofed gate behind, the stone lantern, bamboo
     /// over the walls). The pilot stands in the rain with the blade sheathed, the left hand on the saya; far lightning lights the gate; it
-    /// sinks into the iai stance, the thumb pushes the guard, and the one cut (the pack's stance-three draw): the rain stops in the air. In
-    /// the frozen moment the camera rides the cut's line through the hanging drops, every drop on it split in two. Time comes back: the
-    /// drops fall apart, three bamboo stalks behind slide on their cut and fall onto the wall, the line breaks into falling light. The blade
-    /// goes home; at the click the rain is thrown off the pilot. Still again under the name.
-    /// The model plays the Frank Slash Pack's Katana clips (NativeBladeIntro); the rain and the freeze are the script's own clock.
+    /// sinks into the iai stance and draws, the arm out long to the right: the rain stops in the air. In the frozen moment the camera rides
+    /// the cut's line through the hanging drops, every drop on it split in two. Time comes back: the drops fall apart, three bamboo stalks
+    /// behind slide on their cut and fall onto the wall. The left hand joins the hilt for one cut down (kirioroshi), the chiburi flicks the
+    /// rain off the blade, the blade goes home along the saya, and at the click the rain is thrown off the pilot. Still again under the name.
+    /// The body is keyed (no match clips: NativeEntranceKeys on the framework's pose tools), the Katana on its keyed path held by HoldAt,
+    /// both hands on the hilt through the grip (INativeIntroGrip); the rain and the freeze are the script's own clock.
     /// Presentation only: pure functions of the presentation clock.
     /// </summary>
     public sealed class NativeIntroStillRain:NativeIntroMeleeBlade,INativeIntroGrip
