@@ -1,9 +1,9 @@
 ## 2026-11-20 — Claude (M2): Meridian's streets come alive: honest street life in the live run and the walk (part 1), and the solid street props proposed for Astra with a DEV preview (part 2)
 
 Owner: "Also, streets seem very empty? (Not talking about zombies, but like theres no life essentially like props or anything, it
-still feels kind of 'grey box-ish'". **Branch:** `claude/meridian-streets` from shared `7115bad3`, shared `076ae3fc` merged in
-(`d2b5e8c0`); the work is `134490b5` and `2e695fc4`; this entry and docs/expedition/MERIDIAN-STREETS.md follow them. Pushed,
-not merged, not released.
+still feels kind of 'grey box-ish'". **Branch:** `claude/meridian-streets` from shared `7115bad3`, with shared `076ae3fc` (`d2b5e8c0`)
+and `8181bc56` (`ddeb4ce8`: the camp's walk hooks and checks beside ours, both kept) merged in; the work is `134490b5` and
+`2e695fc4`; this entry and docs/expedition/MERIDIAN-STREETS.md follow them. Pushed, not merged, not released.
 
 - **Part 1, street life (presentation only, no collider):** 81 kinds in six mounts that keep the honesty rule: flat paint of
   6 cm or less (markings, cracks, litter, blood, chalk, the Civil Defence's lanes, flares); flat wall art 6.2-10 cm out
@@ -24,9 +24,9 @@ not merged, not released.
   draws) and `ChipArenaCityStreetProps.bytes` 2,846,835 bytes (29 models, the DEV preview), each with its .meta, in
   `F:/Chip Arena Development/scratch/meridian-streets/bank/ChipArenaLocal/Resources/`. Built by `tools/stages/meridian_streets.py`
   and `tools/stages/meridian_street_props.py` (Blender 5.2, on the committed street kit `tools/stages/meridian_street_kit/`).
-- **Checks:** full CoreTests the relgen5 way on `d2b5e8c0` (LF worktree, `expedition_path.patch`, banks-next): exit 0, 1,089
-  groups; `--streets` with the bank 6,371,019 checks and `--street-props` with the bank 37,381,639, both PASS (in the full run
-  without banks 6,326,443 and 37,270,514); the offline Unity compile PASS (four assemblies); `git diff --check` clean. Editor
+- **Checks:** full CoreTests the relgen5 way (LF worktree, `expedition_path.patch`, banks-next) on `d2b5e8c0`: exit 0, 1,089
+  groups; on the merge `ddeb4ce8`: exit 0, 1,091 groups. On the merge with the banks: `--streets` 6,371,019 checks, `--street-props`
+  37,381,639 and `--camp` 67,181, all PASS. The offline Unity compile PASS (four assemblies) on both; `git diff --check` clean. Editor
   (two holds): live runs on hub-zfight's deals of Crown Hill, The Arcades and The Stride with the street life switched off then
   on in the same run, and the DEV preview in The Stride's walk (571 candidates, 458 filled, 29 models); no errors. Clips:
   `F:/Chip Arena Development/scratch/meridian-streets/clips/` (eight 6 s before/after MP4s, stills, the preview's sheet).

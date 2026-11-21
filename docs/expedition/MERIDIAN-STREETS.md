@@ -165,14 +165,14 @@ The pilot walks through the props: nothing here is a collider.
 at most, 1 Hz with Reduced effects); per plan, every piece's honesty (the keep-outs, the floor's support, paint on paint and on
 the dress's paint, a wall piece's face plane, depth and continuity, the overhead clearance, no block inside any piece); determinism;
 the layout's fittings fixed across runs; the plan without the other drawers; the live deals' plans as the live run builds them; the
-hooks' source lines. With `CHIPARENA_STREETS_BANK` (the bank's folder) the six standard views' triangles and draws a plan, High and
-Low. `--streets-probe` prints the counts; `STREETS_SPOTS=1` the busiest cells by district, `STREETS_DUMP=<dir>` each live deal's
-blocks, routes, pieces and props as CSV.
+hooks' source lines. With `CHIPARENA_STREETS_BANK` (a path to `ChipArenaCityStreets.bytes`) the six standard views' triangles and
+draws a plan, High and Low. `--streets-probe` prints the counts; `STREETS_SPOTS=1` the busiest cells by district;
+`STREETS_DUMP=<dir>` each live deal's blocks, routes, pieces and props as CSV.
 
 `StreetPropsChecks` (`--street-props`, in the full suite): the table; per plan, determinism, candidates the layout's alone, every
 candidate against the rules on its own geometry (the lanes sampled along each leg, the gap rule), the lattice with all candidates
-in, the live deals' exits keeping an open apron within 8 m. With `CHIPARENA_STREETPROPS_BANK` every model inside its block's
-envelope (within 0.25 m, nothing more than 0.25 m out below 3.1 m).
+in, the live deals' exits keeping an open apron within 8 m. With `CHIPARENA_STREETPROPS_BANK` (a path to the props' bank) every
+model inside its block's envelope (within 0.25 m, nothing more than 0.25 m out below 3.1 m).
 
 ## Known limits
 
