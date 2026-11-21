@@ -388,12 +388,13 @@ namespace ChipArena.UnityConversion
             // (the upper arm behind the body or across it: the pose-craft's shoulder ranges)
             float back=(float)Math.Atan2(-upper.Z,Math.Sqrt(upper.X*upper.X+upper.Y*upper.Y))*Deg,across=(float)Math.Asin(Math.Clamp(-upper.X*(left?1:-1),-1,1))*Deg;
             c+=Wall(back,60)+4*Wall(back,66)+(upper.Z<.35f?Wall(across,45)+4*Wall(across,51):0);
-            // (the elbow inside the torso's boxes, by how deep)
-            var e=pose.WorldPosition[arm+1];
-            foreach(var box in TorsoBoxes)
+            // (the elbow inside the keyed torso, by how deep: the torso as an elliptic column round the chest's line, as wide and deep as the
+            // keyed rig's chest and from its hips to its shoulders; the pose checks hold the keyed elbow out of it)
+            var e=Vector3.Transform(pose.WorldPosition[arm+1]-pose.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(pose.WorldRotation[CapturedRig.Chest]));
+            if(e.Y>TorsoLow-.02f&&e.Y<TorsoHigh+.02f)
             {
-                var cBox=pose.WorldPosition[box.Bone]+Vector3.Transform(box.Position,pose.WorldRotation[box.Bone]);var l=Vector3.Transform(e-cBox,Quaternion.Inverse(pose.WorldRotation[box.Bone]));
-                float dx=box.Size.X*.5f-Math.Abs(l.X),dy=box.Size.Y*.5f-Math.Abs(l.Y),dz=box.Size.Z*.5f-Math.Abs(l.Z);if(dx>-.02f&&dy>-.02f&&dz>-.02f)c+=100*(Math.Min(dx,Math.Min(dy,dz))+.02f)*10;
+                float d=(float)Math.Sqrt(e.X*e.X/(TorsoHalfWidth*TorsoHalfWidth)+e.Z*e.Z/(TorsoHalfDepth*TorsoHalfDepth));
+                float depth=Math.Min((1-d)*TorsoHalfDepth,Math.Min(e.Y-TorsoLow,TorsoHigh-e.Y));if(depth>-.02f)c+=100*(depth+.02f)*10;
             }
             float off=(float)Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(pole),Vector3.Normalize(rest)),-1,1))*Deg;return c+off*off/3600*.6f;
         }
@@ -404,12 +405,8 @@ namespace ChipArena.UnityConversion
             down=Vector3.Transform(-Vector3.UnitY,local);var swing=CapturedRig.FromTo(-Vector3.UnitY,down);var q=Quaternion.Normalize(Quaternion.Inverse(swing)*local);
             float a=2*(float)Math.Atan2(-q.Y,q.W)*57.29578f;while(a>180)a-=360;while(a<-180)a+=360;return a;
         }
-        private static readonly CapturedRig.Box[] TorsoBoxes=Torso();
-        private static CapturedRig.Box[] Torso()
-        {
-            int n=0;foreach(var b in CapturedRig.Boxes)if((b.Bone==CapturedRig.Chest||b.Bone==CapturedRig.Spine||b.Bone==CapturedRig.Pelvis)&&b.Size.X>.3f)n++;
-            var r=new CapturedRig.Box[n];n=0;foreach(var b in CapturedRig.Boxes)if((b.Bone==CapturedRig.Chest||b.Bone==CapturedRig.Spine||b.Bone==CapturedRig.Pelvis)&&b.Size.X>.3f)r[n++]=b;return r;
-        }
+        /// <summary>The keyed torso round the chest joint (its frame): half its width and depth, and from the hips' bottom to the chest's top.</summary>
+        private const float TorsoHalfWidth=.265f,TorsoHalfDepth=.15f,TorsoLow=-.4f,TorsoHigh=.25f;
         /// <summary>
         /// HoldAt for a contact with the world on the drawn model (a blade driven into the floor, a hand on a hilt that stands in it): `at` is
         /// where the DRAWN grip goes. The model copies the keyed arm's turns from its own shoulder, which stands .21 m further in and .32 m
