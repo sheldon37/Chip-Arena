@@ -15,13 +15,16 @@
 sampler2D _CityLampCells;sampler2D _CityLampData;sampler2D _CityLampLight;
 float4 _CityLampGrid;float4 _CityLampGridSize;
 bool CityLampSlot(float w){return _CityLampGrid.w>0.5&&w<-0.5;}
-float3 CityLamps(float3 world,float3 n,float3 v,float wrap,float sharp,inout float3 spec)
+// The lamps' light, and on a wet floor (2026-11-21, Meridian's grounds) their glints: `g` xyz the view ray reflected off the floor, w the
+// glint's sharpness (0: none); each lamp's light at the floor seen along its own reflection as a wet street's streak (narrow across, long
+// toward the eye), summed into `glint`. CityLamps is the same without the glints.
+float3 CityLampsWet(float3 world,float3 n,float3 v,float wrap,float sharp,inout float3 spec,float4 g,inout float3 glint)
 {
     float3 sum=float3(0.0,0.0,0.0);
     if(_CityLampGrid.w<0.5)return sum;
     float2 c=floor((world.xz-_CityLampGrid.xy)/_CityLampGrid.z);
     if(c.x<0.0||c.y<0.0||c.x>=_CityLampGridSize.x||c.y>=_CityLampGridSize.y)return sum;
-    float row=(c.y+0.5)/_CityLampGridSize.y;
+    float row=(c.y+0.5)/_CityLampGridSize.y;float2 rh=normalize(g.xz+float2(0.00001,0.0));
     [loop]for(int t=0;t<4;t++)
     {
         float4 ids=tex2Dlod(_CityLampCells,float4((c.x*4.0+t+0.5)/_CityLampGridSize.z,row,0.0,0.0));
@@ -37,8 +40,13 @@ float3 CityLamps(float3 world,float3 n,float3 v,float wrap,float sharp,inout flo
             if(lc.w>0.0){float4 aim=tex2Dlod(_CityLampData,float4(0.75,u,0.0,0.0));k*=aim.w+(1.0-aim.w)*pow(saturate(-dot(l,aim.xyz)),lc.w);}
             float3 col=lc.rgb*k;float ndl=saturate((dot(n,l)+wrap)/(1.0+wrap));
             sum+=col*ndl;float3 h=normalize(l+v);spec+=col*(pow(saturate(dot(n,h)),sharp)*(sharp+8.0)*0.0398*saturate(dot(n,l)));
+            if(g.w>0.0){float az=1.0-dot(rh,normalize(l.xz+float2(0.00001,0.0)));float el=g.y-l.y;glint+=col*exp(-az*g.w*60.0-el*el*g.w*0.35);}
         }
     }
     return sum;
+}
+float3 CityLamps(float3 world,float3 n,float3 v,float wrap,float sharp,inout float3 spec)
+{
+    float3 glint=float3(0.0,0.0,0.0);return CityLampsWet(world,n,v,wrap,sharp,spec,float4(0.0,0.0,0.0,0.0),glint);
 }
 #endif
