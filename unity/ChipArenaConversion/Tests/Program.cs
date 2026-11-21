@@ -40,6 +40,16 @@ internal static class Program
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--weapon-flourish")WeaponFlourishChecks.Run(ProjectRoot());
             if(args.Length==0||args.Length==1&&args[0]=="--intro-generic"){IntroGenericChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-melee"){IntroMeleeChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-ranged"){IntroRangedChecks.Run();if(args.Length==1)return 0;}
+            if(args.Length==3&&args[0]=="--intro-ranged-dump"){IntroRangedChecks.Dump(args[1],args[2]);return 0;}
+            if(args.Length==2&&args[0]=="--intro-ranged-fit"){IntroRangedChecks.Fit(args[1]);return 0;}
+            if(args.Length==1&&args[0]=="--intro-ranged-limits"){IntroRangedChecks.Limits();return 0;}
+            if(args.Length==2&&args[0]=="--intro-ranged-twist"){IntroRangedChecks.Twist(args[1]);return 0;}
+            if(args.Length>=2&&args.Length<=4&&args[0]=="--intro-ranged-arms"){IntroRangedChecks.Arms(args[1],args.Length>2?float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture):0,args.Length>3?float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture):99);return 0;}
+            // Every v2 intro's arms through its own shot cameras: none through the head, none across the face (Tests/IntroArmChecks).
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-arms"){IntroArmChecks.Run(null,args.Length==1);if(args.Length==1)return 0;}
+            if(args.Length==2&&args[0]=="--intro-arms"){IntroArmChecks.Run(args[1]);return 0;}
             if(args.Length==1&&args[0]=="--weapon-flourish")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--blind-choices")BlindChoiceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--blind-choices")return 0;
@@ -167,6 +177,13 @@ internal static class Program
             if(args.Length==1&&args[0]=="--technique-rules"){TechniqueRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-sounds"){DeploySoundChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-mutators"){ExpeditionMutatorChecks.Run(ProjectRoot());return 0;}
+            // The elemental weapons' v2 intros (docs/INTROS-ELEMENTAL.md): their own checks beside the framework's.
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-elemental")IntroElementalChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--intro-elemental")return 0;
+            if(args.Length>=1&&args[0]=="--intro-elemental-probe"){IntroElementalChecks.Probe(args);return 0;}
+            if(args.Length>=1&&args[0]=="--intro-elemental-pose"){IntroElementalChecks.Pose(args);return 0;}
+            if(args.Length>=1&&args[0]=="--intro-elemental-model"){IntroElementalChecks.Model(args);return 0;}
+            if(args.Length>=1&&args[0]=="--intro-elemental-limits"){IntroElementalChecks.Limits(args);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--intro-performance")IntroPerformanceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--intro-performance")return 0;
             if(args.Length==1&&args[0]=="--deploy-performance"){DeployPerformanceChecks.Run(ProjectRoot());return 0;}

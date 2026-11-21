@@ -293,10 +293,11 @@ that exists:
 So an intro sounds right before any generation: write `alt` and `clip` to fit, and check the sync in your capture.
 
 **Requesting generated sounds:** follow `docs/audio/intros/README.md`.
-- Put your rows in your own `docs/audio/intros/<author>.json`, in the manifest's sound schema.
+- Put your rows in your own `docs/audio/intros-b2/<author>.json` (batch 2), in the manifest's sound schema. Batch 1's folder
+  `docs/audio/intros/` and its manifest are sealed by their approved jobs: never add rows there.
 - Add one contract line per key to `Core/NativeIntroSoundKeys.cs`, on your slot.
-- `tools/intros/compile_sound_requests.py` merges every author's rows into `docs/audio/sound-requests-intros.json` and
-  prints the approved builder job.
+- `tools/intros/compile_sound_requests.py --batch b2` merges the batch's rows into `docs/audio/sound-requests-intros-b2.json` (and its
+  bundle copy) and prints the approved builder job (README section 2a).
 - Never put a key or token anywhere in the repo or in logs.
 
 ### 6a. Generation status
@@ -324,6 +325,7 @@ Every registered intro runs through the same checks automatically. You don't nee
 | anchors (framework) | keyed until a body is handed in; then each handed anchor exactly where it was drawn at that frame's time and carried rigidly by its keyed joint at other times; `ClearDrawn` gives the keyed ones back; no allocation; the weapon sockets for all fifteen weapons; the reflection's defaults; the runtime's order (camera keyed, the drawn body before the lights, set and effects) |
 | weapon anchors (`Tests/IntroAnchorChecks`) | every grip, tip and muzzle anchor of the fifteen weapons on the drawn weapon, in both skins (section 2a) |
 | poses (`Tests/IntroPoseChecks`) | your keyed pose bound bone for bone on the model; the anatomical limits; the drawn feet (no slide on the floor, nothing through it); the drawn grip (the off fist on the drawn weapon); the guide's canonical poses always clean (section 9b). Your intro's findings are listed by `--intro-limits` (section 9b) and fail only there |
+| arms (`Tests/IntroArmChecks`, `--intro-arms`) | every v2 intro (`INativeIntroV2`) bound on the model every 1/30 s through its own shot cameras: no arm (its bone lines, shoulder to knuckles) through the drawn head's ellipsoid widened by 3 cm, and no arm in front of the face covering more than 15% of the face's disc (0.11 m round the drawn eyes) on screen. `--intro-arms` fails on any frame and lists each (the time, the arm, the camera's shot, the measure); `--intro-arms ID` prints the measures per frame. The full run lists the intros found failing when it came in (`IntroArmChecks.Known`) and fails on any other; remove your intro's id once it passes (owner 2026-11-21: "Arm doing weird things", while the limits passed) |
 
 Put your own extra checks in your own `Tests/Intro<Name>Checks.cs`, and add one call in `Program.cs` on its own line.
 
@@ -590,6 +592,65 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
   - The runner pack (BIPER "Runner Action Animation Pack", `CLazyRunnerActionAnimPack`) installs under
     `Assets/LocalAssets/CLazyRunnerActionAnimPack`. Extract only the clips you need, plus `Models/ClazyRunner.FBX`, their avatar source.
     Keep each file's `.meta` so its GUID is kept.
+- **One bank per author** (I0e, 2026-11-20): the runtime reads every bank of `NativeIntroPack.Banks`, each optional, and merges them
+  (`NativeIntroPack.Merge`, into `NativeIntroPack.Local`), so nobody rebakes another's:
+
+  | Bank (`Resources/<name>.bytes`) | Whose | The checks find it at |
+  | --- | --- | --- |
+  | `ChipArenaIntroMotion` | Slipstream's (I2b's picks), shipped: never rebake it | `CHIPARENA_INTRO_MOTION` |
+  | `ChipArenaIntroMotionMelee` | I3 (melee) | `CHIPARENA_INTRO_MOTION_MELEE` |
+  | `ChipArenaIntroMotionRanged` | I4 (ranged) | `CHIPARENA_INTRO_MOTION_RANGED` |
+  | `ChipArenaIntroMotionElemental` | I5 (elemental) | `CHIPARENA_INTRO_MOTION_ELEMENTAL` |
+
+  - **Clip names are unique across the banks.** A name a second bank repeats is left out (the first bank's plays, and the Runtime logs
+    a warning); `IntroPackChecks` fails on it. Name a ranged or relabelled clip `<take>#<label>` (the bake does).
+  - **A missing bank** leaves that bank's segments keyed: its intros play their keys, as without any bank.
+  - Each clip keeps its own bank (`clip.Owner`: its skeleton for its frames and its held feet), so banks baked apart still play right.
+  - Without its variable, the checks look for each bank in the folder `CHIPARENA_INTRO_MOTION_DIR`, then in the local assets'
+    Resources, then in `scratch/intro-framework/` up the tree. Keep your bank in your own scratch folder and point your variable at it.
+  - **The match's clips are not the intros'** (owner: the intros' motion is their own). A clip the match's motion bank plays is never
+    baked into an intro bank, matched by source clip name: the clip's name (before any `#`), its take and its file's name against the
+    match bank's clip names (`~mirror` dropped). The bake refuses one; `IntroPackChecks` fails on one (with the match bank here:
+    `CHIPARENA_VISUAL_MOTION`, the local assets' copy, or the Editor checkout's). The notes folder's `intro-pack-clips-index.md` lists
+    the owner's packs by weapon and body mechanic, with the clips the match plays marked.
+  - The packing (`tools/pack_visual_body.py`) takes every `.bytes` beside the body in the Editor's Resources, so the extra banks go
+    into the Drive zip with the integrator's next pack; nothing counts them.
+- **Baking your bank** (I0e's form of the local tool's `bozo-intromotion.request`; the scratch patch
+  `scratch/intro-framework/i0e/motion/intromotion2_patch.py`, over I0d's and idempotent, never committed). Under the Editor lock
+  (`take`/`give` in `integrator-tools/headgib/common.sh`), write `unity/ChipArenaConversion/Temp/bozo-intromotion.request` in the
+  Editor checkout (write a `.tmp` and move it into place). The bake needs no checkout move:
+
+  ```
+  #version <the tool's Version, from its "const int Version" line>
+  F:/Chip Arena Development/scratch/<your task>/motion
+  bank=ChipArenaIntroMotionMelee
+  clip=Assets/LocalAssets/CLazyRunnerActionAnimPack/Animations/P1_CLazyMovement/Mvm_8way_Dash/CLazy@Mvm_Dash.FBX|Mvm_Dash|0-8|test
+  clip=Assets/LocalAssets/CLazyRunnerActionAnimPack/Animations/P2_CLazyEscape/Esc_Slide_Fwd/CLazy@Esc_Slide_All.FBX||20-47|rise
+  ```
+
+  - The first line after `#version` is the output folder (on F:). `bank=` is required: your bank's name. Never `ChipArenaIntroMotion`
+    (Slipstream's) or `ChipArenaVisualMotion` (the match's).
+  - Each `clip=` line has four fields, split by `|`. The asset path of the FBX (or `.anim`). The take: the AnimationClip's name in it,
+    or empty for its first. A frame range of the take at its own frame rate, inclusive, or empty for all of it. An optional label.
+  - The bank's clip is named `<take>`, or `<take>#<label>` with a label. Use that name in `FromPack`. A range is not a loop.
+  - **Refused** (listed in `intromotion.json` under `refused`): a take the match plays (its take or its file's name is in the match's
+    motion bank), a repeated name (give it a label), and a bad range. **Missing** (under `missing`): a take that is not in the file.
+    The report names the file's takes.
+  - **Output:** `<out>/<bank>.bytes` ("CAIM" 2, each clip's source `path|take|range` after its name, which `IntroPackChecks` reads) and
+    `<out>/intromotion.json` (per clip its source, length, frames, the take's fps, loop, drift and pelvis heights). It never writes
+    Resources. The integrator puts your bank in the Editor's Resources and the Drive zip at release.
+  - **The older form** (the folders line, then a comma list of clip names) still writes `ChipArenaIntroMotion.bytes` in format 1.
+  - **Check it offline:** `CHIPARENA_INTRO_MOTION_MELEE=<out>/ChipArenaIntroMotionMelee.bytes`, then `--intro-pack`. It checks unique
+    names, the match's clips, and the limbs, ankles and feet on the model. `--intro-limits` then plays your intros' segments from it.
+  - **For a capture,** copy the bank into the Editor's `Assets/LocalAssets/ChipArenaLocal/Resources/` under the lock, with the Editor
+    on your branch's commit. The Editor's resting commit (`9319026b`) reads only `ChipArenaIntroMotion` in format 1, so it ignores
+    your bank until this framework is merged; it is harmless to leave it there.
+  - **Verified 2026-11-20 (I0e):** one Editor hold (20:27-20:31, 229 s). The Editor stayed on `9319026b` and Resources were untouched;
+    the tool is now v3487 with the patch. The request above, plus a match clip (`Unarmed-Idle`) and a wrong take, baked
+    `Mvm_Dash#test` (frames 0-8 at 30 fps: 0.27 s, 17 frames at 60 Hz) and `Esc_Slide_All#rise` (frames 20-47: 0.9 s). It refused
+    `Unarmed-Idle` (the match plays it) and listed the wrong take as missing, with the file's takes. Loaded as the Melee bank beside
+    Slipstream's (`--intro-pack`, 135 checks): 11 clips, no repeated name, none the match plays, the limbs, turns and ankles on the
+    clip, and the Dash's feet still (0.00 m/s at 9.16 m/s). The test bank was then deleted.
 - **The conversion (Core `NativeIntroPack`):** each frame is the model binding (`NativeVisualRig.Pose`) run backwards on the bank's
   skeleton. A keyed joint's turn is its chain's last bone's world turn off the aligned rest, less the chain's start. The arms' spread
   and the wrist's eased bend are undone. The pelvis's offset goes on the keyed body over the legs' ratio. So the keys drawn on the model
@@ -604,6 +665,7 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
   | `k.FromPack(clip, from, to, start = 0, speed = 1, loop = false, root = Path, mask = All, blendIn = .1, blendOut = .1)` | Plays `clip` over the keys from intro time `from` to `to`, `start` seconds into the clip at `speed`. Its joints in `mask` ease in and out from what the keys put there. The planting lets go while its legs play. A foot the clip has on the floor is held where it came down against the intro's root (the keyed leg as a hinge), eased out over the last 30 ms before it lifts. |
   | `NativeIntroPack.RootMode.Path` | The intro's root (its keys or `RootPath`). Move it at the clip's `Speed` along the facing for the drawn feet to hold. |
   | `NativeIntroPack.RootMode.Kept` | The clip's own travel: on from the root at `from`, along the facing, at `Speed` times the segment's weight. The root stays where the clip took it after `to`. |
+  | `k.FromPack(..., body: NativeIntroPack.BodyTurn.Pelvis)` (or `.Clip`; I0e, 2026-11-20) | Opt-in, for a segment with the pelvis in its mask (`All`, `Legs`): what the keys' body turn (joint 0, a keyed lean) does under the clip. `Keyed` (the default, as before) turns the whole clip, its legs and feet too: Slipstream's keyed 20 degree lean tilted the whole run. `Clip` eases it out by the segment's weight, so the clip stands as baked (its own lean is in its pelvis and spine). `Pelvis` rides it on the clip's pelvis: the hips and everything above them lean by it, and the legs keep the clip's turns, so the feet stay where the clip puts them. Key the lean on the body as before; the keys alone (no bank) still lean the whole body. |
   | masks `All`, `Legs`, `Torso`, `Arms`, `LeftArm`, `RightArm` | `Legs` includes the pelvis's turn and place. Keys and `Arms()` still key what a mask leaves out, such as a weapon carry over a pack run (`Legs \| Torso`). The grip IK works on top. |
   | `NativeIntroPack.Local.TryGet(name, out clip)` | The clip: `Length`, `Rate`, `Frames`, `Speed`, `Travel`, and `Loop` as the pack marks it. |
   | `clip.Sample(time, loop, joints, out body)` | Each keyed joint's local turn (22, CapturedRig's order) and the keyed body's offset. `NativeIntroPack.Euler(q, near)` gives the keys' XYZ angles. Allocation-free. |
@@ -611,7 +673,7 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
   | `bank.Model(clip, frame, world, at)` | The frame as baked on the model, bone by bone (for checks). |
 
 - **Without the bank** (CI, a build without the local assets), a segment does nothing and the keys under it play. Key a fallback
-  under every pack segment.
+  under every pack segment. The same holds for a segment whose clip is in a missing author's bank.
 - **Speed:** a clip samples in place. `Speed` is how fast a foot on the floor moves back under the body, which is the speed the root
   must travel for that foot to hold. Match the root to it, or use `Kept`. Where the intro's path must differ (a train, a car), plan
   the feet in the model's space from `Foot` and `OnFloor`.
@@ -626,11 +688,14 @@ and no aim, turn or foot-lock layer. The clip becomes keyed poses, drawn on the 
     Prefer the Dash, or lower the root.
   - The slides put a leg up to 6 cm into the floor (`Esc_Slide_Loop`). Lift the root by that much while sliding.
 - **Checked** (`Tests/IntroPackChecks`, `--intro-pack`, and in `--intros-v2`):
-  - always: the Euler round trip, the binding's round trip on the measured skeleton, and that sampling allocates nothing;
-  - with the local bank (`CHIPARENA_INTRO_MOTION`, the local assets' copy, or `scratch/intro-framework/ChipArenaIntroMotion.bytes`):
+  - always: the Euler round trip, the binding's round trip on the measured skeleton, and that sampling allocates nothing; banks merged
+    (a repeated name listed, the first bank's playing; a clip the same through the merged banks as through its own, allocation-free),
+    a Sourced bank's sources, and the match-clip finder on synthetic banks;
+  - with the local banks (each found as above): no clip name in two banks, no clip the match plays (with the match's bank here), and
     every clip's keys draw its limbs along the clip on the model, and its ankles where the clip's are. A grounded clip (a foot down a
     sixth of the time or more), played through `FromPack` on its own travel, keeps its feet still and out of the floor.
-  - `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits. The keyed wrist
+  - `--intro-limits` and the bone-for-bone mapping (`IntroPoseChecks.Mapping`, I0e) hold a joint a pack segment plays in full to the clip
+    on the model, not to the keyed limits or turns (a mocap hand bent flat on the floor drew 116 degrees off its keyed turn). The keyed wrist
     is the weapon's frame, which the binding eases, so a mocap wrist reads as bent past its range there. The keyed torso is the voxel
     body's. `IntroPackChecks` lists those keyed findings per clip, for information.
   - `CHIPARENA_PACK_DUMP=<clip>` prints that clip's feet frame by frame.

@@ -68,35 +68,35 @@ namespace ChipArena.UnityConversion
             //
             // ---- weapon intros: NativeIntroEntry.Weapon("<spec>", ...) ----
             //
-            // sword
+            NativeIntroEntry.Weapon("sword",NativeIntroSeveredDawn.Title,NativeIntroSeveredDawn.Total,NativeIntroSeveredDawn.CardAt,()=>new NativeIntroSeveredDawn(),"I3","A cut so fast it severs the dawn's light."),
             //
-            // daggers
+            NativeIntroEntry.Weapon("daggers",NativeIntroAfterimage.Title,NativeIntroAfterimage.Total,NativeIntroAfterimage.CardAt,()=>new NativeIntroAfterimage(),"I3","Faster than its own image: two echoes cut a beat behind."),
             //
-            // shield
+            NativeIntroEntry.Weapon("shield",NativeIntroHoldTheLine.Title,NativeIntroHoldTheLine.Total,NativeIntroHoldTheLine.CardAt,()=>new NativeIntroHoldTheLine(),"I3","An immovable wall in the breach: a barrage breaks on the shield."),
             //
-            // greatsword
+            NativeIntroEntry.Weapon("greatsword",NativeIntroFaultline.Title,NativeIntroFaultline.Total,NativeIntroFaultline.CardAt,()=>new NativeIntroFaultline(),"I3","The weight that cracks the ground: a plunging slam breaks the quarry floor."),
             //
-            // pistol
+            NativeIntroEntry.Weapon("pistol","Sundown",NativeIntroSundown.Total,NativeIntroSundown.CardAt,()=>new NativeIntroSundown(),"I4","A frontier street at sundown: the belfry falls, one shot rings the bell."),
             //
-            // rifle
+            NativeIntroEntry.Weapon("rifle","One Breath",NativeIntroOneBreath.Total,NativeIntroOneBreath.CardAt,()=>new NativeIntroOneBreath(),"I4","A rooftop in the rain: one held breath, one round across the avenue."),
             //
-            // machinegun
+            NativeIntroEntry.Weapon("machinegun","Brass Storm",NativeIntroBrassStorm.Total,NativeIntroBrassStorm.CardAt,()=>new NativeIntroBrassStorm(),"I4","A depot yard at night: the belt runs dry and the light pours through the holes."),
             //
-            // bow
+            NativeIntroEntry.Weapon("bow","Lightfall",NativeIntroLightfall.Total,NativeIntroLightfall.CardAt,()=>new NativeIntroLightfall(),"I4","A moonlit shrine: one arrow of light climbs, blooms and rains down."),
             //
-            // fire
+            NativeIntroEntry.Weapon("fire",NativeIntroForgeborn.Name,NativeIntroForgeborn.Total,NativeIntroForgeborn.CardAt,()=>new NativeIntroForgeborn(),"I5"),
             //
-            // water
+            NativeIntroEntry.Weapon("water",NativeIntroStillTide.Name,NativeIntroStillTide.Total,NativeIntroStillTide.CardAt,()=>new NativeIntroStillTide(),"I5"),
             //
-            // lightning
+            NativeIntroEntry.Weapon("lightning",NativeIntroStrikePoint.Name,NativeIntroStrikePoint.Total,NativeIntroStrikePoint.CardAt,()=>new NativeIntroStrikePoint(),"I5"),
             //
-            // darkness
+            NativeIntroEntry.Weapon("darkness",NativeIntroBlackSun.Name,NativeIntroBlackSun.Total,NativeIntroBlackSun.CardAt,()=>new NativeIntroBlackSun(),"I5"),
             //
-            // katana
+            NativeIntroEntry.Weapon(NativeKatana.Spec,NativeIntroStillRain.Title,NativeIntroStillRain.Total,NativeIntroStillRain.CardAt,()=>new NativeIntroStillRain(),"I3","Rain, stillness and one cut: the rain stops in the air."),
             //
-            // glaive
+            NativeIntroEntry.Weapon(NativeGlaive.Spec,NativeIntroOrrery.Title,NativeIntroOrrery.Total,NativeIntroOrrery.CardAt,()=>new NativeIntroOrrery(),"I3","The ring that sets the heavens in order: it strikes round the orrery and comes home."),
             //
-            // fangs
+            NativeIntroEntry.Weapon(NativeFangs.Spec,NativeIntroApex.Title,NativeIntroApex.Total,NativeIntroApex.CardAt,()=>new NativeIntroApex(),"I3","A predator's pounce from the ruins: both fangs into the earth."),
             //
             NativeIntroEntry.Dev("architect","DEV · Architect of Reality",NativeIntroArchitect.Total,NativeIntroArchitect.CardAt,()=>new NativeIntroArchitect(),"I1","The arena dissolves into code and light, and you rebuild it around you. The world obeys."),
             //
