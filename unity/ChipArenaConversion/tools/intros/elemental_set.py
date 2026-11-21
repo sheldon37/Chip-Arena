@@ -632,6 +632,7 @@ def water_finishes():
     F['ice-glow'] = sk.fin('water-ice-glow', 0xa8f6ff, sk.DETAIL_GLOW, glow=1.5)
     F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=1.1)
     F['ice-glass'] = sk.fin('water-ice-glass', 0x4cc0e2, sk.DETAIL_GLOW, glow=.45)  # light through the ice (ice_colours shades it)
+    F['ice-body'] = sk.fin('water-ice-body', 0x2f9fd0, sk.DETAIL_GLOW, glow=.6)  # the frozen wave's body (ice_colours paints it)
     F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.2, dirt=0.0)
     F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
     F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
@@ -814,7 +815,10 @@ def wave_colours(bk, g):
     streak = sk.fbm(np.stack([x * .6, y * .05, z * 2.6], axis=1), 1.0, 3, 812) - .5
     crest = np.clip((y - 4.15) / .35, 0, 1) * np.clip(1.2 + nz * 2.2, 0, 1)
     edge = np.clip((x - 2.1) / .5, 0, 1) * np.clip((y - 2.7) / .8, 0, 1) * np.clip(1.1 + nz * 2.0, 0, 1)
-    streaks = np.clip((streak - .12) * 5.0, 0, 1) * np.clip((y - .8) / 3.0, 0, 1) * (x > -.2) * .55
+    streaks = np.clip((streak - .06) * 4.0, 0, 1) * np.clip((y - .6) / 3.0, 0, 1) * (x > -.2) * .75
+    # under the crest, where the wall thins before it breaks, the water clears to a lit green-teal
+    band = np.clip(1 - np.abs(y - 3.6) / .7, 0, 1) * (x > .1) * (x < 2.2)
+    col = col + (np.array(sk.srgb(0x2a9c96)) - col) * (band * .55)[:, None]
     f = np.clip(np.maximum(np.maximum(crest, edge), streaks), 0, 1)
     col = col + (foam - col) * f[:, None]
     bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
@@ -824,52 +828,56 @@ def wave_colours(bk, g):
     if glow.any():
         teal, cyan, white = np.array(sk.srgb(0x06343e)), np.array(sk.srgb(0x2fd2d6)), np.array(sk.srgb(0xd8fbff))
         # thin toward the lip's edge (x out, y down the lip): bright there, dark teal where it thickens back toward the crest
-        thin = np.clip((x - 1.3) / 1.3, 0, 1) ** 1.2
+        thin = np.clip((x - 2.05) / .7, 0, 1) ** 1.1
         c = teal + (cyan - teal) * thin[:, None]
         c = c + (white - c) * (np.clip((x - 2.45) / .3, 0, 1) * np.clip(.9 + nz * 2, 0, 1))[:, None]
         bk.colour[glow, :3] = np.round(np.clip(c[glow], 0, 1) * 255).astype(np.uint8)
-        bk.uv1[glow, 1] = (.25 + 1.15 * thin[glow] ** 1.3).astype(np.float32)
+        bk.uv1[glow, 1] = (.18 + .9 * thin[glow] ** 1.3).astype(np.float32)
 
 
 def ice_colours(bk, g):
-    """A frozen wall as clear ice, per vertex: pale blue-white where it faces the sky, a deep clear blue in the curl and down the
-    face where it is thick, rime (white, rough) on the crest, the lip's edge and in drifts, each facet a touch lighter or deeper so
-    it glitters; the curl's inner faces (the glow sub-mesh) lit through, cyan to pale, the veins bright."""
+    """A frozen wall as ice lit from within (the light the freeze leaves in it; the glow sub-mesh, so the hall's light cannot turn it
+    grey or magenta), per vertex and smooth (no facet tints): a deep blue where the ice is thick (its foot, the back, the barrel's
+    shadow) through a clear cyan to a pale blue-white along its thin edges (the crest, the lip, the curl's rim), clouded with paler
+    drifts and streaked along the wave's flow, a few bright cracks; brightest where thinnest. The rime on its crest and foot is lit
+    (white, rough)."""
     P, N, S_, F_ = g.arrays()
-    nf = len(S_)
-    face = np.repeat(np.arange(nf), S_)
-    rnd = np.array([H(k, 977) for k in range(nf)])[face]
     W = P.astype(np.float64)
-    x, y = W[:, 0], W[:, 1]
-    up = np.clip(N[:, 1].astype(np.float64), -1, 1)
-    lit = ~bk.glow
+    x, y, z = W[:, 0], W[:, 1], W[:, 2]
     fc = np.repeat(F_, S_)
-    names = [sk.FINS[i].name for i in fc]
-    clear, sky, deep = np.array(sk.srgb(0x9fd9ea)), np.array(sk.srgb(0xd8f4fb)), np.array(sk.srgb(0x2a7fa6))
-    rime = np.array(sk.srgb(0xf4fdff))
-    # thick: low on the face and in the curl's hollow
-    thick = np.clip(1 - (y + .3) / 3.2, 0, 1) * .7 + np.clip((x - .4) / 1.2, 0, 1) * np.clip((3.9 - y) / 1.6, 0, 1) * .6
-    col = clear + (sky - clear) * np.clip(up * .8 + .2, 0, 1)[:, None]
-    col = col + (deep - col) * np.clip(thick, 0, .85)[:, None]
-    col = col * (.9 + .2 * rnd)[:, None]
-    nz = sk.fbm(W, 1.4, 3, 977) - .5
-    frost = np.clip((y - 4.0) / .4, 0, 1) * np.clip(1.1 + nz * 2.4, 0, 1) + np.clip((x - 2.2) / .4, 0, 1) * np.clip((y - 2.7) / .6, 0, 1) * .8
-    frost = np.maximum(frost, np.clip((nz - .18) * 4, 0, 1) * np.clip(up, 0, 1) * .8)
-    is_frost = np.array([n == 'water-frost' for n in names], dtype=bool)
-    frost = np.where(is_frost, np.maximum(frost, .85), frost)
-    frost = np.clip(frost, 0, 1)
-    col = col + (rime - col) * frost[:, None]
-    bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
-    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.92 * 255))
-    sm = .86 - .62 * frost
-    bk.uv0[lit, 0] = sm[lit].astype(np.float32)
-    glass = np.array([n == 'water-ice-glass' for n in names], dtype=bool)
-    if glass.any():
-        dk, pale = np.array(sk.srgb(0x1f8fbf)), np.array(sk.srgb(0xb8f2ff))
-        v = np.clip(rnd * .55 + np.clip((x - .6) / 1.8, 0, 1) * .45, 0, 1)
-        c = dk + (pale - dk) * v[:, None]
-        bk.colour[glass, :3] = np.round(np.clip(c[glass], 0, 1) * 255).astype(np.uint8)
-        bk.uv1[glass, 1] = (.22 + .4 * v[glass]).astype(np.float32)
+    names = np.array([sk.FINS[i].name for i in fc])
+    body = names == 'water-ice-body'
+    if body.any():
+        e = np.array([wave_env(min(1.0, max(0.0, zz / WATER_HALF))) for zz in z])
+        sx = .72 + .28 * e
+        ys = y / np.maximum(e, .05)
+        xs = x / sx
+        # thin: the crest and the lip (high and out toward the curl); thick: low and back; the barrel's shadow under the lip
+        thin = np.clip((ys - 3.3) / 1.3, 0, 1) * .6 + np.clip((xs - 1.6) / 1.1, 0, 1) * np.clip((ys - 2.6) / 1.0, 0, 1) * .7
+        barrel = np.clip((xs - .5) / .5, 0, 1) * np.clip(1 - np.abs(ys - 2.9) / 1.2, 0, 1) * (N[:, 1].astype(np.float64) < .2)
+        deep, mid, pale = np.array(sk.srgb(0x0a3e68)), np.array(sk.srgb(0x2b9ccc)), np.array(sk.srgb(0xc6f2ff))
+        u = np.clip(.25 + .55 * (ys / 4.7) + .5 * thin - .45 * barrel, 0, 1)
+        col = np.where(u[:, None] < .55, deep + (mid - deep) * (u[:, None] / .55), mid + (pale - mid) * ((u[:, None] - .55) / .45))
+        # clouded drifts and the flow's streaks (the water's motion frozen into it)
+        cloud = sk.fbm(W, .9, 3, 977) - .5
+        streak = sk.fbm(np.stack([xs * .5, ys * .12, z * 3.1], axis=1), 1.0, 3, 978) - .5
+        col = col + (pale - col) * np.clip(cloud * 1.6, 0, .45)[:, None]
+        col = col * (1 - np.clip(-streak * 1.4, 0, .3))[:, None]
+        # a few bright cracks: thin bands where a ridged noise is near zero
+        crack = 1 - np.clip(np.abs(sk.fbm(W, 1.6, 2, 979) - .5) / .03, 0, 1)
+        crack *= np.clip((sk.fbm(W, .5, 1, 980) - .45) * 6, 0, 1)
+        col = col + (np.array(sk.srgb(0xe8fbff)) - col) * (crack * .8)[:, None]
+        gain = .32 + .55 * thin + .35 * crack - .2 * barrel + .1 * np.clip(cloud, 0, 1)
+        bk.colour[body, :3] = np.round(np.clip(col[body], 0, 1) * 255).astype(np.uint8)
+        bk.uv1[body, 1] = np.clip(gain[body], .12, 1.4).astype(np.float32)
+    lit = ~bk.glow
+    frost = names == 'water-frost'
+    if (frost & lit).any():
+        nz = sk.fbm(W, 2.2, 2, 981) - .5
+        c = np.array(sk.srgb(0xeefbff)) * (.9 + .2 * np.clip(nz + .5, 0, 1))[:, None]
+        m = frost & lit
+        bk.colour[m, :3] = np.round(np.clip(c[m], 0, 1) * 255).astype(np.uint8)
+        bk.uv0[m, 0] = .25
 
 
 def hearth_colours(bk, g):
@@ -951,13 +959,12 @@ def water_half(T, frozen):
         g.face([end[kk] for kk in tri], F['ice-deep'] if frozen else F['wave-deep'], normal=(0, 0, -1))
     if frozen:
         def pick(nn, cc):
-            if cc[1] > 4.25 or cc[1] < .35:
+            # rime on the crest's top and along the foot; the rest is the glowing body
+            e = wave_env(cc[2] / WATER_HALF)
+            if (cc[1] > 4.35 * e and nn[1] > .5) or cc[1] < .3:
                 return F['frost']
-            # the curl's inner faces (under the lip, the barrel's wall), lit through
-            if cc[1] > 2.4 and cc[0] > .5 * (.72 + .28 * wave_env(cc[2] / WATER_HALF)) and nn[1] < .35 and (nn[0] > .2 or nn[1] < -.3):
-                return F['ice-glass']
-            return F['ice'] if nn[1] > -.2 or cc[0] < .3 else F['ice-deep']
-        grid(g, P, F['ice'], inside=(-.6, 1.6, 2.5), wrap_j=True, pick=pick)
+            return F['ice-body']
+        grid(g, P, F['ice-body'], inside=(-.6, 1.6, 2.5), wrap_j=True, pick=pick)
         # icicles off the lip
         for i in range(1, nz):
             if H(i, 3) < (.3 if T.i == 0 else .6):
@@ -968,7 +975,7 @@ def water_half(T, frozen):
             L = (.22 + .5 * H(i, 4)) * sy
             if L > .08:
                 cone = Geo()
-                sk.lathe(cone, [(.06 + .03 * H(i, 5), 0), (0, -L)], base, F['ice'], 5)
+                sk.lathe(cone, [(.06 + .03 * H(i, 5), 0), (0, -L)], base, F['ice-body'], 5)
                 g.extend(cone)
         # veins of light frozen in the curl: two wandering threads along the barrel's ceiling and down its wall, each a thin strip
         # just inside the ice's skin
@@ -996,7 +1003,7 @@ def water_half(T, frozen):
         def pick(nn, cc):
             # the lip, thin enough to be lit through: its outer curl and its underside
             sx = .72 + .28 * wave_env(cc[2] / WATER_HALF)
-            if cc[1] > 2.6 * wave_env(cc[2] / WATER_HALF) and cc[0] > 1.25 * sx and cc[1] < 4.3:
+            if cc[1] > 2.65 * wave_env(cc[2] / WATER_HALF) and cc[0] > 2.05 * sx and cc[1] < 4.25 * wave_env(cc[2] / WATER_HALF):
                 return F['wave-glow']
             return F['wave']
         grid(g, P, F['wave'], inside=(-.6, 1.6, 2.5), wrap_j=True, pick=pick)

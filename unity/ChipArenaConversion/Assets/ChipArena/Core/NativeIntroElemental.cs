@@ -228,7 +228,7 @@ namespace ChipArena.UnityConversion
                .Dolly(EruptAt-.05f,L(3.0f,.3f,4.3f),L(2.7f,.32f,3.9f),OnLine(-1.3f,2.4f),OnLine(-1.3f,4.6f),52,48)
                .Crane(EruptAt+.6f,L(1.8f,.5f,2.3f),L(1.5f,.5f,1.8f),6.2f,OnLine(-1.3f,1.0f),OnLine(-1.3f,7.6f),42,46).Ease(NativeIntroEase.InOut)
                .Dolly(WalkFrom,L(.15f,1.25f,4.6f),L(.1f,1.3f,3.25f),new Vector3(0,.08f,0),new Vector3(0,.12f,0),34,31).Follow(NativeEntranceAnchor.Chest,.05f).Handheld(.4f)
-               .Orbit(CrownAt-.15f,Vector3.Zero,25,58,3.1f,2.9f,1.05f,1.2f,new Vector3(0,1.2f,0),new Vector3(0,1.32f,0),48,45)
+               .Orbit(CrownAt-.15f,Vector3.Zero,-25,-58,3.1f,2.9f,1.05f,1.2f,new Vector3(0,1.2f,0),new Vector3(0,1.32f,0),48,45)
                .Dolly(SlamAt-.08f,L(-3.6f,.45f,5.0f),L(-3.3f,.5f,4.5f),L(0,.7f,-.3f),L(0,.75f,-.2f),48,46)
                .Crane(CardAt-.2f,L(-2.85f,.35f,4.75f),L(-2.55f,.35f,4.3f),.25f,L(-.55f,.88f,0),L(-.5f,.92f,0),44,42).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
@@ -455,7 +455,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The water over the floor (m) before and after the tide (tools/intros/elemental_set.py WATER_*).</summary>
         public const float Shallow=.14f,Tide=.22f;
         /// <summary>The halves: their length, how far out to each side they end, how far behind the mark they rear and end.</summary>
-        public const float HalfLength=5f,Apart=2.6f,BehindRear=3.4f,BehindFinal=3.6f,Overlap=.02f;
+        public const float HalfLength=5f,Apart=3.5f,BehindRear=3.4f,BehindFinal=3.6f,Overlap=.02f;
         /// <summary>The frost's rings round the mark (rig water/ice/k: from the previous radius to this one).</summary>
         public static readonly float[] IceRings={1.6f,3.2f,5.5f,8.5f,14f};
         /// <summary>The hall's skylights (hall frame: x across, z along; tools/intros/elemental_set.py WATER_SKYLIGHTS) and its height.</summary>
@@ -555,7 +555,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Skylights.Length;i++){var p=Hall(.6f,.3f,Skylights[i]-1.2f);l.Add(p+new Vector3(0,.4f,0),Moon*1.8f,6);}
             float rear=Reared(t)*(1-NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.4f));if(rear>.01f)l.Add(Mark-Fwd*2.6f+new Vector3(0,3.2f,0),Cyan*(3.5f*rear),8);
             float flash=Flash(t,FreezeAt,.03f,.5f);if(flash>.01f)l.Add(Mark+new Vector3(0,1.2f,.4f),Ice*(9*flash),7);
-            float ice=NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.5f);if(ice>.01f){l.Add(Mark+Left*1.6f+new Vector3(0,3.2f,0)-Fwd*.2f,Ice*(2.8f*ice),6.5f);l.Add(Mark-Left*1.6f+new Vector3(0,3.2f,0)-Fwd*.2f,Ice*(2.8f*ice),6.5f);}
+            float ice=NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.5f);if(ice>.01f){l.Add(Mark+Left*2.3f+new Vector3(0,2.6f,0)-Fwd*.4f,Ice*(2.6f*ice),6.5f);l.Add(Mark-Left*2.3f+new Vector3(0,2.6f,0)-Fwd*.4f,Ice*(2.6f*ice),6.5f);}
             float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c+L(.6f,.8f,2.2f),Moon*(2.2f*hero),6);}
         }
         protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Cyan);v.Far=Hex(0x02080c);v.Floor=Hex(0x061418);v.Pool=Moon;v.Key=.8f;v.PoolLevel=.6f;return v;}
@@ -719,10 +719,10 @@ namespace ChipArena.UnityConversion
                .Hold(ChargeFrom,L(0,.55f,.9f),L(0,18f,-5f),72).Roll(0,24).Ease(NativeIntroEase.Linear)
                .Dolly(GatherAt,L(.4f,19f,6.5f),L(.3f,15f,5f),new Vector3(0,0,0),new Vector3(0,.5f,0),40,44)
                .Dolly(StrikeAt,L(3.2f,.25f,3.8f),L(3.0f,.3f,3.5f),L(0,1.0f,0),L(0,.8f,0),62,56)
-               .Orbit(StrikeAt+.3f,Vector3.Zero,40,-140,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
-               .Crane(RiseFrom,L(1.1f,.55f,2.3f),L(.95f,.55f,2.05f),.9f,new Vector3(0,-.1f,0),Vector3.Zero,38,36).Follow(NativeEntranceAnchor.Head,.04f)
+               .Orbit(StrikeAt+.3f,Vector3.Zero,-40,-205,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
+               .Crane(RiseFrom,L(-1.1f,.55f,2.3f),L(-.95f,.55f,2.05f),.9f,new Vector3(0,-.1f,0),Vector3.Zero,38,36).Follow(NativeEntranceAnchor.Head,.04f)
                .Dolly(CallAt-.05f,L(.35f,.5f,6.4f),L(.3f,.55f,5.8f),L(0,2.3f,0),L(0,2.1f,0),58,56)
-               .Orbit(CardAt-.55f,OnLine(.3f),38,26,4.3f,4.1f,.8f,.85f,L(.5f,.85f,.3f),L(.45f,.86f,.3f),46,44).Roll(-9,-7).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.4f)
+               .Orbit(CardAt-.55f,OnLine(.3f),-34,-22,4.3f,4.1f,.8f,.85f,L(.15f,.85f,.3f),L(.12f,.86f,.3f),46,44).Roll(9,7).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.4f)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
             Ramps.Ramp(StrikeAt,.22f,.38f,.9f);
         }
@@ -920,7 +920,7 @@ namespace ChipArena.UnityConversion
                .Crane(EclipseFrom+.25f,L(.4f,7.6f,10.5f),L(.3f,5.6f,7.2f),-.6f,Void-new Vector3(0,1.25f,.6f),Void-new Vector3(0,1.15f,0),50,52).Ease(NativeIntroEase.InOut)
                .Dolly(TotalityAt-.05f,L(0,.3f,5.2f),L(0,.32f,4.8f),L(0,4.0f,-9),L(0,4.6f,-10),50,48)
                .Hold(OpenAt-.05f,L(0,1.3f,3.9f),OnLine(-1.0f,1.2f),38)
-               .Dolly(EyeAt-.12f,Fwd*1.32f+Left*.12f+new Vector3(0,1.42f+CameraEyeLift,0),Fwd*1.12f+Left*.1f+new Vector3(0,1.44f+CameraEyeLift,0),new Vector3(0,CameraEyeLift-.1f,0),new Vector3(0,CameraEyeLift-.1f,0),26,22).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.75f).Ease(NativeIntroEase.Out)
+               .Dolly(EyeAt-.12f,Fwd*1.32f-Left*.12f+new Vector3(0,1.42f+CameraEyeLift,0),Fwd*1.12f-Left*.1f+new Vector3(0,1.44f+CameraEyeLift,0),new Vector3(0,CameraEyeLift-.1f,0),new Vector3(0,CameraEyeLift-.1f,0),26,22).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.75f).Ease(NativeIntroEase.Out)
                .Dolly(WingsAt-.05f,L(0,.3f,3.25f),L(0,.28f,3.85f),L(0,1.95f,-2.2f),L(0,2.05f,-2.2f),44,42).In(NativeIntroCut.Cut,.1f)
                .Dolly(CardAt-.6f,L(0,.55f,5.5f),L(0,.6f,7.3f),L(0,1.4f,-.7f),L(0,1.4f,-.7f),40,40).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
