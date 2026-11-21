@@ -1,3 +1,34 @@
+## 2026-11-21 — Claude (I5): Strike Point's arm off the face (the v2 arm check; presentation only)
+The coordinator, after the new arm check: Strike Point's left arm covered 35% of the face at clip 3.63-3.70 s (camera shot 4).
+- **Branch/base:** `claude/intro-elemental`, with `claude/intro-arm-checks` `f127b094` merged in (`187d2c39`; it already held my
+  `d44f1f24`, the framework `510cbd09`, I3's `c372d16f` and I4's `ace64237`). Fix `c17ffea8`; this entry's commit corrects its comment.
+  Pushed, not merged.
+- **Cause:**
+  - The frames are the landing orbit's last 0.1 s (intro 3.62-3.70, just before the rise), not the call.
+  - The left arm is the staff arm, because staffs are held in the left hand (`NativeIntroGrip`'s Staff grip); it is not the free arm.
+  - The orbit swept -40 to -205, so its last 15 degrees took the lens past the back onto the staff side. The staff arm, its fist
+    out at its side chest high, then sat between the lens and the eyes. On screen the face is turned away, but the check counts any
+    arm in front of the face's disc.
+  - `c17ffea8`'s commit message calls it the free arm; that is wrong.
+- **Fix:**
+  - The orbit stops just behind it, at -190.
+  - The pose, the timing, every other shot and the effects are unchanged, and there is no gameplay effect.
+  - `--intro-arms intro2-weapon-lightning`: the face is at most 0% covered in every frame (was 35%), and the arms stay at least 1.71
+    of the head's reach + 3 cm out.
+  - `IntroArmChecks.Known` is left for the integrator.
+- **Recapture:** hold C (queue name I5, 02:53-02:56; the Editor back on `9319026b`, the lock released, the queue line removed) filmed
+  Strike Point at High and Low on `c17ffea8`.
+  - Clips are in `scratch/intro-elemental/clips/`: `lightning-high-b2.mp4`, `-old-vs-new-b2.mp4`, `-sheet-b2.jpg`, `-low-strip-b2.jpg`,
+    `-proof-b2.jpg`, and the fix before/after `lightning-arm-fix-b2.mp4` / `.jpg`.
+  - All 216 High frames were checked through the intro's own cameras (`b2/check/`).
+  - The captures run two frames ahead of the check's clock (the cut into the orbit is at t89/t90 in the capture, ages 91/92 in the check).
+- **Checks at `c17ffea8`:**
+  - full CoreTests the relgen5 way: exit 0 (1,098 PASS; the arm check lists I3's three known intros and says Strike Point passes now);
+  - `--intro-arms` (strict): all four elemental intros at 0% of the face (it fails as designed on I3's three);
+  - `--intro-elemental` 20,523, `--intros-v2` 12,344, `--intro-limits` 0 findings in 21 intros;
+  - Unity compile 4/4 (local 6000.3.24f1); `git diff --check origin/claude/sleepy-ritchie-g8ruhv` clean.
+- **Next:** at integration, remove `intro2-weapon-lightning` from `IntroArmChecks.Known`. I3's greatsword, katana and fangs are still listed.
+
 ## 2026-11-21 — Claude (I4): arm checks for every v2 intro: none through the head, none across the face (tests only)
 The coordinator, after the ranged arm fixes: generalise the two weapon-agnostic arm checks to every registered v2 intro.
 - **Branch/base:** `claude/intro-arm-checks` from shared `57110fe9`, with these merged in:
