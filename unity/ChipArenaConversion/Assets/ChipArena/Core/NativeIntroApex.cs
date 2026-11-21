@@ -47,9 +47,9 @@ namespace ChipArena.UnityConversion
             // The coil: lower still, the claws cocked by the shoulders, the haunches loaded, the eyes on the lens.
             k.Key(LeapAt-.06f,crouch).Root(0,.88f,-.02f,Facing).Planted(1).Drop(-.62f).J(B,.56f).J(Hd,-.5f,0,0);
             // The leap: the legs drive it out long, the arms swinging forward.
-            k.Key(LeapAt+.12f,NativeEntranceKeys.Stand()).Root(0,.88f,0,Facing).Planted(0).Drop(-.03f).J(B,.35f).J(Sp,.05f).J(C,-.05f,0,0).J(Hd,-.2f,0,0).J(LL,.2f,0,.1f).J(LK,.2f).J(RL,.28f,0,-.1f).J(RK,.3f).PassKey();
-            // The top: stretched out over the lens, the fangs raised and spread, the legs trailing.
-            k.Key(ApexAt,NativeEntranceKeys.Stand()).Root(0,.88f,0,Facing).Planted(0).Drop(0).J(B,.25f).J(C,-.12f,0,0).J(Hd,-.1f,0,0).J(LL,.25f,0,.1f).J(LK,.9f).J(RL,.1f,0,-.1f).J(RK,1.2f).PassKey();
+            k.Key(LeapAt+.12f,NativeEntranceKeys.Stand()).Root(0,.88f,0,Facing).Planted(0).Drop(-.03f).J(B,.5f).J(Sp,.05f).J(C,-.05f,0,0).J(Hd,-.2f,0,0).J(LL,.2f,0,.1f).J(LK,.2f).J(RL,.28f,0,-.1f).J(RK,.3f).PassKey();
+            // The top: pitched forward over the lens, the fangs raised and spread, the legs trailing behind with the knees bent.
+            k.Key(ApexAt,NativeEntranceKeys.Stand()).Root(0,.88f,0,Facing).Planted(0).Drop(0).J(B,.55f).J(C,-.12f,0,0).J(Hd,-.3f,0,0).J(LL,-.3f,0,.1f).J(LK,1.1f).J(RL,-.15f,0,-.1f).J(RK,1.3f).PassKey();
             // Falling into the strike: the knees come through, the fangs high.
             k.Key(TouchAt-.07f,NativeEntranceKeys.Stand()).Root(0,.88f,0,Facing).Planted(0).Drop(-.02f).J(B,.25f).J(C,-.08f,0,0).J(Hd,-.15f,0,0).J(LL,-.55f,0,.12f).J(LK,.45f).J(RL,-.35f,0,-.12f).J(RK,.5f);
             // The feet find the floor a moment before the fangs do.
@@ -82,14 +82,14 @@ namespace ChipArena.UnityConversion
                 .Key(RiseAt+.15f,V(.42f,-.25f,.2f),V(.35f,-.5f,.8f))
                 .Key(StandAt+.5f,V(.4f,-.3f,.18f),V(.25f,-.45f,.86f))
                 .Key(Total,V(.4f,-.3f,.18f),V(.25f,-.45f,.86f));
-            // The camera: low through the ferns (a little handheld), up to the lintel as the eyes open, close on the head, the prey's eye on the
-            // floor as it leaps at the lens (slowed at the top), low and wide on the strike, the hero.
+            // The camera: low through the ferns (a little handheld), up to the lintel as the eyes open, close on the head as it launches, then
+            // beside it riding the pounce (its line across the frame, slowed at the top), low and wide on the strike from the same side, the hero.
             var perchHead=Perch+new Vector3(0,.8f+NativeEntranceStage.FloorY,0);
             Rig.Dolly(0,V(1.9f,.55f,5.6f),V(1.25f,.62f,4.3f),V(0,2.4f,-3),V(.3f,2.95f,-3),40,36).Ease(NativeIntroEase.Linear).Handheld(.7f)
                .Crane(RevealAt,V(-1.8f,1.35f,1.0f),V(-1.05f,2.0f,-.6f),.35f,perchHead+V(0,-.1f,0),perchHead,33,27).Handheld(.35f)
                .Dolly(CoilAt-.05f,perchHead+V(-1.1f,.12f,1.9f),perchHead+V(-1.0f,.08f,1.7f),perchHead+V(0,-.2f,0),perchHead+V(0,-.24f,0),30,28).Focus(0,0,.5f)
-               .Dolly(LeapAt-.06f,V(.35f,.42f,1.8f),V(.36f,.4f,1.82f),V(0,.25f,0),V(0,-.1f,0),50,55).Follow(NativeEntranceAnchor.Chest,.04f).Ease(NativeIntroEase.InOut)
-               .Dolly(LandAt-.02f,V(-2.7f,.45f,2.0f),V(-2.85f,.5f,2.2f),V(0,.55f,.35f),V(0,.62f,.3f),46,45);
+               .Dolly(LeapAt+.08f,V(3.75f,4.2f,-2.05f),V(3.1f,1.5f,.75f),V(0,.1f,0),V(0,0,0),42,46).Follow(NativeEntranceAnchor.Chest,.04f).Ease(NativeIntroEase.InOut)
+               .Dolly(LandAt-.02f,V(2.4f,.9f,2.0f),V(2.55f,.95f,2.2f),V(0,.55f,.35f),V(0,.62f,.3f),46,45);
             HeroFull(RiseAt+.05f,-1,4.4f,32,.35f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(LeapAt+.18f,.32f,.3f,.9f);
