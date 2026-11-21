@@ -1,0 +1,3 @@
+# Approved audio manifest hashes must survive Windows Git checkouts.
+docs/audio/*.json text eol=lf
+unity/ChipArenaConversion/tools/sound_bundle/docs/audio/*.json text eol=lf

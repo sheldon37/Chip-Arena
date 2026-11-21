@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
         private float at=-100;private bool fresh=true;
         public void BlendBase(CapturedRig.Pose pose,float time,bool contactFrame)
         {
-            float dt=time-at;bool reset=fresh||dt<0||dt>.35f;
+            // A non-finite clock or pose must not latch into the history (every later frame would lerp toward NaN): it resets.
+            float dt=time-at;bool reset=fresh||!(dt>=0)||dt>.35f;
+            if(!NativeIntroMotion.Finite(pose)){fresh=true;return;}
             float weight=reset||contactFrame?1:1-(float)Math.Exp(-22*Math.Min(.1f,dt));
             for(int i=0;i<position.Length;i++)
             {

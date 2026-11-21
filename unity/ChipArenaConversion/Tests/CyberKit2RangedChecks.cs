@@ -1,0 +1,669 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using ChipArena.UnityConversion;
+
+// The DEV Cyber Lord's Kit v2, ranged half, presentation (Claude; docs/CYBER-LORD.md "Kit v2", Core/CyberKit2Ranged.cs) and
+// the cyber mage's ranged body and fireballs that already draw on today's v1 Bit Bolts. The v2 rules are Astra's and pending:
+// these drive the proposed record (CyberKit2RangedPreview, written as the host would) through CyberLordFeed.
+//  1. the contract: the record's mapping only through CyberLordFeed and only on Version 2 (v1 untouched otherwise), its bounds
+//     and JSON round trip, the Details, the shots' kinds, the shared helpers (storm drops, the orbital chase, chain falloff);
+//  2. the body: the energy-holding stance, each throw releasing on the replicated release (chained at every rate and clock,
+//     starting and ending on the stance, its fireball leaving the throwing hand), the Overflow from both hands, every v2
+//     cast's state and their hand-overs, finite and continuous on even, uneven and rewound clocks, the legs the locomotion's while casting on the move, the
+//     glide sprint, a delayed guest copy posing the same frames, first person; the whole body driving each throw (the turn on
+//     the hips, the lean, the weight onto the front foot, the feet planted, the head on the aim, each follow-through flowing
+//     into the next throw back to back) and the view's memory of the last throw;
+//  3. the effects: the fireball (hand to path, its kinds, readable at range), its splash, each v2 effect on its window and its
+//     helpers (the chain's hops on their times, the storm's drops at their points, the column on the chase), nothing flat on
+//     the floor, the tiers, determinism (a copied record and a second instance draw the same), the first-person pilot;
+//  4. the HUD cards, the icons and the sounds;
+//  5. no allocation per frame.
+// Pixels are checked by the offline renders; nothing here runs Unity.
+internal static class CyberKit2RangedChecks
+{
+    private static int count;
+    private const float Dt=1/60f,D2R=(float)Math.PI/180;
+    private static void Check(bool ok,string what){if(!ok)throw new Exception("Cyber Lord Kit v2 ranged: "+what);count++;}
+
+    private sealed class Pilot
+    {
+        public readonly Actor A;public readonly MeleeMotion M=new MeleeMotion{JumpLayer=new NativeJumpMotion()};public readonly CyberLordMotion C=new CyberLordMotion();
+        public readonly MeleeView V=new MeleeView();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public string State;
+        public Pilot(int id=7){A=CyberLordFixture.Pilot(id,Vector3.Zero,0);V.Id=id.ToString();V.Spec=CyberLordSpec.Id;}
+        public void Step(float t,float dt=Dt)
+        {
+            var root=new Vector3(A.Position.x,A.Position.y,A.Position.z);
+            V.Vel=new Vector3(-A.Velocity.x,A.Velocity.y,A.Velocity.z);V.Grounded=A.Grounded;V.Hp=A.Hp;V.Sprinting=A.Sprinting;V.Yaw=-A.Yaw*D2R;V.AirJumpAt=-100;
+            M.Rig.GroupPosition=new Vector3(-root.X,.865f+root.Y,root.Z);M.Rig.GroupYaw=-A.Yaw*D2R;
+            M.FighterBase(V,t,dt);State=C.Style(M,A,t,A.StunUntil>t);M.FighterFinish(V,t,dt);M.Rig.WritePose(Pose);Pose.World();
+        }
+        public Quaternion Group=>MeleeMath.AxisAngle(MeleeMath.Y,M.Rig.GroupYaw);
+        public Vector3 World(int bone)=>M.Rig.GroupPosition+Vector3.Transform(Pose.WorldPosition[bone],Group);
+        public Vector3 InChest(int bone)=>Vector3.Transform(Pose.WorldPosition[bone]-Pose.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(Pose.WorldRotation[CapturedRig.Chest]));
+    }
+    private sealed class Sink:ICyberFxSink,ICyberFxFlames
+    {
+        public int Count,View,Flat,Flames,Lines,Voxels;public string FlatWhat;public double Hash;
+        private void Floor(float bottom,float thick,float across,string what){if(bottom<.12f&&thick<.03f&&across>.1f){Flat++;FlatWhat??=what+" (top "+bottom.ToString("0.000")+")";}}
+        private void H(Vector3 a,float k){Hash=Hash*1.000003+a.X*1.7+a.Y*3.1+a.Z*5.3+k*7.7;}
+        public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){Count++;H(at,size);}
+        public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){Count++;H(head,width);}
+        public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){Count++;H(at,size);}
+        public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){Count++;if(view)View++;H(at,size);}
+        public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){Count++;Lines++;if(view)View++;else Floor(Math.Max(tail.Y,head.Y),Math.Abs(tail.Y-head.Y)+width,new Vector2(head.X-tail.X,head.Z-tail.Z).Length(),"line");H(tail,width);H(head,0);}
+        public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){Count++;if(view)View++;else Floor(Math.Max(Math.Max(a.Y,b.Y),Math.Max(c.Y,d.Y)),Math.Max(Math.Max(a.Y,b.Y),Math.Max(c.Y,d.Y))-Math.Min(Math.Min(a.Y,b.Y),Math.Min(c.Y,d.Y)),Vector3.Distance(a,c),"band");H(a,0);H(c,0);}
+        public void Voxel(bool view,WeaponShape shape,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){Count++;Voxels++;if(view)View++;else Floor(at.Y+scale.Y*.5f,scale.Y,Math.Max(scale.X,scale.Z),"voxel");H(at,scale.X);}
+        public void Flame(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,float seed){Count++;Flames++;if(view)View++;else Floor(Math.Max(tail.Y,head.Y),Math.Abs(tail.Y-head.Y)+width,new Vector2(head.X-tail.X,head.Z-tail.Z).Length(),"flame");H(tail,width);H(head,seed);}
+        public void Reset(){Count=View=Flames=Lines=Voxels=0;Hash=0;}
+    }
+    private sealed class Scene:ICyberFxScene,ICyberShots
+    {
+        public readonly List<Actor> List=new List<Actor>();public int ViewerId,LocalId;public ICyberShots Shots;public Vector3 EyeAt=new Vector3(0,1.62f,-3);
+        public IReadOnlyList<Actor> Actors=>List;
+        public Vector3 Feet(Actor a)=>new Vector3(a.Position.x,a.Position.y,a.Position.z);
+        public bool Chest(Actor a,out Vector3 chest){chest=Feet(a)+new Vector3(0,1.15f,0);return true;}
+        public bool Fist(Actor a,bool left,out Vector3 fist){fist=Feet(a)+new Vector3(left?-.2f:.2f,1.3f,.4f);return true;}
+        public int Viewer=>ViewerId;public int Local=>LocalId;
+        public bool ViewFist(bool left,out Vector3 fist){fist=new Vector3(left?-.15f:.15f,1.4f,.35f);return ViewerId!=0;}
+        public Vector3 Eye=>EyeAt;
+        public float Floor(Vector3 at)=>0;
+        public int CyberShots=>Shots?.CyberShots??0;public CyberShot CyberShotAt(int i)=>Shots.CyberShotAt(i);
+        public int CyberImpacts=>Shots?.CyberImpacts??0;public CyberImpact CyberImpactAt(int i)=>Shots.CyberImpactAt(i);
+    }
+    private sealed class Copied:ICyberKit2RangedSource{public CyberKit2RangedRecord Record;public int Id;public CyberKit2RangedRecord Of(int actor)=>actor==Id?Record:null;}
+
+    // The script (s): ranged mode at .3, six throws .3 s apart (right, left, Overflow, left, right, Overflow), each of 1-4.
+    private static readonly Vector3 From=new Vector3(0,1.165f,.2f),Ahead=Vector3.UnitZ;
+    private const float Throws=1,ChainAt=3.4f,SingAt=4.4f,StormAt=8,OrbitalAt=10.5f,End=15.5f;
+    private static readonly float[] Beats={Throws,Throws+.3f,Throws+.6f,Throws+.9f,Throws+1.2f,Throws+1.5f,ChainAt,SingAt,StormAt,OrbitalAt};
+    private static readonly int[] Ids={21,22,23,24,25,26};
+    private static readonly Vector3[] Points={new Vector3(0,1.15f,8),new Vector3(3,1.15f,12),new Vector3(-1,1.15f,15),new Vector3(4,1.15f,18),new Vector3(-2,1.15f,21),new Vector3(1,1.15f,25)};
+    private static Vector3 OrbitalAim(float t)=>new Vector3(4*(float)Math.Sin((t-OrbitalAt)*1.3f),0,12+3*(float)Math.Cos((t-OrbitalAt)*.9f));
+    private static void Script(CyberKit2RangedPreview p,int id,float t,ref int beat,Vector3 feet=default)
+    {
+        // (The live host writes a Version 2 record for every Cyber Lord from the start.)
+        p.For(id);
+        while(beat<Beats.Length&&t>=Beats[beat])
+        {
+            float w=Beats[beat];
+            switch(beat)
+            {
+                case 6:p.Chain(id,w,From+feet,Ids,Points,6);break;
+                case 7:p.Singularity(id,w,From+feet,new Vector3(0,0,11));break;
+                case 8:p.Storm(id,w,new Vector3(0,0,14),7);break;
+                case 9:p.Orbital(id,w,new Vector3(0,0,12));break;
+                default:p.Plasma(id,w,From+feet,Ahead,beat==2?14:CyberKit2Spec.PlasmaRange,beat==2);break;
+            }
+            beat++;
+        }
+        p.Steer(id,t,OrbitalAim(t),feet);p.Advance(t);
+    }
+    private static float MaxStep(Vector3[] a,Vector3[] b){float m=0;for(int i=0;i<a.Length;i++)m=Math.Max(m,Vector3.Distance(a[i],b[i]));return m;}
+    // The heading of the line from joint `right` to joint `left` (rad about the vertical; - when the right one is ahead).
+    private static float Turn(Pilot p,int left,int right){var d=p.Pose.WorldPosition[left]-p.Pose.WorldPosition[right];return (float)Math.Atan2(d.Z,d.X);}
+
+    public static IEnumerable<string> Run(string root)
+    {
+        var kept=CyberLordFeed.RangedSource;var kept2=CyberLordFeed.Kit2RangedSource;
+        try{foreach(var r in Body(root))yield return r;}
+        finally{CyberLordFeed.RangedSource=kept;CyberLordFeed.Kit2RangedSource=kept2;}
+    }
+    // A pilot in ranged mode (v1's mode fields, which Kit v2 keeps: key 5 unchanged).
+    private static CyberRangedPreview Ranged(int id,float at=.3f){var m=new CyberRangedPreview();m.Switch(id,at);return m;}
+
+    private static IEnumerable<string> Body(string root)
+    {
+        // ------------------------------------------------------------------------------------------------------------------
+        // 1. The contract
+        // ------------------------------------------------------------------------------------------------------------------
+        int c0=count;
+        {
+            Check(CyberKit2Ranged.Slots==5&&CyberKit2Ranged.Spec(CyberKit2Ranged.Plasma)==CyberKit2Spec.RangedLmb&&CyberKit2Ranged.Spec(CyberKit2Ranged.Orbital)==CyberKit2Spec.Orbital,"the five ranged slots map onto CyberKit2Spec's");
+            for(int r=0;r<CyberKit2Ranged.Slots;r++)Check(CyberKit2Spec.RangedSlot(CyberKit2Ranged.Spec(r)),CyberKit2Spec.Names[CyberKit2Ranged.Spec(r)]+" is a ranged slot");
+            // Only CyberLordFeed maps the record; the view never names Astra's kit.
+            var files=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories);
+            var mappers=files.Where(f=>File.ReadAllText(f).Contains("CyberKit2RangedFeed.Map(")).Select(Path.GetFileName).ToArray();
+            Check(mappers.Length==1&&mappers[0]=="NativeCyberLord.cs","only CyberLordFeed maps the v2 record ("+string.Join(",",mappers)+")");
+            var readers=files.Where(f=>Regex.IsMatch(File.ReadAllText(f),@"Kit2RangedSource\?*\.Of\(")).Select(Path.GetFileName).ToArray();
+            Check(readers.Length==1&&readers[0]=="NativeCyberLord.cs","only CyberLordFeed reads the v2 source ("+string.Join(",",readers)+")");
+            foreach(var f in new[]{"CyberKit2Ranged.cs","CyberLordRangedMotion.cs","NativeCyberLordPlasmaFx.cs","NativeCyberLordKit2RangedFx.cs","CyberKit2RangedHud.cs"})
+            {var src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f));foreach(var banned in new[]{".Cyber.",".Cyber;","a.Cyber","NativePilot","NativeArena","UnityEngine","System.Random","DateTime"})Check(!src.Contains(banned),f+" reads no authority state ("+banned+")");}
+            var prev=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeCyberLordKit2Preview.cs"));
+            foreach(var banned in new[]{"arena.Step","NativeSimulation","Rules.","Bullets.Add","Emit(","Events.Add",".Hp=",".Position=",".Velocity=","Damage("})Check(!prev.Contains(banned),"the Dev Sandbox preview touches no rule, actor or event ("+banned+")");
+            Check(prev.Contains("CyberLordFeed.Kit2RangedSource=cyberKit2")&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSandbox.cs")).Contains("presentation.CyberKit2RangedPreviewOn=!presentation.CyberKit2RangedPreviewOn"),"the sandbox's gallery toggles the preview, which feeds the record through CyberLordFeed");
+
+            // Version gate: no record, Version 0 or 1 leave v1 exactly as it was; Version 2 is live.
+            var a=CyberLordFixture.Pilot(3,Vector3.Zero,0);var v=new CyberLordView();var src2=new Copied{Id=3};CyberLordFeed.Kit2RangedSource=src2;
+            var rec=new CyberKit2RangedRecord{Version=CyberKit2Spec.Version};var p=new CyberKit2RangedPreview();p.Plasma(3,2,From,Ahead);rec=p.Of(3);
+            foreach(int ver in new[]{0,1,3}){var x=rec.ViewCopy();x.Version=ver;src2.Record=x;CyberLordFeed.Read(a,v);Check(!v.Kit2R.Live&&v.Kit2R.At.All(z=>z==-100),"Version "+ver+" is ignored (v1 draws)");}
+            src2.Record=rec;CyberLordFeed.Read(a,v);Check(v.Kit2R.Live&&Math.Abs(v.Kit2R.At[CyberKit2Ranged.Plasma]-2)<1e-5f&&Math.Abs(v.Kit2R.Release[CyberKit2Ranged.Plasma]-2-CyberKit2Spec.PlasmaWindup)<1e-5f,"Version 2 maps its windows");
+            CyberLordFeed.Kit2RangedSource=null;CyberLordFeed.Read(a,v);Check(!v.Kit2R.Live,"no source: not live");
+            // Bounds and the JSON round trip (a Unity-serializable record: fields, V3, fixed arrays).
+            Check(rec.Valid(),"a written record is within bounds");var bad=rec.ViewCopy();bad.At[1]=float.NaN;Check(!bad.Valid(),"a NaN fails the bounds");bad=rec.ViewCopy();bad.ChainIds=new int[3];Check(!bad.Valid(),"a short chain array fails");
+            var opt=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var json=JsonSerializer.Serialize(rec,opt);var back=JsonSerializer.Deserialize<CyberKit2RangedRecord>(json,opt);Check(JsonSerializer.Serialize(back,opt)==json&&back.Valid(),"the record round-trips through JSON");
+            var copy=rec.ViewCopy();copy.At[0]=99;copy.ChainIds[0]=5;Check(rec.At[0]!=99&&rec.ChainIds[0]!=5,"ViewCopy deep-copies the arrays");
+            // The Details and the shots.
+            for(int i=0;i<CyberKit2Ranged.EventDetails.Length;i++)Check(CyberLordFeed.Hit(CyberKit2Ranged.EventDetails[i])==CyberKit2RangedFeed.PlasmaHit+i&&CyberKit2RangedFeed.Is(CyberLordFeed.Hit(CyberKit2Ranged.EventDetails[i])),"Detail "+CyberKit2Ranged.EventDetails[i]+" maps");
+            Check(CyberLordFeed.Hit("bit-bolt")==CyberHit.Bolt&&CyberLordFeed.Hit("cyber-jab")==CyberHit.Jab&&!CyberKit2RangedFeed.Is(CyberHit.Root),"v1's Details map as before");
+            Check(CyberLordFeed.ShotSlot("cyberlord","plasma-byte")==CyberRangedSpec.Bolt&&CyberLordFeed.ShotSlot("cyberlord","plasma-overflow")==CyberRangedSpec.Bolt&&CyberLordFeed.ShotSlot("cyberlord","bit-bolt")==CyberRangedSpec.Bolt&&CyberLordFeed.ShotSlot("cyberlord",null)<0&&CyberLordFeed.ShotSlot("pistol","plasma-byte")<0,
+                "the fireballs (v1's bit-bolt, v2's plasma-byte and plasma-overflow) are the Cyber Lord's shots; the Data Packets stay the default drawer's");
+            Check(CyberKit2RangedFeed.ShotKind("plasma-byte")==1&&CyberKit2RangedFeed.ShotKind("plasma-overflow")==2&&CyberKit2RangedFeed.ShotKind("bit-bolt")==0,"the shot kinds");
+            // The chain: the throws' hands (right, left, both) and the reset after a pause.
+            var q=new CyberKit2RangedPreview();var hands=new List<int>();float t=1;for(int i=0;i<6;i++){q.Plasma(9,t,From,Ahead);hands.Add(CyberKit2Spec.PlasmaHand(q.Of(9).PlasmaShot));t+=.3f;}
+            Check(hands.SequenceEqual(new[]{0,1,2,1,0,2}),"the throws alternate with an Overflow from both every third ("+string.Join(",",hands)+")");
+            q.Plasma(9,t+2,From,Ahead);Check(q.Of(9).PlasmaShot==0,"a pause over ComboReset restarts the chain on the right hand");
+        }
+        {
+            // The shared helpers drive what is drawn: the storm's drops, the orbital chase, the chain's hop times and falloff.
+            var p=new CyberKit2RangedPreview();p.Storm(5,2,new Vector3(3,0,14),11);var a=CyberLordFixture.Pilot(5,Vector3.Zero,0);var v=new CyberLordView();CyberLordFeed.Kit2RangedSource=p;CyberLordFeed.Read(a,v);var k=v.Kit2R;float last=-1;
+            for(int i=0;i<CyberKit2Spec.Drops;i++)
+            {
+                k.Drop(i,out float at,out var pt);CyberKit2Spec.StormDrop(11,i,out float at2,out float x,out float z);
+                Check(Math.Abs(at-(k.Release[CyberKit2Ranged.Storm]+at2))<1e-5f&&Math.Abs(pt.X-3-x)<1e-5f&&Math.Abs(pt.Z-14-z)<1e-5f,"drop "+i+" is StormDrop's");
+                Check(new Vector2(x,z).Length()<=CyberKit2Spec.StormRadius+1e-3f&&at2<=CyberKit2Spec.StormSeconds+1e-4f,"drop "+i+" inside the ring and the storm");last=Math.Max(last,at);
+            }
+            Check(Math.Abs(k.StormEnd-last)<1e-5f,"the storm ends on its last drop");
+            p.Orbital(5,4,new Vector3(0,0,10));p.Steer(5,4.6f,new Vector3(6,0,10),Vector3.Zero);p.Steer(5,4.85f,new Vector3(6,0,10),Vector3.Zero);CyberLordFeed.Read(a,v);k=v.Kit2R;
+            float ox=0,oz=10;CyberKit2Spec.OrbitalStep(ref ox,ref oz,6,10,.25f);var at3=k.OrbitalAt(4.85f);Check(Math.Abs(at3.X-ox)<1e-4f&&Math.Abs(at3.Z-oz)<1e-4f,"the column's point is OrbitalStep's");
+            var later=k.OrbitalAt(4.85f+.1f);Check(Math.Abs(later.X-Math.Min(6,ox+CyberKit2Spec.OrbitalChase*.1f))<1e-3f,"between snapshots it chases on at OrbitalChase");
+            Check(Math.Abs(k.OrbitalAt(9).X-6)<1e-4f,"it never overshoots the aim");
+            var far=new Vector3(80,0,10);p.Steer(5,5.1f,far,Vector3.Zero);CyberLordFeed.Read(a,v);Check(new Vector2(v.Kit2R.OrbitalAim.X,v.Kit2R.OrbitalAim.Z).Length()<=CyberKit2Spec.OrbitalRange+1e-3f,"the aim is kept within OrbitalRange of the caster");
+            p.Chain(5,7,From,Ids,Points,6);CyberLordFeed.Read(a,v);k=v.Kit2R;
+            for(int i=0;i<6;i++)Check(Math.Abs(k.HopAt(i)-(7+CyberKit2Spec.Windup[CyberKit2Spec.Chain]+i*CyberKit2Spec.HopDelay))<1e-5f,"hop "+i+" lands HopDelay after the last");
+            for(int i=1;i<6;i++)Check(CyberKit2Spec.ChainHopDamage(i)<CyberKit2Spec.ChainHopDamage(i-1),"each hop is weaker");
+        }
+        yield return $"Cyber Lord Kit v2 ranged contract: {count-c0} checks (the record mapped only by CyberLordFeed and only on Version 2, v1 untouched otherwise; bounds, JSON, deep copy; the seven Details and the fireballs' kinds; the throws' hands and the chain's reset; the storm's drops, the orbital chase and the chain's hops from the shared helpers)";
+
+        // ------------------------------------------------------------------------------------------------------------------
+        // 2. The body
+        // ------------------------------------------------------------------------------------------------------------------
+        c0=count;var seen=new HashSet<string>();float handStep=0,spike=0,s1=-1,s2=-1,fpStep=0,worstGuest=0,stepAt=0;string spikeState="",stepState="";float spikeAt=0;
+        {
+            var host=new Pilot(31);var mode=Ranged(31);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();int beat=0;
+            var guest=new Pilot(31);var copied=new Copied{Id=31};var history=new Queue<(float t,CyberKit2RangedRecord r)>();var hostFrames=new Queue<Quaternion[]>();
+            var last=new Vector3[2];bool had=false;string before=JsonSerializer.Serialize(host.A.ViewCopy());string lastState=null;
+            for(float t=.5f;t<End;t+=Dt)
+            {
+                Script(p,31,t,ref beat);CyberLordFeed.Kit2RangedSource=p;host.Step(t);seen.Add(host.State);
+                foreach(var qq in host.M.Rig.Q)Check(float.IsFinite(qq.W)&&Math.Abs(qq.Length()-1)<1e-3f,"finite rotations at "+t.ToString("0.00"));
+                var hands=new[]{host.InChest(CapturedRig.RHand),host.InChest(CapturedRig.LHand)};
+                if(had){float hs=MaxStep(hands,last);if(hs>handStep){handStep=hs;stepAt=t;stepState=host.State;}if(s1>=0&&s2>=0&&s1-Math.Max(s2,hs)>spike){spike=s1-Math.Max(s2,hs);spikeAt=t-Dt;spikeState=lastState;}lastState=host.State;s2=s1;s1=hs;}last=hands;had=true;
+                hostFrames.Enqueue((Quaternion[])host.M.Rig.Q.Clone());history.Enqueue((t,p.Of(31)?.ViewCopy()));
+                if(history.Count>6){var (gt,gr)=history.Dequeue();var want=hostFrames.Dequeue();copied.Record=gr;CyberLordFeed.Kit2RangedSource=copied;guest.Step(gt);for(int i=0;i<want.Length;i++)worstGuest=Math.Max(worstGuest,1-Math.Abs(Quaternion.Dot(want[i],guest.M.Rig.Q[i])));}
+            }
+            Check(JsonSerializer.Serialize(host.A.ViewCopy())==before,"the actor is never written");
+            foreach(var want in new[]{"cyber-ranged-aim","cyber-plasma-byte","cyber-plasma-overflow","cyber-daisy-chain","cyber-singularity","cyber-packet-storm","cyber-orbital-call","cyber-orbital-steer"})Check(seen.Contains(want),"shows "+want+" ("+string.Join(", ",seen)+")");
+            Check(handStep<.3f&&spike<.07f,"no frame jumps (the largest hand step "+(handStep*100).ToString("0.0")+" cm at "+stepAt.ToString("0.000")+" "+stepState+"; the largest spike over its neighbours "+(spike*100).ToString("0.0")+" cm at "+spikeAt.ToString("0.000")+" "+spikeState+")");
+            Check(worstGuest<1e-6f,"a guest on a 6-frame delayed copy of the record poses the host's frames exactly ("+worstGuest.ToString("0.0e0")+")");
+        }
+        {
+            // Each throw passes its release mark on the replicated release: the throwing hand moves fastest round it, forward.
+            foreach(int shot in new[]{0,1,2})
+            {
+                var h=new Pilot(32);CyberLordFeed.RangedSource=Ranged(32);var p=new CyberKit2RangedPreview();CyberLordFeed.Kit2RangedSource=p;float at=2;
+                for(int i=0;i<shot;i++)p.Plasma(32,at-.3f*(shot-i),From,Ahead);
+                float peak=0,peakAt=0;Vector3 prev=default;bool fired=false;
+                for(float t=1;t<3;t+=Dt)
+                {
+                    if(!fired&&t>=at){p.Plasma(32,t,From,Ahead);at=t;fired=true;}h.Step(t);
+                    var hand=shot==2?(h.World(CapturedRig.RHand)+h.World(CapturedRig.LHand))*.5f:h.World(shot==1?CapturedRig.LHand:CapturedRig.RHand);
+                    if(t>at-.05f&&t<at+.25f){float fwd=(hand.Z-prev.Z)/Dt;if(fwd>peak){peak=fwd;peakAt=t;}}prev=hand;
+                }
+                float rel=at+CyberKit2Spec.PlasmaWindup;Check(Math.Abs(peakAt-rel)<=2.01f*Dt&&peak>2,"throw "+shot+" ("+(shot==2?"both":shot==1?"left":"right")+"): the hand drives forward fastest on the release ("+peakAt.ToString("0.000")+" vs "+rel.ToString("0.000")+", "+peak.ToString("0.0")+" m/s)");
+            }
+            // And today's v1 bolts the same (the throw set reads v1's window until the v2 record lands).
+            var h1=new Pilot(33);var m1=Ranged(33);CyberLordFeed.RangedSource=m1;CyberLordFeed.Kit2RangedSource=null;float b=2,pk=0,pkAt=0;Vector3 pv=default;bool f1=false;
+            for(float t=1;t<3;t+=Dt){if(!f1&&t>=b){m1.Bolt(33,t,From,Ahead);b=t;f1=true;}h1.Step(t);var hand=h1.World(m1.Of(33).BoltHand==1?CapturedRig.LHand:CapturedRig.RHand);if(t>b-.05f&&t<b+.2f){float fwd=(hand.Z-pv.Z)/Dt;if(fwd>pk){pk=fwd;pkAt=t;}}pv=hand;}
+            Check(Math.Abs(pkAt-(b+CyberRangedSpec.Windup[CyberRangedSpec.Bolt]))<=2.01f*Dt&&h1.State!=null,"a v1 Bit Bolt throws on its release too ("+pkAt.ToString("0.000")+")");
+        }
+        {
+            // Casting on the move: the legs stay the locomotion's (planted, no slip) while every throw and cast plays, and the
+            // pose stays finite on uneven and rewound clocks.
+            var run=new Pilot(34);CyberLordFeed.RangedSource=Ranged(34);var p=new CyberKit2RangedPreview();int beat=0;float slip=0;var prevF=new Vector3[2];var on=new bool[2];var rng=new Random(5);bool castRun=false;
+            run.A.Velocity=new V3(-Rules.Speed*.7f,0,Rules.Speed*.7f);
+            for(float t=.5f,dt=Dt;t<End;dt=(float)(1/240.0+rng.NextDouble()*(1/30.0-1/240.0)),t+=dt)
+            {
+                run.A.Position=new V3(-Rules.Speed*.7f*(t-.5f),0,Rules.Speed*.7f*(t-.5f));var feet=new Vector3(run.A.Position.x,run.A.Position.y,run.A.Position.z);
+                Script(p,34,t,ref beat,feet);CyberLordFeed.Kit2RangedSource=p;run.Step(t,dt);if(t<1.5f)continue;castRun|=run.State!=null&&run.State.StartsWith("cyber-")&&run.State!="cyber-ranged-aim"&&run.State!="cyber-ranged-run";
+                Check(!run.M.Rig.LegsAuthored,"the ranged layer never takes the legs ("+run.State+")");
+                for(int i=0;i<2;i++){bool lf=i==0,planted=run.M.Gait.Planted(lf);var at=run.World(lf?CapturedRig.LFoot:CapturedRig.RFoot);if(planted&&on[i]){var d=at-prevF[i];d.Y=0;slip=Math.Max(slip,d.Length()/dt);}on[i]=planted;prevF[i]=at;}
+            }
+            Check(castRun&&slip<.05f,"throwing and casting on a diagonal run: the contact foot stays planted ("+(slip*100).ToString("0.00")+" cm/s)");
+            // Rewound: posing an earlier moment after a later one gives the same frame as a fresh rig there.
+            var a1=new Pilot(35);var a2=new Pilot(35);var m=Ranged(35);CyberLordFeed.RangedSource=m;var q=new CyberKit2RangedPreview();int bq=0;for(float t=.5f;t<12;t+=Dt)Script(q,35,t,ref bq);CyberLordFeed.Kit2RangedSource=q;
+            for(float t=.5f;t<12;t+=Dt)a1.Step(t);for(float t=1.2f;t<1.9f;t+=Dt){a1.Step(t);foreach(var qq in a1.M.Rig.Q)Check(float.IsFinite(qq.W),"finite on a rewound clock");}
+            for(float t=.5f;t<1.9f;t+=Dt)a2.Step(t);float diff=0;for(int i=0;i<CapturedRig.RHand+1;i++)diff=Math.Max(diff,1-Math.Abs(Quaternion.Dot(a1.M.Rig.Q[i],a2.M.Rig.Q[i])));
+            Check(diff<.02f,"the arms on a rewound clock match a fresh rig's ("+diff.ToString("0.0000")+")");
+        }
+        {
+            // The glide: sprinting in ranged mode sweeps both arms back and out (the hands behind the chest), the lean lifted.
+            var g=new Pilot(36);CyberLordFeed.RangedSource=Ranged(36);CyberLordFeed.Kit2RangedSource=null;g.A.Sprinting=true;g.A.Velocity=new V3(0,0,Rules.Speed*Rules.SprintMultiplier);
+            for(float t=.5f;t<2.5f;t+=Dt){g.A.Position=new V3(0,0,Rules.Speed*Rules.SprintMultiplier*(t-.5f));g.Step(t);}
+            // (In the rig's frame, facing +z: the chest leans far forward, so its own axes would read a trailing hand as ahead.)
+            var r=g.Pose.WorldPosition[CapturedRig.RHand]-g.Pose.WorldPosition[CapturedRig.Chest];var l=g.Pose.WorldPosition[CapturedRig.LHand]-g.Pose.WorldPosition[CapturedRig.Chest];
+            Check(g.State=="cyber-ranged-sprint"&&r.Z<-.05f&&l.Z<-.05f&&r.Y<0&&l.Y<0&&Math.Abs(r.X)>.25f&&Math.Abs(l.X)>.25f,"the glide: both hands swept back and out ("+r.ToString("0.00")+", "+l.ToString("0.00")+", "+g.State+")");
+        }
+        {
+            // First person: finite, in view, no jumps, every state.
+            var p=new CyberKit2RangedPreview();var a=CyberLordFixture.Pilot(37,Vector3.Zero,0);var m=new CyberLordMotion();var pose=new CapturedRig.Pose();int beat=0;Vector3? last=null;var fpSeen=new HashSet<string>();CyberLordFeed.RangedSource=Ranged(37);
+            for(float t=.5f;t<End;t+=Dt)
+            {
+                Script(p,37,t,ref beat);CyberLordFeed.Kit2RangedSource=p;fpSeen.Add(m.FirstPerson(pose,a,t));pose.World();var hh=pose.WorldPosition[CapturedRig.RHand];
+                Check(float.IsFinite(hh.X)&&float.IsFinite(hh.Y)&&float.IsFinite(hh.Z),"first person stays finite");if(last.HasValue)fpStep=Math.Max(fpStep,Vector3.Distance(hh,last.Value));last=hh;
+            }
+            Check(fpSeen.Contains("cyber-plasma-byte")&&fpSeen.Contains("cyber-plasma-overflow")&&fpSeen.Contains("cyber-orbital-steer"),"first person shows the throws and the casts ("+string.Join(", ",fpSeen)+")");
+            Check(fpStep<.25f,"first person: no frame jumps ("+(fpStep*100).ToString("0.0")+" cm)");
+        }
+        yield return $"Cyber Lord Kit v2 ranged body: {count-c0} checks ({seen.Count(x=>x!=null&&x.StartsWith("cyber-"))} states; throws on their releases (right, left, both, and v1's bolt); hand steps at most {(handStep*100):0.0} cm with no spike over {(spike*100):0.0} cm; the legs the run's while casting; uneven and rewound clocks; the glide; a delayed guest exact; first person {(fpStep*100):0.0} cm)";
+        foreach(var r in StanceAndChains())yield return r;
+        foreach(var r in BodyDrive())yield return r;
+
+        // ------------------------------------------------------------------------------------------------------------------
+        // 3. The effects
+        // ------------------------------------------------------------------------------------------------------------------
+        c0=count;int full=0,reduced=0,low=0,peakShots=0,viewDraws=0,flames=0;
+        {
+            var p=new CyberKit2RangedPreview();var a=CyberLordFixture.Pilot(41,Vector3.Zero,0);int beat=0;CyberLordFeed.RangedSource=Ranged(41);
+            var fx=new NativeCyberLordFx();var fx2=new NativeCyberLordFx();var fxR=new NativeCyberLordFx();var fxL=new NativeCyberLordFx();var fxMe=new NativeCyberLordFx();var fxG=new NativeCyberLordFx();
+            var sc=new Scene{Shots=p};sc.List.Add(a);var me=new Scene{Shots=p,ViewerId=41,LocalId=41};me.List.Add(a);var guestSrc=new Copied{Id=41};
+            for(int i=0;i<6;i++)sc.List.Add(new Actor{Id=Ids[i],SourceSpec="sword",Hp=100,Grounded=true,Position=new V3(Points[i].X,0,Points[i].Z)});
+            var sink=new Sink();var sink2=new Sink();var sinkR=new Sink();var sinkL=new Sink();var sinkMe=new Sink();var sinkG=new Sink();var drawn=new int[CyberKit2Ranged.Slots];int baseline=0;
+            var hopDraws=new float[6];
+            for(float t=.5f;t<End;t+=Dt)
+            {
+                Script(p,41,t,ref beat);CyberLordFeed.Kit2RangedSource=p;
+                sink.Reset();fx.Draw(sink,sc,t,1,false);sink2.Reset();fx2.Draw(sink2,sc,t,1,false);sinkR.Reset();fxR.Draw(sinkR,sc,t,.3f,false);sinkL.Reset();fxL.Draw(sinkL,sc,t,1,true);sinkMe.Reset();fxMe.Draw(sinkMe,me,t,1,false);
+                Check(sink.Count==sink2.Count&&Math.Abs(sink.Hash-sink2.Hash)<1e-6*Math.Max(1,Math.Abs(sink.Hash)),"a second instance draws the identical frame at "+t.ToString("0.00"));
+                full+=sink.Count;reduced+=sinkR.Count;low+=sinkL.Count;viewDraws+=sinkMe.View;flames+=sink.Flames;peakShots=Math.Max(peakShots,p.CyberShots);
+                if(t<Throws)baseline=Math.Max(baseline,sink.Count);
+                var v=new CyberLordView();CyberLordFeed.Read(a,v);for(int s=0;s<CyberKit2Ranged.Slots;s++)if(v.Kit2R.Phase(s,t).Live&&sink.Count>baseline)drawn[s]++;
+                guestSrc.Record=p.Of(41)?.ViewCopy();CyberLordFeed.Kit2RangedSource=guestSrc;sinkG.Reset();fxG.Draw(sinkG,sc,t,1,false);Check(sinkG.Count==sink.Count&&Math.Abs(sinkG.Hash-sink.Hash)<1e-6*Math.Max(1,Math.Abs(sink.Hash)),"a copied record draws the same effects at "+t.ToString("0.00"));
+            }
+            for(int s=0;s<CyberKit2Ranged.Slots;s++)Check(drawn[s]>0,CyberKit2Spec.Names[CyberKit2Ranged.Spec(s)]+" draws on its window");
+            Check(sink.Flat+sinkR.Flat+sinkL.Flat+sinkMe.Flat==0,"nothing lies flat within 12 cm of the floor ("+(sink.FlatWhat??sinkR.FlatWhat??sinkL.FlatWhat??sinkMe.FlatWhat)+")");
+            Check(reduced<full&&low<full,"the reduced ("+reduced+") and low ("+low+") tiers draw less than full ("+full+")");
+            Check(peakShots>=2&&flames>0,"the fireballs fly as shots ("+peakShots+" at once) with flame tongues");
+            Check(viewDraws>0,"first person draws its own hand effects on the view layer ("+viewDraws+")");
+        }
+        {
+            // The chain draws hop by hop on its times; the storm's drops land at their points; a cut cast draws nothing past its cut.
+            var p=new CyberKit2RangedPreview();var a=CyberLordFixture.Pilot(42,Vector3.Zero,0);CyberLordFeed.RangedSource=Ranged(42);CyberLordFeed.Kit2RangedSource=p;var sc=new Scene{Shots=p};sc.List.Add(a);var fx=new NativeCyberLordFx();var s=new Sink();
+            p.Chain(42,2,From,Ids,Points,6);var v=new CyberLordView();CyberLordFeed.Read(a,v);int prevLines=-1;
+            for(int i=0;i<6;i++){float h=v.Kit2R.HopAt(i);s.Reset();fx.Draw(s,sc,h+.005f,1,true);int lines=s.Lines;Check(lines>prevLines,"hop "+i+" adds its bolt at its time ("+lines+")");prevLines=lines;}
+            var q=new CyberKit2RangedPreview();CyberLordFeed.Kit2RangedSource=q;var b=CyberLordFixture.Pilot(43,Vector3.Zero,0);var sb=new Scene();sb.List.Add(b);
+            q.Singularity(43,2,From,new Vector3(0,0,9));q.Interrupt(43,2.1f);var fy=new NativeCyberLordFx();var sk=new Sink();fy.Draw(sk,sb,3,1,false);int cut=sk.Count;
+            var q2=new CyberKit2RangedPreview();CyberLordFeed.Kit2RangedSource=q2;var fz=new NativeCyberLordFx();var s3=new Sink();fz.Draw(s3,sb,3,1,false);Check(cut==s3.Count,"a Singularity cut before its release throws no orb");
+            CyberLordFeed.Kit2RangedSource=q;var cv=new CyberLordView();CyberLordFeed.Read(b,cv);Check(!cv.Kit2R.Released(CyberKit2Ranged.Singularity)&&cv.Kit2R.Recover[CyberKit2Ranged.Singularity]==cv.Kit2R.Until[CyberKit2Ranged.Singularity],"the cut cast: never released, no settle");
+        }
+        {
+            // The fireball reads at range: its halo and body keep a minimum angular size.
+            var p=new CyberKit2RangedPreview();var a=CyberLordFixture.Pilot(44,Vector3.Zero,0);CyberLordFeed.RangedSource=Ranged(44);CyberLordFeed.Kit2RangedSource=p;p.Plasma(44,1,From,Ahead);var fx=new NativeCyberLordFx();
+            var near=new SizeSink();var far=new SizeSink();var sn=new Scene{Shots=p,EyeAt=new Vector3(3,1.6f,5)};sn.List.Add(a);var sf=new Scene{Shots=p,EyeAt=new Vector3(0,1.6f,45)};sf.List.Add(a);
+            float t=1+CyberKit2Spec.PlasmaWindup+.12f;p.Advance(t);fx.Draw(near,sn,t,1,false);new NativeCyberLordFx().Draw(far,sf,t,1,false);
+            Check(near.Largest>.3f&&far.Largest>far.Distance*.02f,"the fireball keeps its size up close ("+near.Largest.ToString("0.00")+" m) and at "+far.Distance.ToString("0")+" m ("+far.Largest.ToString("0.00")+" m)");
+        }
+        yield return $"Cyber Lord Kit v2 ranged effects: {count-c0} checks (every v2 effect and the fireballs on their windows; full {full}, reduced {reduced}, low {low} draws; never flat on the floor; determinism across instances and a copied record; the chain hop by hop; a cut orb draws nothing; the fireball readable at range)";
+
+        // ------------------------------------------------------------------------------------------------------------------
+        // 4. The HUD, the icons, the sounds
+        // ------------------------------------------------------------------------------------------------------------------
+        c0=count;int cues=0;
+        {
+            using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ClassIcons.json"))))
+            {var art=new HashSet<string>(doc.RootElement.GetProperty("icons").EnumerateArray().Select(i=>i.GetProperty("id").GetString()));for(int r=0;r<CyberKit2Ranged.Slots;r++)Check(art.Contains(CyberKit2Spec.Icons[CyberKit2Ranged.Spec(r)]),"icon "+CyberKit2Spec.Icons[CyberKit2Ranged.Spec(r)]+" is in the class icon art");}
+            var p=new CyberKit2RangedPreview();p.For(45);var a=CyberLordFixture.Pilot(45,Vector3.Zero,0);CyberLordFeed.RangedSource=Ranged(45);CyberLordFeed.Kit2RangedSource=p;var v=new CyberLordView();
+            CyberLordFeed.Read(a,v);Check(CyberKit2RangedHud.Shows(v)&&CyberKit2RangedHud.Of(v,CyberKit2Ranged.Chain,2,100).State=="READY"&&CyberKit2RangedHud.Labels[CyberKit2Ranged.Chain]=="1 · DAISY CHAIN"&&CyberKit2RangedHud.Labels[CyberKit2Ranged.Orbital]=="4 · ORBITAL UPLINK","the v2 set's cards ready, labelled 1-4");
+            p.Chain(45,3,From,Ids,Points,6);p.Singularity(45,4,From,new Vector3(0,0,9));p.Orbital(45,7,new Vector3(0,0,12));CyberLordFeed.Read(a,v);
+            Check(CyberKit2RangedHud.Of(v,CyberKit2Ranged.Chain,3.05f,100).State=="CHARGE"&&CyberKit2RangedHud.Of(v,CyberKit2Ranged.Chain,3.2f,100).State=="ACTIVE"&&CyberKit2RangedHud.Of(v,CyberKit2Ranged.Chain,4,100).State.EndsWith("s"),"Daisy Chain: CHARGE, ACTIVE, its cooldown");
+            Check(CyberKit2RangedHud.Of(v,CyberKit2Ranged.Singularity,6,100).State=="ACTIVE"&&CyberKit2RangedHud.Of(v,CyberKit2Ranged.Singularity,9,100).State.EndsWith("s"),"Singularity ACTIVE while the hole lives, then its cooldown");
+            Check(CyberKit2RangedHud.Of(v,CyberKit2Ranged.Orbital,7.2f,100).State=="CALL"&&CyberKit2RangedHud.Of(v,CyberKit2Ranged.Orbital,9,100).State=="STEER","Orbital Uplink: CALL, then STEER");
+            Check(CyberKit2RangedHud.Of(v,CyberKit2Ranged.Orbital,40,100,kernelReady:50).State!="READY"&&CyberKit2RangedHud.Of(v,CyberKit2Ranged.Storm,40,5).State=="LOW MANA","the shared ultimate clock, low mana");
+            var screen=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeCyberLordScreen.cs"));Check(screen.Contains("NativeCyberLordHud.Drawer(v,arena.Time,p.Mana,p.KernelReady,cyberCards,cyberLabels)")&&!screen.Contains("NativeCyberLordHud.RangedOf(")&&!screen.Contains("NativeCyberLordHud.RangedLabels"),"the drawer shows the v2 set (the shipped kit) with or without the record, never v1's");
+            var o=new NativeKitSound[NativeCyberLordSounds.Max];var clips=new HashSet<string>(Directory.GetFiles(Path.Combine(root,"Assets/Conversion/Resources/Audio/audio"),"*.wav").Select(Path.GetFileNameWithoutExtension));
+            foreach(var key in CyberKit2RangedSounds.Keys)Check(NativeSoundKeys.Known(key),"bank key "+key+" exists");foreach(var c in CyberKit2RangedSounds.Clips)Check(clips.Contains(c),"fallback clip "+c+" ships");
+            var q=new CyberKit2RangedPreview();CyberLordFeed.Kit2RangedSource=q;var heard=new HashSet<(int,float)>();int beat=0;var w=new CyberLordView();
+            for(float t=.5f;t<End;t+=Dt)
+            {
+                Script(q,45,t,ref beat);CyberLordFeed.Read(a,w);
+                for(int slot=0;slot<CyberKit2RangedSounds.Slots;slot++){int n=CyberKit2RangedSounds.State(w,slot,o,out float at);if(n==0||!(t>=at&&t-at<.15f))continue;for(int i=0;i<n;i++)Check(CyberKit2RangedSounds.Keys.Contains(o[i].Key)&&CyberKit2RangedSounds.Clips.Contains(o[i].Clip),"cue "+slot+" plays a listed key and clip");heard.Add((slot,at));}
+            }
+            for(int slot=0;slot<CyberKit2RangedSounds.Slots;slot++)Check(heard.Any(h=>h.Item1==slot),"v2 cue "+slot+" sounds in the script");cues=heard.Count;
+            Check(heard.Count(h=>h.Item1==CyberKit2RangedSounds.Throw)==6,"one cue per throw");
+            foreach(var h in new[]{CyberKit2RangedFeed.PlasmaHit,CyberKit2RangedFeed.OverflowHit,CyberKit2RangedFeed.SingularityTick,CyberKit2RangedFeed.OrbitalTick})foreach(var kind in new[]{EventKind.Hit,EventKind.AbilityHit,EventKind.Absorb,EventKind.Impact})foreach(bool mine in new[]{false,true})
+            {int n=NativeCyberLordSounds.Event(kind,h,mine,o);for(int i=0;i<n;i++)Check(CyberKit2RangedSounds.Keys.Contains(o[i].Key)&&CyberKit2RangedSounds.Clips.Contains(o[i].Clip),"event cue "+o[i].Key);}
+            Check(NativeCyberLordSounds.Event(EventKind.Hit,CyberKit2RangedFeed.PlasmaHit,false,o)>0,"a fireball's hit sounds");
+            // A cut cast is silent past its cut; v1's Bit Bolt sounds as a fireball.
+            var cut=new CyberKit2RangedPreview();cut.Orbital(46,1,new Vector3(0,0,10));cut.Interrupt(46,1.3f);CyberLordFeed.Kit2RangedSource=cut;var cv=new CyberLordView();CyberLordFeed.Read(CyberLordFixture.Pilot(46,Vector3.Zero,0),cv);
+            Check(CyberKit2RangedSounds.State(cv,CyberKit2RangedSounds.OrbitalBeam,o,out _)==0&&CyberKit2RangedSounds.State(cv,CyberKit2RangedSounds.OrbitalMark,o,out _)>0,"a cut call-down: its mark heard, never its column");
+            var bolt=Ranged(47);bolt.Bolt(47,2,From,Ahead);CyberLordFeed.RangedSource=bolt;CyberLordFeed.Kit2RangedSource=null;var bv=new CyberLordView();CyberLordFeed.Read(CyberLordFixture.Pilot(47,Vector3.Zero,0),bv);
+            Check(NativeCyberLordSounds.State(bv,NativeCyberLordSounds.BoltShot,o,out _)>0&&o[0].Key=="magic.fire.shot","today's Bit Bolt is thrown with a fire whoosh");
+        }
+        yield return $"Cyber Lord Kit v2 ranged HUD, icons and sounds: {count-c0} checks (five line icons; the 1-4 cards' CHARGE, ACTIVE, CALL, STEER, cooldowns, the shared ultimate clock and low mana; {CyberKit2RangedSounds.Slots} state cues on {CyberKit2RangedSounds.Keys.Length} existing keys, {cues} heard once each; a cut cast silent)";
+
+        // ------------------------------------------------------------------------------------------------------------------
+        // 5. No allocation per frame
+        // ------------------------------------------------------------------------------------------------------------------
+        c0=count;
+        {
+            var p=new CyberKit2RangedPreview();var pilot=new Pilot(50);var fx=new NativeCyberLordFx();var sc=new Scene{Shots=p};sc.List.Add(pilot.A);for(int i=0;i<6;i++)sc.List.Add(new Actor{Id=Ids[i],SourceSpec="sword",Hp=100,Grounded=true,Position=new V3(Points[i].X,0,Points[i].Z)});
+            var nul=new Sink();var view=new CyberLordView();var o=new NativeKitSound[NativeCyberLordSounds.Max];var fpM=new CyberLordMotion();var fpPose=new CapturedRig.Pose();int beat=0;float loop=0;var mode=Ranged(50);
+            void Frame(float t)
+            {
+                float lt=t-loop;if(lt>=End){loop=t;lt=0;beat=0;p.Clear();}
+                CyberLordFeed.RangedSource=mode;Script(p,50,.5f+lt,ref beat);CyberLordFeed.Kit2RangedSource=p;float at=.5f+lt;pilot.Step(at);fpM.FirstPerson(fpPose,pilot.A,at);
+                fx.Draw(nul,sc,at,1,false);fx.Draw(nul,sc,at,.3f,true);CyberLordFeed.Read(pilot.A,view);
+                for(int s=0;s<CyberKit2Ranged.Slots;s++)CyberKit2RangedHud.Of(view,s,at,60);
+                for(int s=0;s<CyberKit2RangedSounds.Slots;s++)CyberKit2RangedSounds.State(view,s,o,out _);
+            }
+            for(float t=0;t<End*1.1f;t+=Dt)Frame(t);
+            long before=GC.GetAllocatedBytesForCurrentThread();for(int f=0;f<400;f++)Frame(End*1.1f+f*Dt);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
+            Check(bytes==0,"400 frames of the v2 ranged set (pose, first person, effects, HUD, sounds) allocate "+bytes+" bytes");
+        }
+        yield return $"Cyber Lord Kit v2 ranged allocation: 0 bytes over 400 frames; {count} checks in all";
+    }
+    // ------------------------------------------------------------------------------------------------------------------
+    // 2b. The energy-holding stance and the chained throws (owner 2026-10-15: "For ranged, lets change it to something similar
+    //     to their sprint animation (arms back, curved forward a bit more like their holding energy in their hands) This will
+    //     also need to change ranged basic attack animation")
+    // ------------------------------------------------------------------------------------------------------------------
+    // A Plasma Byte at `at` on the host's clock at attack rate `rate` (Overclock: 1 + OverclockRate): its windup and window
+    // scaled as NativeCyberKit2Rules.Begin scales them.
+    private static void Throw(CyberKit2RangedPreview p,int id,float at,float rate=1)
+    {
+        float wu=CyberKit2Spec.PlasmaWindup/rate,len=CyberKit2Spec.PlasmaInterval/rate;p.Plasma(id,at-(CyberKit2Spec.PlasmaWindup-wu),From,Ahead);
+        var r=p.Of(id);r.At[0]=at;r.Release[0]=at+wu;r.Until[0]=at+len;
+    }
+    private static Vector3 Unity(Pilot p,int bone){var w=p.World(bone);return new Vector3(-w.X,w.Y,w.Z);}
+    // The posed pilot's hands as the effects' scene sees them (Unity world, the rig's x mirrored).
+    private sealed class Posed:ICyberFxScene,ICyberShots
+    {
+        public Pilot P;public ICyberShots Shots;public readonly List<Actor> List=new List<Actor>();
+        public IReadOnlyList<Actor> Actors=>List;public Vector3 Feet(Actor a)=>new Vector3(a.Position.x,a.Position.y,a.Position.z);
+        public bool Chest(Actor a,out Vector3 chest){chest=Feet(a)+new Vector3(0,1.15f,0);return true;}
+        public bool Fist(Actor a,bool left,out Vector3 fist){fist=Unity(P,left?CapturedRig.LHand:CapturedRig.RHand);return true;}
+        public int Viewer=>0;public int Local=>0;public bool ViewFist(bool left,out Vector3 fist){fist=default;return false;}
+        public Vector3 Eye=>new Vector3(3,1.6f,-2);public float Floor(Vector3 at)=>0;
+        public int CyberShots=>Shots.CyberShots;public CyberShot CyberShotAt(int i)=>Shots.CyberShotAt(i);public int CyberImpacts=>Shots.CyberImpacts;public CyberImpact CyberImpactAt(int i)=>Shots.CyberImpactAt(i);
+    }
+    private sealed class Glows:ICyberFxSink
+    {
+        public readonly List<Vector3> At=new List<Vector3>();
+        public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){At.Add(at);}
+        public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){}
+        public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){}
+        public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){}
+        public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){}
+        public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){}
+        public void Voxel(bool view,WeaponShape shape,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){}
+    }
+    private static IEnumerable<string> StanceAndChains()
+    {
+        int c0=count;float breathRange=0,breathStep=0;
+        {
+            // The stance on a live v2 record: the energy held back at the sides (no hand near the head, the hands behind their
+            // shoulders and out past them, the elbows further back so the forearms curve forward, the chest squared), breathing.
+            var h=new Pilot(60);CyberLordFeed.RangedSource=Ranged(60);var p=new CyberKit2RangedPreview();p.For(60);CyberLordFeed.Kit2RangedSource=p;float lo=99,hi=-99,last=float.NaN;bool shaped=false;
+            for(float t=.5f;t<5.5f;t+=Dt)
+            {
+                h.Step(t);if(t<1.5f)continue;
+                if(!shaped){shaped=true;var why=CyberLordRangedChecks.Stance(h.Pose);Check(h.State=="cyber-stance"||h.State=="cyber-ranged-aim"||h.State=="cyber-idle",h.State);Check(why.Length==0,"the v2 stance holds the energy back at the sides ("+why+")");}
+                // (Against the shoulder: the melee idle's own sway and glitches still move the body under the arms.)
+                float y=h.Pose.WorldPosition[CapturedRig.RHand].Y-h.Pose.WorldPosition[CapturedRig.RArm].Y;lo=Math.Min(lo,y);hi=Math.Max(hi,y);if(!float.IsNaN(last))breathStep=Math.Max(breathStep,Math.Abs(y-last));last=y;
+            }
+            breathRange=hi-lo;Check(breathRange>.008f&&breathRange<.04f&&breathStep<.002f,"a slow breath: the held energy rises and falls "+(breathRange*100).ToString("0.0")+" cm, at most "+(breathStep*1000).ToString("0.0")+" mm a frame");
+        }
+        yield return $"Cyber Lord Kit v2 ranged stance: {count-c0} checks (both hands low behind their shoulders and out past them, the forearms curving forward, none near the head, the chest squared; a slow breath of {(breathRange*100):0.0} cm)";
+
+        // Chained throws: at the spec's rate back to back, at a slower and an uneven interval, across the chain's reset, under
+        // Overclock (the windup and the window / 1.6) at 60 and 144 Hz and on a random clock. Each is posed beside a twin with
+        // no throws on the same clock, sampled exactly on every window's start, release and end. The hands start and end every
+        // window on the stance (the layer's hand targets, before the body's drive carries them, against the twin's); the body
+        // (the chest's point and the shoulders' turn) never jumps; back to back (the spec's rate and Overclock), each
+        // follow-through flows into the next throw: the shoulders still turned at the hand-over, turning one way only from the
+        // last throw's follow-through to the next one's release (no swing back to the stance and out again).
+        c0=count;float worstSpeed=0,worstSpike=0,worstEdge=0,slowest=99,bodySpike=0,turnSpike=0,turnSpeed=0,leastCarry=99,worstReverse=0;string worstWhere="",spikeWhere="",bodyWhere="",reverseWhere="",turnWhere="";
+        var sL=new Vector3(CyberRangedPose.ShoulderHalf,.3f,0);var sR=new Vector3(-CyberRangedPose.ShoulderHalf,.3f,0);var chestAt=new Vector3(0,.12f,0);
+        var cases=new[]{("spec .3 s",1f,.3f,60f,false),("slower .41 s",1f,.41f,60f,false),("across the reset",1f,.3f+CyberKit2Spec.ComboReset+.07f,60f,false),
+            ("Overclock",1+CyberKit2Spec.OverclockRate,CyberKit2Spec.PlasmaInterval/(1+CyberKit2Spec.OverclockRate),60f,false),("Overclock at 144 Hz",1+CyberKit2Spec.OverclockRate,CyberKit2Spec.PlasmaInterval/(1+CyberKit2Spec.OverclockRate),144f,false),
+            ("Overclock on a random clock",1+CyberKit2Spec.OverclockRate,CyberKit2Spec.PlasmaInterval/(1+CyberKit2Spec.OverclockRate),60f,true)};
+        foreach(var (name,rate,gap,hz,random) in cases)
+        {
+            int id=61;var h=new Pilot(id);var twin=new Pilot(id);var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();var none=new CyberKit2RangedPreview();p.For(id);none.For(id);
+            const int N=8;var at=new float[N];for(int i=0;i<N;i++)at[i]=1.5f+i*gap;float wu=CyberKit2Spec.PlasmaWindup/rate,len=CyberKit2Spec.PlasmaInterval/rate;
+            var times=new List<float>();var grid=new HashSet<float>();var rng=new Random(17);for(float t=.5f;t<at[N-1]+len+.5f;t+=random?(float)(1/240.0+rng.NextDouble()*(1/30.0-1/240.0)):1/hz){times.Add(t);grid.Add(t);}
+            foreach(float a in at){times.Add(a);times.Add(a+wu);times.Add(a+wu-.002f);times.Add(a+wu+.002f);times.Add(a+len);}times.Sort();
+            int next=0;var last=new Vector3[2];Vector3[] lastGrid=null;float s1=-1,s2=-1,lt=-1;var probe=new Dictionary<float,Vector3>();
+            var vh=new CyberLordView();var vt=new CyberLordView();float b1=-1,b2=-1,y1=-1,y2=-1,lastAt=0;Vector3? lastChest=null;float lastTurn=0;
+            bool backToBack=Math.Abs(gap-len)<1e-4f;var turns=new List<(float t,float turn)>();
+            foreach(float t in times)
+            {
+                if(t<=lt)continue;float dt=lt<0?Dt:t-lt;
+                while(next<N&&t>=at[next]-1e-6f){Throw(p,id,at[next],rate);next++;}
+                CyberLordFeed.Kit2RangedSource=p;h.Step(t,dt);CyberLordFeed.Read(h.A,vh);CyberLordFeed.Kit2RangedSource=none;twin.Step(t,dt);CyberLordFeed.Read(twin.A,vt);
+                var hands=new[]{h.InChest(CapturedRig.RHand),h.InChest(CapturedRig.LHand)};
+                // The body: the chest's point and the shoulders' turn against the twin's.
+                var chest=h.World(CapturedRig.Chest);float turn=Turn(h,CapturedRig.LArm,CapturedRig.RArm)-Turn(twin,CapturedRig.LArm,CapturedRig.RArm);
+                if(!random&&grid.Contains(t))turns.Add((t,turn));
+                bool sampled=random||grid.Contains(t);
+                if(lastChest.HasValue&&sampled){turnSpeed=Math.Max(turnSpeed,Math.Abs(turn-lastTurn)/(t-lastAt));if(!random){float bs=Vector3.Distance(chest,lastChest.Value),ys=Math.Abs(turn-lastTurn);
+                    if(b1>=0&&b2>=0&&b1-Math.Max(b2,bs)>bodySpike){bodySpike=b1-Math.Max(b2,bs);bodyWhere=name+" before "+t.ToString("0.000");}if(y1>=0&&y2>=0&&y1-Math.Max(y2,ys)>turnSpike){turnSpike=y1-Math.Max(y2,ys);turnWhere=name+" before "+t.ToString("0.000");}b2=b1;b1=bs;y2=y1;y1=ys;}}
+                if(sampled){lastChest=chest;lastTurn=turn;lastAt=t;}
+                // The hands' speed on every step; on a fixed clock no frame's step stands out over both its neighbours' (frame
+                // to frame, the exact samples between them left out).
+                if(lt>=0){float v=MaxStep(hands,last)/dt;if(v>worstSpeed){worstSpeed=v;worstWhere=name+" at "+t.ToString("0.000");}}
+                if(!random&&grid.Contains(t)){if(lastGrid!=null){float hs=MaxStep(hands,lastGrid);if(s1>=0&&s2>=0&&s1-Math.Max(s2,hs)>worstSpike){worstSpike=s1-Math.Max(s2,hs);spikeWhere=name+" before "+t.ToString("0.000");}s2=s1;s1=hs;}lastGrid=hands;}
+                last=hands;
+                for(int i=0;i<N;i++)
+                {
+                    // Every window starts and ends with the hands on the stance (the layer's targets against the twin's).
+                    if(Math.Abs(t-at[i])<1e-6f||Math.Abs(t-(at[i]+len))<1e-6f)
+                    {
+                        var fh=CyberRangedPose.Of(vh,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,chestAt,Quaternion.Identity);
+                        var ft=CyberRangedPose.Of(vt,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,chestAt,Quaternion.Identity);
+                        worstEdge=Math.Max(worstEdge,Math.Max(Vector3.Distance(fh.Right,ft.Right),Vector3.Distance(fh.Left,ft.Left)));
+                    }
+                    int hand=CyberKit2Spec.PlasmaHand(p.Of(id).PlasmaShot);
+                    if(Math.Abs(t-(at[i]+wu-.002f))<1e-6f||Math.Abs(t-(at[i]+wu+.002f))<1e-6f)probe[t]=hand==2?(h.World(CapturedRig.RHand)+h.World(CapturedRig.LHand))*.5f:h.World(hand==1?CapturedRig.LHand:CapturedRig.RHand);
+                    if(Math.Abs(t-(at[i]+wu))<1e-6f)
+                    {
+                        // On the replicated release the throwing hand (both for an Overflow) is out ahead of its shoulder.
+                        bool both=hand==2;for(int k=0;k<2;k++){bool l=k==1;if(!both&&(hand==1)!=l)continue;var w=h.Pose.WorldPosition;float ahead=w[l?CapturedRig.LHand:CapturedRig.RHand].Z-w[l?CapturedRig.LArm:CapturedRig.RArm].Z;Check(ahead>.1f,name+": throw "+i+" releases ahead of the shoulder ("+ahead.ToString("0.00")+")");}
+                    }
+                }
+                lt=t;
+            }
+            // Through the release the throwing hand drives forward fast.
+            for(int i=0;i<N;i++){float a=at[i]+wu;if(probe.TryGetValue(a-.002f,out var b)&&probe.TryGetValue(a+.002f,out var f)){float v=(f.Z-b.Z)/.004f;slowest=Math.Min(slowest,v);Check(v>2,name+": throw "+i+" drives forward through its release ("+v.ToString("0.0")+" m/s)");}}
+            // Back to back, between two single-hand throws (the right then the left, or the left then the right): from the last
+            // throw's follow-through (its peak) to the next one's release the shoulders turn one way only, and they are still
+            // turned at the hand-over (the right hand's follow-through, the right shoulder forward, is the left's coil).
+            if(backToBack)for(int i=1;i<N;i++)
+            {
+                int ha=CyberKit2Spec.PlasmaHand(i-1),hb=CyberKit2Spec.PlasmaHand(i);if(ha==2||hb==2||ha==hb)continue;float sign=ha==0?-1:1;
+                float from=at[i-1]+2*wu+CyberRangedPose.FollowHold*(len-2*wu),to=at[i]+wu,prev=float.NaN,carry=float.NaN;
+                foreach(var (tt,tv) in turns){if(tt<from-1e-6f||tt>to+1e-6f)continue;if(float.IsNaN(carry)&&tt>=at[i]-1e-6f)carry=tv*sign;
+                    if(!float.IsNaN(prev)){float back=(tv-prev)*sign;if(back>worstReverse){worstReverse=back;reverseWhere=name+" throw "+i+" at "+tt.ToString("0.000");}}prev=tv;}
+                if(!float.IsNaN(carry))leastCarry=Math.Min(leastCarry,carry);
+            }
+        }
+        Check(worstEdge<1e-3f,"every throw window starts and ends with the hands on the stance ("+(worstEdge*1000).ToString("0.00")+" mm from the twin's)");
+        Check(worstSpeed<24&&worstSpike<.05f,"chained throws never jump (the hands' top speed "+worstSpeed.ToString("0.0")+" m/s, "+worstWhere+"; no frame's step over its neighbours' by "+(worstSpike*100).ToString("0.0")+" cm, "+spikeWhere+")");
+        Check(bodySpike<.02f&&turnSpike<.06f&&turnSpeed<16,"the body never jumps (no chest step over its neighbours' by "+(bodySpike*100).ToString("0.0")+" cm, "+bodyWhere+"; no turn step by "+turnSpike.ToString("0.000")+" rad, "+turnWhere+"; the shoulders at most "+turnSpeed.ToString("0.0")+" rad/s)");
+        Check(leastCarry>.15f&&worstReverse<.005f,"back to back, each follow-through flows into the next throw (the shoulders still turned "+leastCarry.ToString("0.00")+" rad at the hand-over; turning back at most "+worstReverse.ToString("0.000")+" rad, "+reverseWhere+")");
+        yield return $"Cyber Lord Kit v2 ranged throw chains: {count-c0} checks ({cases.Length} chains of 8: spec, slower, across the reset, Overclock at 60 and 144 Hz and on a random clock; every window starts and ends with the hands on the stance within {(worstEdge*1000):0.00} mm; each releases ahead of its shoulder driving forward at {slowest:0.0} m/s or more; the hands at most {worstSpeed:0.0} m/s with no step over its neighbours' by {(worstSpike*100):0.0} cm; the body no step over its neighbours' by {(bodySpike*100):0.0} cm, the shoulders at most {turnSpeed:0.0} rad/s; back to back the shoulders still turned {leastCarry:0.00} rad at each hand-over, never turning back)";
+
+        c0=count;float fireMiss=0,cutStep=0,handStep=0,spike=0;string stepWhere="";
+        {
+            // The fireball's ease from the drawn hand starts at the hand that throws it (right, left, both for the Overflow).
+            var h=new Pilot(62);CyberLordFeed.RangedSource=Ranged(62);var p=new CyberKit2RangedPreview();CyberLordFeed.Kit2RangedSource=p;var sc=new Posed{P=h,Shots=p};sc.List.Add(h.A);var fx=new NativeCyberLordFx();
+            for(float t=.5f;t<1.4f;t+=Dt)h.Step(t);
+            for(int shot=0;shot<3;shot++)
+            {
+                float at=1.5f+shot*.3f,rel=at+CyberKit2Spec.PlasmaWindup;p.Plasma(62,at,new Vector3(0,1.165f,.2f),Ahead);int hand=CyberKit2Spec.PlasmaHand(p.Of(62).PlasmaShot);
+                for(float t=at-.25f;t<rel-1e-4f;t+=Dt)h.Step(t);h.Step(rel,rel-(rel-Dt));p.Advance(rel);var g=new Glows();fx.Draw(g,sc,rel,1,false);
+                var fist=hand==2?(Unity(h,CapturedRig.LHand)+Unity(h,CapturedRig.RHand))*.5f:Unity(h,hand==1?CapturedRig.LHand:CapturedRig.RHand);var want=fist+Ahead*.1f;
+                float best=99;foreach(var x in g.At)best=Math.Min(best,Vector3.Distance(x,want));fireMiss=Math.Max(fireMiss,best);
+                Check(best<.002f,"throw "+shot+" ("+(hand==2?"both":hand==1?"left":"right")+"): the fireball leaves the throwing hand ("+(best*100).ToString("0.0")+" cm)");
+            }
+        }
+        {
+            // A throw cut in its windup (a block or a roll) eases back to the stance, never snaps.
+            var h=new Pilot(63);CyberLordFeed.RangedSource=Ranged(63);var p=new CyberKit2RangedPreview();p.For(63);CyberLordFeed.Kit2RangedSource=p;var last=new Vector3[2];bool had=false,cut=false;
+            for(float t=.5f;t<2.4f;t+=Dt)
+            {
+                if(Math.Abs(t-1.5f)<Dt*.5f)p.Plasma(63,t,From,Ahead);if(!cut&&t>=1.53f){p.Interrupt(63,t);cut=true;}h.Step(t);
+                var hands=new[]{h.InChest(CapturedRig.RHand),h.InChest(CapturedRig.LHand)};if(had&&t>1.5f)cutStep=Math.Max(cutStep,MaxStep(hands,last));last=hands;had=true;
+            }
+            Check(cutStep<.12f&&CyberLordRangedChecks.Stance(h.Pose).Length==0,"a cut throw settles back to the stance (the largest step "+(cutStep*100).ToString("0.0")+" cm)");
+        }
+        {
+            // Throws chained into and out of every v2 cast, each starting the moment the last ends: the casts swing in from the
+            // stance and hand over to the next throw or cast without dropping their settle.
+            var h=new Pilot(64);CyberLordFeed.RangedSource=Ranged(64);var p=new CyberKit2RangedPreview();p.For(64);CyberLordFeed.Kit2RangedSource=p;
+            var beats=new List<(float at,int what)>();float t0=1.5f;
+            foreach(int cast in new[]{CyberKit2Ranged.Chain,CyberKit2Ranged.Singularity,CyberKit2Ranged.Storm,CyberKit2Ranged.Orbital})
+            {beats.Add((t0,0));t0+=CyberKit2Spec.PlasmaInterval;beats.Add((t0,cast));t0+=CyberKit2Spec.Seconds[CyberKit2Ranged.Spec(cast)];}
+            beats.Add((t0,0));float end=t0+1;int b=0;var last=new Vector3[2];float s1=-1,s2=-1;bool had=false;var states=new HashSet<string>();
+            for(float t=.5f;t<end;t+=Dt)
+            {
+                while(b<beats.Count&&t>=beats[b].at-1e-6f)
+                {
+                    var (at,what)=beats[b++];
+                    switch(what){case 0:p.Plasma(64,at,From,Ahead);break;case CyberKit2Ranged.Chain:p.Chain(64,at,From,Ids,Points,6);break;case CyberKit2Ranged.Singularity:p.Singularity(64,at,From,new Vector3(0,0,11));break;case CyberKit2Ranged.Storm:p.Storm(64,at,new Vector3(0,0,14),7);break;default:p.Orbital(64,at,new Vector3(0,0,12));break;}
+                }
+                p.Advance(t);h.Step(t);states.Add(h.State);var hands=new[]{h.InChest(CapturedRig.RHand),h.InChest(CapturedRig.LHand)};
+                if(had){float hs=MaxStep(hands,last);if(hs>handStep){handStep=hs;stepWhere=t.ToString("0.000")+" "+h.State;}if(s1>=0&&s2>=0&&s1-Math.Max(s2,hs)>spike)spike=s1-Math.Max(s2,hs);s2=s1;s1=hs;}last=hands;had=true;
+            }
+            foreach(var want in new[]{"cyber-plasma-byte","cyber-daisy-chain","cyber-singularity","cyber-packet-storm","cyber-orbital-call","cyber-orbital-steer"})Check(states.Contains(want),"the chained script shows "+want);
+            Check(handStep<.3f&&spike<.07f,"throws chained into and out of every cast never jump (the largest step "+(handStep*100).ToString("0.0")+" cm at "+stepWhere+", spike "+(spike*100).ToString("0.0")+" cm)");
+        }
+        yield return $"Cyber Lord Kit v2 ranged hands and hand-overs: {count-c0} checks (each fireball leaves the throwing hand within {(fireMiss*100):0.0} cm; a cut throw settles back, at most {(cutStep*100):0.0} cm a frame; throws chained into and out of all four casts, steps at most {(handStep*100):0.0} cm, spikes {(spike*100):0.0} cm)";
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // 2c. The body drives each throw (owner 2026-10-15: "With ranged, simulate more body movement in our "casts""): three throws
+    //     .6 s apart (still one chain: the right hand, the left, the Overflow), each posed beside a twin with no throws on the
+    //     same 240 Hz clock, standing, then running; first person; the view's memory of the last throw.
+    // ------------------------------------------------------------------------------------------------------------------
+    private static float Pitch(Pilot p,int bone){var up=Vector3.Transform(Vector3.UnitY,p.Pose.WorldRotation[bone]);return (float)Math.Asin(Math.Clamp(up.Z,-1,1));}
+    private static float Heading(Pilot p,int bone){var f=Vector3.Transform(Vector3.UnitZ,p.Pose.WorldRotation[bone]);return (float)Math.Atan2(f.X,f.Z);}
+    private static IEnumerable<string> BodyDrive()
+    {
+        int c0=count;const float Hz=1/240f;float wu=CyberKit2Spec.PlasmaWindup,len=CyberKit2Spec.PlasmaInterval,peak=2*wu+CyberRangedPose.FollowHold*(len-2*wu),end=len+CyberRangedPose.Tail;
+        var at=new[]{1.5f,2.1f,2.7f};string[] names={"right","left","Overflow"};
+        float leastTurn=99,leastHips=99,leastLean=99,leastPush=99,leastDrop=99,worstFoot=0,worstHead=0,worstBack=0,farthest=0,leastOff=99,runTurn=99,runBody=0,runFeet=0,fpSway=99,turnOverflow=0;
+        foreach(bool running in new[]{false,true})
+        {
+            int id=running?71:70;var h=new Pilot(id);var twin=new Pilot(id);var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();var none=new CyberKit2RangedPreview();p.For(id);none.For(id);
+            int next=0;float speed=running?Rules.Speed:0;var hipsCross=new float[3];var turnCross=new float[3];for(int i=0;i<3;i++)hipsCross[i]=turnCross[i]=-1;float lastTurn=0,lastHips=0;
+            for(float t=.5f;t<3.6f;t+=Hz)
+            {
+                foreach(var x in new[]{h,twin}){x.A.Velocity=new V3(0,0,speed);x.A.Position=new V3(0,0,speed*(t-.5f));}
+                while(next<3&&t>=at[next]-1e-6f){p.Plasma(id,at[next],From+new Vector3(0,0,speed*(at[next]-.5f)),Ahead);next++;}
+                CyberLordFeed.Kit2RangedSource=p;h.Step(t,Hz);CyberLordFeed.Kit2RangedSource=none;twin.Step(t,Hz);if(t<1.3f)continue;
+                float turn=Turn(h,CapturedRig.LArm,CapturedRig.RArm)-Turn(twin,CapturedRig.LArm,CapturedRig.RArm),hips=Turn(h,CapturedRig.LHip,CapturedRig.RHip)-Turn(twin,CapturedRig.LHip,CapturedRig.RHip);
+                // The feet where the twin's stand (planted, the legs reaching them), the head on the twin's heading (the aim).
+                float feet=Math.Max(Vector3.Distance(h.World(CapturedRig.LFoot),twin.World(CapturedRig.LFoot)),Vector3.Distance(h.World(CapturedRig.RFoot),twin.World(CapturedRig.RFoot)));
+                if(running)runFeet=Math.Max(runFeet,feet);else worstFoot=Math.Max(worstFoot,feet);
+                worstHead=Math.Max(worstHead,Math.Max(Math.Abs(Heading(h,CapturedRig.Head)-Heading(twin,CapturedRig.Head)),Math.Abs(Pitch(h,CapturedRig.Head)-Pitch(twin,CapturedRig.Head))));
+                for(int i=0;i<3;i++)
+                {
+                    float age=t-at[i];int hand=CyberKit2Spec.PlasmaHand(i);float sign=hand==0?1:hand==1?-1:0; // + the right shoulder forward
+                    if(age<-1e-6f||age>end+.05f)continue;
+                    // From the coil (the throwing shoulder and hip turned back) into the follow-through, the hips pass square before
+                    // the shoulders do.
+                    if(hand!=2&&!running){if(hipsCross[i]<0&&age>0&&-hips*sign>=0&&-lastHips*sign<0)hipsCross[i]=age;if(turnCross[i]<0&&age>0&&-turn*sign>=0&&-lastTurn*sign<0)turnCross[i]=age;}
+                    if(Math.Abs(age-peak)<Hz*.5f)
+                    {
+                        var bh=h.Pose.WorldPosition[CapturedRig.Body];var bt=twin.Pose.WorldPosition[CapturedRig.Body];
+                        if(running){runTurn=Math.Min(runTurn,hand==2?99:-turn*sign);runBody=Math.Max(runBody,Vector3.Distance(bh,bt));continue;}
+                        if(hand==2)turnOverflow=Math.Max(turnOverflow,Math.Abs(turn));else{leastTurn=Math.Min(leastTurn,-turn*sign);leastHips=Math.Min(leastHips,-hips*sign);}
+                        leastLean=Math.Min(leastLean,(Pitch(h,CapturedRig.Chest)-Pitch(twin,CapturedRig.Chest))*(hand==2?.6f:1));
+                        // The weight onto the front foot (half way between the feet's axis and ahead) and down.
+                        var la=twin.World(CapturedRig.LFoot);var ra=twin.World(CapturedRig.RFoot);var ax=la.Z>=ra.Z?la-ra:ra-la;ax.Y=0;var dir=Vector3.Normalize(Vector3.Normalize(ax)+Vector3.UnitZ);
+                        leastPush=Math.Min(leastPush,Vector3.Dot(bh-bt,dir));leastDrop=Math.Min(leastDrop,bt.Y-bh.Y);
+                        // The other hand pulled back against the throw.
+                        if(hand!=2){int off=hand==0?CapturedRig.LHand:CapturedRig.RHand;leastOff=Math.Min(leastOff,twin.World(off).Z-h.World(off).Z);}
+                    }
+                    if(!running&&Math.Abs(age-wu)<Hz*.5f)
+                    {
+                        // On the release the throwing hand is near where the host spawns the fireball (NativeCyberKit2Runtime:
+                        // .3 m over the body's centre, .18 m to the throwing side). The stance throws from low, under it; the effects
+                        // ease the ball from the drawn hand onto the host's path over NativeCyberLordFx.Converge (pinned above).
+                        var spawn=new Vector3(hand==0?-.18f:hand==1?.18f:0,.865f+.3f,0);var fist=hand==2?(h.World(CapturedRig.RHand)+h.World(CapturedRig.LHand))*.5f:h.World(hand==1?CapturedRig.LHand:CapturedRig.RHand);
+                        farthest=Math.Max(farthest,Vector3.Distance(fist,spawn));
+                    }
+                    // Back on the stance once the window and its recovery are over.
+                    if(!running&&Math.Abs(age-(end+.02f))<Hz*.5f){float d=0;for(int b=0;b<MeleeRig.N;b++)d=Math.Max(d,Vector3.Distance(h.Pose.WorldPosition[b],twin.Pose.WorldPosition[b]));worstBack=Math.Max(worstBack,d);}
+                }
+                lastTurn=turn;lastHips=hips;
+            }
+            if(!running)for(int i=0;i<2;i++)Check(hipsCross[i]>0&&turnCross[i]>hipsCross[i],"the "+names[i]+" throw: the hips pass square before the shoulders ("+hipsCross[i].ToString("0.000")+" s, "+turnCross[i].ToString("0.000")+" s)");
+        }
+        Check(leastTurn>.35f&&leastHips>.18f,"each single-hand throw turns the throwing shoulder through ("+leastTurn.ToString("0.00")+" rad at the follow-through) on the hips ("+leastHips.ToString("0.00")+" rad)");
+        // (The chest's lean as its up axis tips forward; the turn under it, on the stance's bowed spine, takes some of it.)
+        Check(turnOverflow<.08f&&leastLean>.06f,"the Overflow pushes square from the chest ("+turnOverflow.ToString("0.00")+" rad of turn); every throw leans the chest in (at least "+leastLean.ToString("0.00")+" rad, the Overflow's x .6)");
+        Check(leastPush>.06f&&leastDrop>.03f,"standing, the weight drives onto the front foot ("+(leastPush*100).ToString("0.0")+" cm) and drops ("+(leastDrop*100).ToString("0.0")+" cm)");
+        Check(worstFoot<.001f,"the feet stay planted where the twin's stand, the legs reaching them ("+(worstFoot*1000).ToString("0.00")+" mm)");
+        Check(worstHead<.03f,"the head stays on the aim, level ("+worstHead.ToString("0.000")+" rad off the twin's heading and pitch)");
+        Check(leastOff>.05f,"the other hand pulls back against the throw ("+(leastOff*100).ToString("0.0")+" cm behind the twin's)");
+        Check(worstBack<.001f,"back on the stance once the window and its recovery ("+CyberRangedPose.Tail+" s) are over ("+(worstBack*1000).ToString("0.00")+" mm from the twin)");
+        Check(farthest<.6f,"on the release the throwing hand is within "+(farthest*100).ToString("0")+" cm of the host's spawn point (the effects' ease covers it)");
+        Check(runTurn>.3f&&runBody<.001f&&runFeet<.002f,"running, the shoulders still turn through ("+runTurn.ToString("0.00")+" rad) while the weight and the legs stay the run's (the body "+(runBody*1000).ToString("0.00")+" mm, the feet "+(runFeet*1000).ToString("0.00")+" mm from the running twin's)");
+        {
+            // First person: the hands sway with the body (the other hand across with the turn); the camera is never touched.
+            int id=72;var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();var none=new CyberKit2RangedPreview();p.For(id);none.For(id);
+            var a=CyberLordFixture.Pilot(id,Vector3.Zero,0);var mh=new CyberLordMotion();var mt=new CyberLordMotion();var ph=new CapturedRig.Pose();var pt=new CapturedRig.Pose();bool thrown=false;
+            for(float t=.5f;t<1.5f+peak+Hz;t+=Hz)
+            {
+                if(!thrown&&t>=1.5f){p.Plasma(id,1.5f,From,Ahead);thrown=true;}
+                CyberLordFeed.Kit2RangedSource=p;mh.FirstPerson(ph,a,t);CyberLordFeed.Kit2RangedSource=none;mt.FirstPerson(pt,a,t);
+            }
+            ph.World();pt.World();fpSway=ph.WorldPosition[CapturedRig.LHand].X-pt.WorldPosition[CapturedRig.LHand].X;
+            Check(fpSway>.02f,"first person: the right hand's throw sways the other hand across with the body ("+(fpSway*100).ToString("0.0")+" cm)");
+        }
+        {
+            // The view's memory of the last throw: two hosts pose the same frames; a view that starts watching mid-chain poses the
+            // host's frames exactly from the next throw on; a record that runs back (a replay) forgets it.
+            int id=73;var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();p.For(id);CyberLordFeed.Kit2RangedSource=p;var a=CyberLordFixture.Pilot(id,Vector3.Zero,0);
+            var va=new CyberLordView();var vb=new CyberLordView();CyberLordView vc=null;var sL=new Vector3(CyberRangedPose.ShoulderHalf,.3f,0);var sR=new Vector3(-CyberRangedPose.ShoulderHalf,.3f,0);
+            float worst=0,worstLate=0;int next=0;var beats=new[]{1.5f,1.8f,2.1f,2.4f};
+            for(float t=1;t<3.2f;t+=Dt)
+            {
+                while(next<beats.Length&&t>=beats[next]-1e-6f){p.Plasma(id,beats[next],From,Ahead);next++;}
+                CyberLordFeed.Read(a,va);CyberLordFeed.Read(a,vb);if(vc==null&&t>=1.95f)vc=new CyberLordView();if(vc!=null)CyberLordFeed.Read(a,vc);
+                var fa=CyberRangedPose.Of(va,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);
+                var fb=CyberRangedPose.Of(vb,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);
+                float Diff(in CyberRangedPose.Frame x,in CyberRangedPose.Frame y)=>Math.Max(Math.Max(Math.Abs(x.ChestYaw-y.ChestYaw),Math.Abs(x.HipYaw-y.HipYaw)),Math.Max(Math.Abs(x.ChestPitch-y.ChestPitch),Math.Max(Vector3.Distance(x.Shift,y.Shift),Math.Max(Vector3.Distance(x.Right,y.Right),Vector3.Distance(x.Left,y.Left)))));
+                worst=Math.Max(worst,Diff(fa,fb));
+                if(vc!=null&&t>=beats[2]){var fc=CyberRangedPose.Of(vc,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);worstLate=Math.Max(worstLate,Diff(fa,fc));}
+            }
+            Check(worst==0&&worstLate==0,"two views pose the same frames; one watching from mid-chain matches from the next throw on ("+worst+", "+worstLate+")");
+            Check(va.Kit2R.PrevAt>-90&&Math.Abs(va.Kit2R.PrevAt-beats[2])<1e-5f,"the view remembers the throw before the newest");
+            var replay=new CyberKit2RangedPreview();replay.Plasma(id,1.5f,From,Ahead);CyberLordFeed.Kit2RangedSource=replay;CyberLordFeed.Read(a,va);
+            Check(!(va.Kit2R.PrevAt>-90),"a record that runs back forgets it");
+            var fr=CyberRangedPose.Of(va,1.55f,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);Check(float.IsFinite(fr.ChestYaw)&&float.IsFinite(fr.Right.X),"and poses finite frames");
+            var other=CyberLordFixture.Pilot(id+1,Vector3.Zero,0);var pp=new CyberKit2RangedPreview();pp.Plasma(id+1,1.2f,From,Ahead);pp.Plasma(id+1,1.5f,From,Ahead);CyberLordFeed.Kit2RangedSource=pp;CyberLordFeed.Read(other,va);
+            Check(!(va.Kit2R.PrevAt>-90),"a view handed another pilot forgets the last one's throws");
+        }
+        yield return $"Cyber Lord Kit v2 ranged body drive: {count-c0} checks (right, left and Overflow throws against a twin: the shoulders through {leastTurn:0.00} rad on the hips {leastHips:0.00} rad (the hips square first), the Overflow square, the chest in {leastLean:0.00} rad; standing the weight {(leastPush*100):0.0} cm onto the front foot and {(leastDrop*100):0.0} cm down, the feet planted within {(worstFoot*1000):0.00} mm, the head on the aim within {worstHead:0.000} rad, the other hand {(leastOff*100):0.0} cm back, back on the stance within {(worstBack*1000):0.00} mm; the hand {(farthest*100):0} cm from the host's spawn on the release; running the shoulders {runTurn:0.00} rad with the run's body and legs; first person the hands sway {(fpSway*100):0.0} cm; the view's memory deterministic, caught up mid-chain, forgotten on a rewind or another pilot)";
+    }
+
+    // Records the largest sprite or glow near the first shot's position and its distance from the eye.
+    private sealed class SizeSink:ICyberFxSink
+    {
+        public float Largest,Distance;
+        public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){Largest=Math.Max(Largest,size);}
+        public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){}
+        public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){}
+        public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){if(at.Z>2){Largest=Math.Max(Largest,size);Distance=Math.Max(Distance,Math.Abs(45-at.Z));}}
+        public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){}
+        public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){}
+        public void Voxel(bool view,WeaponShape shape,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){}
+    }
+}

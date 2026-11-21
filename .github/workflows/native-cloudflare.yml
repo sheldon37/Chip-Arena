@@ -1,0 +1,33 @@
+name: Native Cloudflare internet check
+on:
+  push:
+    branches: ['codex/unity-cloudflare-*', 'codex/unity-cloud-current']
+    paths:
+      - 'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeCloudflareHost.cs'
+      - 'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeTunnel*.cs'
+      - 'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeRoomDirectory.cs'
+      - 'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeTransport.cs'
+      - 'unity/ChipArenaConversion/Assets/ChipArena/Core/NativeRelay.cs'
+      - 'unity/ChipArenaConversion/Assets/ChipArena/Editor/NativeTunnelBuild.cs'
+      - 'unity/ChipArenaConversion/Tests/CloudflareChecks.cs'
+      - '.github/workflows/native-cloudflare.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-cloudflare-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-internet:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: unity/ChipArenaConversion
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: '8.0.x'
+      - name: Shipping connector, public tunnel and two native guests
+        run: dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release -- --cloudflare-smoke

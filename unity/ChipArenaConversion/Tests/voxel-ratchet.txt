@@ -1,0 +1,196 @@
+# The voxel ratchet (Tests/VoxelRatchetChecks.cs; docs/VOXEL-STYLE.md; docs/VOXEL-RETIREMENT.md V0).
+# Per Core and Runtime file outside the voxel style: the counts of the plan's five token families,
+#   gate    ClassicBodies VisualBodiesOn
+#   measure CapturedRig.Boxes WoundedPilot(
+#   read    rig.Bones[ viewRig.Bones[ introRig draftRig hordeQueueRig Rigs[ Player.Bones[
+#   author  new CapturedRig.Pose( new MeleeRig( .AddE( .WritePose( CapturedRig.Sample( .Rotation[/.Position[/.P[/.Q[CapturedRig.
+#   draw    WeaponShape.Cube QueueHeld( Queue("weapon- Queue("loose- Queue("hat- Queue("pilot Queue("horde- Queue("summon-
+# counted in the file's text as it stands (comments too). A count above its pin fails; a file not listed starts at zero.
+# Lower a pin on purpose when a package removes a dependency; raise one only with a "Voxel dependency" line in DEV_LOG.
+# Baseline: shared claude/sleepy-ritchie-g8ruhv at ac69455e (the plan's counts: ClassicBodies 25, VisualBodiesOn 18, rig.Bones[ 163,
+# WeaponShape.Cube 228 ...), then each package's pins moved on purpose, and the in-flight pins at the end.
+# `dotnet run --project Tests/CoreTests.csproj -c Release -- --voxel-ratchet-table` prints today's counts in this format.
+
+# The voxel style itself (docs/VOXEL-RETIREMENT.md 2.4): counted and reported, never failed; never deleted.
+style Core/CapturedRig.cs                                     # the voxel style's skeleton
+style Runtime/CapturedAnimation.cs                            # the voxel style's player
+style Core/NativeBodyModels.cs                                # the voxel bodies' sculpts
+style Core/NativeBodySkins.cs                                 # the voxel body skins
+style Runtime/NativeBodySkinModels.cs                         # the voxel body skins in the bank
+style Core/NativeHordeModels.cs                               # the voxel horde kinds
+style Core/NativeHordeGoreBody.cs                             # the voxel gore surface
+style Core/NativeBisect.cs                                    # the voxel bisect
+style Runtime/NativeBisectModels.cs                           # the voxel bisect in the bank
+style Core/NativeWoundCarve.cs                                # the voxel carve
+style Runtime/NativeWoundGeometry.cs                          # the voxel carve in the bank
+style Runtime/NativePortraits.cs                              # the voxel portraits
+style Core/NativeSceneryBuilder.cs                            # the box scenery builders
+style Core/NativeNewStageLooks.cs                             # the unused M1 stage kit
+style Core/NativeNewStageScenery.cs                           # the unused M1 stage kit's scenery
+style Core/CapturedClips.Generated.cs                         # the rig clips (generated)
+style Core/NativeKillBoxes.Generated.cs                       # the kill boxes (generated)
+style Core/NativeBroadcastEdges.Generated.cs                  # the broadcast edges (generated)
+style Core/NativePackAirAttacks.Generated.cs                  # a pack's rig tracks (generated)
+style Core/NativePackBow.Generated.cs                         # a pack's rig tracks (generated)
+style Core/NativePackClips.Generated.cs                       # a pack's rig tracks (generated)
+style Core/NativePackCyberLord.Generated.cs                   # a pack's rig tracks (generated)
+style Core/NativePackCyberLordRun.Generated.cs                # a pack's rig tracks (generated)
+style Core/NativePackIntros.Generated.cs                      # a pack's rig tracks (generated)
+style Core/NativePackJumps.Generated.cs                       # a pack's rig tracks (generated)
+style Core/NativePackLocomotion.Generated.cs                  # a pack's rig tracks (generated)
+style Core/NativePackRangedLocomotion.Generated.cs            # a pack's rig tracks (generated)
+style Core/NativePackSprintAttacks.Generated.cs               # a pack's rig tracks (generated)
+style Core/NativePackZombie.Generated.cs                      # a pack's rig tracks (generated)
+
+# path                                                   gate measure read author draw
+Core/CyberKit2MeleeFx.cs                                   0   0   0   0  10
+Core/CyberLordCombo.cs                                     0   0   0   4   0
+Core/CyberLordComboFx.cs                                   0   0   0   0   5
+Core/CyberLordIdle.cs                                      0   0   0   4   0
+Core/CyberLordMotion.cs                                    0   0   0   9   0
+Core/CyberLordRangedMotion.cs                              0   0   0   2   0
+Core/CyberLordRun.cs                                       0   0   0   1   0
+Core/GunMotion.cs                                          0   0   0   4   0
+Core/MagicPose.cs                                          0   0   0  35   0
+Core/MeleeCapture.cs                                       0   0   0   5   0
+Core/MeleeGait.cs                                          0   0   0  10   0
+Core/MeleeMotion.cs                                        0   0   0  56   0
+Core/NativeAirAttack.cs                                    0   0   0   2   0
+Core/NativeArrowGib.cs                                     0   4   0   0   0
+Core/NativeBladeIntros.cs                                  0   0   0   0   2
+Core/NativeBladeProfile.cs                                 0   0   0   0   2
+Core/NativeBodyChips.cs                                    0   0   0   0   6
+Core/NativeBombadierIntro.cs                               0   0   0   0  18
+Core/NativeBowEntrance.cs                                  0   0   0   1   0
+Core/NativeBowMotion.cs                                    0   0   0  16   0
+Core/NativeCampSurvivors.cs                                0   0   0   4   0   # Voxel dependency: the camp survivors (DEV preview) sample their pack clips (NativeIntroPack) into the 22-joint pose the model binding takes, as intros v2 do; V4 plays pack clips on the model directly
+Core/NativeChipSelect.cs                                   0   0   0   6   0
+Core/NativeCyberLordAirBoostFx.cs                          0   0   0   0   1
+Core/NativeCyberLordAura.cs                                0   0   0   0   1
+Core/NativeCyberLordFx.cs                                  0   0   0   0  20
+Core/NativeCyberLordIntro.cs                               0   0   0   3   2
+Core/NativeCyberLordKit2RangedFx.cs                        0   0   0   0   8
+Core/NativeCyberLordLook.cs                                0   3   0   0  23
+Core/NativeCyberLordPlasmaFx.cs                            0   0   0   0   4
+Core/NativeCyberLordRangedFx.cs                            0   0   0   0  15
+Core/NativeDevIntros.cs                                    0   0   0   0   1
+Core/NativeDraftStage.cs                                   0   1   0   8   0   # Voxel dependency: the chip install's stage pose (claude/chip-install-anim, shared 77e0a606) is authored on the 22-joint stage rig like the rest of the draft (plan M9); V4 moves the draft onto the model in Stage 2
+Core/NativeEntranceDirector.cs                             0   0   0   1   1
+Core/NativeEntrancePack.cs                                 0   4   0   8   0
+Core/NativeEntrancePose.cs                                 0   0   0  11   0
+Core/NativeEntranceProcedural.cs                           0   0   0   0  24
+Core/NativeEntranceStage.cs                                0   0   0   0  11
+Core/NativeFighterPose.cs                                  0   0   0  13   0
+Core/NativeFirstPersonPose.cs                              0   0   0   2   0
+Core/NativeGunKitMotion.cs                                 0   0   0   6   0
+Core/NativeHitReact.cs                                     0   0   0  25   0
+Core/NativeHordeHeavy.cs                                   0   0   0   6   0
+Core/NativeHordeLife.cs                                    0   0   0   6   0
+Core/NativeHordeLoco.cs                                    0   0   0   2   0
+Core/NativeHordeMotion.cs                                  0   0   0 105   0
+Core/NativeHordeReact.cs                                   0   0   0   2   0
+Core/NativeIntroMotion.cs                                  0   6   0   7   0
+Core/NativeIronworksMotion.cs                              0   0   0  11   0
+Core/NativeJumpMotion.cs                                   0   0   0  11   0
+Core/NativeLobbyPoses.cs                                   0   0   0   1   0
+Core/NativeMeleeSlice.cs                                   0   0   0   1   0
+Core/NativeMotionChecks.cs                                 0   0   0   3   0
+Core/NativePackReact.cs                                    0   0   0   5   0
+Core/NativePlungePose.cs                                   0   0   0   5   0
+Core/NativePoseTransition.cs                               0   0   0   3   0
+Core/NativePresentationChecks.cs                           0   0   0   2   0
+Core/NativeRangedLocomotion.cs                             0   0   0   5   0
+Core/NativeRooftopActors.cs                                0   0   0  16   0
+Core/NativeSheldonIntro.cs                                 0   0   0  20  11
+Core/NativeSirenDrift.cs                                   0   0   0   1   0
+Core/NativeSpecialChecks.cs                                0   0   0   4   0
+Core/NativeSprintMotion.cs                                 0   0   0   6   0
+Core/NativeStagger.cs                                      0   0   0   9   0
+Core/NativeStationMotion.cs                                0   0   0  16   0
+Core/NativeVentDeath.cs                                    0   0   0  20   0
+Core/NativeVisualChecks.cs                                 0   0   0   2   0
+Core/NativeVisualRig.cs                                    0   1   0   0   0
+Core/NativeWeaponDressing.cs                               0   0   0   0  12
+Core/NativeZombieClips.cs                                  0   0   0   4   0
+Core/NativeZombieModels.cs                                 0   1   0   0   0
+Core/NativeZombieMotion.cs                                 0   0   0   2   0
+Core/NativeZombiePosture.cs                                0   0   0   7   0
+Core/RangedAbilityPose.cs                                  0   0   0  11   0
+Core/RangedPose.cs                                         0   0   0  10   0
+Core/RangedRegressionTests.cs                              0   0   0   2   0
+Runtime/ArenaPresentation.cs                               0   1   2   0   0
+Runtime/ConversionGame.cs                                  1   0   0   0   0
+Runtime/GunPresentation.cs                                 0   0   2   0   0
+Runtime/NativeArrowGibPresentation.cs                      1   0   2   0   0
+Runtime/NativeBisectPresentation.cs                        0   1   0   0   0
+Runtime/NativeBladePresentation.cs                         0   0   4   0   2
+Runtime/NativeBlockFxPresentation.cs                       0   0   1   0   0
+Runtime/NativeBodyChipPresentation.cs                      0   0   4   0   0
+Runtime/NativeBodySkinPresentation.cs                      0   0   1   0   0
+Runtime/NativeBombPresentation.cs                          0   0   8   0  23
+Runtime/NativeBowPresentation.cs                           1   0   7   0   0
+Runtime/NativeCampSurvivorsDraw.cs                         0   0   0   1   0   # Voxel dependency: the survivors' pose scratch for the model binding (as Core/NativeCampSurvivors.cs)
+Runtime/NativeCinematicCamera.cs                           0   0   2   0   0
+Runtime/NativeCombatGlow.cs                                0   0   4   0   0
+Runtime/NativeCorpseDressPresentation.cs                   1   0   1   0   0
+Runtime/NativeCyberKit2MeleePresentation.cs                0   0   5   0   0
+Runtime/NativeCyberLordKit2Preview.cs                      0   0   1   0   0
+Runtime/NativeCyberLordPresentation.cs                     0   0  21   0   0
+Runtime/NativeCyberLordRangedPreview.cs                    0   0   1   0   0
+Runtime/NativeDeathBroadcastPresentation.cs                1   0   1   2   0
+Runtime/NativeDeathPresentation.cs                         0   2   3   0   0
+Runtime/NativeDeployCast.cs                                2   0   3   1   0
+Runtime/NativeDevEffects.cs                                0   0   7   0   0
+Runtime/NativeDevFighterEffects.cs                         0   0   2   0   0
+Runtime/NativeDogMalletPresentation.cs                     0   0   2   0   0
+Runtime/NativeDraftPresentation.cs                         0   0  20   0   3
+Runtime/NativeFootfallPresentation.cs                      0   0   4   0   0
+Runtime/NativeGlaivePresentation.cs                        0   0   0   0   2
+Runtime/NativeGunKitPresentation.cs                        0   0   1   0   0
+Runtime/NativeHordeGoreGallery.cs                          0   0   9   0   0
+Runtime/NativeHordeGorePresentation.cs                     0   0  10   0   0
+Runtime/NativeHordeHulkGallery.cs                          0   0   4   0   0
+Runtime/NativeHordeKindPresentation.cs                     0   0  18   0   0
+Runtime/NativeInteractionPresentation.cs                   0   0   4   1   0
+Runtime/NativeInteractionValidation.cs                     0   0   2   0   0
+Runtime/NativeIntros.cs                                    0   0  27   2   0
+Runtime/NativeIronworksKindsPresentation.cs                0   0  13   0   0
+Runtime/NativeIronworksModelPresentation.cs                0   0   1   0   0
+Runtime/NativeMagicFxPresentation.cs                       0   0   2   0   0
+Runtime/NativeMeleeKitPresentation.cs                      0   0   2   0   0
+Runtime/NativeMinionFxPresentation.cs                      0   0   2   0   0
+Runtime/NativeMutatorPresentation.cs                       0   0   2   0   0
+Runtime/NativeReviveHoloPresentation.cs                    0   1   1   0   0
+Runtime/NativeRobotSuitPresentation.cs                     0   0   7   0   0
+Runtime/NativeRooftopPresentation.cs                       2   0   5   0   0
+Runtime/NativeSceneMotion.cs                               0   1   1   0   0
+Runtime/NativeSirenDropPresentation.cs                     0   1   1   0   0
+Runtime/NativeSirenLookPresentation.cs                     0   0   3   2   0
+Runtime/NativeSourceMotion.cs                              0   0   0   1   0
+Runtime/NativeSourcePresentation.cs                        2   1   9   1   0
+Runtime/NativeSpawnInPresentation.cs                       0   0   3   0   0
+Runtime/NativeSprintFxPresentation.cs                      0   0   1   0   0
+Runtime/NativeStationKindsPresentation.cs                  0   0   5   0   0
+Runtime/NativeStatusPresentation.cs                        0   0   1   0   0
+Runtime/NativeSummonPresentation.cs                        0   0   1   0   0
+Runtime/NativeTechniquePresentation.cs                     0   0   1   0  24
+Runtime/NativeTopDogPresentation.cs                        0   0   2   0   0
+Runtime/NativeVentDeathPresentation.cs                     0   0   2   1   0
+Runtime/NativeVentFallPresentation.cs                      1   0   0   0   0
+Runtime/NativeViewPresentation.cs                          0   1   3   0   0
+Runtime/NativeVisualBodyPresentation.cs                   10   0  19   1   0   # Voxel dependency: the costume's joint lookup reads the drawn model's bone first and falls back to the rig's joint only for a body without a binding (V1's JointFrame resolver retires it); the costume's V1 gates bring the gate count 26 -> 10
+Runtime/NativeVisualMotionPresentation.cs                  0   0   2   0   0
+Runtime/NativeVisualPortraitPresentation.cs                2   0   6   3   1
+Runtime/NativeVisualStridePresentation.cs                  0   0   2   0   0
+Runtime/NativeVisualWeaponPresentation.cs                  1   0   1   0   0
+Runtime/NativeWeaponFxPresentation.cs                      0   0   3   0   0
+Runtime/NativeWeaponPresentation.cs                        0   0   3   0   0
+Runtime/NativeZombieComparePresentation.cs                 0   0   0   1   3
+Runtime/NativeZombieModelPresentation.cs                   2   0   2   1   0
+
+# In flight (not on this branch yet): named so their merge stays green; the package that moves them lowers the pin.
+Core/NativeDeployEject.cs                                  0   0   0  17   0   # W3's eject states (claude/exp-w3-eject at 8ca81329; 13 at 048adc30): rig-authored (M12); V4 moves the crouch, fall and seat onto the model
+Core/NativeDraftInstall.cs                                 0   0   0   6   0   # Voxel dependency: the chip install's present, lift and Raise are authored on the draft's 22-joint stage rig (plan M9; shared 77e0a606); V4 moves the draft onto the model in Stage 2
+Runtime/NativeDraftInstallPresentation.cs                  0   0   0   0   2   # Voxel dependency: the cartridge shell's flung shards (shared 77e0a606) are thin WeaponShape.Cube slabs, primitive pieces rather than voxel art; a modelled shard mesh can replace them
+Runtime/NativeExpeditionLoadPreview.cs                     1   0   0   0   0   # Voxel dependency: none in fact: A0's load preview sets ClassicBodies=false to force the model (PR #412); V1's ModelBody predicate replaces the gate
+Runtime/NativePodPresentation.cs                           0   0   0   3   0   # Voxel dependency: W4's pod-cabin seated pose (claude/exp-w4-crash) is written through MeleeRig onto the rig, like W3's eject (M12); V4 moves it onto the model's own clips with the eject

@@ -114,11 +114,13 @@ namespace ChipArena.UnityConversion
         }
         private static Vector3 Row(float[] f,int i) => V(f[i],f[i+1],f[i+2]);
         private static Quaternion Rotation(float[] f,int i) { Vector3 v=Row(f,i); float a=v.Length(); return a<1e-8f?Quaternion.Identity:Rot(v/a,a); }
+        // The joints a row's rotation channels drive, in order (one array: Sample runs per frame for the deploy cast and the rooftop).
+        private static readonly int[] SampledBones={Spine,Chest,Neck,Head,LClav,RClav,LHip,RHip,LFoot,RFoot};
         public static void Sample(float[] f,int set,Pose p)
         {
             p.Reset(); p.Position[Body]=V(0,f[2]-.025f,0); // Horizontal capture travel stripped: gameplay owns root motion.
             p.Rotation[Pelvis]=Rot(Y,f[0])*Rotation(f,4);
-            int[] bones={Spine,Chest,Neck,Head,LClav,RClav,LHip,RHip,LFoot,RFoot};
+            var bones=SampledBones;
             for(int i=0;i<bones.Length;i++) p.Rotation[bones[i]]=Rotation(f,7+i*3);
             p.Rotation[LKnee]=Rot(X,Math.Max(0,f[37])); p.Rotation[RKnee]=Rot(X,Math.Max(0,f[38]));
             Vector3 blade=Unit(Row(f,42),Z),edge=Row(f,45); edge=Unit(edge-blade*Vector3.Dot(blade,edge),X);
@@ -191,11 +193,13 @@ namespace ChipArena.UnityConversion
             Quaternion world=Rot(axis,angle)*p.WorldRotation[h];
             p.Rotation[h]=Quaternion.Inverse(p.WorldRotation[Bones[h].Parent])*world;
         }
+        // The roll's tucked joints and their bend (shared tables: no allocation per frame).
+        private static readonly int[] RollBones={Pelvis,Spine,Chest,Neck,Head,LClav,RClav,LArm,RArm,LElbow,RElbow,LHand,RHand,LHip,RHip,LKnee,RKnee,LFoot,RFoot};
+        private static readonly float[] RollBend={-.30f,.42f,.30f,.42f,.6f,.1f,.1f,-1.10f,-1f,-1.60f,-1.55f,.2f,.2f,-1.80f,-1.62f,2.25f,2.15f,-.45f,-.5f};
         public static void Roll(Pose p,float phase)
         {
             float tuck=CapturedClip.Ease(phase/.2f)*(1-CapturedClip.Ease((phase-.62f)/.26f));
-            int[] bones={Pelvis,Spine,Chest,Neck,Head,LClav,RClav,LArm,RArm,LElbow,RElbow,LHand,RHand,LHip,RHip,LKnee,RKnee,LFoot,RFoot};
-            float[] xs={-.30f,.42f,.30f,.42f,.6f,.1f,.1f,-1.10f,-1f,-1.60f,-1.55f,.2f,.2f,-1.80f,-1.62f,2.25f,2.15f,-.45f,-.5f};
+            var bones=RollBones;var xs=RollBend;
             for(int i=0;i<bones.Length;i++) p.Rotation[bones[i]]=Quaternion.Slerp(p.Rotation[bones[i]],Euler(xs[i]),tuck);
             p.Rotation[Body]=Euler(CapturedClip.Ease((phase-.07f)/.73f)*(float)Math.PI*2);
             p.Position[Body].Y+=-.865f-p.Lowest(); p.World();

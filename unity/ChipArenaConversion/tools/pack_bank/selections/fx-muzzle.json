@@ -1,0 +1,17 @@
+{
+ "schema": 1,
+ "note": "Muzzle flashes per gun family (docs/PACK-EFFECTS.md, Core NativeMuzzleFx.SheetLooks): flipbook flames and burst sprites, loaded by id. Names only: no pack content.",
+ "texture_max": 1024,
+ "sources": {
+  "muzzle": "Impacts and Muzzle Flashes/Assets/KriptoFX/MuzzleFlashes"
+ },
+ "textures": [
+  {"id": "muzzle-flame-pistol", "source": "muzzle", "path": "Textures/Effects/Muzzle/Flame3.png", "alpha": true, "clamp": true, "max": 1024},
+  {"id": "muzzle-flame-rifle", "source": "muzzle", "path": "Textures/Effects/Muzzle/MuzzleFlash8.png", "alpha": true, "clamp": true, "max": 512},
+  {"id": "muzzle-flame-machinegun", "source": "muzzle", "path": "Textures/Effects/Muzzle/MuzzleFlash9.png", "alpha": true, "clamp": true, "max": 512},
+  {"id": "muzzle-flame-turret", "source": "muzzle", "path": "Textures/Effects/Muzzle/Flame1.png", "alpha": true, "clamp": true, "max": 512},
+  {"id": "muzzle-burst-star", "source": "muzzle", "path": "Textures/Effects/Muzzle/MuzzleFlash1.png", "alpha": true, "clamp": true, "max": 256},
+  {"id": "muzzle-burst-fire", "source": "muzzle", "path": "Textures/Effects/Muzzle/MuzzleFlash3.png", "alpha": true, "clamp": true, "max": 256},
+  {"id": "muzzle-burst-smoke", "source": "muzzle", "path": "Textures/Effects/Muzzle/MuzzleFlash6.png", "alpha": true, "clamp": true, "max": 256}
+ ]
+}

@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         [DataMember] public string product=NativeUpdateRules.Product,channel=NativeUpdateRules.Channel,platform=NativeUpdateRules.Platform;
         [DataMember] public string version;
         [DataMember] public long revision;
-        [DataMember] public int bootstrap=1;
+        [DataMember] public int bootstrap=NativeUpdateRules.BootstrapVersion;
     }
     [Serializable,DataContract] public sealed class NativeUpdatePart
     {
@@ -50,10 +50,21 @@ namespace ChipArena.UnityConversion
     public static class NativeUpdateRules
     {
         public const string Product="chip-arena-unity",Channel="native-test",Platform="windows-x64";
-        public const string Executable="ChipArena-Native-Conversion-TEST.exe",DataDirectory="ChipArena-Native-Conversion-TEST_Data";
+        public const string Executable="Chip Arena.exe",DataDirectory="Chip Arena_Data";
+        public const string LegacyExecutable="ChipArena-Native-Conversion-TEST.exe";
+        public const string LauncherExecutable="Chip Arena.exe",DistributionFolder="Chip Arena",PortableZip="Chip-Arena-Windows.zip";
+        // Bootstrap 2 renames the internal player. Bootstrap-1 clients must install the new starter ZIP;
+        // their existing ValidateBuild guard rejects this payload before any files are replaced.
+        public static string LauncherPath(string root)
+        {
+            string friendly=Path.Combine(root,LauncherExecutable),legacy=Path.Combine(root,LegacyExecutable);
+            if(File.Exists(friendly))return friendly;
+            if(File.Exists(legacy))return legacy;
+            throw new FileNotFoundException("Chip Arena launcher is missing. Extract the complete game folder again.",friendly);
+        }
         public const string Feed="https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/native/windows-x64/";
         public const string WorkDirectory=".native-update",IdentityFile="native-build.json";
-        public const int BootstrapVersion=1,MaxFiles=20000,MaxManifestBytes=128*1024;
+        public const int BootstrapVersion=2,MaxFiles=20000,MaxManifestBytes=128*1024;
         public const long MaxArchiveBytes=2L*1024*1024*1024,MaxUnpackedBytes=4L*1024*1024*1024,MaxPartBytes=32L*1024*1024;
         public static bool IsHash(string text){return text!=null&&Regex.IsMatch(text,"^[0-9a-f]{64}$");}
         public static bool IsToken(string text){return text!=null&&Regex.IsMatch(text,"^[0-9a-f]{32}$");}

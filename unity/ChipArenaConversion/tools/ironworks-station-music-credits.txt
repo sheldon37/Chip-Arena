@@ -1,0 +1,12 @@
+CHIP ARENA - CITY IRONWORKS AND CENTRAL STATION MUSIC
+Owner-supplied recordings, added 2026-10-17. Original MP3 bytes preserved.
+
+Foundry of the Dead
+Map: expedition-foundry (City Ironworks; also expedition-ironworks)
+Track ID: foundry-of-the-dead
+SHA-256: fd5e291bbfd81254d5159e97d90d53dbe0e697d42655bc1df0d533b443f1279f
+
+Subway Arrival Chime
+Map: expedition-transit (Central Station)
+Track ID: subway-arrival-chime
+SHA-256: 85a0301eac9036323c98f05d4e6cb83910202cdff99e302b3f01acae0ae5c115

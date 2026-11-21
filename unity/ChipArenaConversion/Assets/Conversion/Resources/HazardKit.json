@@ -1,0 +1,857 @@
+{
+ "schema": 1,
+ "note": "Presentation-only hazard-kit placements (docs/HAZARD-KIT.md). Alarms only: no authority reads this file.",
+ "placements": [
+  {
+   "look": "quarantine",
+   "note": "Ward Zero and its Expedition instance (both carry the quarantine look and the same siren-* walls). Silent by owner request (2026-10-15): the lights run, no alarm sound plays; the music already carries the alarms.",
+   "silent": true,
+   "kit": [
+    {
+     "id": "ward-lockdown-beacon-n",
+     "kind": "alarm-beacon",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": 0.0,
+      "y": 5.22,
+      "z": 14.4
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 9,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-n",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     },
+     "react": true,
+     "music": "beat"
+    },
+    {
+     "id": "ward-lockdown-sign-n",
+     "kind": "alarm-sign",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": 0.0,
+      "y": 5.2,
+      "z": 14.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 180,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-n",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     }
+    },
+    {
+     "id": "ward-lockdown-beacon-s",
+     "kind": "alarm-beacon",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": 0.0,
+      "y": 5.22,
+      "z": -14.4
+     },
+     "rot": {
+      "x": 0,
+      "y": 180,
+      "z": 0
+     },
+     "range": 9,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-s",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     },
+     "react": false,
+     "music": "beat"
+    },
+    {
+     "id": "ward-lockdown-sign-s",
+     "kind": "alarm-sign",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": -0.0,
+      "y": 5.2,
+      "z": -14.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 360,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-s",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     }
+    },
+    {
+     "id": "ward-lockdown-beacon-e",
+     "kind": "alarm-beacon",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": 16.4,
+      "y": 5.22,
+      "z": 0.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "range": 9,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-e",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     },
+     "react": false,
+     "music": "beat"
+    },
+    {
+     "id": "ward-lockdown-sign-e",
+     "kind": "alarm-sign",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": 16.0,
+      "y": 5.2,
+      "z": -0.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 270,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-e",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     }
+    },
+    {
+     "id": "ward-lockdown-beacon-w",
+     "kind": "alarm-beacon",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": -16.4,
+      "y": 5.22,
+      "z": 0.0
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "range": 9,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-w",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     },
+     "react": false,
+     "music": "beat"
+    },
+    {
+     "id": "ward-lockdown-sign-w",
+     "kind": "alarm-sign",
+     "look": "lockdown",
+     "mount": "wall",
+     "pos": {
+      "x": -16.0,
+      "y": 5.2,
+      "z": -0.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "lockdown",
+       "door-seal",
+       "dev-trigger"
+      ],
+      "hazard": "siren-shutter-w",
+      "active": 9,
+      "cooldown": 2.5,
+      "radius": 0
+     }
+    },
+    {
+     "id": "ward-breach-strobe-cells-n",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 10.0,
+      "y": 4.45,
+      "z": 25.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 180,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-sign-cells-n",
+     "kind": "alarm-sign",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 12.7,
+      "y": 2.6,
+      "z": 25.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 180,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 9,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-cells-s",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -10.0,
+      "y": 4.45,
+      "z": -25.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-sign-cells-s",
+     "kind": "alarm-sign",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -7.3,
+      "y": 2.6,
+      "z": -25.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 9,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-obs-n",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -10.0,
+      "y": 10.45,
+      "z": 25.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 180,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-obs-s",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 10.0,
+      "y": 10.45,
+      "z": -25.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-lane-e",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 38.0,
+      "y": 4.45,
+      "z": -12.0
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-sign-lane-e",
+     "kind": "alarm-sign",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 38.0,
+      "y": 2.6,
+      "z": -9.3
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 9,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-lane-w",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -38.0,
+      "y": 4.45,
+      "z": 12.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-sign-lane-w",
+     "kind": "alarm-sign",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -38.0,
+      "y": 2.6,
+      "z": 9.3
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 9,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-gantry-e",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 38.0,
+      "y": 10.45,
+      "z": 2.0
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-breach-strobe-gantry-w",
+     "kind": "alarm-strobe",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -38.0,
+      "y": 10.45,
+      "z": -2.0
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "range": 9,
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "breach",
+       "dev-trigger"
+      ],
+      "radius": 7,
+      "active": 8,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-klaxon-0",
+     "kind": "alarm-klaxon",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 16.0,
+      "y": 10.6,
+      "z": -8.6
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "music": "beat",
+     "react": true,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "wave-start",
+       "breach",
+       "boss-reveal",
+       "round-start"
+      ],
+      "active": 3.4,
+      "cooldown": 0.8
+     }
+    },
+    {
+     "id": "ward-klaxon-1",
+     "kind": "alarm-klaxon",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": 16.0,
+      "y": 10.6,
+      "z": 8.6
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "music": "beat",
+     "react": false,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "wave-start",
+       "breach",
+       "boss-reveal",
+       "round-start"
+      ],
+      "active": 3.4,
+      "cooldown": 0.8
+     }
+    },
+    {
+     "id": "ward-klaxon-2",
+     "kind": "alarm-klaxon",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -16.0,
+      "y": 10.6,
+      "z": 8.6
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "music": "beat",
+     "react": false,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "wave-start",
+       "breach",
+       "boss-reveal",
+       "round-start"
+      ],
+      "active": 3.4,
+      "cooldown": 0.8
+     }
+    },
+    {
+     "id": "ward-klaxon-3",
+     "kind": "alarm-klaxon",
+     "look": "biohazard",
+     "mount": "wall",
+     "pos": {
+      "x": -16.0,
+      "y": 10.6,
+      "z": -8.6
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "music": "beat",
+     "react": false,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "wave-start",
+       "breach",
+       "boss-reveal",
+       "round-start"
+      ],
+      "active": 3.4,
+      "cooldown": 0.8
+     }
+    },
+    {
+     "id": "ward-evac-beacon-0",
+     "kind": "alarm-beacon",
+     "look": "evacuation",
+     "mount": "ceiling",
+     "pos": {
+      "x": 12.5,
+      "y": 12.98,
+      "z": 10.5
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 11,
+     "music": "beat",
+     "react": true,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "boss-reveal",
+       "defeat"
+      ],
+      "active": 16,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-evac-beacon-1",
+     "kind": "alarm-beacon",
+     "look": "evacuation",
+     "mount": "ceiling",
+     "pos": {
+      "x": -12.5,
+      "y": 12.98,
+      "z": 10.5
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 11,
+     "music": "beat",
+     "react": false,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "boss-reveal",
+       "defeat"
+      ],
+      "active": 16,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-evac-beacon-2",
+     "kind": "alarm-beacon",
+     "look": "evacuation",
+     "mount": "ceiling",
+     "pos": {
+      "x": 12.5,
+      "y": 12.98,
+      "z": -10.5
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 11,
+     "music": "beat",
+     "react": false,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "boss-reveal",
+       "defeat"
+      ],
+      "active": 16,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-evac-beacon-3",
+     "kind": "alarm-beacon",
+     "look": "evacuation",
+     "mount": "ceiling",
+     "pos": {
+      "x": -12.5,
+      "y": 12.98,
+      "z": -10.5
+     },
+     "rot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+     },
+     "range": 11,
+     "music": "beat",
+     "react": false,
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "boss-reveal",
+       "defeat"
+      ],
+      "active": 16,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-evac-sign-e",
+     "kind": "alarm-sign",
+     "look": "evacuation",
+     "mount": "wall",
+     "pos": {
+      "x": 16.0,
+      "y": 8.4,
+      "z": -3
+     },
+     "rot": {
+      "x": 0,
+      "y": -90,
+      "z": 0
+     },
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "boss-reveal",
+       "defeat"
+      ],
+      "active": 16,
+      "cooldown": 3
+     }
+    },
+    {
+     "id": "ward-evac-sign-w",
+     "kind": "alarm-sign",
+     "look": "evacuation",
+     "mount": "wall",
+     "pos": {
+      "x": -16.0,
+      "y": 8.4,
+      "z": 3
+     },
+     "rot": {
+      "x": 0,
+      "y": 90,
+      "z": 0
+     },
+     "music": "beat",
+     "trigger": {
+      "mode": "event",
+      "events": [
+       "boss-reveal",
+       "defeat"
+      ],
+      "active": 16,
+      "cooldown": 3
+     }
+    }
+   ]
+  }
+ ]
+}

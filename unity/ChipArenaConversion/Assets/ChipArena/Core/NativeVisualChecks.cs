@@ -84,7 +84,42 @@ namespace ChipArena.UnityConversion
             var trace=new NativeTrace();trace.Sample(new V3(0,0,0),0,1);trace.Sample(new V3(.02f,0,0),.01f,1);trace.Sample(new V3(.04f,0,0),.02f,1);trace.Sample(new V3(.06f,0,0),.03f,1);Check(trace.Points.Count==2,"Slow projectile never grows a trail");
             Check(!trace.Expired(.20f)&&trace.Expired(.22f),"Trail must survive removal for its natural lifetime");
             for(int n=0;n<100;n++)trace.Sample(new V3(n*.1f,0,0),1+n*.001f,2);Check(trace.Points.Count==12,"Trace point limit");trace.Sample(new V3(0,0,0),0,2);Check(trace.Points.Count==1,"Trace reset left old geometry");
-            results.Add("Source glow falloff/lifetimes, light fade, armor pulse and slow-projectile trail sampling/expiry/reset");return results;
+            results.Add("Source glow falloff/lifetimes, light fade, armor pulse and slow-projectile trail sampling/expiry/reset");
+            // A chosen accent reaches the arena glow (2026-10-09 playtest: every pick glowed cyan). Expected values: three r180
+            // character-rig.ts ember() and armor-glow.ts:23 at 05950ea, linear.
+            (string hex,Vector3 ember,Vector3 halo)[] accents={
+                ("#70e1d0",new Vector3(.043722f,.504941f,.409573f),new Vector3(.285677f,.777364f,.726760f)),
+                ("#ff0000",new Vector3(.95f,.05f,.05f),new Vector3(.905775f,.220187f,.26f)),
+                ("#c8102e",new Vector3(.553624f,.029138f,.049424f),new Vector3(.593185f,.224021f,.280217f)),
+                ("#3a7bff",new Vector3(.088f,.22852f,.952f),new Vector3(.197086f,.366758f,1)),
+                ("#ffc0cb",new Vector3(.952f,.088f,.216054f),new Vector3(.905775f,.610252f,.701929f)),
+                ("#ffffff",new Vector3(.784f,.256f,.256f),new Vector3(.905775f,.960187f,1)),
+                ("#000000",Vector3.Zero,new Vector3(.165775f,.220187f,.26f))};
+            Check(Vector3.Distance(NativePortraitRules.ExportEmber,accents[0].ember)<2e-5f,"exported accent trims carry ember('#70e1d0')");
+            foreach(var a in accents)
+            {
+                // The exported trim (diffuse and emissive) times the pilot's tint is the source's ember(accent): the shader multiplies both.
+                Vector3 tint=NativePortraitRules.GlowAccentTint(a.hex),glow=NativePortraitRules.ExportEmber*tint;
+                Check(Vector3.Distance(glow,a.ember)<2e-5f,"accent glow "+a.hex+": "+glow+" / "+a.ember);
+                Check(Vector3.Distance(NativePortraitRules.GlowAccentTint(a.hex.ToUpperInvariant()),tint)<1e-6f,"accent case "+a.hex);
+                Check(Vector3.Distance(NativeGlowRules.ArmorTint(a.hex),a.halo)<2e-5f,"armor halo "+a.hex+": "+NativeGlowRules.ArmorTint(a.hex)+" / "+a.halo);
+            }
+            // The red pick glows red, not through a cyan filter (the old Linear(accent)/Linear('#70e1d0') ratio left it (.27,0,0)).
+            var red=NativePortraitRules.ExportEmber*NativePortraitRules.GlowAccentTint("#ff0000");Check(red.X>10*red.Y&&red.X>10*red.Z&&red.X>.9f,"red accent glow "+red);
+            var redHalo=NativeGlowRules.ArmorTint("#ff0000");Check(redHalo.X>2*redHalo.Y&&redHalo.X>2*redHalo.Z,"red armor halo "+redHalo);
+            // JsonUtility turns an absent colour into "": the default accent, never a broken or white tint.
+            foreach(var missing in new[]{null,"","#12345","70e1d0","#zzzzzz"})
+            {
+                Check(Vector3.Distance(NativePortraitRules.GlowAccentTint(missing),Vector3.One)<1e-6f,"missing accent tint '"+missing+"'");
+                Check(Vector3.Distance(NativeGlowRules.ArmorTint(missing),accents[0].halo)<2e-5f,"missing accent halo '"+missing+"'");
+            }
+            results.Add("Chosen accents reach the arena glow: "+accents.Length+" picks' trims match three's ember() and their armor halos armor-glow.ts; missing colours fall back to the default");
+            // Team bands (team-identity.ts): only in teams/PvE, never on the local player's own pilot (owner direction).
+            Check(NativeStatusVisuals.PilotBand(true,true,false,0,true)==-1&&NativeStatusVisuals.PilotBand(true,false,false,1,true)==-1,"local pilot wears no band");
+            Check(NativeStatusVisuals.PilotBand(true,true,false,0,false)==1&&NativeStatusVisuals.PilotBand(true,true,true,1,false)==4&&NativeStatusVisuals.PilotBand(true,false,false,2,false)==2,"teammates and opponents keep their bands");
+            Check(NativeStatusVisuals.PilotBand(false,false,false,1,false)==-1&&NativeStatusVisuals.PilotBand(false,false,false,1,true)==-1,"no bands outside a teams match");
+            results.Add("Team bands: teams/PvE only, the local pilot's own model none");
+            return results;
         }
     }
 }

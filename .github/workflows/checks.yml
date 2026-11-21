@@ -24,7 +24,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = workflow_dispatch ]; then
-            echo 'mode=full' >> "$GITHUB_OUTPUT"
+            echo 'mode=relay-full' >> "$GITHUB_OUTPUT"
           else
             node scripts/ci-scope.mjs
           fi
@@ -41,7 +41,7 @@ jobs:
           fi
   verify:
     needs: scope
-    if: needs.scope.outputs.mode != 'docs'
+    if: needs.scope.outputs.mode != 'docs' && needs.scope.outputs.mode != 'native'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -58,10 +58,10 @@ jobs:
         env:
           CHECK_SCOPE: ${{ needs.scope.outputs.mode }}
         run: |
-          if [ "$CHECK_SCOPE" = full ]; then
-            npm run verify
+          if [ "$CHECK_SCOPE" = relay-full ]; then
+            npm run verify:relay-full
           else
-            npm run verify:standard
+            npm run verify:relay
           fi
       - name: Retain verification logs
         if: always()
@@ -83,7 +83,7 @@ jobs:
           VERIFY_RESULT: ${{ needs.verify.result }}
         run: |
           test "$SCOPE_RESULT" = success
-          if [ "$CHECK_MODE" = docs ]; then
+          if [ "$CHECK_MODE" = docs ] || [ "$CHECK_MODE" = native ]; then
             test "$VERIFY_RESULT" = skipped
           else
             test "$VERIFY_RESULT" = success

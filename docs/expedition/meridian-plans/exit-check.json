@@ -1,0 +1,374 @@
+{
+ "pairs": 190,
+ "rule": "every pair of the 20 exits differs in at least 2 of: level profile (RMS >= 1.5 m over the first 60 m), turn pattern, main width (>= 3 m), cover, approach kinds",
+ "failures": [],
+ "closest": [
+  [
+   2,
+   1.0098394711912173,
+   "arcades:W",
+   "stride:E",
+   [
+    "turns",
+    "cover"
+   ]
+  ],
+  [
+   2,
+   1.0100303412881124,
+   "navigation:N",
+   "stride:N",
+   [
+    "cover",
+    "approach"
+   ]
+  ],
+  [
+   2,
+   1.3948349422526782,
+   "navigation:E",
+   "yards:E",
+   [
+    "turns",
+    "cover"
+   ]
+  ],
+  [
+   2,
+   3.249069345659342,
+   "navigation:E",
+   "stride:S",
+   [
+    "level",
+    "approach"
+   ]
+  ],
+  [
+   2,
+   4.352819488561408,
+   "crown-hill:S",
+   "stride:W",
+   [
+    "level",
+    "turns"
+   ]
+  ],
+  [
+   3,
+   0.0,
+   "arcades:N",
+   "arcades:E",
+   [
+    "turns",
+    "width",
+    "cover"
+   ]
+  ],
+  [
+   3,
+   0.0,
+   "navigation:N",
+   "arcades:N",
+   [
+    "width",
+    "cover",
+    "approach"
+   ]
+  ],
+  [
+   3,
+   0.48932474868681985,
+   "navigation:S",
+   "stride:S",
+   [
+    "width",
+    "cover",
+    "approach"
+   ]
+  ]
+ ],
+ "same_template": [],
+ "exits": [
+  {
+   "layout": "crown-hill",
+   "gate": "N",
+   "title": "The Hundred Steps",
+   "first60": "level 13 m > stairs +14 m > level 10 m",
+   "width": 12,
+   "covers": [
+    "balustraded",
+    "open"
+   ],
+   "turns": [],
+   "dy60": 14.0
+  },
+  {
+   "layout": "crown-hill",
+   "gate": "E",
+   "title": "The Promenade",
+   "first60": "level 30 m > stairs -3.5 m > level 23 m",
+   "width": 20,
+   "covers": [
+    "edge"
+   ],
+   "turns": [],
+   "dy60": -3.5
+  },
+  {
+   "layout": "crown-hill",
+   "gate": "S",
+   "title": "The Chute",
+   "first60": "level 8 m > stairs -7 m > level 20 m > turn right, level 15 m",
+   "width": 10,
+   "covers": [
+    "open",
+    "walled"
+   ],
+   "turns": [
+    "R"
+   ],
+   "dy60": -7.0
+  },
+  {
+   "layout": "crown-hill",
+   "gate": "W",
+   "title": "The Hill Cutting",
+   "first60": "level 3 m > ramp 1:8 -7 m > level 1 m",
+   "width": 8,
+   "covers": [
+    "cutting",
+    "open"
+   ],
+   "turns": [],
+   "dy60": -7.0
+  },
+  {
+   "layout": "navigation",
+   "gate": "N",
+   "title": "The Iron Bridge",
+   "first60": "level 20 m > bridge 40 m",
+   "width": 8,
+   "covers": [
+    "bridge",
+    "open"
+   ],
+   "turns": [],
+   "dy60": 0.0
+  },
+  {
+   "layout": "navigation",
+   "gate": "E",
+   "title": "The Lock ramp",
+   "first60": "level 22 m > ramp 1:4 -9.5 m",
+   "width": 12,
+   "covers": [
+    "open"
+   ],
+   "turns": [],
+   "dy60": -9.5
+  },
+  {
+   "layout": "navigation",
+   "gate": "S",
+   "title": "The Low Causeway",
+   "first60": "level 6 m > stairs -7 m > bridge 37 m",
+   "width": 6,
+   "covers": [
+    "causeway",
+    "open"
+   ],
+   "turns": [],
+   "dy60": -7.0
+  },
+  {
+   "layout": "navigation",
+   "gate": "W",
+   "title": "Mill Lane dog-leg and stair",
+   "first60": "level 6 m > turn right, level 30 m > turn left, level 8 m > stairs +6.5 m",
+   "width": 10,
+   "covers": [
+    "open",
+    "walled"
+   ],
+   "turns": [
+    "R",
+    "L"
+   ],
+   "dy60": 6.12
+  },
+  {
+   "layout": "arcades",
+   "gate": "N",
+   "title": "The Galleria",
+   "first60": "level 60 m",
+   "width": 12,
+   "covers": [
+    "galleria",
+    "open"
+   ],
+   "turns": [],
+   "dy60": 0.0
+  },
+  {
+   "layout": "arcades",
+   "gate": "E",
+   "title": "Arcade turn to the Shambles",
+   "first60": "level 22 m > turn left, level 20 m > turn right, level 18 m",
+   "width": 5,
+   "covers": [
+    "arcade",
+    "jettied lane",
+    "open"
+   ],
+   "turns": [
+    "L",
+    "R"
+   ],
+   "dy60": 0.0
+  },
+  {
+   "layout": "arcades",
+   "gate": "S",
+   "title": "Arcade jog into the Undercroft",
+   "first60": "level 20 m > turn right, level 15 m > turn left, ramp 1:6 -4.2 m",
+   "width": 10,
+   "covers": [
+    "arcade",
+    "open",
+    "undercroft"
+   ],
+   "turns": [
+    "R",
+    "L"
+   ],
+   "dy60": -4.0
+  },
+  {
+   "layout": "arcades",
+   "gate": "W",
+   "title": "The stair tower to the Leads",
+   "first60": "level 8 m > turn left, stairs +3.5 m > level 3 m > turn right, level 8 m > turn right, stairs +3.5 m > level 3 m > turn left, level 24 m",
+   "width": 8,
+   "covers": [
+    "leads",
+    "open",
+    "stair tower"
+   ],
+   "turns": [
+    "L",
+    "R",
+    "R",
+    "L"
+   ],
+   "dy60": 7.0
+  },
+  {
+   "layout": "stride",
+   "gate": "N",
+   "title": "Arch Nought and Crag Road",
+   "first60": "level 38 m > ramp 1:8 +2.8 m",
+   "width": 8,
+   "covers": [
+    "open",
+    "under the arch",
+    "walled"
+   ],
+   "turns": [],
+   "dy60": 2.75
+  },
+  {
+   "layout": "stride",
+   "gate": "E",
+   "title": "The deck stair",
+   "first60": "level 15 m > turn left, stairs +7 m > level 28 m",
+   "width": 6,
+   "covers": [
+    "open"
+   ],
+   "turns": [
+    "L"
+   ],
+   "dy60": 7.0
+  },
+  {
+   "layout": "stride",
+   "gate": "S",
+   "title": "The Vale haul ramp",
+   "first60": "ramp 1:4 -7 m > level 32 m",
+   "width": 10,
+   "covers": [
+    "open"
+   ],
+   "turns": [],
+   "dy60": -7.0
+  },
+  {
+   "layout": "stride",
+   "gate": "W",
+   "title": "The Valley Steps",
+   "first60": "level 40 m > stairs -7 m > level 3 m",
+   "width": 12,
+   "covers": [
+    "open",
+    "walled"
+   ],
+   "turns": [],
+   "dy60": -7.0
+  },
+  {
+   "layout": "yards",
+   "gate": "N",
+   "title": "The steel ramp to the Gantry",
+   "first60": "level 3 m > ramp 1:6 +7 m > bridge 15 m",
+   "width": 8,
+   "covers": [
+    "gantry",
+    "open",
+    "steel ramp"
+   ],
+   "turns": [],
+   "dy60": 7.0
+  },
+  {
+   "layout": "yards",
+   "gate": "E",
+   "title": "The sidings incline",
+   "first60": "level 10 m > turn right, ramp 1:8 -6.2 m",
+   "width": 10,
+   "covers": [
+    "incline",
+    "open"
+   ],
+   "turns": [
+    "R"
+   ],
+   "dy60": -6.25
+  },
+  {
+   "layout": "yards",
+   "gate": "S",
+   "title": "The covered footbridge",
+   "first60": "level 6 m > stairs +7 m > bridge 26 m > stairs -4 m",
+   "width": 5,
+   "covers": [
+    "covered footbridge",
+    "open"
+   ],
+   "turns": [],
+   "dy60": 3.5
+  },
+  {
+   "layout": "yards",
+   "gate": "W",
+   "title": "The High Yard haul ramp",
+   "first60": "level 20 m > ramp 1:4 +7 m > level 12 m",
+   "width": 16,
+   "covers": [
+    "open",
+    "sidings"
+   ],
+   "turns": [],
+   "dy60": 7.0
+  }
+ ]
+}

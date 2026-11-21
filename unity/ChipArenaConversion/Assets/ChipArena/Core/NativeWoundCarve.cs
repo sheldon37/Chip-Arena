@@ -14,6 +14,21 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class WoundSolid {public WoundVector min,max,color;public bool flesh;}
     [Serializable] public sealed class WoundCarveSpec {public WoundVector hit,dir,size,body;public int axis,sign;public string kind,trauma;public double radius,severity,vertical;public uint seed;public bool low;}
+    /// <summary>
+    /// What one carve did, cell by cell, for a sculpted body drawn over the exported boxes to cut its own mesh by:
+    /// the grid (cell size, face axis and sign, the face and the hit on it), every cell it took out and every cell it laid
+    /// into the output (the wound's flesh, char and rims), each with its column (i, j) and depth layer k below the face.
+    /// Recording never changes what the carve returns.
+    /// </summary>
+    public sealed class WoundCarveCells
+    {
+        public const byte Old=0,Burnt=1,Inside=2,Rim=3,PlainRim=4;
+        public double G,Face,Hu,Hv;public int Axis,Ua,Va,Sign,N,M;public string Kind;public bool Low;public uint Seed;
+        public readonly List<(WoundSolid cell,int i,int j,int k)> Removed=new List<(WoundSolid,int,int,int)>();
+        /// <summary>The laid cells in output order: Old (an earlier wound's cell re-laid), Burnt, Inside (an exposed cell below
+        /// the face), Rim (the face layer round the hole, blood mixed) or PlainRim (a bruise or scorch's face-layer rim).</summary>
+        public readonly List<(WoundSolid cell,int i,int j,int k,byte role)> Laid=new List<(WoundSolid,int,int,int,byte)>();
+    }
     // Direct port of body-wounds.ts. Double precision and unsigned hash arithmetic preserve the cell decisions.
     public static class NativeWoundCarve
     {
@@ -51,7 +66,7 @@ namespace ChipArena.UnityConversion
             for(int a=0;a<3;a++)
             {if(lo[a]<rmin[a]){var max=hi;max[a]=rmin[a];yield return new WoundSolid{min=lo,max=max,color=b.color,flesh=b.flesh};lo[a]=rmin[a];}if(hi[a]>rmax[a]){var min=lo;min[a]=rmax[a];yield return new WoundSolid{min=min,max=hi,color=b.color,flesh=b.flesh};hi[a]=rmax[a];}}
         }
-        public static List<WoundSolid> Carve(IReadOnlyList<WoundSolid> solids,WoundCarveSpec s)
+        public static List<WoundSolid> Carve(IReadOnlyList<WoundSolid> solids,WoundCarveSpec s,WoundCarveCells record=null)
         {
             var shape=ShapeOf(s);double g=shape.g;int n=shape.n,m=shape.m;while((2*n+1)*(2*n+1)*m>9000&&n>2)n--;m=Math.Min(m,24);
             int ax=s.axis,ua=(ax+1)%3,va=(ax+2)%3,sign=s.sign,count=solids.Count;double face=s.hit[ax],hu=s.hit[ua],hv=s.hit[va];var lo=new double[count*3];var hi=new double[count*3];
@@ -70,12 +85,17 @@ namespace ChipArena.UnityConversion
                 int c=Id(i,j,k),src=source[c];if(src<0||gone[c])continue;bool exposed=false,surface=k==0;
                 for(int nb=0;nb<6;nb++){int ii=i+neighbors[nb,0],jj=j+neighbors[nb,1],kk=k+neighbors[nb,2];if(ii<-n||ii>n||jj<-n||jj>n||kk<0||kk>=m){if(!surface&&SolidAt(hu+ii*g,hv+jj*g,W(kk))<0)surface=true;continue;}int index=Id(ii,jj,kk);if(gone[index])exposed=true;else if(source[index]<0)surface=true;}
                 if(!exposed&&!surface&&!burnt[c])continue;var from=solids[src];double hash=Hash(s.seed,i,j,k),tint=.86+.28*hash;var box=Box(i,j,k);box.flesh=true;
-                if(from.flesh){box.color=from.color;output.Add(box);continue;}
-                if(burnt[c]){box.color=hash<.06&&!s.low?Linear(0xe2621e):Linear(hash<.55?0x1b1714:0x2e2620,tint);output.Add(box);continue;}
-                if(exposed&&k>0){if(s.kind=="bruise")box.color=hash<.18?Linear(0x780a14):s.body*.275+Linear(0x4a2236)*.45;else box.color=(s.kind=="puncture"&&k>=deepest-1?Linear(0x2c0307):FleshAt(k))*tint;output.Add(box);continue;}
+                if(from.flesh){box.color=from.color;record?.Laid.Add((box,i,j,k,WoundCarveCells.Old));output.Add(box);continue;}
+                if(burnt[c]){box.color=hash<.06&&!s.low?Linear(0xe2621e):Linear(hash<.55?0x1b1714:0x2e2620,tint);record?.Laid.Add((box,i,j,k,WoundCarveCells.Burnt));output.Add(box);continue;}
+                if(exposed&&k>0){if(s.kind=="bruise")box.color=hash<.18?Linear(0x780a14):s.body*.275+Linear(0x4a2236)*.45;else box.color=(s.kind=="puncture"&&k>=deepest-1?Linear(0x2c0307):FleshAt(k))*tint;record?.Laid.Add((box,i,j,k,WoundCarveCells.Inside));output.Add(box);continue;}
                 bool rim=exposed&&k==0;double shade=from.color.x*(rim?(cut?.82:.68):1),lift=rim&&s.kind=="cavity"&&!s.low?(.15+.4*hash)*g:0;box=Box(i,j,k,lift);
-                if(rim&&s.kind!="bruise"&&s.kind!="scorch"){double mix=cut?.35:.5;box.color=new WoundVector(shade,shade,shade)*(1-mix)+Linear(0xa8141f)*mix;box.flesh=true;output.Add(box);continue;}
-                box.color=new WoundVector(shade,shade,shade);if(!rim){var key=(j,k,shade.ToString("F4",System.Globalization.CultureInfo.InvariantCulture));if(rows.TryGetValue(key,out var prev)&&Math.Abs(prev.max[ua]-box.min[ua])<1e-6){prev.max[ua]=box.max[ua];continue;}rows[key]=box;}output.Add(box);
+                if(rim&&s.kind!="bruise"&&s.kind!="scorch"){double mix=cut?.35:.5;box.color=new WoundVector(shade,shade,shade)*(1-mix)+Linear(0xa8141f)*mix;box.flesh=true;record?.Laid.Add((box,i,j,k,WoundCarveCells.Rim));output.Add(box);continue;}
+                box.color=new WoundVector(shade,shade,shade);if(!rim){var key=(j,k,shade.ToString("F4",System.Globalization.CultureInfo.InvariantCulture));if(rows.TryGetValue(key,out var prev)&&Math.Abs(prev.max[ua]-box.min[ua])<1e-6){prev.max[ua]=box.max[ua];continue;}rows[key]=box;}if(rim)record?.Laid.Add((box,i,j,k,WoundCarveCells.PlainRim));output.Add(box);
+            }
+            if(record!=null)
+            {
+                record.G=g;record.Face=face;record.Hu=hu;record.Hv=hv;record.Axis=ax;record.Ua=ua;record.Va=va;record.Sign=sign;record.N=n;record.M=m;record.Kind=s.kind;record.Low=s.low;record.Seed=s.seed;
+                for(int k=0;k<m;k++)for(int j=-n;j<=n;j++)for(int i=-n;i<=n;i++)if(gone[Id(i,j,k)])record.Removed.Add((Box(i,j,k),i,j,k));
             }
             return output;
         }

@@ -6,7 +6,7 @@ using System.Linq;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ParityCase
-    { public string spec;public uint seed;public ChipCount[] chips;public NumberValue[] stats;public string[] eligible,offers;public RollValues roll; }
+    { public string spec;public uint seed;public ChipCount[] chips;public NumberValue[] stats;public string[] eligible,offers,unityOffers;public RollValues roll; }
     [Serializable] public sealed class HazardCase { public string map;public double time;public NativeHazard[] hazards; }
     [Serializable] public sealed class ParityFixtures { public string sourceCommit;public ParityCase[] cases;public HazardCase[] hazards; }
     public static class NativeParityChecks
@@ -15,14 +15,18 @@ namespace ChipArena.UnityConversion
         public static List<string> Run(ConversionContent data,ParityFixtures fixtures)
         {
             data.Validate();Check(data.sourceCommit==fixtures.sourceCommit,"Source receipts differ");
-            Check(data.weapons.Length==15&&data.chips.Length==236&&data.maps.Length==15&&data.maps.Sum(m=>m.blocks.Length)==3451&&data.abilities.Length==14,"Content inventory differs from pinned source");
+            // The source's inventory, plus the Unity-only Bow (Astra, PR #141: one weapon, its Q and E) and the DEV Cyber Lord
+            // (Astra, PR #142: one DEV-only weapon, its Q, E and 1-4). Bombadier adds one DEV weapon and seven abilities, the Top Dog one DEV weapon and eight. Standard techniques and Bombadier have separate contract checks.
+            // The DEV animation classes (Core NativeDevMotions) add two DEV weapons and no abilities: they play their base classes'.
+            Check(data.weapons.Count(w=>w.id!="bow"&&w.id!="cyberlord"&&w.id!=NativeBombs.Spec&&w.id!=NativeTopDog.Spec&&w.id!=NativeGlaive.Spec&&w.id!=NativeKatana.Spec&&w.id!=NativeFangs.Spec&&!NativeDevMotions.Is(w.id))==15&&data.weapons.Length==24&&data.weapons.Count(w=>NativeDevMotions.Is(w.id)&&w.devOnly)==2&&data.weapons.Count(w=>w.id==NativeGlaive.Spec&&!w.devOnly)==1&&data.weapons.Count(w=>w.id==NativeKatana.Spec&&!w.devOnly)==1&&data.weapons.Count(w=>w.id==NativeFangs.Spec&&w.devOnly)==1&&data.weapons.Count(w=>w.id==NativeBombs.Spec&&w.devOnly)==1&&data.weapons.Count(w=>w.id==NativeTopDog.Spec&&w.devOnly)==1&&data.weapons.Count(w=>w.id=="cyberlord"&&w.devOnly)==1&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451
+                &&data.abilities.Count(a=>a.kind!="technique"&&!NativeMeleeRules.Standard(a.spec)&&a.spec!="bow"&&a.spec!="cyberlord"&&a.spec!=NativeBombs.Spec&&a.spec!=NativeTopDog.Spec&&a.spec!=NativeGlaive.Spec&&a.spec!=NativeKatana.Spec&&a.spec!=NativeFangs.Spec)==14&&data.abilities.Count(a=>a.spec=="bow"&&a.kind!="technique")==2&&data.abilities.Count(a=>a.spec=="cyberlord")==6&&data.abilities.Count(a=>a.spec==NativeBombs.Spec)==7&&data.abilities.Count(a=>a.spec==NativeTopDog.Spec)==8&&data.abilities.Count(a=>a.spec==NativeGlaive.Spec)==2&&data.abilities.Count(a=>a.spec==NativeKatana.Spec)==2&&data.abilities.Count(a=>a.spec==NativeFangs.Spec)==5,"Content inventory differs from pinned source");
             int values=0;
             foreach(var c in fixtures.cases)
             {
                 var held=c.chips.ToDictionary(x=>x.id,x=>x.count);var stats=NativeContentRules.Stats(data,c.spec,held);
                 foreach(var v in c.stats){Check(Math.Abs(stats[v.name]-v.value)<1e-8*Math.Max(1,Math.Abs(v.value)),"Stat mismatch "+c.spec+" / "+v.name);values++;}
                 Check(c.eligible.SequenceEqual(NativeContentRules.Eligible(data,c.spec,held).Select(x=>x.id)),"Eligibility mismatch "+c.spec);
-                Check(c.offers.SequenceEqual(NativeContentRules.Offers(data,c.spec,held,new SourceRandom(c.seed).Next)),"Draft mismatch "+c.spec);
+                Check((c.unityOffers??c.offers).SequenceEqual(NativeContentRules.Offers(data,c.spec,held,new SourceRandom(c.seed).Next)),"Draft mismatch "+c.spec);
                 var r=NativeContentRules.Roll(data,c.spec,stats);
                 foreach(var f in typeof(RollValues).GetFields())Check(Math.Abs((double)f.GetValue(r)-(double)f.GetValue(c.roll))<1e-8,"Roll mismatch "+c.spec+" / "+f.Name);
             }

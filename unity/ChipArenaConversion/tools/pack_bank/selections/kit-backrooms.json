@@ -1,0 +1,177 @@
+{
+ "schema": 1,
+ "bank": "ChipArenaPackBackrooms",
+ "note": "The Backrooms (docs/BACKROOMS.md): Level 0's and the Poolrooms' surfaces as textures, the colour maps the owner's Backrooms Pro Generator add-on bakes for its yellow_offices and poolrooms materials (its assets are CC0 per its SOURCES.txt; run headless in Blender, only its exported textures are used, converted to PNG), and the modular kit's pieces as props (one per piece, its FBX materials mapped to the pack's wallpaper and carpet and Level 0 colours; the tool reads PNG, TGA and PSD).",
+ "texture_max": 1024,
+ "sources": {
+  "backrooms": "Backrooms"
+ },
+ "props": [
+  {
+   "id": "backrooms",
+   "source": "backrooms",
+   "model": "Models/assets_all.fbx",
+   "split": true,
+   "wind_by_normals": true,
+   "group": "backrooms-kit",
+   "materials": {
+    "wallpaper": {
+     "albedo": "Textures/backrooms tile DG.png"
+    },
+    "carpet": {
+     "albedo": "Textures/Carpet011_2K_Color.png"
+    },
+    "linoleum": {
+     "color": [
+      0.78,
+      0.74,
+      0.6
+     ]
+    },
+    "plaster": {
+     "color": [
+      0.86,
+      0.8,
+      0.55
+     ]
+    },
+    "plaster_white": {
+     "color": [
+      0.88,
+      0.86,
+      0.8
+     ]
+    },
+    "wall_trim": {
+     "color": [
+      0.62,
+      0.54,
+      0.32
+     ]
+    },
+    "wall_trim_dark": {
+     "color": [
+      0.3,
+      0.26,
+      0.2
+     ]
+    },
+    "ceiling_frame": {
+     "color": [
+      0.82,
+      0.8,
+      0.72
+     ]
+    },
+    "ceiling_panels": {
+     "color": [
+      0.9,
+      0.87,
+      0.76
+     ]
+    },
+    "ceiling_backdrop": {
+     "color": [
+      0.35,
+      0.33,
+      0.28
+     ]
+    },
+    "ceiling_vent": {
+     "color": [
+      0.62,
+      0.62,
+      0.58
+     ]
+    },
+    "lamp": {
+     "color": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "emission": [
+      1.0,
+      0.97,
+      0.86
+     ]
+    },
+    "door": {
+     "color": [
+      0.55,
+      0.42,
+      0.28
+     ]
+    },
+    "ladder": {
+     "color": [
+      0.42,
+      0.42,
+      0.4
+     ]
+    },
+    "wall_socket": {
+     "color": [
+      0.9,
+      0.88,
+      0.82
+     ]
+    }
+   }
+  }
+ ],
+ "textures": [
+  {
+   "id": "backrooms-l0-wallpaper",
+   "source": "backrooms",
+   "path": "Addon/Level0/wallpaper.png"
+  },
+  {
+   "id": "backrooms-l0-carpet",
+   "source": "backrooms",
+   "path": "Addon/Level0/carpet.png"
+  },
+  {
+   "id": "backrooms-l0-ceiling",
+   "source": "backrooms",
+   "path": "Addon/Level0/ceiling.png"
+  },
+  {
+   "id": "backrooms-l0-trim",
+   "source": "backrooms",
+   "path": "Addon/Level0/trim.png",
+   "max": 256
+  },
+  {
+   "id": "backrooms-pool-wall",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/poolwall.png",
+   "max": 256
+  },
+  {
+   "id": "backrooms-pool-floor",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/poolfloor.png",
+   "max": 512
+  },
+  {
+   "id": "backrooms-pool-basin",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/basintile.png",
+   "max": 512
+  },
+  {
+   "id": "backrooms-pool-plaster",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/plaster.png"
+  },
+  {
+   "id": "backrooms-pool-water",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/water_normal.png",
+   "max": 512,
+   "normal": true,
+   "linear": true
+  }
+ ]
+}

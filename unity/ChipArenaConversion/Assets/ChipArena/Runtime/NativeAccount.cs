@@ -8,18 +8,28 @@ using UnityEngine.Networking;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeCosmetics
-    {public bool overrideWeaponIntro;public string lobbyPose="weapon",preferredSpec="pistol",intro="neon-drop",introText="Ready to make an impact",bodyColor="#e5e7eb",hat="none",killEffect="impact-ragdoll";}
+    {public string weaponSkins;public string look;public bool overrideWeaponIntro;public string weaponTechniques;public string pod;public string lobbyPose="weapon",preferredSpec="pistol",intro=NativeIntroRules.Default,introText="Ready to make an impact",bodyColor="#e5e7eb",hat="none",killEffect="impact-ragdoll";public string lobbyBack;
+     // Headwear and backdrop colours (NativeHatLooks; "" Auto). No initializer: a profile without them leaves the local pick alone.
+     public string hatColor,backColor;}
     [Serializable] public sealed class NativeProfile {public string name="Pilot",@class="ranged",color="#70e1d0";public NativeCosmetics cosmetics=new NativeCosmetics();}
-    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int revision,grantVersion;}
-    [Serializable] public sealed class NativeAccountResponse {public string error,token,session,recoveryCode;public NativeAccountData account;public NativeAccountData[] players;}
+    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int bossClears,revision,grantVersion,profileSchema;}
+    [Serializable] public sealed class NativeAccountResponse {public string error,token,session,recoveryCode;public NativeAccountData account;public NativeAccountData[] players;public int grantCatalogVersion;public string[] grantableUnlocks;}
     [Serializable] public sealed class NativeLoginRequest {public string username,password,recoveryCode;public bool remember;}
     [Serializable] public sealed class NativeProfileRequest {public int revision;public NativeProfile profile;}
     public sealed partial class NativeAccount:MonoBehaviour
     {
+        public const string DefaultOrigin="https://chip-arena-prototype.sheldon37.chatgpt.site";
         public string Origin{get;private set;}="";public string Token{get;private set;}="";public NativeAccess Access{get;private set;}=NativeAccess.Guest;
-        public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}="Offline profile";public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
-        private string session="";private bool remember;private float refreshAt;
-        private string SessionPath=>Path.Combine(Application.persistentDataPath,"conversion-account.bin");
+        private const string OfflineStatus="Signed out / offline";
+        public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}=OfflineStatus;public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
+        // A background token refresh can see another PC's edits while the Locker still shows the older pilot.
+        // Use the revision the player actually loaded or saved for the next conditional write.
+        public NativeAccountData LoadedPilot{get;private set;}
+        public Action<string,NativeCosmetics> ProfileStored;
+        public bool ProfileSaving{get;private set;}
+        public string ProfileError{get;private set;}
+        private NativeProfile pendingProfile;private int pendingRevision;private bool reloadProfile;private string session="";private bool remember;private float refreshAt;
+        private string SessionPath=>Path.Combine(ConversionGame.NativeUserDataPath,"conversion-account.bin");
         public static string ValidateOrigin(string value)
         {if(!Uri.TryCreate(value.Trim(),UriKind.Absolute,out var uri)||uri.UserInfo.Length>0||uri.Query.Length>0||uri.Fragment.Length>0||uri.AbsolutePath!="/"||uri.Scheme!="https"&&!(uri.Scheme=="http"&&uri.IsLoopback))throw new ArgumentException("Use an HTTPS account service origin, or HTTP on localhost for development.");return uri.GetLeftPart(UriPartial.Authority);}
         public void Configure(string origin,bool loadRemembered=false)
@@ -31,10 +41,21 @@ namespace ChipArena.UnityConversion
         public void Login(string action,string username,string password,string recovery,bool save)
         {if(action!="login"&&action!="register"&&action!="recover")throw new ArgumentException(nameof(action));remember=save;BeginRequest(action,JsonUtility.ToJson(new NativeLoginRequest{username=username,password=password,recoveryCode=recovery,remember=save}),true);}
         public void Refresh(){if(session.Length>0)BeginRequest("me",null,false);}
-        public void Save(NativeProfile profile){if(Account!=null)BeginRequest("profile",JsonUtility.ToJson(new NativeProfileRequest{revision=Account.revision,profile=profile}),false);}
+        public void ReloadSavedProfile(){if(Account==null)return;reloadProfile=true;refreshAt=0;Refresh();}
+        public void Save(NativeProfile profile)
+        {
+            if(Account==null)return;
+            ProfileSaving=true;ProfileError=null;
+            if(Busy||pendingProfile!=null){pendingProfile=profile;pendingRevision=LoadedPilot.revision;return;}
+            SendProfile(profile,LoadedPilot.revision);
+        }
+        private void SendProfile(NativeProfile profile,int revision)
+        {
+            BeginRequest("profile",JsonUtility.ToJson(new NativeProfileRequest{revision=revision,profile=profile}),false);
+        }
         public void Logout(){if(session.Length==0){Clear();return;}BeginRequest("logout","{}",false);}
         private void BeginRequest(string action,string body,bool authenticating)
-        {if(Busy)return;if(Origin.Length==0){Status="Set the account service URL first.";return;}Busy=true;Status="Connecting…";StartCoroutine(Request(action,body,authenticating));}
+        {if(Busy)return;if(Origin.Length==0){Status=OfflineStatus;return;}Busy=true;refreshAt=Time.unscaledTime+60;Status="Connecting…";StartCoroutine(Request(action,body,authenticating));}
         private IEnumerator Request(string action,string body,bool authenticating)
         {
             using(var request=new UnityWebRequest(Origin+"/api/accounts/"+action,body==null?"GET":"POST"))
@@ -42,21 +63,34 @@ namespace ChipArena.UnityConversion
                 request.redirectLimit=0;request.timeout=action=="me"?5:20;request.downloadHandler=new DownloadHandlerBuffer();request.SetRequestHeader("Content-Type","application/json");request.SetRequestHeader("Cache-Control","no-store");
                 if(body!=null)request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));if(!authenticating&&session.Length>0)request.SetRequestHeader("Authorization","Bearer "+session);
                 yield return request.SendWebRequest();Busy=false;
+                if(action=="profile"&&pendingProfile==null){ProfileSaving=false;ProfileError="Account save could not be confirmed.";}
                 if(action=="logout"){Clear();yield break;}
                 if(request.downloadedBytes>131072){Status="Invalid account response.";yield break;}
                 NativeAccountResponse response=null;try{response=JsonUtility.FromJson<NativeAccountResponse>(request.downloadHandler.text);}catch(ArgumentException){}
-                if(request.result!=UnityWebRequest.Result.Success){if(request.responseCode==401)Clear();Status=response?.error??"Account service could not be reached.";refreshAt=Time.unscaledTime+60;yield break;}
+                if(request.result!=UnityWebRequest.Result.Success){if(request.responseCode==401)Clear();Status=response?.error??"Account service could not be reached.";if(action=="profile"&&pendingProfile==null)ProfileError=Status;refreshAt=Time.unscaledTime+60;yield break;}
                 var access=NativeAccess.Verify(response?.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 if(response?.account==null||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=response.account.id||response.session!=null&&response.session.Length>0&&!ValidSession(response.session)){Status="Account response could not be verified.";yield break;}
-                bool loadProfile=authenticating||Account==null;Access=access;Token=response.token;Account=response.account;RecoveryCode=response.recoveryCode??"";if(!string.IsNullOrEmpty(response.session))session=response.session;
+                bool loadProfile=authenticating||Account==null||reloadProfile&&action=="me";if(action=="me")reloadProfile=false;if(Account?.id!=response.account.id)ResetSocial();Access=access;Token=response.token;Account=response.account;if(!string.IsNullOrEmpty(response.recoveryCode))RecoveryCode=response.recoveryCode;if(!string.IsNullOrEmpty(response.session))session=response.session;
                 Status="Signed in as "+Account.username;refreshAt=Time.unscaledTime+300;
-                try{if(remember&&session.Length>0){var protectedBytes=NativeSessionVault.Protect(Encoding.UTF8.GetBytes(session),Origin);Directory.CreateDirectory(Application.persistentDataPath);File.WriteAllBytes(SessionPath+".new",protectedBytes);if(File.Exists(SessionPath))File.Delete(SessionPath);File.Move(SessionPath+".new",SessionPath);}else if(File.Exists(SessionPath))File.Delete(SessionPath);}
+                try{if(remember&&session.Length>0){var protectedBytes=NativeSessionVault.Protect(Encoding.UTF8.GetBytes(session),Origin);Directory.CreateDirectory(ConversionGame.NativeUserDataPath);File.WriteAllBytes(SessionPath+".new",protectedBytes);if(File.Exists(SessionPath))File.Delete(SessionPath);File.Move(SessionPath+".new",SessionPath);}else if(File.Exists(SessionPath))File.Delete(SessionPath);}
                 catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is System.Security.Cryptography.CryptographicException||e is NotSupportedException){remember=false;Status+=" · sign-in kept for this session only";}
+                if(action=="profile"&&pendingProfile!=null)pendingRevision=Account.revision;
+                if(loadProfile||action=="profile")LoadedPilot=Account;
+                if(loadProfile)ProfileError=null;
+                if(action=="profile"&&pendingProfile==null)
+                {
+                    var sent=JsonUtility.FromJson<NativeProfileRequest>(body).profile.cosmetics;
+                    var stored=Account.profile?.cosmetics;
+                    bool matches=stored!=null&&NativeWeaponSkins.Of(sent.weaponSkins,NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.Of(stored.weaponSkins,NativeWeaponSkins.FaceEntry)
+                        &&sent.overrideWeaponIntro==stored.overrideWeaponIntro&&(!sent.overrideWeaponIntro||sent.intro==stored.intro);
+                    ProfileError=matches?null:"The account returned a different face gear or entrance.";
+                    ProfileStored?.Invoke(Account.id,stored);
+                }
                 Accepted?.Invoke(Account,loadProfile);
             }
         }
-        private void Update(){if(Account!=null&&!Busy&&Time.unscaledTime>=refreshAt)Refresh();}
-        public void Clear(bool erase=true){Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status="Offline profile";if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
+        private void Update(){TickSocial();TickXp();SyncBossClears();if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;SendProfile(profile,pendingRevision);}else if(Time.unscaledTime>=refreshAt)Refresh();}
+        public void Clear(bool erase=true){clearGeneration++;clearBusy=false;clearOwner=null;clearOrigin=null;ResetSocial();ResetXp();ProfileSaving=false;ProfileError=null;pendingProfile=null;reloadProfile=false;LoadedPilot=null;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
     }
     public static class NativeSessionVault
     {

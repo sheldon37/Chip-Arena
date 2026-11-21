@@ -1,0 +1,541 @@
+#if ARENA_TESTS
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using A=ChipArena.UnityConversion.NativeAtlasBoard;
+using T=ChipArena.UnityConversion.NativeTilesets;
+namespace ChipArena.UnityConversion
+{
+    // ATLAS, the Deployment Station's tileset departures board (docs/EXPEDITION-OVERHAUL.md R1 and W2; Core NativeTilesets,
+    // NativeAtlasBoard, NativeAtlasModels, NativeAtlasArt, NativeAtlasSounds; Runtime NativeAtlasScene, NativeAtlasAudio,
+    // NativeAtlasConsoleUI): the registry's City row and its honest empty lines; the board's instances equal the Instance
+    // Machine's real pool; the layout; clean models inside their footprint and budgets; placed under the ceiling beam and seen
+    // whole from the Overview with the DEPLOY sign clear; its headings legible from the station's views at 1080p; its own shot
+    // clear of the console at every window and Interface scale, the side panels stepping aside while it holds; the arrival
+    // (blank, a clatter forward through the drum, landed by the bell, nothing after), timed from the station's second frame so a
+    // first visit's build skips none of it; its shot only over the Overview; machine 2's sparks and Claude's sounds heard once,
+    // started where the picture is and never synthesized at a cue; the glyph atlas; no per-frame allocation; and the runtime
+    // wiring (a minimal hook in the station, nothing asks the authority).
+    internal static class AtlasBoardChecks
+    {
+        private static int count;
+        private static void Check(bool ok,string what){if(!ok)throw new Exception("ATLAS board: "+what);count++;}
+        public static void Run(string root)
+        {
+            count=0;Registry();Pool(root);Layout();Models();Placement();Legibility();Layouts();Flaps();Arrival();Framing();Sparks();Sounds();Art();Allocation();Wiring(root);
+            Console.WriteLine("PASS ATLAS board: "+count+" checks (City's row and the empty lines from the registry, the Instance Machine's pool, the layout, clean models in "+
+                "budget, placed under the beam and seen whole, its headings legible from the Overview, its shot clear of the console at every window and Interface scale, "+
+                "the arrival landed by the bell and timed from the station's second frame, its shot over the Overview only with the side panels aside, machine 2's "+
+                "sparks, sounds heard once and started where the picture is, synthesized off the frame, the glyph atlas, no per-frame allocation, the runtime wiring)");
+        }
+
+        private static string Text(int[] targets,A.Layout L,int line,int column)
+        {
+            var s=new System.Text.StringBuilder();int start=L.LineStart[line];
+            for(int i=0;i<targets.Length;i++){var c=L.Cells[start+i];if(c.Column==column)s.Append(targets[i]<A.Glyphs?A.Drum[targets[i]]:'#');}
+            return s.ToString().TrimEnd();
+        }
+        private static void Registry()
+        {
+            var city=T.All[0];
+            Check(city.Id==T.City&&city.State==T.State.Live&&ReferenceEquals(T.Of(null),city)&&ReferenceEquals(T.Of("nowhere"),city)&&ReferenceEquals(T.Of(T.City),city),"City is the registry's first, live row and the fallback for null or unknown ids");
+            Check(T.Live==1&&T.All.Select(t=>t.Id).Distinct().Count()==T.All.Length,"City alone is live (Q3); ids are distinct");
+            Check(city.Label=="CITY · MERIDIAN"&&T.MenuLine=="TILESET: CITY · MERIDIAN","the label and the Expeditions screen's line");
+            var row=Enumerable.Range(0,4).Select(c=>T.Cell(city,c)).ToArray();
+            Check(row.SequenceEqual(new[]{"CITY · MERIDIAN","THE INFECTED","3 INSTANCES",NativeFallenBoss.Name}),"line 1 reads the plan's row ("+string.Join(" | ",row)+")");
+            Check(T.Columns.SequenceEqual(new[]{"TILESET","ENEMIES","INSTANCES","FINAL"})&&T.Lines==4,"four columns and four lines");
+            Check(T.Cell(null,0)==T.NotInService&&T.Cell(null,1)==""&&T.Cell(null,2)==""&&T.Cell(null,3)==""&&T.NotInService=="NOT IN SERVICE","an empty line: NOT IN SERVICE, no invented names or dates");
+            foreach(var t in T.All)
+            {
+                foreach(var s in new[]{t.Name,t.Place,t.Enemies,t.Final,t.Label})Check(!string.IsNullOrEmpty(s)&&s==s.ToUpperInvariant()&&s.All(ch=>A.Drum.IndexOf(ch)>=0&&NativeDeployArt.Lettered(ch)),t.Id+": '"+s+"' is caps in the drum and the stroke font");
+                Check(t.Accent>0&&t.Accent<=0xffffff&&t.Instances!=null&&t.Instances.Length>0,t.Id+": an accent and its instances");
+            }
+            foreach(var s in T.Columns.Concat(new[]{T.NotInService,"ATLAS","· DEPARTURES"}))Check(s.All(ch=>A.Drum.IndexOf(ch)>=0&&NativeDeployArt.Lettered(ch)),"'"+s+"' is lettered");
+            // the final is the catalogue's run's final boss; the selection hook is City's for every state (A3 fills it)
+            Check(NativeExpeditionCatalogue.Run.Areas.Single(a=>a.Boss).Name==city.Final,"FINAL is the run's final boss ("+city.Final+")");
+            var auth=new NativeExpeditionDeployment("preview","host",31);var states=new List<ExpeditionDeploymentState>{null,auth.Snapshot()};
+            var pool=city.Instances.Select(id=>new ExpeditionInstanceTheme{id=id,theme=id=="exp-foundry"?"industrial":id=="exp-transit"?"rail":"quarantine"}).ToArray();
+            auth.RollInstances("host",pool);states.Add(auth.Snapshot());auth.RollMutators("host",NativeDeployPresentation.MutatorIds);states.Add(auth.Snapshot());auth.Deploy("host",true);states.Add(auth.Snapshot());
+            foreach(var s in states)Check(ReferenceEquals(T.Selected(s),city),"the selection hook reads City for every state until A3");
+            var lines=T.Board(city,new T.Tileset[T.Lines]);Check(ReferenceEquals(lines[0],city)&&lines.Skip(1).All(x=>x==null),"the board: City on line 1, three empty lines");
+            var dev=new T.Tileset{Id="dev-proof",State=T.State.Dev,Name="PROOF",Place="DEV",Accent=0xffffff,Enemies="X",Final="Y",Instances=new[]{"exp-ward-zero"}};
+            var withDev=T.Board(dev,null);Check(ReferenceEquals(withDev[0],dev)&&ReferenceEquals(withDev[1],city)&&withDev.Skip(2).All(x=>x==null),"a selected tileset shows on line 1 whatever its state (A3's DEV proof); the live ones follow");
+            Check(ReferenceEquals(T.Board(null,null)[0],city),"no selection reads as City");
+        }
+        // The board's instance list equals the Instance Machine's pool: the station's real room (the shipped layout and maps)
+        // rolled until every destination has come up, and the live station's reel list.
+        private static void Pool(string root)
+        {
+            var city=T.All[0];var options=new JsonSerializerOptions{IncludeFields=true};
+            string Read(string name)=>File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",name));
+            string mapsJson=Read("UnityMaps.json"),layoutJson=Read("ExpeditionLayout.json");
+            var maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,options);var content=new ConversionContent{maps=maps.maps,contentRevision=NativeMapRules.Revision(mapsJson)};
+            var layout=NativeExpeditionLayout.Parse(layoutJson);layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
+            var room=new ExpeditionDeploymentRoom("atlas","host",4242,NativeExpeditionCatalogue.Run.Id,layout,content);var seen=new HashSet<string>();
+            for(int roll=0;roll<240;roll++){Check(room.Execute("host",room.Snapshot().revision,ExpeditionDeploymentIntent.RollInstances),"roll "+roll);Check(room.Snapshot().districts.Length==NativeExpeditionDeployment.InstanceCount,"roll "+roll+" deals "+NativeExpeditionDeployment.InstanceCount+" destinations");foreach(var d in room.Snapshot().districts)seen.Add(d.instance);}
+            Check(seen.SetEquals(city.Instances),"ATLAS's instances are the Instance Machine's pool ("+string.Join(",",seen.OrderBy(x=>x))+")");
+            Check(T.Cell(city,2)==NativeExpeditionDeployment.InstanceCount+" INSTANCES"&&seen.Count>NativeExpeditionDeployment.InstanceCount,"the INSTANCES cell counts a run's destinations ("+NativeExpeditionDeployment.InstanceCount+"), not the pool of "+seen.Count);
+            var live=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeploymentLive.cs"));var block=live.Substring(live.IndexOf("LiveDeployInstances={",StringComparison.Ordinal));block=block.Substring(0,block.IndexOf("};",StringComparison.Ordinal));
+            var reels=Regex.Matches(block,@"id=(""[^""]+""|NativeBackroomsGenerator\.AreaId|NativePoolroomsGenerator\.AreaId)").Select(m=>m.Groups[1].Value=="NativeBackroomsGenerator.AreaId"?NativeBackroomsGenerator.AreaId:m.Groups[1].Value=="NativePoolroomsGenerator.AreaId"?NativePoolroomsGenerator.AreaId:m.Groups[1].Value.Trim('"')).ToArray();
+            Check(reels.Length==city.Instances.Length&&new HashSet<string>(reels).SetEquals(city.Instances),"and the live station's reels ("+string.Join(",",reels)+")");
+            var known=Enumerable.Range(0,NativeDeployPresentation.DestinationCount).Select(i=>NativeDeployPresentation.DestinationAt(i).Id).ToArray();
+            foreach(var id in city.Instances)Check(known.Contains(id),id+" is a destination the reels draw");
+        }
+        private static void Layout()
+        {
+            var L=A.Board;Check(ReferenceEquals(L,A.Board),"the layout is built once");
+            Check(L.LineStart.Length==T.Lines&&L.LineCount.Sum()==L.Cells.Length,"four lines cover every cell");
+            for(int line=0;line<T.Lines;line++)
+            {
+                var first=L.Cells[L.LineStart[line]];Check(first.Kind==A.Kind.Emblem&&first.Large==(line==0),"line "+line+" starts with its emblem flap"+(line==0?", large":", small"));
+                for(int i=0;i<L.LineCount[line];i++){var c=L.Cells[L.LineStart[line]+i];Check(c.Line==line&&c.Index==i&&c.Large==(line==0),"line "+line+" cell "+i+" bookkeeping");}
+                for(int col=0;col<T.Columns.Length;col++)Check(A.Columns(L,line,col)>=(line==0?L.Count[col]:Math.Max(T.NotInService.Length,1)*(col==0?1:0)),"line "+line+" column "+col+" holds its text");
+            }
+            for(int col=0;col<T.Columns.Length;col++)
+            {
+                int longest=Math.Max(T.Cell(null,col).Length,T.All.Max(t=>T.Cell(t,col).Length));Check(L.Count[col]==Math.Max(1,longest),"column "+col+" is as wide as its longest text ("+L.Count[col]+")");
+                Check(L.Right[col]>L.Left[col]&&(col==0||L.Left[col]>=L.Right[col-1]+A.ColumnGap-1e-4f),"column "+col+" in order with its gap");
+            }
+            float x0=-A.Width/2+A.Bezel,x1=A.Width/2-A.Bezel,y0=A.Bezel,y1=A.Height-A.Bezel;
+            foreach(var c in L.Cells)
+            {
+                Check(c.X0>=x0&&c.X1<=x1&&c.Y0>=y0&&c.Y1<=y1&&c.X1>c.X0&&c.Y1>c.Y0,"cell "+c.Line+":"+c.Index+" on the face");
+                if(c.Kind==A.Kind.Glyph){Check(c.X0>=L.Left[c.Column]-1e-4f&&c.X1<=L.Right[c.Column]+1e-4f,"cell "+c.Line+":"+c.Index+" in its column");Check(Math.Abs((c.X1-c.X0)/(c.Y1-c.Y0)-A.FlapAspect)<.03f,"a glyph flap's shape ("+((c.X1-c.X0)/(c.Y1-c.Y0)).ToString("0.000")+")");}
+                else Check(Math.Abs(c.X1-c.X0-(c.Y1-c.Y0))<1e-4f&&c.X1<A.ColumnsX,"an emblem flap is square, left of the columns");
+            }
+            // no two flaps overlap (each line's cells left to right, the lines stacked with clear gaps under the header and labels)
+            for(int i=0;i<L.Cells.Length;i++)for(int j=i+1;j<L.Cells.Length;j++){var a=L.Cells[i];var b=L.Cells[j];if(a.X0<b.X1-1e-5f&&b.X0<a.X1-1e-5f&&a.Y0<b.Y1-1e-5f&&b.Y0<a.Y1-1e-5f){Check(false,"flaps "+i+" and "+j+" overlap");}}
+            Check(A.LargeTop<A.LabelBottom&&A.LabelBottom<A.HeaderBottom&&A.HeaderBottom<A.HeaderTop&&A.SmallTop<A.LargeTop-A.LargeFlap-.01f,"header, labels, the large line, then the small ones");
+            // the targets spell each line, left-aligned in its columns, from the registry alone
+            var city=T.All[0];int empty=T.All.Length;
+            for(int col=0;col<4;col++){Check(Text(L.Large[0],L,0,col)==T.Cell(city,col),"line 1 column "+col+" spells '"+T.Cell(city,col)+"'");Check(Text(L.Small[empty],L,1,col)==T.Cell(null,col),"an empty line's column "+col+" reads '"+T.Cell(null,col)+"'");}
+            Check(L.Large[0][0]==A.EmblemTile(0)&&L.Small[empty][0]==A.BlankEmblem&&L.Large[empty][0]==A.BlankEmblem,"City's emblem flap, a blank one on an empty line");
+            Check(A.Tiles==A.Glyphs+1+T.All.Length&&A.Drum[0]==' '&&A.Drum.Distinct().Count()==A.Drum.Length&&A.GlyphOf('c')==A.GlyphOf('C')&&A.GlyphOf('~')==0,"the drum: blank first, every glyph once, unknowns blank");
+        }
+        private static void Clean(WeaponMesh mesh,string what)
+        {
+            foreach(var s in mesh.Sections)
+            {
+                Check(s.Positions.Count==s.Normals.Count&&s.Positions.Count==s.Colors.Count&&s.Positions.Count==s.Emission.Count&&s.Indices.Count%3==0&&s.Indices.All(i=>i>=0&&i<s.Positions.Count),what+" section arrays agree");
+                Check(s.Positions.All(p=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&float.IsFinite(p.Z))&&s.Normals.All(n=>Math.Abs(n.Length()-1)<1e-3f),what+" finite positions and unit normals");
+                Check(s.Colors.All(c=>c.X>=0&&c.Y>=0&&c.Z>=0&&c.X<=1.0001f&&c.Y<=1.0001f&&c.Z<=1.0001f&&c.W==1)&&s.Emission.All(v=>v.W==0),what+" colours in range, opaque, no emission tags");
+                if(s.Bone>=NativeAtlasModels.Lights)for(int i=0;i<s.Colors.Count;i++){var c=s.Colors[i];var e=s.Emission[i];if(Math.Abs(c.X-e.X)+Math.Abs(c.Y-e.Y)+Math.Abs(c.Z-e.Z)>1e-4f||e.X+e.Y+e.Z<=0){Check(false,what+" light bone "+s.Bone+" is unlit");break;}}
+                if(s.Bone==NativeAtlasModels.Screen)Check(s.Data.Count==s.Positions.Count&&s.Data.All(d=>d.X>=0&&d.X<1&&d.Y>=0&&d.Y<1),what+" screen faces carry their uv (inside the atlas, never on its wrap)");
+            }
+        }
+        private static bool Same(WeaponMesh a,WeaponMesh b)
+        {
+            if(a.Sections.Count!=b.Sections.Count)return false;
+            for(int i=0;i<a.Sections.Count;i++){var x=a.Sections[i];var y=b.Sections[i];if(x.Bone!=y.Bone||!x.Positions.SequenceEqual(y.Positions)||!x.Indices.SequenceEqual(y.Indices)||!x.Colors.SequenceEqual(y.Colors)||!x.Data.SequenceEqual(y.Data))return false;}
+            return true;
+        }
+        private static void Models()
+        {
+            var cab=NativeAtlasModels.Cabinet();var flaps=NativeAtlasModels.Flaps();Clean(cab,"the cabinet");Clean(flaps,"the flaps");
+            Check(Same(cab,NativeAtlasModels.Cabinet())&&Same(flaps,NativeAtlasModels.Flaps()),"the cabinet and the flaps build the same twice");
+            Check(cab.Triangles>1000&&cab.Triangles<=NativeAtlasModels.CabinetBudget,"the cabinet's budget ("+cab.Triangles+")");
+            int cells=A.Board.Cells.Length;Check(flaps.Triangles==cells*6&&flaps.Triangles<=NativeAtlasModels.FlapsBudget,"three quads per flap ("+flaps.Triangles+")");
+            Check(new[]{NativeAtlasModels.Body,NativeAtlasModels.Lights,NativeAtlasModels.Accent,NativeAtlasModels.Dim}.All(b=>cab.Sections.Any(s=>s.Bone==b))&&flaps.Sections.All(s=>s.Bone==NativeAtlasModels.Screen),"the cabinet's body and lamp bones; the flaps are screen faces");
+            A.Footprint(out var lo,out var hi);const float e=.002f;
+            foreach(var (m,id) in new[]{(cab,"the cabinet"),(flaps,"the flaps")}){m.Bounds(-1,out var min,out var max);Check(min.X>=lo.X-e&&min.Y>=lo.Y-e&&min.Z>=lo.Z-e&&max.X<=hi.X+e&&max.Y<=hi.Y+e&&max.Z<=hi.Z+e,id+" inside the footprint ("+min+" .. "+max+")");}
+            cab.Bounds(-1,out var cmin,out var cmax);Check(cmax.X-cmin.X>(hi.X-lo.X)*.95f&&cmax.Y-cmin.Y>(hi.Y-lo.Y)*.9f,"the cabinet fills its footprint");
+            cab.Bounds(NativeAtlasModels.Accent,out var lamp0,out var lamp1);var lc=(lamp0+lamp1)/2;Check(Math.Abs(lc.X-A.LampX)<.01f&&Math.Abs(lc.Y-NativeAtlasModels.LineY(0))<.01f,"the in-service lamp at line 1's start");
+            // the rods' clamps on the beam's bottom flange
+            var tops=cab.Sections.SelectMany(s=>s.Positions).Where(p=>p.Y>A.Height+.2f).ToArray();
+            Check(tops.Length>0&&tops.Max(p=>p.Y)<=A.BeamBottom-A.At.Y+1e-3f&&tops.Max(p=>p.Y)>=A.BeamBottom-A.At.Y-1e-3f,"the drop rods reach the beam's bottom flange");
+            Check(tops.All(p=>Math.Abs(p.X)>A.RodX-.2f&&Math.Abs(p.X)<A.RodX+.2f&&p.Z+A.At.Z>A.BeamZ-.19f&&p.Z+A.At.Z<A.BeamZ+.19f),"and hang under its flange at x ±"+A.RodX+" ("+tops.Min(p=>p.Z+A.At.Z)+" .. "+tops.Max(p=>p.Z+A.At.Z)+")");
+        }
+        // Möller–Trumbore: the ray from o along d (unit) hits the triangle before `far`.
+        private static bool Hit(Vector3 o,Vector3 d,Vector3 a,Vector3 b,Vector3 c,float far)
+        {
+            var e1=b-a;var e2=c-a;var p=Vector3.Cross(d,e2);float det=Vector3.Dot(e1,p);if(Math.Abs(det)<1e-9f)return false;float inv=1/det;var t0=o-a;
+            float u=Vector3.Dot(t0,p)*inv;if(u<0||u>1)return false;var q=Vector3.Cross(t0,e1);float v=Vector3.Dot(d,q)*inv;if(v<0||u+v>1)return false;float t=Vector3.Dot(e2,q)*inv;return t>1e-4f&&t<far;
+        }
+        private static bool Blocked(Vector3 eye,Vector3 at,IEnumerable<(Vector3,Vector3,Vector3)> tris){var d=at-eye;float far=d.Length()-.02f;d/=d.Length();foreach(var (a,b,c) in tris)if(Hit(eye,d,a,b,c,far))return true;return false;}
+        private static IEnumerable<(Vector3,Vector3,Vector3)> Tris(WeaponMesh m,Matrix4x4 world)
+        {
+            foreach(var s in m.Sections)for(int i=0;i+2<s.Indices.Count;i+=3)yield return (Vector3.Transform(s.Positions[s.Indices[i]],world),Vector3.Transform(s.Positions[s.Indices[i+1]],world),Vector3.Transform(s.Positions[s.Indices[i+2]],world));
+        }
+        // A point's place on a screen of `aspect` (16:9 unless given; x 0..1 left to right, y 0..1 top to bottom) for a view (its
+        // fov vertical, as Unity's), and whether it is in front.
+        private static Vector2 Screen(NativeDeployPresentation.View v,Vector3 p,out bool front,float aspect=16f/9f)
+        {
+            var f=Vector3.Normalize(v.Target-v.Eye);var r=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,f));var u=Vector3.Cross(f,r);var d=p-v.Eye;float z=Vector3.Dot(d,f);front=z>.1f;
+            float t=(float)Math.Tan(v.Fov*Math.PI/360);return new Vector2((Vector3.Dot(d,r)/(z*t*aspect)+1)/2,(1-Vector3.Dot(d,u)/(z*t))/2);
+        }
+        // The top of the gate's DEPLOY sign's brass frame over the gate's floor (NativeDeployModels.GateFrame: top 4.45, the sign at +.62, .34 tall).
+        private const float SignTop=4.45f+.62f+.17f;
+        // The console's TILESET card (Runtime NativeAtlasConsole.Top, Height and Width, mirrored here: Runtime is not compiled in
+        // the checks; Wiring holds the sources to them, and to the console's other rects Layouts uses).
+        private const float CardTop=18,CardHeight=26,CardWidth=336;
+        private static void Placement()
+        {
+            var root=A.Root;A.Footprint(out var lo,out var hi);var bmin=A.At+lo;var bmax=A.At+hi;
+            NativeDeployModels.Footprint(NativeDeployModels.Room,out var r0,out var r1);
+            Check(bmin.X>r0.X&&bmax.X<r1.X&&bmax.Y<=r1.Y&&bmax.Z<r1.Z,"inside the room");
+            NativeDeployModels.Footprint(NativeDeployModels.Gate,out var g0,out var g1);var gate=NativeDeployPresentation.Gate;
+            Check(bmax.Z<gate.Z+g0.Z,"in front of the DEPLOY gate's frame ("+bmax.Z+" < "+(gate.Z+g0.Z)+")");
+            // (the gate's header: its DEPLOY sign's brass frame tops out at 4.45 + .62 + .17 m, NativeDeployModels.GateFrame)
+            Check(A.At.Y+lo.Y>gate.Y+SignTop&&A.At.Y+A.Height<A.BeamBottom-.1f,"over the gate's DEPLOY sign, under the ceiling beam");
+            // seen whole from the Overview: no room, gate or machine triangle between the eye and any flap, the header or the lamps
+            var view=NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview);
+            var room=Tris(NativeDeployModels.StationRoom(),Matrix4x4.Identity).Concat(Tris(NativeDeployModels.GateFrame(),Matrix4x4.CreateTranslation(gate))).ToList();
+            var points=A.Board.Cells.Where(c=>c.Line==0||c.Index%9==0).Select(c=>new Vector3((c.X0+c.X1)/2,(c.Y0+c.Y1)/2,NativeAtlasModels.FlapZ)).ToList();
+            foreach(var x in new[]{-3.7f,-1.6f,0f,1.6f,3.7f})foreach(var y in new[]{A.Height-.005f,A.HeaderTop-.01f,A.HeaderBottom+.01f,(A.LabelBottom+A.HeaderBottom)/2})points.Add(new Vector3(x,y,-.03f));
+            foreach(var p in points){var w=Vector3.Transform(p,root);Check(!Blocked(view.Eye,w,room),"the Overview sees "+p);var s=Screen(view,w,out bool front);Check(front&&s.X>0&&s.X<1&&s.Y>0&&s.Y<1,"in the Overview's frame "+p);}
+            // and the board hides none of the DEPLOY sign: its letters and the top of its brass frame, end to end
+            var cabinet=Tris(NativeAtlasModels.Cabinet(),root).ToList();
+            foreach(var x in new[]{-1.1f,-.6f,0f,.6f,1.1f})foreach(var (y,z) in new[]{(4.45f+.62f+.12f,-.73f),(SignTop-.004f,-.71f)})Check(!Blocked(view.Eye,gate+new Vector3(x,y,z),cabinet),"the DEPLOY sign stays clear of the board at x "+x+", y "+y);
+            // its own shot sees it whole with the gate under it (the console round it: Layouts)
+            var shot=A.Shot;
+            foreach(var c in new[]{new Vector3(-A.Width/2,0,0),new Vector3(A.Width/2,0,0),new Vector3(-A.Width/2,A.Height,0),new Vector3(A.Width/2,A.Height,0)})
+            {var s=Screen(shot,Vector3.Transform(c,root),out bool front);Check(front&&s.X>.05f&&s.X<.95f&&s.Y>.2f&&s.Y<.7f,"the board shot frames the corner "+c+" ("+s+")");}
+            {var s=Screen(shot,gate+new Vector3(0,5.07f,-.73f),out bool front);Check(front&&s.Y<.9f&&!Blocked(shot.Eye,gate+new Vector3(0,5.07f,-.73f),cabinet),"the board shot shows the DEPLOY sign under the board");}
+            Check(!Blocked(shot.Eye,Vector3.Transform(new Vector3(0,(A.LargeTop+A.SmallTop)/2,NativeAtlasModels.FlapZ),root),room),"nothing in the room between the board shot and the board");
+            Check(shot.Eye.Y>2.4f&&Vector3.Distance(new Vector3(shot.Eye.X,0,shot.Eye.Z),NativeDeployPresentation.Pad(0))<1.5f,"the board shot looks up from over the host's pad, above the party's heads");
+        }
+        // The headings read from the station's own views at 1080p: the column labels, · DEPARTURES and ATLAS at least 8.4 px tall
+        // with 1.45 px strokes from the Overview (the station's normal camera; the first board's labels were 4 px, their strokes
+        // under a pixel), 12 px and 2 px from the board's shot; and the cabinet's lettering is built that tall.
+        private static void Legibility()
+        {
+            var root=A.Root;var L=A.Board;float ly=(A.LabelBottom+A.HeaderBottom)/2,hy=(A.HeaderTop+A.HeaderBottom)/2;
+            var views=new[]{(NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview),"the Overview",8.4f,1.45f),(A.Shot,"the board shot",12f,2f)};
+            foreach(var (view,name,tall,stroke) in views)
+            {
+                float Px(float x,float y,float h){var a=Screen(view,Vector3.Transform(new Vector3(x,y+h/2,-.01f),root),out _);var b=Screen(view,Vector3.Transform(new Vector3(x,y-h/2,-.01f),root),out _);return (b.Y-a.Y)*1080;}
+                for(int c=0;c<T.Columns.Length;c++)
+                {
+                    float x=L.Left[c]+NativeAtlasModels.LettersWidth(T.Columns[c],A.LabelHeight)/2,px=Px(x,ly,A.LabelHeight),sw=Px(x,ly,A.LabelHeight*A.LabelWeight);
+                    Check(px>=tall&&sw>=stroke,"from "+name+" the "+T.Columns[c]+" label is "+px.ToString("0.0")+" px tall, its strokes "+sw.ToString("0.00")+" px (at least "+tall+" and "+stroke+")");
+                }
+                float sx=A.EmblemX+NativeAtlasModels.LettersWidth("ATLAS",A.TitleHeight)+.6f,tx=A.EmblemX+.2f;
+                float spx=Px(sx,hy,A.SubtitleHeight),ssw=Px(sx,hy,A.SubtitleHeight*A.LabelWeight),tpx=Px(tx,hy,A.TitleHeight),tsw=Px(tx,hy,A.TitleHeight*A.TitleWeight);
+                Check(spx>=tall&&ssw>=stroke,"from "+name+" · DEPARTURES is "+spx.ToString("0.0")+" px tall, its strokes "+ssw.ToString("0.00")+" px");
+                Check(tpx>=tall*1.15f&&tsw>=stroke,"from "+name+" ATLAS is "+tpx.ToString("0.0")+" px tall, its strokes "+tsw.ToString("0.00")+" px");
+            }
+            Check(A.TitleHeight>A.SubtitleHeight&&A.LabelHeight>=.1f&&A.LabelWeight>=.15f&&A.LabelWeight<=.2f,"the headings' sizes (the labels a tenth of a metre, bold, ATLAS above them)");
+            // the cabinet's lettering: each label spans its height in the label band (its strokes' ends square, a diagonal's corner
+            // reaching up to 1.41 strokes past its glyph), clear of the brass rules above and below it
+            var lights=NativeAtlasModels.Cabinet().Sections.Where(s=>s.Bone==NativeAtlasModels.Lights).SelectMany(s=>s.Positions).ToArray();
+            bool Spans(float lo,float hi,float h,float weight)=>hi-lo>=h*(38f/40)+h*weight-.001f&&hi-lo<=h*(38f/40)+1.415f*h*weight+.001f;
+            for(int c=0;c<T.Columns.Length;c++)
+            {
+                float x0=L.Left[c]-.005f,x1=L.Left[c]+NativeAtlasModels.LettersWidth(T.Columns[c],A.LabelHeight)+.03f;var ps=lights.Where(p=>p.X>x0&&p.X<x1&&p.Y>A.LabelBottom-.005f&&p.Y<A.HeaderBottom).ToArray();
+                float lo=ps.Length>0?ps.Min(p=>p.Y):0,hi=ps.Length>0?ps.Max(p=>p.Y):0;
+                Check(ps.Length>0&&Spans(lo,hi,A.LabelHeight,A.LabelWeight)&&lo>A.LabelBottom+.002f&&hi<A.HeaderBottom-.002f,T.Columns[c]+"'s lettering spans "+(hi-lo).ToString("0.000")+" m in the label band ("+lo.ToString("0.000")+".."+hi.ToString("0.000")+")");
+            }
+            var title=lights.Where(p=>p.X<A.EmblemX+NativeAtlasModels.LettersWidth("ATLAS",A.TitleHeight)+.01f&&p.Y>A.HeaderBottom).ToArray();
+            float t0=title.Length>0?title.Min(p=>p.Y):0,t1=title.Length>0?title.Max(p=>p.Y):0;
+            Check(title.Length>0&&Spans(t0,t1,A.TitleHeight,A.TitleWeight)&&t1<A.HeaderTop-.002f&&t0>A.HeaderBottom+.008f,"ATLAS spans its height in the header, over its brass rule ("+t0.ToString("0.000")+".."+t1.ToString("0.000")+")");
+        }
+        // The board's own shot at every window the game runs in (4:3 to 32:9, 720p to 5K) and Interface scale (0.75 to 1.5): the
+        // board whole on screen and clear of every part of the console that stays while it holds (the title block, the TILESET
+        // card, the controls, the live station's Leave and Ready buttons and its network line; the side panels step aside, see
+        // Framing). From the Overview the TILESET card stays above the board's top at every one of them.
+        private static void Layouts()
+        {
+            var over=NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview);var root=A.Root;
+            var face=new[]{new Vector3(-A.Width/2,-.02f,0),new Vector3(A.Width/2,-.02f,0),new Vector3(-A.Width/2,A.Height+.02f,0),new Vector3(A.Width/2,A.Height+.02f,0)};
+            int layouts=0;
+            foreach(var (w,h) in new[]{(1920,1080),(1920,1200),(2560,1440),(3840,2160),(1366,768),(1280,720),(1440,1080),(1280,1024),(1680,1050),(2560,1080),(3440,1440),(5120,1440)})
+            foreach(var ui in new[]{.75f,1f,1.25f,1.5f})
+            {
+                var m=NativeUiMotion.Measure(w,h,ui);float W=m.Width,H=m.Height,aspect=w/(float)h;string at=w+"x"+h+", Interface scale "+ui;
+                float x0=float.MaxValue,y0=float.MaxValue,x1=float.MinValue,y1=float.MinValue,top=float.MaxValue;
+                foreach(var c in face)
+                {
+                    var p=Vector3.Transform(c,root);var s=Screen(A.Shot,p,out bool front,aspect);Check(front,"the board shot faces the board at "+at);
+                    x0=Math.Min(x0,s.X*W);x1=Math.Max(x1,s.X*W);y0=Math.Min(y0,s.Y*H);y1=Math.Max(y1,s.Y*H);top=Math.Min(top,Screen(over,p,out _,aspect).Y*H);
+                }
+                Check(x0>8&&x1<W-8&&y0>8&&y1<H-8,"the board shot shows the board whole at "+at);
+                float cw=Math.Min(980,W-64);
+                var keep=new[]{("the title block",32f,18f,672f,90f),("the TILESET card",400f,CardTop,400f+CardWidth+60,CardTop+CardHeight),("the controls",(W-cw)/2,H-138,(W+cw)/2,H-26),
+                    ("Leave station",W-210,20f,W-30,52f),("a guest's Ready",W-210,H-64,W-30,H-28),("the network line",28f,H-30,W-28,H-4)};
+                foreach(var (name,a0,b0,a1,b1) in keep)Check(!(x0<a1&&a0<x1&&y0<b1&&b0<y1),"the board shot keeps the board clear of "+name+" at "+at+" (board "+x0.ToString("0")+","+y0.ToString("0")+".."+x1.ToString("0")+","+y1.ToString("0")+")");
+                Check(CardTop+CardHeight<top,"from the Overview the TILESET card stays above the board's top at "+at+" ("+(CardTop+CardHeight)+" < "+top.ToString("0.0")+")");
+                layouts++;
+            }
+            Check(layouts==48,"every window and Interface scale");
+        }
+        private static void Flaps()
+        {
+            var L=A.Board;var c=L.Cells[L.LineStart[0]+3];var pos=new Vector3[NativeAtlasModels.CellVertices];var uv=new Vector2[NativeAtlasModels.CellVertices];var shade=new float[NativeAtlasModels.CellVertices];
+            float mid=(c.Y0+c.Y1)/2,h=c.Y1-mid;
+            NativeAtlasModels.Cell(c,new A.Pose{Prev=5,Next=5,Phase=-1},pos,uv,shade,0);
+            var flapArea=Vector3.Cross(pos[9]-pos[8],pos[11]-pos[8]).Length();Check(flapArea<1e-7f,"at rest the flap folds flat on its hinge");
+            NativeAtlasArt.Rect(5,false,out float u0,out float v0,out float u1,out float v1);float vm=(v0+v1)/2;
+            Check(Math.Abs(uv[0].Y-vm)<1e-6f&&Math.Abs(uv[2].Y-v1)<1e-6f&&Math.Abs(uv[4].Y-v0)<1e-6f&&Math.Abs(uv[6].Y-vm)<1e-6f,"the halves show the glyph's top and bottom");
+            float lastAngle=-1;
+            for(float ph=0;ph<1;ph+=.05f)
+            {
+                NativeAtlasModels.Cell(c,new A.Pose{Prev=3,Next=4,Phase=ph},pos,uv,shade,0);float th=A.FlapAngle(ph);Check(th>=lastAngle&&th>=0&&th<=Math.PI+1e-5,"the flap falls one way");lastAngle=th;
+                Check(Math.Abs(pos[8].Y-mid)<.004f&&Math.Abs(pos[9].Y-mid)<.004f,"the flap turns on the middle hinge");
+                float len=Vector3.Distance((pos[8]+pos[9])/2,(pos[10]+pos[11])/2);Check(Math.Abs(len-h)<.004f,"the flap is half a cell long");
+                Check(pos[10].Z<=NativeAtlasModels.FlapZ+1e-5f,"the flap falls toward the room");
+                NativeAtlasArt.Rect(3,false,out _,out float pv0,out _,out float pv1);NativeAtlasArt.Rect(4,false,out _,out float nv0,out _,out float nv1);
+                bool face=Math.Cos(th)>=0;Check(face?Math.Abs(uv[10].Y-pv1)<1e-6f:Math.Abs(uv[10].Y-nv0)<1e-6f,"the flap shows the old top, then the new bottom");
+                Check(Math.Abs(uv[2].Y-nv1)<1e-6f&&Math.Abs(uv[4].Y-pv0)<1e-6f,"the new top behind it, the old bottom under it");
+                Check(shade.All(k=>k>0&&k<=1),"the flap's shade");
+            }
+            Check(A.FlapAngle(0)==0&&Math.Abs(A.FlapAngle(1)-Math.PI)<1e-5,"the flap falls from up to down");
+        }
+        private static DeployInput Input(float t,ExpeditionDeploymentState s=null,bool reduced=false)=>new DeployInput{State=s,Time=t,SinceInstanceRoll=float.NaN,SinceMutatorRoll=float.NaN,SinceDeploy=float.NaN,Reduced=reduced,Seats=1,Ready=new[]{true,false,false,false,false,false,false,false}};
+        private static void Arrival()
+        {
+            var L=A.Board;var st=new NativeAtlasStage();var targets=L.Large[0];int n0=L.LineCount[0];var history=new List<int>[n0];for(int i=0;i<n0;i++)history[i]=new List<int>();
+            float lastMove=-1;int versions=0,lastVersion=int.MinValue;bool landedEarly=false;
+            for(int f=0;f<=241;f++)
+            {
+                st.Frame(Input(1000+f/120f),NativeDeployPresentation.Shot.Overview);float t=st.Since;
+                if(f<=1){Check(Math.Abs(st.Since)<1e-6f,"the station's first frame opens the board and its second starts the clock");for(int i=0;i<n0;i++){var c=L.Cells[i];Check(st.Poses[i].Next==(c.Kind==A.Kind.Emblem?A.BlankEmblem:0),"line 1 starts blank");}
+                    for(int line=1;line<T.Lines;line++){int s=L.LineStart[line];for(int i=0;i<L.LineCount[line];i++)Check(st.Poses[s+i].Next==L.Small[T.All.Length][i]&&st.Poses[s+i].Phase<0,"line "+(line+1)+" already reads NOT IN SERVICE");}}
+                for(int i=0;i<n0;i++){var p=st.Poses[i];if(history[i].Count==0||history[i][history[i].Count-1]!=p.Next)history[i].Add(p.Next);if(p.Phase>=0)lastMove=t;
+                    if(t<A.EmblemAt-1e-4f)Check(p.Phase<0,"nothing moves before the emblem");if(L.Cells[i].Kind==A.Kind.Glyph&&t<A.ArriveAt-1e-4f)Check(p.Phase<0&&p.Next==0,"no letter moves before the line arrives");}
+                if(st.Version!=lastVersion){versions++;lastVersion=st.Version;}
+                if(t<A.LandAt-1e-4f&&st.Landed)landedEarly=true;
+                if(t>=A.LandAt){Check(st.Landed,"landed at the bell ("+t+")");for(int i=0;i<n0;i++)Check(st.Poses[i].Phase<0&&st.Poses[i].Next==targets[i],"cell "+i+" rests on its letter by the bell");}
+            }
+            // a first visit: the station's first frame is read before its scene is built and first drawn (a tenth of a second
+            // or more), so the arrival's clock starts on the next frame and none of it is skipped: the emblem's fall is seen
+            {
+                var cold=new NativeAtlasStage();cold.Frame(Input(50),NativeDeployPresentation.Shot.Overview);cold.Frame(Input(50.45f),NativeDeployPresentation.Shot.Overview);
+                Check(Math.Abs(cold.Since)<1e-6f&&cold.Framed&&cold.Poses[0].Phase<0,"after a 0.45 s first frame the arrival's clock starts on the second");
+                int fall=0;bool flapped=false;for(int f=1;f<=40;f++){cold.Frame(Input(50.45f+f/60f),NativeDeployPresentation.Shot.Overview);if(cold.Poses[0].Phase>=0)fall++;if(cold.Poses[0].Next==L.Large[0][0])flapped=true;}
+                Check(fall>=2&&flapped,"and the emblem's fall is seen ("+fall+" frames at 60 fps)");
+                // a long frame right over the emblem's whole fall (the Editor's cold first station had 47-94 ms frames there) still
+                // shows it falling, for that one frame, then landed
+                var hitch=new NativeAtlasStage();hitch.Frame(Input(90),NativeDeployPresentation.Shot.Overview);hitch.Frame(Input(90.02f),NativeDeployPresentation.Shot.Overview);
+                hitch.Frame(Input(90.067f),NativeDeployPresentation.Shot.Overview);Check(hitch.Poses[0].Phase<0&&hitch.Poses[0].Next==A.BlankEmblem,"before the emblem's fall ("+hitch.Since+" s)");
+                hitch.Frame(Input(90.1605f),NativeDeployPresentation.Shot.Overview);Check(hitch.Poses[0].Phase>0&&hitch.Poses[0].Phase<1&&hitch.Poses[0].Next==L.Large[0][0]&&hitch.Moving,"a 94 ms frame over the emblem's whole fall shows it mid-fall ("+hitch.Since+" s)");
+                hitch.Frame(Input(90.172f),NativeDeployPresentation.Shot.Overview);Check(hitch.Poses[0].Phase<0&&hitch.Poses[0].Next==L.Large[0][0],"and the next frame shows it landed");
+                for(int i=1;i<L.LineCount[0];i++)Check(hitch.Poses[i].Phase<0||L.Cells[i].Kind==A.Kind.Glyph,"only the one-flap run is held for a frame");
+                // while the Runtime cannot draw the flaps yet (the glyph atlas rasterising), the clock waits for them, at most MaxWait
+                var wait=new NativeAtlasStage();wait.Frame(Input(70),NativeDeployPresentation.Shot.Overview);wait.Waiting=true;
+                for(int f=1;f<=12;f++){wait.Frame(Input(70+f/60f),NativeDeployPresentation.Shot.Overview);Check(wait.Since==0&&wait.Framed&&wait.Poses[0].Phase<0&&wait.CueCount==0,"the arrival waits for the flaps to draw");}
+                wait.Waiting=false;wait.Frame(Input(70+13/60f),NativeDeployPresentation.Shot.Overview);Check(wait.Since==0,"and starts on the frame after they can");
+                wait.Frame(Input(70+14/60f),NativeDeployPresentation.Shot.Overview);Check(Math.Abs(wait.Since-1/60f)<1e-4f,"then runs");
+                var stuck=new NativeAtlasStage();stuck.Frame(Input(80),NativeDeployPresentation.Shot.Overview);stuck.Waiting=true;
+                for(int f=1;f<=120;f++)stuck.Frame(Input(80+f/60f),NativeDeployPresentation.Shot.Overview);
+                Check(stuck.Since>0&&stuck.Since<=2-A.MaxWait+1e-3f,"a board that never draws waits no longer than "+A.MaxWait+" s ("+stuck.Since+" s run)");
+            }
+            Check(!landedEarly,"not landed before the bell");
+            Check(lastMove>A.ArriveAt&&lastMove<=A.ArriveAt+1.2f&&lastMove<A.LandAt,"the line clatters into place within 1.2 s, before the bell ("+lastMove+")");
+            Check(versions>20,"the flaps' version changes while they fall ("+versions+")");
+            int moving=0;
+            for(int i=0;i<n0;i++)
+            {
+                var c=L.Cells[i];var h=history[i];
+                if(targets[i]==0&&c.Kind==A.Kind.Glyph){Check(h.Count==1&&h[0]==0,"a space never flaps");continue;}
+                Check(h[h.Count-1]==targets[i],"cell "+i+" ends on its target");moving++;
+                if(c.Kind==A.Kind.Emblem){Check(h.Count==2,"the emblem falls once");continue;}
+                Check(h.Count-1>=A.MinFlips-1&&h.Count-1<=A.MaxFlips,"cell "+i+" runs "+A.MinFlips+"-"+A.MaxFlips+" flaps ("+(h.Count-1)+"; a first flap onto blank shows no change)");
+                for(int k=2;k<h.Count;k++)Check(h[k]==(h[k-1]+1)%A.Glyphs,"cell "+i+" runs forward through the drum");
+            }
+            Check(moving==targets.Count(x=>x!=0),"every letter of line 1 flaps in");
+            // the same clock draws the same board; a clock that runs backwards opens it again; a jump lands it
+            var a=new NativeAtlasStage();var b=new NativeAtlasStage();a.Frame(Input(0),NativeDeployPresentation.Shot.Overview);b.Frame(Input(0),NativeDeployPresentation.Shot.Overview);
+            for(float t=0;t<2;t+=.037f){a.Frame(Input(t),NativeDeployPresentation.Shot.Overview);b.Frame(Input(t),NativeDeployPresentation.Shot.Overview);Check(a.Poses.SequenceEqual(b.Poses),"deterministic at "+t);}
+            a.Frame(Input(.5f),NativeDeployPresentation.Shot.Overview);Check(Math.Abs(a.Since)<1e-6f&&a.Poses.Take(n0).All(p=>p.Phase<0),"a clock that runs backwards reopens the board");
+            var j=new NativeAtlasStage();j.Frame(Input(5),NativeDeployPresentation.Shot.Overview);j.Frame(Input(5+1/60f),NativeDeployPresentation.Shot.Overview);j.Frame(Input(25),NativeDeployPresentation.Shot.Overview);Check(j.Landed&&j.Poses.Take(n0).Select(p=>p.Next).SequenceEqual(targets),"a frame long after the opening shows it landed");
+            // a later selection change (A3's pick) re-flaps only the cells that differ, forward through the drum, landed in the window
+            // (the stand-in is outside the registry, so line 1 flaps from City to an empty line and City moves to line 2)
+            var r=new NativeAtlasStage();var other=new T.Tileset{Id="stand-in",State=T.State.Live,Name="X",Place="Y",Accent=0x7fe9ff,Enemies="Z",Final="W",Instances=new[]{"exp-ward-zero"}};
+            for(float t=0;t<=3;t+=1/60f)r.Frame(Input(t),NativeDeployPresentation.Shot.Overview);
+            var before=r.Poses.Take(n0).Select(p=>p.Next).ToArray();var empty=L.Large[T.All.Length];r.Select=_=>other;var runs=new List<int>[n0];for(int i=0;i<n0;i++)runs[i]=new List<int>{before[i]};
+            for(float t=3+1/120f;t<=5;t+=1/120f){r.Frame(Input(t),NativeDeployPresentation.Shot.Overview);for(int i=0;i<n0;i++){int g=r.Poses[i].Next;if(runs[i][runs[i].Count-1]!=g)runs[i].Add(g);}}
+            Check(ReferenceEquals(r.Selected,other)&&ReferenceEquals(r.Lines[0],other)&&ReferenceEquals(r.Lines[1],T.All[0]),"the new selection takes line 1, City moves down");
+            for(int i=0;i<n0;i++)
+            {
+                var h=runs[i];Check(h[h.Count-1]==empty[i],"re-flapped cell "+i+" lands on line 1's new text (a stand-in outside the registry reads as an empty line)");
+                if(before[i]==empty[i]){Check(h.Count==1,"an unchanged cell stays put");continue;}
+                if(L.Cells[i].Kind==A.Kind.Glyph)for(int k=2;k<h.Count;k++)Check(h[k]==(h[k-1]+1)%A.Glyphs,"re-flap "+i+" runs forward through the drum");
+            }
+            Check(r.Poses.Take(n0).All(p=>p.Phase<0),"the re-flap has landed within its window");
+        }
+        private static void Framing()
+        {
+            var st=new NativeAtlasStage();st.Frame(Input(-1/60f),NativeDeployPresentation.Shot.Overview);
+            foreach(var (t,shot,want) in new[]{(0f,NativeDeployPresentation.Shot.Overview,true),(1.3f,NativeDeployPresentation.Shot.Overview,true),(A.HoldUntil-.01f,NativeDeployPresentation.Shot.Overview,true),(A.HoldUntil,NativeDeployPresentation.Shot.Overview,false),(9f,NativeDeployPresentation.Shot.Overview,false)})
+            {st.Frame(Input(t),shot);Check(st.Framed==want&&Math.Abs(st.Since-t)<1e-5f,"framed at "+t+": "+want);}
+            var s2=new NativeAtlasStage();foreach(var shot in new[]{NativeDeployPresentation.Shot.InstanceMachine,NativeDeployPresentation.Shot.MutatorMachine,NativeDeployPresentation.Shot.Deploy,NativeDeployPresentation.Shot.Map}){s2.Frame(Input(.5f),shot);Check(!s2.Framed&&s2.Panels==1,"never over the "+shot+" shot, the console's side panels shown");}
+            // through the station: it opens on the board (a cut), eases to the Overview after; a roll during the arrival frames the machine
+            var auth=new NativeExpeditionDeployment("preview","host",44);var pool=new[]{new ExpeditionInstanceTheme{id="exp-ward-zero",theme="quarantine"},new ExpeditionInstanceTheme{id="exp-transit",theme="rail"},new ExpeditionInstanceTheme{id="exp-foundry",theme="industrial"}};
+            var stage=new NativeDeployStage();var input=Input(0,auth.Snapshot());input.Instances=pool;input.Mutators=NativeDeployPresentation.MutatorIds;input.Host=true;input.PartyReady=true;
+            stage.Frame(input,-1);Check(stage.Shot==NativeDeployPresentation.Shot.Overview&&Vector3.Distance(stage.Camera.Eye,A.Shot.Eye)<1e-4f&&stage.Atlas.Framed,"the station opens on the board (the rules' shot is still the Overview)");
+            Check(stage.Atlas.Panels==0,"the console's side panels are out of the board's shot from the station's first frame");
+            bool panelsOut=true,panelsSteady=true;float lastPanels=0,panelsAt=float.NaN;
+            for(float t=1/60f;t<A.HoldUntil+4;t+=1/60f)
+            {
+                input.Time=t;stage.Frame(input,1/60f);var a=stage.Atlas;if(a.Framed&&a.Panels!=0)panelsOut=false;if(a.Panels<lastPanels-1e-6f)panelsSteady=false;lastPanels=a.Panels;
+                if(float.IsNaN(panelsAt)&&a.Panels>=1)panelsAt=a.Since;
+            }
+            var over=NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview);Check(Vector3.Distance(stage.Camera.Eye,over.Eye)<.05f&&!stage.Atlas.Framed,"then eases to the Overview");
+            Check(panelsOut&&panelsSteady&&Math.Abs(panelsAt-(A.HoldUntil+A.HandOff))<.02f,"the side panels stay out while the board holds, then ease in with the hand-off, in by its end ("+panelsAt+" s)");
+            // the hand-off: a smoothstep on the station's clock from the board's shot to the Overview, so the camera leaves at rest
+            Check(Vector3.Distance(A.ViewAt(A.HoldUntil,over).Eye,A.Shot.Eye)<1e-5f&&Vector3.Distance(A.ViewAt(A.HoldUntil+A.HandOff,over).Eye,over.Eye)<1e-5f&&Vector3.Distance(A.ViewAt(A.HoldUntil+A.HandOff/2,over).Eye,(A.Shot.Eye+over.Eye)/2)<1e-4f,"the hand-off runs from the board's shot to the Overview");
+            {
+                var hs=new NativeDeployStage();var hi=Input(0);hs.Frame(hi,-1);float most=0,first=-1;var prev=hs.Camera.Eye;
+                for(float t=1/60f;t<A.HoldUntil+A.HandOff+3;t+=1/60f){hi.Time=t;hs.Frame(hi,1/60f);float step=Vector3.Distance(hs.Camera.Eye,prev);prev=hs.Camera.Eye;if(t>A.HoldUntil&&first<0&&step>0)first=step;most=Math.Max(most,step*60);}
+                Check(first>=0&&first<.01f&&most<6.5f,"the camera leaves the board at rest and never whips (first step "+first+" m, top speed "+most+" m/s at 60 fps)");
+            }
+            Check(stage.Lights.Points==8&&stage.Lights.Directionals==1,"the station keeps its eight practicals: the flaps light nothing");
+            var st2=new NativeDeployStage();var in2=input;in2.Time=0;st2.Frame(in2,-1);
+            float rollAt=float.NaN,released=float.NaN,shownAt=float.NaN;
+            for(float t=1/60f;t<1.2f;t+=1/60f)
+            {
+                if(float.IsNaN(rollAt)&&t>=.5f){auth.RollInstances("host",pool);in2.State=auth.Snapshot();rollAt=t;}
+                in2.Time=t;in2.SinceInstanceRoll=t-rollAt;st2.Frame(in2,1/60f);
+                if(!float.IsNaN(rollAt)&&float.IsNaN(released)&&!st2.Atlas.Framed)released=t;if(!float.IsNaN(released)&&float.IsNaN(shownAt)&&st2.Atlas.Panels>=1)shownAt=t;
+                if(float.IsNaN(rollAt))Check(st2.Atlas.Framed&&st2.Atlas.Panels==0,"before the roll the board holds, the side panels out");
+            }
+            Check(st2.Shot==NativeDeployPresentation.Shot.InstanceMachine&&!st2.Atlas.Framed&&Vector3.Distance(st2.Camera.Eye,NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.InstanceMachine).Eye)<Vector3.Distance(A.Shot.Eye,NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.InstanceMachine).Eye),"a roll during the arrival frames the instance machine");
+            Check(released-rollAt<=1/60f+1e-4f&&shownAt-released<=A.PanelsIn+1/60f+1e-4f&&shownAt-released>=A.PanelsIn-1/60f-1e-4f,"and the side panels are back within "+A.PanelsIn+" s of the roll taking the camera ("+(shownAt-released)+" s)");
+        }
+        private static readonly NativeDeploySparks.Spark[] buf=new NativeDeploySparks.Spark[A.SparkLimit];
+        private static NativeDeploySparks.Spark[] S(float t,bool reduced=false){int n=A.Sparks(buf,0,t,T.All[0].Accent,reduced);return buf.Take(n).ToArray();}
+        private static void Sparks()
+        {
+            foreach(float t in new[]{float.NaN,-1f,0f,A.ArriveAt,A.LandAt-.01f,A.SparkEnd,A.SparkEnd+3})Check(S(t).Length==0,"no sparks at "+t);
+            var burst=S(A.LandAt+.12f);Check(burst.Length>20&&burst.Length<=A.SparkLimit,"a burst as the bell rings ("+burst.Length+")");
+            Check(burst.Count(s=>s.Kind==NativeDeploySparks.Kind.Burst&&s.At.X<-A.Width/2+.6f)>=8&&burst.Count(s=>s.Kind==NativeDeploySparks.Kind.Burst&&s.At.X>A.Width/2-.6f)>=8,"out of both cheeks");
+            Check(burst.All(s=>s.At.Y<A.BeamBottom&&s.At.Y>A.At.Y-1.5f&&Math.Abs(s.At.Z-A.At.Z)<1.2f),"near the board, under the ceiling");
+            var flash=burst.Where(s=>s.Kind==NativeDeploySparks.Kind.Flash).ToArray();var accent=WeaponPaint.Linear(T.All[0].Accent);
+            Check(flash.Length==1&&Math.Abs(flash[0].At.X-(A.At.X+A.LampX))<.01f&&Math.Abs(flash[0].Color.Y/flash[0].Color.X-accent.Y/accent.X)<.02f,"a flash at the in-service lamp in the accent");
+            int full=0,reduced=0;for(float t=A.LandAt;t<A.SparkEnd;t+=1/60f){full+=S(t).Length;reduced+=S(t,true).Length;}Check(reduced>0&&reduced<full*.45f,"reduced effects: about a third ("+reduced+" of "+full+")");
+            var a=S(A.LandAt+.3f);var b=S(A.LandAt+.3f);Check(a.Length==b.Length&&a.Zip(b,(x,y)=>x.At==y.At&&x.Color==y.Color).All(x=>x),"the same clock draws the same sparks");
+            var small=new NativeDeploySparks.Spark[5];Check(A.Sparks(small,0,A.LandAt+.1f,T.All[0].Accent,false)==5&&A.Sparks(buf,7,A.LandAt+.1f,T.All[0].Accent,false)>7,"never past the buffer, added after the count");
+        }
+        private static void Sounds()
+        {
+            Check(A.Schedule.Length==2&&A.Schedule[0].Kind==A.CueKind.Clatter&&A.Schedule[0].At==A.EmblemAt&&A.Schedule[1].Kind==A.CueKind.Bell&&A.Schedule[1].At==A.LandAt,"the clatter with the first flap, the bell as the line lands");
+            var into=new A.Cue[4];var seen=new List<A.CueKind>();float before=float.NaN;
+            for(int f=0;f<=240;f++){float now=f/60f;int n=A.Heard(before,now,into,0);before=now;for(int i=0;i<n;i++)seen.Add(into[i].Kind);}
+            Check(seen.SequenceEqual(new[]{A.CueKind.Clatter,A.CueKind.Bell}),"each heard once, in order");
+            Check(A.Heard(float.NaN,5,into,0)==0,"a late first frame hears nothing of an arrival long done");
+            Check(A.Heard(3,0.1f,into,0)==1&&into[0].Kind==A.CueKind.Clatter,"a reopened board starts again");
+            // a moment carries how late its frame hears it, and its clip starts that far in: the clatter's clicks stay on their
+            // flaps however the frames fall; the bell rings from its strike unless it is more than a quarter second late
+            Check(A.Heard(.05f,.1f,into,0)==1&&Math.Abs(into[0].Late-(.1f-A.EmblemAt))<1e-6f,"a moment heard late carries how late");
+            {
+                var stl=new NativeAtlasStage();int heardN=0;
+                for(int f=0;f<=90;f++){stl.Frame(Input(f/30f),NativeDeployPresentation.Shot.Overview);for(int i=0;i<stl.CueCount;i++){var c=stl.Cues[i];heardN++;Check(Math.Abs(c.Late-(stl.Since-c.At))<1e-5f&&c.Late>=0&&c.Late<1/30f+1e-5f,"the stage's "+c.Kind+" carries its lateness ("+c.Late+" s)");}}
+                Check(heardN==2,"both moments heard at 30 fps");
+            }
+            const int Cl=NativeAtlasSounds.Clatter,Be=NativeAtlasSounds.Bell;
+            Check(NativeAtlasSounds.StartAt(Cl,.021)==.021&&NativeAtlasSounds.StartAt(Cl,-1)==0&&NativeAtlasSounds.StartAt(Cl,double.NaN)==0&&NativeAtlasSounds.StartAt(Cl,99)==NativeAtlasSounds.Duration(Cl),"the clatter starts as far in as it is late, never past its end");
+            Check(NativeAtlasSounds.StartAt(Be,.1)==0&&NativeAtlasSounds.StartAt(Be,NativeAtlasSounds.BellSlack-.01)==0&&NativeAtlasSounds.StartAt(Be,NativeAtlasSounds.BellSlack+.05)==NativeAtlasSounds.BellSlack+.05,"the bell rings from its strike unless it is more than a quarter second late");
+            var st=new NativeAtlasStage();var kinds=new List<A.CueKind>();for(int f=0;f<=200;f++){st.Frame(Input(7+f/60f),NativeDeployPresentation.Shot.Overview);for(int i=0;i<st.CueCount;i++)kinds.Add(st.Cues[i].Kind);}
+            Check(kinds.SequenceEqual(new[]{A.CueKind.Clatter,A.CueKind.Bell}),"the stage hears the arrival once");
+            for(int i=0;i<NativeAtlasSounds.Count;i++)
+            {
+                var pcm=NativeAtlasSounds.Samples(i);Check(pcm.Length==(int)Math.Ceiling(NativeAtlasSounds.Duration(i)*NativeAtlasSounds.SampleRate),"clip "+i+" lasts its declared length");
+                Check(pcm.All(x=>float.IsFinite(x)&&Math.Abs(x)<1)&&pcm[0]==0&&pcm[pcm.Length-1]==0,"clip "+i+": finite, unclipped, click-free ends");
+                Check(pcm.Max(Math.Abs)>.1f&&pcm.Select(x=>(double)x*x).Average()>1e-4,"clip "+i+" is audible");Check(pcm.SequenceEqual(NativeAtlasSounds.Samples(i)),"clip "+i+" is deterministic");
+            }
+            Check(NativeAtlasSounds.Of(A.Schedule[0]).Index==NativeAtlasSounds.Clatter&&NativeAtlasSounds.Of(A.Schedule[1]).Index==NativeAtlasSounds.Bell&&NativeAtlasSounds.Keys.Distinct().Count()==NativeAtlasSounds.Count&&NativeAtlasSounds.Keys.All(k=>k.StartsWith("deploy.atlas.")),"each moment its own key");
+            Check(NativeAtlasSounds.Of(A.Schedule[0]).Gain>0&&NativeAtlasSounds.Of(A.Schedule[1]).Gain<=1,"bounded gains");
+            // the clatter lands with the picture: one click per line-1 flap, each at its flap's landing
+            var L=A.Board;var clicks=A.Clicks(L,0);int flaps=0;for(int i=0;i<L.LineCount[0];i++){var c=L.Cells[i];if(L.Large[0][i]==0&&c.Kind==A.Kind.Glyph)continue;A.Plan(c,0,0,out _,out int k);flaps+=k;}
+            Check(clicks.Count==flaps&&clicks.All(x=>x>=0)&&clicks.Zip(clicks.Skip(1),(x,y)=>y>=x).All(x=>x),"a click for every flap, in time ("+clicks.Count+")");
+            Check(Math.Abs(clicks[clicks.Count-1]+A.EmblemAt-(A.LandAt-.25f))<.3f,"the last click near the line's landing");
+            var clatter=NativeAtlasSounds.Samples(NativeAtlasSounds.Clatter);int last=(int)((clicks[clicks.Count-1]+.05f)*NativeAtlasSounds.SampleRate);double inside=0,after=0;for(int i=0;i<clatter.Length;i++){double e=clatter[i]*clatter[i];if(i<last)inside+=e;else after+=e;}
+            Check(after<inside*.02,"the clatter's sound ends with its last flap");
+            // machine 2 is never Astra's: NativeDeploySounds plays machines 0 and 1 only
+            Check(NativeDeploySounds.Of(new NativeDeploySparks.Cue{Kind=NativeDeploySparks.CueKind.Stop,Machine=A.Machine,Reel=0}).Key==null,"Astra's station sounds ignore machine 2");
+        }
+        private static void Art()
+        {
+            var atlas=NativeAtlasArt.Atlas();Check(atlas.Length==NativeAtlasArt.Bytes&&atlas.All(float.IsFinite)&&atlas.All(v=>v>=0&&v<=1),"the atlas's size and range ("+NativeAtlasArt.Width+"x"+NativeAtlasArt.Height+")");
+            Check(atlas.SequenceEqual(NativeAtlasArt.Atlas()),"the atlas is deterministic");Check(NativeAtlasArt.Rows*NativeAtlasArt.Across>=A.Tiles,"every tile fits");
+            int W=NativeAtlasArt.Width,H=NativeAtlasArt.Height;
+            float Ink(int tile,bool emblem){NativeAtlasArt.Rect(tile,emblem,out float u0,out float v0,out float u1,out float v1);int bright=0;for(int y=(int)(v0*H)+2;y<(int)(v1*H)-2;y++)for(int x=(int)(u0*W)+2;x<(int)(u1*W)-2;x++){int i=(y*W+x)*4;if(atlas[i]+atlas[i+1]+atlas[i+2]>2.4f)bright++;}return bright;}
+            for(int g=0;g<A.Glyphs;g++){float ink=Ink(g,false);if(A.Drum[g]==' ')Check(ink==0,"the blank flap is blank");else Check(ink>12,"glyph '"+A.Drum[g]+"' has ink on its flap ("+ink+")");}
+            Check(Ink(A.BlankEmblem,true)==0&&Ink(A.EmblemTile(0),true)>200,"the blank emblem flap and City's emblem");
+            // the split runs dark across every flap's middle; outside a glyph flap the cabinet's black
+            for(int g=0;g<A.Tiles;g++)
+            {
+                bool emblem=g>=A.Glyphs;NativeAtlasArt.Rect(g,emblem,out float u0,out float v0,out float u1,out float v1);int ym=(int)((v0+v1)/2*H);
+                for(int x=(int)(u0*W)+4;x<(int)(u1*W)-4;x+=3){int i=(ym*W+x)*4;if(atlas[i]+atlas[i+1]+atlas[i+2]>.3f){Check(false,"tile "+g+"'s split is dark");break;}}
+                Check(u0>=0&&u1<1&&v0>0&&v1<1&&u1>u0&&v1>v0,"tile "+g+"'s rect is inside the atlas, off its wrap");
+                if(!emblem){int i=(((int)(v0*H)+10)*W+(int)(u0*W)-3)*4;Check(atlas[i]+atlas[i+1]+atlas[i+2]<.15f,"tile "+g+" is black beside its flap");Check(Math.Abs((u1-u0)*W/((v1-v0)*H)-A.FlapAspect)<.03f,"tile "+g+"'s flap has the cells' shape");}
+            }
+            var bytes=NativeAtlasArt.Pack(atlas);var back=NativeAtlasArt.Unpack(bytes);Check(bytes.Length==NativeAtlasArt.Bytes&&back.Zip(atlas,(x,y)=>Math.Abs(x-y)<=.5f/255+1e-6f).All(x=>x),"the bake round-trips within a byte");
+            bool bad=false;try{NativeAtlasArt.Unpack(new byte[8]);}catch(FormatException){bad=true;}Check(bad,"a wrong-sized bake is refused");
+            Check(Regex.IsMatch(NativeAtlasArt.Key,"^DeployCards/atlas-flaps-[0-9a-f]{8}$")&&NativeAtlasArt.Key==NativeAtlasArt.Key,"the bake's key is stable and names its inputs' hash");
+            foreach(char ch in A.Drum)if(ch!=' ')Check(NativeAtlasArt.GlyphMarkup(ch).Contains("<line"),"glyph '"+ch+"' draws strokes");
+        }
+        private static void Allocation()
+        {
+            var st=new NativeAtlasStage();var ds=new NativeDeployStage();var auth=new NativeExpeditionDeployment("preview","host",45);var input=Input(0,auth.Snapshot());
+            for(int warm=0;warm<2;warm++)
+            {
+                long before=GC.GetAllocatedBytesForCurrentThread();
+                for(int f=0;f<240;f++){input.Time=f/60f;st.Frame(input,NativeDeployPresentation.Shot.Overview);ds.Frame(input,1/60f);}
+                long used=GC.GetAllocatedBytesForCurrentThread()-before;if(warm==1)Check(used==0,"the board and the station with it allocate nothing per frame ("+used+" bytes)");
+            }
+        }
+        private static void Wiring(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
+            string scene=R("Runtime/NativeDeployScene.cs"),stage=R("Core/NativeDeployStage.cs"),atlas=R("Runtime/NativeAtlasScene.cs"),audio=R("Runtime/NativeAudio.cs"),play=R("Runtime/NativeAtlasAudio.cs"),console=R("Runtime/NativeDeployConsoleUI.cs"),card=R("Runtime/NativeAtlasConsoleUI.cs"),bake=R("Editor/NativeDeployCardBuild.cs");
+            // the hooks: one line each in the station's scene, stage, console, audio and card bake
+            Check(scene.Contains("atlas=NativeAtlasScene.Make();")&&scene.Contains("atlas?.Dispose();")&&Regex.Matches(scene,@"atlas\?\.Draw\(camera,Stage\);").Count==1,"the station's scene makes, draws and frees the board");
+            int d0=scene.IndexOf("public void Draw(Camera camera",StringComparison.Ordinal),d1=scene.IndexOf("public void Dispose()",StringComparison.Ordinal);Check(scene.Substring(d0,d1-d0).Contains("atlas?.Draw(camera,Stage);"),"inside its draw");
+            Check(stage.Contains("public readonly NativeAtlasStage Atlas=new NativeAtlasStage();")&&Regex.Matches(stage,@"Atlas\.Frame\(").Count==1&&stage.Contains("if(Atlas.Frame(f,Shot))want=Atlas.View;")&&!Regex.IsMatch(stage,@"Shot=NativeAtlasBoard"),"the stage poses the board once a frame and only eases its camera to it (its Shot stays the rules')");
+            Check(console.Contains("Header(W,s,ui);NativeAtlasConsole.Card(stage,W,ui);float side=ui*NativeAtlasConsole.Side(stage);if(side>.004f){Destinations(stage,s,side);Mutators(stage,s,W,side);}"),"the console's TILESET card comes first; the side panels step aside while the board holds");
+            Check(console.Contains("intent=Console(stage,s,party,host,W,Hh,now,ui);")&&card.Contains("public static float Side(NativeDeployStage stage)=>stage?.Atlas!=null?Mathf.Clamp01(stage.Atlas.Panels):1;"),"only the side panels: the controls keep the console's own level (their buttons stay live)");
+            // the console's rects Layouts keeps the board clear of (the title block, the controls; the live station's Leave and
+            // Ready buttons and its network line) and the side panels that step aside, as Runtime draws them
+            Check(console.Contains("U.Text(new Rect(32,22,520,16),\"EXPEDITION · PRE-RUN\"")&&console.Contains("U.Text(new Rect(32,38,620,34),\"DEPLOYMENT STATION\",28")&&console.Contains("U.Text(new Rect(32,72,640,18),")
+                &&console.Contains("float w=Mathf.Min(980,W-64);var r=new Rect((W-w)/2,Hh-138,w,112);")&&console.Contains("var r=new Rect(28,112,352,58+3*70);")&&console.Contains("var r=new Rect(W-380,112,352,"),"the console's rects as Layouts has them");
+            var live=R("Runtime/NativeDeploymentLive.cs");
+            Check(live.Contains("new Rect(width-210,20,180,32),\"Leave station\"")&&live.Contains("new Rect(width-210,height-64,180,36)")&&live.Contains("GUI.Label(new Rect(28,height-30,width-56,26),networkStatus)"),"the live station's buttons and network line as Layouts has them");
+            Check(card.Contains("return new Rect(Mathf.Max(400,titleRight+34),Top,Width,Height);"),"the TILESET card right of the title, at least 400 in");
+            Check(audio.Contains("NativeWeaponCard.Sound+=FlourishHeard;AtlasAwake();")&&play.Contains("NativeAtlasScene.Sound+=AtlasHeard;")&&audio.Contains("NativeAtlasScene.Sound-=AtlasHeard;ClearAtlasClips();"),"the audio hears the board (AtlasAwake from NativeAudio.Awake)");
+            Check(play.Contains("limiter.Cue(sound.Key,Time.unscaledTime,sound.Gain)")&&play.Contains("Muted||Effects<=0")&&play.Contains("Voice()")&&play.Contains("gain*Effects"),"its sounds on the shared voices, volume, mute and limiter");
+            // the clips are synthesized on workers when the audio wakes; a cue only makes the clip and starts it where the picture is
+            Check(play.Contains("atlasSynth[i]=Task.Run(()=>NativeAtlasSounds.Samples(k));"),"both clips synthesized on workers from AtlasAwake");
+            {
+                int h0=play.IndexOf("private void AtlasHeard(",StringComparison.Ordinal),h1=play.IndexOf("\n        }",h0,StringComparison.Ordinal);var heard=h0>=0&&h1>h0?play.Substring(h0,h1-h0):"";
+                Check(heard.Length>0&&!heard.Contains("Samples(")&&!heard.Contains("Task")&&heard.Contains("AtlasClips();")&&heard.Contains("NativeAtlasSounds.StartAt(sound.Index,cue.Late)")&&heard.Contains("voice.timeSamples=from;"),"a cue never synthesizes on the main thread; it starts its clip where the picture is");
+                int c0=play.IndexOf("private void AtlasClips()",StringComparison.Ordinal),c1=play.IndexOf("\n        }",c0,StringComparison.Ordinal);var clips=c0>=0&&c1>c0?play.Substring(c0,c1-c0):"";
+                Check(clips.Contains("!job.IsCompleted)continue;")&&clips.Contains("AudioClip.Create(")&&!clips.Contains("Samples(")&&!clips.Contains(".Wait")&&!clips.Contains("GetAwaiter"),"a clip is made only from a finished synthesis, never waited for");
+                int uses=0;foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))uses+=Regex.Matches(File.ReadAllText(f),@"NativeAtlasSounds\.Samples\(").Count;
+                Check(uses==1,"nothing else in the game synthesizes the board's sounds ("+uses+" call)");
+            }
+            Check(bake.Contains("NativeAtlasArt.Key")&&bake.Contains("NativeAtlasArt.Pack(NativeAtlasArt.Atlas())")&&bake.Contains("asset.bytes.Length!=NativeAtlasArt.Bytes"),"the build bakes the glyph atlas once and checks it");
+            Check(atlas.Contains("Resources.Load<TextAsset>(NativeAtlasArt.Key)")&&atlas.Contains("baked.bytes.Length==NativeAtlasArt.Bytes")&&atlas.Contains("Task.Run(()=>NativeAtlasArt.Atlas())"),"the scene loads the bake, else rasterises it on a worker");
+            Check(atlas.Contains("a.Waiting=atlas==null&&atlasJob!=null;"),"the scene holds the opening's clock while its glyph atlas rasterises");
+            Check(atlas.Contains("Sound?.Invoke(a.Cues[i])")&&atlas.Contains("catch(Exception e){failed=true;Debug.LogException(e);}")&&atlas.Contains("public static NativeAtlasScene Make(){try{"),"its sounds go out; a failure turns the board off, never the station");
+            Check(card.Contains("board.Since>=NativeAtlasBoard.LandAt")&&card.Contains("\"ARRIVING…\"")&&!card.Contains("DeployIntent"),"the card mirrors the board and raises no intent");
+            Check(card.Contains("public const float Width="+CardWidth+",Height="+CardHeight+",Top="+CardTop+";"),"the card's place, as Layouts checks it against the board");
+            Check(card.Contains("var label=new Rect(r.x+80,r.y+1,tag.x-8-(r.x+80),r.height-2);")&&card.Contains("w>label.width?Mathf.Max(10,14*label.width/w):14"),"the tileset's name stops short of the IN SERVICE tag, smaller only if it must");
+            // the draw allocates nothing: no reference allocation, lambda or LINQ in Frame or Rebuild
+            foreach(var name in new[]{"private void Frame(Camera camera","private void Rebuild("})
+            {
+                int s=atlas.IndexOf(name,StringComparison.Ordinal);int e=atlas.IndexOf("\n        }",s,StringComparison.Ordinal);var body=atlas.Substring(s,e-s);
+                Check(s>=0&&!Regex.IsMatch(body,@"new (?!Vector[234]\(|Matrix4x4\()[A-Z]")&&!body.Contains("=>")&&!Regex.IsMatch(body,@"\.(Select|Where|ToArray|ToList)\("),"the board's "+name.Split('(')[0].Split(' ').Last()+" allocates nothing");
+            }
+            // nothing of the board asks the authority, sends anything or touches the ticket
+            var calls=new Regex(@"\.(RollInstances|RollMutators|SkipMutators|Deploy)\(|new NativeExpeditionDeployment\(|SendServer|NativeNetMessage|Ticket");
+            foreach(var f in new[]{"Core/NativeTilesets.cs","Core/NativeAtlasBoard.cs","Core/NativeAtlasModels.cs","Core/NativeAtlasArt.cs","Core/NativeAtlasSounds.cs","Runtime/NativeAtlasScene.cs","Runtime/NativeAtlasAudio.cs","Runtime/NativeAtlasConsoleUI.cs"})
+                Check(!calls.IsMatch(R(f)),f+" never asks the authority or the wire");
+            Check(!R("Core/NativeDeploySounds.cs").Contains("Atlas")&&!R("Core/NativeDeployPresentation.cs").Contains("Atlas"),"Astra's station sounds and the eject's rules are untouched");
+            // each new file is registered with Unity, with its own guid
+            var guids=new HashSet<string>();
+            foreach(var f in new[]{"Core/NativeTilesets.cs","Core/NativeAtlasBoard.cs","Core/NativeAtlasModels.cs","Core/NativeAtlasArt.cs","Core/NativeAtlasSounds.cs","Runtime/NativeAtlasScene.cs","Runtime/NativeAtlasAudio.cs","Runtime/NativeAtlasConsoleUI.cs"})
+            {var meta=Path.Combine(root,"Assets/ChipArena",f+".meta");Check(File.Exists(meta),f+" has a meta");var text=File.ReadAllText(meta);var g=Regex.Match(text,@"guid: ([0-9a-f]{32})").Groups[1].Value;Check(g.Length==32&&guids.Add(g)&&!text.Contains(" \n"),f+" has its own guid and a clean meta");}
+            foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets"),"*.meta",SearchOption.AllDirectories))
+            {
+                if(Path.GetFileName(f).StartsWith("NativeAtlas",StringComparison.Ordinal)||Path.GetFileName(f)=="NativeTilesets.cs.meta")continue;
+                var g=Regex.Match(File.ReadAllText(f),@"guid: ([0-9a-f]{32})").Groups[1].Value;if(guids.Contains(g)){Check(false,"no other asset shares a new guid ("+Path.GetFileName(f)+")");break;}
+            }
+        }
+    }
+}
+#endif
