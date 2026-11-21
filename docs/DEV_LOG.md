@@ -182,6 +182,301 @@ back to `9319026b` (compiled) before the lock was given back. `f29cb3ac`'s 84 fr
     which differed by 76 ms.
 - **Next:** the integrator merges.
 
+## 2026-11-20 — Claude (I2b): Slipstream's run, take-off and slide from the owner's Runner Action pack; Slipstream registered again (owner: "The run is very 'cartoon' like"; presentation only)
+
+**Branch and base:** `claude/intro-generic`, fast-forwarded to shared `139b40e4` (batch 1 shipped without Slipstream) and merged with
+the framework `claude/intro-framework` `9bbf5845` (I0d's pack clips as keys). Implementation commits `059dd1c8` and `89a64310`.
+Pushed, not merged;
+nothing released. As-built notes: `docs/INTROS-GENERIC.md` "Slipstream" (Motion).
+
+**What changed and why** (owner: "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I have"):
+Slipstream's sprint, take-off and slide now play the owner's BIPER Runner Action pack clips from the intros' local motion bank
+(`ChipArenaIntroMotion.bytes`, I0d's, never committed; `docs/INTROS-V2.md` 9d) over its own keys, which still play without the bank.
+- **The clips:** `Mvm_Dash` for the sprint (the root moving along the roof at the clip's 9.12 m/s, so the drawn feet hold; a footfall
+  every .27 s: the right at 1.8 s, the left, the right, the left planted for the take-off at 2.6 s), `Jmp_FrontAir_A_Start` for the
+  take-off (held on its airborne frame into the keyed leap), `Esc_Slide_All` for the slide (the right foot down on the landing, the leg
+  folding under, the left leg out in front; its feet slide with it, no hold) and the rise (held feet; the slide stops where the hero
+  stance puts the left foot, and the body rises over it onto the mark). `Jump_Down_A_Loop` (a fall with the arms up) was left out:
+  the keyed split leap reads better for a running leap. The crouch, the leap's flight and the hero beats stay keyed.
+- **The base** (`NativeIntroGenericScript`): the body is posed in the frame of what carries its feet (`Carried`; Slipstream's car until
+  the leap), so feet planted on the roof, and a clip's feet held where they came down (NativeIntroPack holds them against the root),
+  ride with the car; a pack clip's legs let go of the kneel and the heel roll; `Repin` puts the feet back on the keys' plan, the
+  height too, as a clip hands over to the keys. The other four intros draw byte-identically (their model dumps against `92b1c960`).
+- **Under the clips:** the keyed lean is the pelvis's, not the body's: `NativeIntroPack.Apply` plays joints 1-21 and leaves the keyed
+  body turn (B), so a keyed lean tilted the whole clip 20 degrees. The slide's right hand is keyed (in line with its forearm, the
+  fingertips dragging): the clip's, bent back flat on the floor, drew 116 degrees off its keyed turn, past the 110 IntroPoseChecks
+  allows a hand. The root rides 2 cm higher while the slide plays. The rise plays until the body is up over the left foot and holds that
+  frame as it eases into the keyed stand (the clip runs on into a stride, which mixed with the stand jolted the body and the camera:
+  the full suite caught the Reduced camera shaking 27 mm), and the orbit follows the chest without a lead. The tracking shot keeps
+  inside the tunnel's lining until it is out (the faster start reached the wall) and sits further ahead and level with the pilot (the
+  first take had its head out of frame at 1.7-1.8 s).
+- **Without the bank** (CI, a build without the local assets) the keys play the same beats: an accelerating sprint at the clip's stride,
+  a take-off off the left foot, a knee slide on the right knee with the left foot out in front and the right hand dragging, the right
+  foot planting under the rising body. The slide's sparks follow whatever is down (the folded knee, the boot out in front, the dragging
+  fingertips), so both read the same.
+- **Registered again:** its catalog line restored and `IntroGenericChecks`' hold-out removed.
+
+**Systems touched:** Core `NativeIntroGeneric.cs`, `NativeIntroSlipstream.cs`, `NativeIntroCatalog.cs` (Slipstream's line); Tests
+`IntroGenericChecks.cs` (`Roof`, `Clips`, both modes, the pack's arms bound as the runtime binds them); `docs/INTROS-GENERIC.md`. No
+framework file, no Runtime file, no rules, no wire, no saves.
+
+**Checks (actual, on `89a64310`; the docs commit after it changes no code and no check reads it):**
+- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the integrator's
+  `banks-next`; the local motion bank found and loaded, as the game plays it): exit 0, 1087 PASS, 0 FAIL. Within it: generic intros
+  29,960 checks; intros v2 4,649; intro poses 484 (0 limit, feet or grip findings); intro pack 113. The same run on `059dd1c8` failed
+  the Reduced camera (27 mm in the rise), fixed in `89a64310`.
+- `--intro-limits`: 0 findings (485 checks). Unity compile check (`tools/check_unity_compile.py`, 6000.3.24f1, no download): all four
+  assemblies PASS. `git diff --check`: clean.
+- The other four generic intros' model dumps (`INTRO_GENERIC_MODEL`) are byte-identical to `92b1c960`'s.
+
+**Captures (local, never committed; `F:/Chip Arena Development/scratch/intro-generic/clips/`):**
+- Hold 3 on `059dd1c8` (12.2 min): the motion bank put in the Editor's `Resources` (131,257 bytes, sha256 df9bdad1; Unity made its
+  .meta) and left there; Slipstream at High and review views. Its review found the tracking shot too close in the tunnel (the head out
+  of frame at 1.7-1.8 s), and the BoZo `introeye` "s" view is the intro frame's side, a front view for a run along x. Superseded.
+- Hold 4 on `89a64310` (11.1 min): `Slipstream-high-b4.mp4` (real time, 7.2 s, 1.1 MB, trimmed: from the first frame clear of the
+  loading card to the last before the match), `Slipstream-side-b4-halfspeed.mp4` (the run 1.5-2.87 s and the slide 3.2-4.87 s seen
+  square from the hall side, half speed), `sheets/Slipstream-b4-strip.png`, `-run.png`, `-slide.png`, `-run-side.png`,
+  `-slide-side.png`. Reviewed: the sprint reads as a sprint (the lean, the knee drive, the arms, long flights); the helmet clear of the
+  tunnel's ceiling; in the slide nothing goes through the floor (the folded leg's knee and shin at the floor, the heel out in front, the
+  hand down behind with sparks); the feet on the roof are held to the car by the check (stills cannot show a slide).
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation; Slipstream's registered
+Duration 7.4 s and NameAt 5.6 s are unchanged).
+
+**Voxel dependency:** none added.
+
+**Risks and next step:**
+- The bank is local: the integrator packs `ChipArenaIntroMotion.bytes` (131,257 bytes, sha256 df9bdad1) into the Drive zip at its
+  release; without it Slipstream plays its keys. It now sits in the Editor's `Resources` (Unity made its .meta).
+- The clip timing is pinned by `IntroGenericChecks.Clips` (speed, stride, footfalls, the take-off plant, the slide's touchdown): a
+  rebaked bank with other timing fails there first.
+- For the framework (passed to the integrator for I0d): `Apply` leaves the keyed body turn under a pack segment, and
+  `IntroPoseChecks.Mapping` holds pack-played hands to their keyed turn; skipping pack-played joints there, as `Limits` does, would let
+  the slide's right hand be the clip's again.
+- Next: the integrator merges the branch and ships the bank with Slipstream.
+
+## 2026-11-20 — Claude (I0d): intros v2: pack clips as keys from the intros' own motion bank (Slipstream's run), and the name card on bright sets (owner request; presentation only)
+
+## 2026-11-20 — Claude: Belvedere Camp's survivors on the pilot model in the DEV preview (owner direction; presentation only)
+
+**Owner:** "For the people in the hub, We can use our player model. Of course, dress the NPC's appropriately~ I believe we have 'npc' animations, like crafting mecanim?"
+
+The owner then downloaded Explosive's Crafting Mecanim Animation Pack for it.
+
+**Branch:** `claude/camp`, on top of part 1, with `claude/intro-framework` `9bbf5845` merged in (NativeIntroPack: pack clips as keys). The implementation head is `9200b7d9`, after `82ecd6e3` (the survivors), `a715a540` (props, the kiosk hatches, the REVIVE-O-MATIC) and the ratchet pin. Pushed; not merged, not released.
+
+### What changed
+- **Who they are:** every post in the W5 plan (13, plus 5 rescued) has a role in Core `NativeCampSurvivors`. The nearest six within 30 m draw as the pilot model; the bank's rigid figures stay beyond that. Runtime `NativeCampSurvivorsDraw.cs` is compiled into Editor and development builds only and draws in the walk only. The figures now draw one by one, so a survivor on the model leaves its figure out.
+- **How they're dressed:** the zombies' dressing, made clean:
+  - pack pieces and Locker skin tones;
+  - human eyes (the zombies' blank `_ZombieEye` is turned off);
+  - garments: aprons for the cook, the Quartermaster and the welder; a lab coat and lanyard for Doc; coveralls for Sparks; scrubs for the nurse;
+  - parkas with beanies or caps for the lookouts and sentries;
+  - the radio operator's headset, from the camp bank.
+- **How they move:** pack clips from the camp's own CAIM bank, played as keyed poses and eased .45 s between beats.
+  - The bank (Resources/ChipArenaCampMotion) is local and never committed. It holds 27 clips, 1,230,604 bytes, baked by the local tool's intromotion request.
+  - **Benches:** Crafting Chair-Idle, Talk1, Drink (with a mug) and Eat (with a bowl). Their hips are lowered 8 cm onto the bench, with the feet held by hinge IK.
+  - **Kiosk:** Item-Hammer-Table (with a hammer), Use, Chisel, Idle-Bored1.
+  - **Sparks:** Item-Kneel-Idle and Kneel-Hammer.
+  - **Watch:** the RPG pack's Unarmed-Idle, Idle-Alert1, Idle-Injured1 and Stunned.
+  - **A rescue (U) or the new Y key:** Cheer1, Cheer2 or Wave1 from the standing civilians.
+- **Assets:** the 19 Crafting clips and the Crafter rig were copied into the Editor's git-ignored `LocalAssets/ExplosiveLLC/Crafting Mecanim Animation Pack`, under the lock. Nothing from the pack is committed.
+
+### Checks
+- **`CoreTests --camp` with `CHIPARENA_CAMP_BANK` and `CHIPARENA_CAMP_MOTION`:** pass, 162,295 checks. This covers:
+  - a role for every post;
+  - clean looks from the banks' own pieces, garments and gear;
+  - whole loops;
+  - the six-nearest pick and its slack;
+  - every role on the bank's clips: whole poses, the feet by the floor, a seated clip's feet held within 4 mm, no allocation per sample;
+  - the props in the bank.
+  Without the banks it runs 67,181 checks.
+- **Voxel ratchet:** it caught the new files. The runtime's gate is now V1's ModelBody predicate, and the pose's dependency is pinned with its note: `Core/NativeCampSurvivors.cs` author 4, `Runtime/NativeCampSurvivorsDraw.cs` author 1 (Tests/voxel-ratchet.txt).
+- **Voxel dependency:** the survivors sample their pack clips into the 22-joint pose that the model binding takes, as intros v2's pack keys do. V4 plays pack clips on the model directly.
+- **`tools/check_unity_compile.py --unity-root`** (no download) at `9200b7d9`: all four assemblies pass.
+- **Full CoreTests, the relgen5 way** at `9200b7d9`: 1,088 PASS lines, exit 0, in 1,115 s (the first run, at `a715a540`, stopped at the voxel ratchet: fixed above).
+- **`git diff --check`:** clean.
+
+### Captures
+**Editor holds:** two holds on the BoZo live recipe, each followed by the Editor back on `9319026b`, the stage and motion banks as released, and only the two camp banks taken out of Resources by name (Slipstream's `ChipArenaIntroMotion` untouched).
+- `82ecd6e3`: 413 s, lock released 17:21:56.
+- `a715a540`: 453 s, lock released 17:36:04.
+
+**Before the holds,** two short lock-held bakes (17 s and 26 s) put the clips into the camp's bank. There was no checkout move.
+
+**Files:** `F:/Chip Arena Development/scratch/camp/clips/` (local):
+- `survivors-sheet.jpg` and `survivors-0..8.jpg`: the mess ring, the kiosk, the infirmary, the radio shack, Sparks at the REVIVE-O-MATIC, the supply window, a sentry, the lookouts, the cook.
+- `3-survivors-mess-ring.mp4`: a push-in on the survivors round the brazier, 6.9 s. The second capture lost its last 18 dolly frames because the full suite ran beside it.
+
+**Fixed between the holds:**
+- The mug lay sideways in a resting hand. Props are now held only while in use, the fist seated on the handle, and rest by the post otherwise.
+- The welder stood behind the kiosk's wall. He now stands at the south hatch and the Quartermaster at the west hatch.
+- Sparks knelt at nothing. The REVIVE-O-MATIC now draws at its live spot.
+
+### Animation impact
+None on the game. No rule, timing, hitbox, damage, cooldown, movement or network change. The survivors are presentation, DEV preview only, and never replicated.
+
+### Risks
+- **Assets to ship:** the camp motion bank and the camp bank (now with props) must both go into the Drive zip. Without the motion bank, every survivor stays the rigid figure.
+- **Not seen in the Editor:** garment fit on these body shapes, and the props' seats in the fists, beyond the stills.
+- **Dependency:** the branch carries `claude/intro-framework`'s four unmerged pack commits.
+- **Live camp:** survivors are not live. A1 brings their structures; the live camp's survivors are a release with A1.
+
+## 2026-11-20 — Claude: Belvedere Camp part 1: the hub's light and life on the fence and overhead, the W5 DEV preview, the A1 hand-off (owner report; presentation only)
+
+The owner: "the hub still seems really empty? I thought we were bringing more life to this and things." The integrator explained that W5 (the camp) was never built and needs Astra's structures. The owner then chose: "Yes, start the camp".
+
+**Branch:** `claude/camp`, from shared `a85e5b93`, with shared `af249db9` (#437) and `5d54766c` (H1's hub z-fight fix) merged before filming, and `405eaf92` (intros v2 batch 1) merged after. Implementation head `e3ea9ff5`, pushed; this entry's commit follows. Not merged, not released.
+
+### Part 1, live: nothing on the plaza floor until A1 (plan Q19)
+The fixed sanctuary frame is the same on all five Meridian plans. The run's seed varies only the dead bulbs, the fires' phases and the sails' colours. Survivors stay out of live runs until A1 builds their structures.
+- **On the fence:**
+  - seven caged lamps on goosenecks over the fence top;
+  - eight sail masts (scaffold tubes clamped to the inner face, a lamp each);
+  - four lattice corner masts with warm floods;
+  - eight half-drum fires within 0.25 m of the inner face (no soot painted on the fence: in the first capture it read as a hooded figure at the fire);
+  - the war board and the MISSING board flat on the north fence. The war board is painted with the run's plan, and its posters for the three dealt instances are crossed in red as the view clears them; its desk lamp clicks on within 4 m.
+  - four notices, the fuse board over A1's generator, and the cable at 3.05 m.
+- **Gates:** two masts on the fence top at each opening (a flood down the lane, the strings' eyes; the north gate's east mast carries the camp PA), and a sign hung from each gate's string (CITY HALL / BELVEDERE CAMP over the north gate).
+- **Overhead, from 3.5 m:**
+  - 16 bulb strings: N-S and E-W spans at ±5.35 m, fence runs from each corner, one across each gate. That is about 420 bulbs, one in about fourteen dead, the lowest at 4.66 m.
+  - Four shade sails across the corners.
+- **Honest:**
+  - every piece's art below the gates' track (3.4 m) lies within 0.25 m of the fence where it stands, and never in a leaf pocket;
+  - nothing stands where an A1 block will;
+  - the strings and sails clear every future block by 0.3 m.
+  `CampChecks` checks all of this, against the bank's own triangles when `CHIPARENA_CAMP_BANK` is set.
+- **Light:**
+  - the camp takes up to three practical slots through `NativeLighting.KitLights` (two with reduced effects, one on Low), chosen by the hazard kit's score and eased;
+  - every lamp, flood and fire lays a warm pool and a halo, and the bulbs have halos;
+  - the fires breathe under 2.4 Hz (under 0.7 Hz with reduced effects, which also drops embers), and lamps and bulbs are steady, so nothing flashes;
+  - DARKNESS leaves the camp lit.
+- **Sound** (`docs/audio/SOUND-REQUESTS.md`, "The camp's sound bed"):
+  - the two nearest fires, the generator's hum at the fuse board, the PA's radio (64.7 FM), the murmur and the lamp's click, on NativeAudio's voices;
+  - these are synthesized placeholders (`Core/NativeCampSynth.cs`) until the owner's listening pass. The ElevenLabs batch is paid and needs the owner's word.
+- **Draw:**
+  - `CampScenery` in SourceWorld (live and killcam), the bank's props combined into six world meshes behind the loading screen (`PrewarmCamp` in `PrewarmStage`), so the hub's first frame builds nothing;
+  - StageLit, Fine within 40 m;
+  - about 48k Fine triangles and about 500 effect quads;
+  - nothing without the bank.
+
+### Part 2: the DEV preview of the whole W5 camp
+**Where:** the Developer walk only (Settings · Developer · Walk Meridian greybox), in Editor and development builds. It never draws in a live run.
+
+**What it draws:**
+- A1's structures on their blocks' boxes:
+  - the mess ring with the fountain and its burning brazier, and four benches (the fourth keeps a blanket, a crate and a lantern until its survivor joins);
+  - the kiosk with its hatches, shelves and the awning over the chip machine;
+  - the infirmary;
+  - the lookout with its glazed cabin and searchlight;
+  - four sentry towers;
+  - the radio shack;
+  - the supply cabin;
+  - the generator;
+  - eight sandbag walls.
+- The two machines (their real models).
+- 18 survivors at their posts: 13, plus the five possible rescued joiners. They are rigid posed figures, seeded, and never replicated.
+- See-through glass.
+
+**Keys:** C turns the preview on or off. U sets how many rescued survivors have joined (0-5). K shows the clearance overlay as filled boxes.
+
+### For Astra
+- **A1:** `camp-astra-a1-paste.md` in the side-session notes, checked against the live Meridian code.
+- **Delta 1:** camp-kiosk is 3.2 m tall, so the awning over the chip machine hangs above 3.1 m. The delta is passed on by the integrator.
+- **Measured over 2,000 seeds:**
+  - every pod hull clears every block by at least 1.93 m;
+  - every skid apron clears every block by at least 1.07 m;
+  - the ExitReach 2.4 capsule clears every block by at least 1.73 m.
+- **Live code A1 must change:** Meridian's lattice starts at (0,0,0) under the fountain, and four PvP rows overlap it.
+
+### Systems
+- **New Core:** `NativeCamp`, `NativeCampFx`, `NativeCampSynth`, `NativeCampMeshes`.
+- **New Runtime:** `NativeCampDraw`, `NativeCampAudio`, `NativeCampWalk`.
+- **New tools:** `tools/stages/camp_kit.py`, `camp_parts.py`, `camp_bank.py`.
+- **New docs:** `docs/expedition/BELVEDERE-CAMP.md`.
+- **Hook lines in shared files:**
+  - `NativeSourcePresentation.cs` (CampScenery);
+  - `NativeAudio.cs` (CampAudioFrame);
+  - `NativeExpeditionLiveUI.cs` (NativeCampDraw.Sync);
+  - `NativeLayeredCityWalkPreview.cs` (open, close, keys, the panel's line and banner; the panel is 248 px);
+  - `NativeStagePrewarm.cs` (PrewarmCamp) and `Tests/TransitionLoadingChecks.cs` (the camp's prewarm entry);
+  - `Tests/Program.cs` (`--camp`, `--camp-dump`).
+
+### Bank (never committed)
+`F:/Chip Arena Development/scratch/camp/bank/ChipArenaLocal/Resources/ChipArenaCamp.bytes`, 6,915,780 bytes, with its `.meta`. The integrator packs it into the Drive zip at release. Without it, nothing is drawn.
+
+### Checks
+- `CoreTests --camp` with `CHIPARENA_CAMP_BANK` (the rebuilt bank): pass, 147,880 checks. This covers:
+  - the table and its clearances;
+  - 2,000 landing fields;
+  - the posts;
+  - the live camp's honesty against the bank's own triangles, including no face flat on the floor, on the fence's inner face or on its top (z-fighting);
+  - light, sound and budgets: 49,886 Fine triangles.
+  Without the bank it runs 62,832 checks.
+- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`) at `cfb027cf`, after merging shared `405eaf92`: 1,087 PASS lines, exit 0, in 1,046 s. At `8bb85346`: 1,082 PASS lines, exit 0, in 1,054 s. That run includes camp, hub z-fight, transitions/loading and party loading.
+  - The earlier run at `1d73aae3` stopped at PartyLoadingChecks' cradle-UI line. That line comes from shared's #437 and is re-pinned by `b2dea632`, merged here. No camp file uses that panel.
+  - The run before that found the new SourceWorld hook without a prewarm entry. The camp now builds behind the loading screen, through `PrewarmCamp`.
+- `tools/check_unity_compile.py --unity-root` (6000.3.24f1, no download) at `8bb85346` and `cfb027cf`: Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor pass.
+- `git diff --check`: clean.
+- **Editor (BoZo live recipe):** see Captures. There were no exceptions in the Editor log.
+- **Not run:**
+  - a Windows player build or package;
+  - multiplayer with two clients (nothing is replicated: each peer draws the camp from the run's seed);
+  - Reduced effects and the Low tier in the Editor. These are covered by managed checks only: fire swells under 2.4 Hz (0.55 Hz with reduced effects), light slots 3/2/1, no allocation per frame.
+
+### Captures
+**Editor holds:** the BoZo live recipe. The first hold took 16.7 minutes; the lock was released at 15:06:34.
+
+**Re-film:** one flaw showed up in the first hold. The soot painted on the fence above each drum read as a hooded figure standing at the fire. It is removed in `e3ea9ff5`, with the bank rebuilt. The AFTER and the DEV preview were then filmed again in 12.2 minutes; the lock was released at 15:35:32.
+
+**After each hold:**
+- the Editor was back on `9319026b`;
+- the stage and motion banks were as released;
+- the camp bank was out of Resources.
+
+**Files:** `F:/Chip Arena Development/scratch/camp/clips/` (local, never committed):
+- `1-live-hub-walk-in-before-after.mp4`: walking in from the south gate, shared `5d54766c` beside `claude/camp` `e3ea9ff5`.
+- `2-dev-preview-push-in.mp4`: the DEV preview, pushing in on the mess ring.
+- `pair-*.jpg`: ten before/after stills:
+  - from the ground: looking north, north-east, at the north-east corner, the war board, the MISSING board, a fire and the north gate;
+  - from high up, from the south-east and the north-west;
+  - from above.
+- `preview-sheet.jpg` and `preview-0..8.jpg`: the preview's nine stills.
+- `clearances.jpg`: the landing field's four worst draws against the table.
+
+**What the Editor log shows:**
+- The camp was combined at the loading screen's kit step: `Belvedere Camp: 47 pieces, 16 strings, 416 bulbs, 4 sails; built in 47 ms`. The step took 94.0 ms with two kits (81.0 ms with one on shared).
+- The walk built the preview in 71 ms.
+- There were no exceptions.
+
+### Animation impact
+None. There is no rule, timing, hitbox, damage, cooldown, movement or network change. The survivors are presentation and never replicated.
+
+### Voxel dependency
+None.
+
+### Risks
+- **The bank:** 6.9 MB, never committed. It must go into the Drive zip at release. Without it nothing draws, which is the case on CI, cloud and public builds.
+- **Build time:** the camp combines at the loading screen's kit step (47 ms and 85 ms in the two holds). Any path that skips `PrewarmStage` builds it on the hub's first frame instead.
+- **Sound:** the camp's sounds are synthesized placeholders until the owner's listening pass. The ElevenLabs batch is requested in SOUND-REQUESTS and is paid, so it needs the owner's word.
+- **Captures:** the before and after live runs each deal their own seed (2713576937 and 3067774523), so the pods, and sometimes the plan, differ beyond the camp.
+- **Not in this branch:** the WMRD mast is D2's landmark, unchanged here. The survivors and A1's structures are not live until A1.
+- **For A1:** Meridian's nav lattice must start somewhere other than (0,0,0) under the fountain, and four PvP rows overlap the fountain (see the paste).
+
+### Next
+- The owner reviews the clips. The camp bank goes into the Drive zip at release.
+- In the same release as A1: the camp art on A1's blocks, the survivors in the live camp, the machine presentation, and the bleed's `camp-*` skip.
+
+**Risks and next step:**
+- **Shipping the bank:** players see pack clips only once the bank ships as a local asset, as the motion bank does (the Drive zip,
+  LocalAssets Resources). Until then, an intro plays the keys under its segments.
+- **Re-applying the patch:** the local tool's patch is in scratch, so re-apply it if the tool is regenerated.
+- **Keyed limits:** `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits;
+  the keyed wrist is the weapon frame, which the binding eases. `IntroPackChecks` lists those keyed findings per clip.
+- **Next:** I2b puts Slipstream on the pack clips (`FromPack`, or `Sample`/`Foot`/`Speed` in its base) and films. Batch 2 can
+  use the same path for locomotion.
+- **Card:** not yet seen in the Editor on the bright sets; the coordinator checks it in the integration capture.
+
 ## 2026-11-20 — Claude: the live Meridian hub's z-fighting: the greybox gives way to the street dress on the live map, as on the walk (owner report; presentation only)
 
 The owner: "There is immense z-fighting on the hub in the new expedition map."
@@ -457,6 +752,96 @@ covers the rest); the keyed rig and the drawn model part in deep poses (Whiteout
 Low draws without tone mapping, so a warm glow over a warm finish clips (fixed where seen, Flashbulb's glass); the crowd's cheer in
 Flashbulb is silent until its generated take lands. Next: the integrator merges the branch with the framework and packs the bank
 into the Drive zip; the generated sounds come with the builder's next audio run.
+
+
+
+## 2026-11-20 — Claude (I0d): intros v2: pack clips as keys from the intros' own motion bank (Slipstream's run), and the name card on bright sets (owner request; presentation only)
+
+Owner (2026-11-20, on Slipstream): "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I
+have". The coordinator also reported, from I2b's takes, that the name card was hard to read on bright sets: Whiteout's snow and
+Threshold's sunlit floor.
+
+**Branch and status:** `claude/intro-framework`, after `f0e6e052`:
+- `de6c5207`: the card;
+- `aa51e228`, `90f0b1a2` and `df0fa510`: the pack clips (a Kept segment's travel; a comment that named the adapter);
+- the docs commit that carries this entry.
+
+Pushed, not merged.
+
+**The name card on bright sets (`de6c5207`):**
+- **Backing:** the card's lines stand on a soft dark ellipse (Core `NativeIntroCardInk`). It is 38% black at the middle and fades to
+  nothing at the edge, with no ring. It eases in with the name and follows the card's alpha, so nothing flashes in Reduced effects.
+- **Outline:** every glyph has a thin black outline that scales with the text (`NativeUi.Text`'s new optional `outline`).
+- **Dark sets:** both are dark on dark there. The backing darkens a dark set by 0.027.
+- **Too-dark small lines:** one too dark to read is lifted toward white. None is lifted today.
+- **`Tests/IntroCardChecks`:** against white snow and a mid-tan floor, every registered intro's name must reach 4.5:1 against what
+  is behind its glyphs. The kicker, the eight team colours and the intro line must reach 3:1. The worst name is 8.4:1, and the worst
+  small line is the red team at 3.0.
+
+**Pack clips as keys (`aa51e228`; docs/INTROS-V2.md 9d):**
+- **The bank:** a pack's humanoid clips are baked into the intros' own bank, `Resources/ChipArenaIntroMotion.bytes`. It is local,
+  never committed, and never the match's motion bank.
+  - The bake is the local tool's new `bozo-intromotion.request`, from the scratch patch
+    `scratch/intro-framework/i0d/motion/intromotion_patch.py`.
+  - It samples each clip as the motion bank does (a manual graph, root motion off, foot IK on), at 60 Hz. It records bone rotations
+    and the body's rest skeleton rather than muscles.
+- **The conversion (Core `NativeIntroPack`):** each frame runs the model binding backwards on the bank's skeleton, so the keys
+  drawn on the model are the clip on the model. The arms' spread and the wrist's ease are undone.
+- **`NativeEntranceKeys.FromPack`:**
+  - It plays a segment over the keys. The joints in its mask ease in from the keys, and the keyed body follows the clip's pelvis.
+  - The planting lets go while the clip's legs play, and a foot that is down is held where it landed against the intro's root.
+  - The root follows the intro's path, or the clip's own travel (`Kept`).
+  - For authors who plan the feet themselves: `Sample`, `Euler`, `Foot`, `OnFloor` and `Speed`.
+  - There is no match animation system in an intro: no Clip(), and no aim, turn or foot-lock layer.
+- **`NativeVisualRig.Grasp.Exact`:** a pack clip's arms are drawn as keyed. The voxel-body corrections, Inside and Clear, are let
+  go; without that, the slide's left arm was drawn 18° off. The match never sets it. The runtime sets it from
+  `NativeProceduralEntrance.PackWeight` and reads the bank once.
+
+**The bank (local; I2b's picks for Slipstream):** `scratch/intro-framework/ChipArenaIntroMotion.bytes`, 131,257 bytes, sha
+`df9bdad1`. It holds nine clips at 60 Hz on the body's 180-bone skeleton:
+- the run: `Mvm_PowerDash_Front`, `Mvm_Dash` and `Mvm_Boost`;
+- the jump: `Jmp_FrontAir_A_Start` and `Jump_Down_A_Loop`;
+- the slide: `Esc_Slide_All`, `Esc_Slide_Start`, `Esc_Slide_Loop` and `Esc_Slide_End`.
+
+Their FBX, and `ClazyRunner.FBX` (their avatar source), are installed under the Editor's git-ignored
+`Assets/LocalAssets/CLazyRunnerActionAnimPack`, GUIDs kept.
+- **Fidelity:** every clip's limbs are within 0.1° of the clip on the model, and the ankles within a millimetre. The turns are within
+  4.7°; the worst is `Esc_Slide_Start`'s right hand, a wrist bent past what the eased wrist reaches.
+- **Speed:** the Dash runs at 9.12 m/s, and its feet hold on its own travel (they slide 0.00 m/s). The PowerDash runs at 7.95 m/s.
+- **Boost:** it barely touches the floor on this body, with its stance ankle about 5 cm high.
+- **The slides:** a leg goes up to 6 cm into the floor; lift the root while sliding.
+
+**Checks (actual):**
+- `de6c5207` on its own: `--intros-v2` exits 0, and the Unity compile check passes all four assemblies.
+- `df0fa510` (the pack clips):
+  - `--intro-pack` exits 0, 113 checks. The binding's round trip on the measured skeleton is exact (0.00°, 0.0 mm). The Euler round
+    trip holds, and sampling allocates nothing. A Kept segment never carries the root back. The local bank's clips pass as above.
+  - `--intros-v2` and `--intro-limits` (with the bank loaded) exit 0.
+  - The Unity compile check passes all four assemblies.
+  - Full CoreTests the relgen5 way (a throwaway LF worktree with `expedition_path.patch`, the released stage banks, no local intro
+    bank): exit 0, 1084 PASS lines in 977 s. The voxel ratchet passes. The same suite on `aa51e228` failed one wiring check (a comment
+    there named the model's adapter); `df0fa510` fixes it.
+- The local tool's patch compiled in the Editor (tool v3396) and baked the bank (the hold below).
+
+**Editor:** one hold, 13:59:27–14:01:51 (142 s), without moving the checkout from `9319026b`. It installed the ten FBX, patched the
+tool and baked. The stage banks and the match's motion bank (6136627 bytes, 37ec44d2) checked as released before and after. Out dirs
+were on C:.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Intros are presentation, and the
+match's binding is unchanged (`Grasp.Exact` defaults to 0, and `NativeUi.Text`'s outline to none).
+
+**Voxel dependency:** the keyed rig stays the intro's pose; the pack path turns the model's own clips into it. No voxel body,
+model or debris. The new Core files have no counted tokens.
+
+**Risks and next step:**
+- **Shipping the bank:** players see pack clips only once the bank ships as a local asset, as the motion bank does (the Drive zip,
+  LocalAssets Resources). Until then, an intro plays the keys under its segments.
+- **Re-applying the patch:** the local tool's patch is in scratch, so re-apply it if the tool is regenerated.
+- **Keyed limits:** `--intro-limits` holds a joint a pack segment plays in full to the clip on the model, not to the keyed limits;
+  the keyed wrist is the weapon frame, which the binding eases. `IntroPackChecks` lists those keyed findings per clip.
+- **Next:** I2b puts Slipstream on the pack clips (`FromPack`, or `Sample`/`Foot`/`Speed` in its base) and films. Batch 2 can
+  use the same path for locomotion.
+- **Card:** not yet seen in the Editor on the bright sets; the coordinator checks it in the integration capture.
 
 ## 2026-11-20 — Claude (I0c, I0d): intros v2 framework: the keyed pose on the model, model-aware anchors, the intro's own light, the weapon grip IK, the feet on the model and the pose-craft guide (owner report; presentation only)
 
