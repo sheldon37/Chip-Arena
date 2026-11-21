@@ -793,6 +793,12 @@ def ear_clip(poly):
     return out
 
 
+def curl_sign(x, y):
+    """+1 when a wave half's curl is toward +x as given, -1 when it was exported mirrored (its lip, high up, lies toward -x)."""
+    hi = y > 3.0
+    return 1.0 if not hi.any() or float(np.mean(x[hi])) > 0 else -1.0
+
+
 def wave_colours(bk, g):
     """A liquid wall's colour, per vertex: deep teal-black at its foot through a clearer blue-green up the face, the foam (white,
     rough) on the crest and the lip's edge broken into patches by noise, streaks of foam drawn down the face from the crest, a sheen
@@ -800,6 +806,7 @@ def wave_colours(bk, g):
     its thin edge, as a breaking wave lit from behind."""
     P, N, S_, F_ = g.arrays()
     x, y, z = (P[:, k].astype(np.float64) for k in range(3))
+    x = x * curl_sign(x, y)
     W = P.astype(np.float64)
     glow = bk.glow.copy()
     lit = ~glow
@@ -843,7 +850,7 @@ def ice_colours(bk, g):
     (white, rough)."""
     P, N, S_, F_ = g.arrays()
     W = P.astype(np.float64)
-    x, y, z = W[:, 0], W[:, 1], W[:, 2]
+    x, y, z = W[:, 0] * curl_sign(W[:, 0], W[:, 1]), W[:, 1], W[:, 2]
     fc = np.repeat(F_, S_)
     names = np.array([sk.FINS[i].name for i in fc])
     body = names == 'water-ice-body'
@@ -867,7 +874,7 @@ def ice_colours(bk, g):
         crack = 1 - np.clip(np.abs(sk.fbm(W, 1.6, 2, 979) - .5) / .03, 0, 1)
         crack *= np.clip((sk.fbm(W, .5, 1, 980) - .45) * 6, 0, 1)
         col = col + (np.array(sk.srgb(0xe8fbff)) - col) * (crack * .8)[:, None]
-        gain = .32 + .55 * thin + .35 * crack - .2 * barrel + .1 * np.clip(cloud, 0, 1)
+        gain = .24 + .5 * thin + .35 * crack - .14 * barrel + .1 * np.clip(cloud, 0, 1)
         bk.colour[body, :3] = np.round(np.clip(col[body], 0, 1) * 255).astype(np.uint8)
         bk.uv1[body, 1] = np.clip(gain[body], .12, 1.4).astype(np.float32)
     lit = ~bk.glow
@@ -1270,7 +1277,7 @@ DARK_SKY_R = 120.0  # the sky's dome (inside the camera's 200 m far plane; Core 
 def dark_finishes():
     F = {}
     # polished volcanic glass: dark, mirroring the intro's own sky (the dusk's warm horizon, then the eclipse's violet; INTROS-V2 3a)
-    F['obsidian'] = sk.fin('dark-obsidian', 0x08070b, sk.DETAIL_NONE, smooth=.84, dirt=.1, wear=.25)
+    F['obsidian'] = sk.fin('dark-obsidian', 0x08070b, sk.DETAIL_NONE, smooth=.74, dirt=.1, wear=.25)
     F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x141020, sk.DETAIL_NONE, smooth=.6, dirt=.3)
     F['ash'] = sk.fin('dark-ash', 0x24202a, sk.DETAIL_PLASTER, smooth=.05, dirt=.4)
     F['ash-dark'] = sk.fin('dark-ash-dark', 0x18151d, sk.DETAIL_PLASTER, smooth=.05, dirt=.5)
