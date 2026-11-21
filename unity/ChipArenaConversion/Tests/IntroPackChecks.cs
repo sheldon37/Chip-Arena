@@ -9,10 +9,11 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Intros v2's pack clips (Core NativeIntroPack; docs/INTROS-V2.md 9d). Always: the binding run backwards is checked by a round trip on
     /// the measured skeleton (keyed poses bound to the model, written as the local tool writes a bank, read back as keys and bound again:
-    /// the same drawn body), and the keys' Euler angles round-trip. With the local bank (CHIPARENA_INTRO_MOTION, the local assets'
-    /// Resources copy or the framework's scratch copy; none on CI): every clip's keys drawn on the bank's own skeleton match the clip as
-    /// baked on the model, and each clip played through FromPack with its own travel stays inside the anatomical limits with its feet
-    /// held and out of the floor (IntroPoseChecks).
+    /// the same drawn body), the keys' Euler angles round-trip, and banks merge as the Runtime merges them (MultiBank). With the local
+    /// banks (NativeIntroPack.Banks, each at its variable, CHIPARENA_INTRO_MOTION_DIR, the local assets' Resources copy or the
+    /// framework's scratch copy; none on CI): no clip name in two banks, no clip the match plays (with the match's bank here), every
+    /// clip's keys drawn on its bank's own skeleton match the clip as baked on the model, and each clip played through FromPack with its
+    /// own travel stays inside the anatomical limits with its feet held and out of the floor (IntroPoseChecks).
     /// </summary>
     internal static class IntroPackChecks
     {
@@ -31,22 +32,66 @@ namespace ChipArena.UnityConversion
         private static readonly string[] Tracks={"pelvis","spine_01","spine_02","spine_03","spine_04","spine_05","neck_01","neck_02","head",
             "clavicle_l","upperarm_l","lowerarm_l","hand_l","clavicle_r","upperarm_r","lowerarm_r","hand_r","thigh_l","calf_l","foot_l","ball_l","thigh_r","calf_r","foot_r","ball_r"};
 
-        /// <summary>The local bank's path, or null: CHIPARENA_INTRO_MOTION, the local assets' Resources copy, the framework's scratch copy.</summary>
-        public static string LocalPath(string root)
+        /// <summary>The environment variable naming bank `name` (NativeIntroPack.Banks): CHIPARENA_INTRO_MOTION for the first, then
+        /// CHIPARENA_INTRO_MOTION_MELEE, _RANGED and _ELEMENTAL.</summary>
+        public static string EnvOf(string name)=>"CHIPARENA_INTRO_MOTION"+(name.Length>NativeIntroPack.Resource.Length?"_"+name.Substring(NativeIntroPack.Resource.Length).ToUpperInvariant():"");
+        /// <summary>Bank `name`'s path here, or null: its variable (EnvOf), the folder CHIPARENA_INTRO_MOTION_DIR, the local assets'
+        /// Resources copy, the framework's scratch copy (scratch/intro-framework/ up the tree).</summary>
+        public static string LocalPath(string root,string name=NativeIntroPack.Resource)
         {
-            var env=Environment.GetEnvironmentVariable("CHIPARENA_INTRO_MOTION");if(!string.IsNullOrEmpty(env)&&File.Exists(env))return env;
+            var env=Environment.GetEnvironmentVariable(EnvOf(name));if(!string.IsNullOrEmpty(env)&&File.Exists(env))return env;
+            var dir=Environment.GetEnvironmentVariable("CHIPARENA_INTRO_MOTION_DIR");if(!string.IsNullOrEmpty(dir)&&File.Exists(Path.Combine(dir,name+".bytes")))return Path.Combine(dir,name+".bytes");
             if(root!=null)
             {
-                var res=Path.Combine(root,"Assets/LocalAssets/ChipArenaLocal/Resources/"+NativeIntroPack.Resource+".bytes");if(File.Exists(res))return res;
-                for(var d=new DirectoryInfo(root);d!=null;d=d.Parent){var s=Path.Combine(d.FullName,"scratch/intro-framework/"+NativeIntroPack.Resource+".bytes");if(File.Exists(s))return s;}
+                var res=Path.Combine(root,"Assets/LocalAssets/ChipArenaLocal/Resources/"+name+".bytes");if(File.Exists(res))return res;
+                for(var d=new DirectoryInfo(root);d!=null;d=d.Parent){var s=Path.Combine(d.FullName,"scratch/intro-framework/"+name+".bytes");if(File.Exists(s))return s;}
             }
             return null;
         }
-        /// <summary>Loads the local bank into NativeIntroPack.Local (so the intros' pack segments play in the checks); false without one.</summary>
+        /// <summary>The clip names repeated across the banks LoadLocal last read ("clip in A and B"; Run fails on any).</summary>
+        public static readonly List<string> LocalDuplicates=new List<string>();
+        /// <summary>Loads every local bank (NativeIntroPack.Banks), merged, into NativeIntroPack.Local, as the Runtime does (so the intros'
+        /// pack segments play in the checks); false without any. `path` lists the files read.</summary>
         public static bool LoadLocal(string root,out string path)
         {
-            path=LocalPath(root);if(path==null){NativeIntroPack.Local=null;return false;}
-            NativeIntroPack.Local=NativeIntroPack.Read(File.ReadAllBytes(path));return true;
+            var banks=new List<NativeIntroPack.Bank>();var paths=new List<string>();LocalDuplicates.Clear();
+            foreach(var name in NativeIntroPack.Banks){var p=LocalPath(root,name);if(p==null)continue;banks.Add(NativeIntroPack.Read(File.ReadAllBytes(p),name));paths.Add(p);}
+            NativeIntroPack.Local=NativeIntroPack.Merge(banks,LocalDuplicates);path=paths.Count==0?null:string.Join("; ",paths);return banks.Count>0;
+        }
+
+        // ---- the match's clips (owner: the intros' motion is their own, not the match's) ----
+        /// <summary>The match's motion bank here (Resources/ChipArenaVisualMotion.bytes: CHIPARENA_VISUAL_MOTION, the local assets' copy,
+        /// or the Editor checkout's, an ancestor's Chip-Arena-Unity), or null.</summary>
+        public static string MatchBankPath(string root)
+        {
+            const string rel="Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes";
+            var env=Environment.GetEnvironmentVariable("CHIPARENA_VISUAL_MOTION");if(!string.IsNullOrEmpty(env)&&File.Exists(env))return env;
+            if(root==null)return null;if(File.Exists(Path.Combine(root,rel)))return Path.Combine(root,rel);
+            for(var d=new DirectoryInfo(root);d!=null;d=d.Parent){var s=Path.Combine(d.FullName,"Chip-Arena-Unity/unity/ChipArenaConversion/"+rel);if(File.Exists(s))return s;}
+            return null;
+        }
+        /// <summary>The source clip names the match plays: its motion bank's clip names, a mirrored clip's "~mirror" dropped.</summary>
+        public static HashSet<string> MatchNames(IEnumerable<string> bankClips)
+        {
+            var set=new HashSet<string>(StringComparer.Ordinal);
+            foreach(var n in bankClips){if(string.IsNullOrEmpty(n))continue;int m=n.IndexOf("~mirror",StringComparison.Ordinal);set.Add(m>=0?n.Substring(0,m):n);}
+            return set;
+        }
+        /// <summary>The names a pack clip is known by: its bank name and that name before a '#' label, and from its bake source ("asset
+        /// path|take|range") its take and its file's name.</summary>
+        public static IEnumerable<string> SourceNames(NativeIntroPack.Clip c)
+        {
+            yield return c.Name;int hash=c.Name.IndexOf('#');if(hash>0)yield return c.Name.Substring(0,hash);
+            if(string.IsNullOrEmpty(c.Source)||c.Source==c.Name)yield break;var parts=c.Source.Split('|');
+            if(parts.Length>1&&parts[1].Length>0)yield return parts[1];if(parts[0].Length>0)yield return Path.GetFileNameWithoutExtension(parts[0]);
+        }
+        /// <summary>The clips of `bank` the match plays (matched by source clip name): "clip (as source name)".</summary>
+        public static List<string> MatchPlayed(NativeIntroPack.Bank bank,HashSet<string> match)
+        {
+            var hits=new List<string>();if(bank==null||match==null)return hits;
+            foreach(var c in bank.Clips.Values.OrderBy(c=>c.Name,StringComparer.Ordinal))
+                foreach(var s in SourceNames(c))if(match.Contains(s)){hits.Add(c.Name+(s==c.Name?"":" (as "+s+")")+" in "+(c.Owner?.Name??bank.Name));break;}
+            return hits;
         }
         public static string Root()
         {
@@ -61,7 +106,19 @@ namespace ChipArena.UnityConversion
             count=0;var rig=ModelPoseChecks.Measured();
             float euler=Euler();float trip=RoundTrip(rig,out float tripAt,out float tripKeyed);
             string local="no local bank here";
-            if(LoadLocal(root,out var path))local=Local(path);
+            if(LoadLocal(root,out var path))
+            {
+                Check(LocalDuplicates.Count==0,"clip names are unique across the intro motion banks ("+string.Join("; ",LocalDuplicates)+")");local=Local(path);
+                // (owner: the intros' motion is their own: no intro bank holds a clip the match's motion bank plays, by source clip name)
+                var match=MatchBankPath(root);
+                if(match==null)local+="; no match motion bank here, so the match's clips are not checked";
+                else
+                {
+                    var played=MatchPlayed(NativeIntroPack.Local,MatchNames(NativeVisualMotionClips.Read(File.ReadAllBytes(match)).Clips.Keys));
+                    foreach(var p in played)Console.WriteLine("  PACK FAIL the match plays "+p);
+                    Check(played.Count==0,"no intro motion bank holds a clip the match plays ("+string.Join("; ",played)+")");local+="; none of them is a clip the match plays ("+match+")";
+                }
+            }
             Console.WriteLine("PASS intro pack: "+count+" checks (the keys' Euler angles round-trip, worst "+(euler*Deg).ToString("0.000")+" deg; the binding run backwards on the measured skeleton: the drawn body redrawn within "
                 +trip.ToString("0.00")+" deg and "+(tripAt*1000).ToString("0.0")+" mm, the keyed joints within "+tripKeyed.ToString("0.00")+" deg; "+local+")");
         }
@@ -147,17 +204,61 @@ namespace ChipArena.UnityConversion
                 NativeIntroPack.Local=null;NativeEntrancePose.Keyed(k,1.5f,kp,out var none,out _,ReadOnlySpan<float>.Empty);Check(Math.Abs(none.Z)<1e-5f,"without the bank a segment does nothing");
             }
             finally{NativeIntroPack.Local=keep;clip.Speed=keepSpeed;}
+            MultiBank(names,parents,pos,rot,tracks,frames,rate,data,bank,bytes);
             return worst;
+        }
+
+        // ---- several banks (the first and one per batch-2 author) ----
+        /// <summary>Banks merged as the Runtime merges them: each clip keeps its own bank; a repeated name is listed and the first bank's
+        /// plays; one bank is itself and none is none; a Sourced bank keeps each clip's bake source; a clip plays through FromPack the same
+        /// from a merged bank as from its own, allocation-free; and a clip whose source the match plays is found by its take or its file.</summary>
+        private static void MultiBank(string[] names,int[] parents,Vector3[] pos,Quaternion[] rot,int[] tracks,int frames,float rate,float[] data,NativeIntroPack.Bank bank,byte[] bytes)
+        {
+            var clips=new[]{("walk-b",(frames-1)/rate,rate,Vector2.Zero,Vector2.Zero,true,frames,data)};
+            var second=NativeIntroPack.Read(NativeIntroPack.Write(names,parents,pos,rot,tracks,clips,new[]{"Assets/LocalAssets/Pack/Hero@Walk.FBX|Walk|0-47"}),"second");
+            var again=NativeIntroPack.Read(bytes,"again");bank.Name??="first";
+            Check(second.TryGet("walk-b",out var wb)&&wb.Source=="Assets/LocalAssets/Pack/Hero@Walk.FBX|Walk|0-47"&&bank.Clips["round-trip"].Source=="round-trip","a Sourced bank keeps each clip's bake source; a version 1 bank's is its name");
+            Check(NativeIntroPack.Merge(new NativeIntroPack.Bank[0])==null&&NativeIntroPack.Merge(new[]{bank})==bank,"no bank merges to none, one bank to itself");
+            var dups=new List<string>();var merged=NativeIntroPack.Merge(new[]{bank,second,again},dups);
+            Check(merged.Clips.Count==2&&dups.Count==1&&dups[0].Contains("round-trip")&&merged.Clips["round-trip"].Owner==bank&&merged.Clips["walk-b"].Owner==second,
+                "merged banks keep every clip with its own bank, and list a name two banks share (the first bank's plays): "+string.Join("; ",dups));
+            // the same clip drawn through the merged bank as through its own, and allocation-free
+            var keep=NativeIntroPack.Local;
+            try
+            {
+                var k=new NativeEntranceKeys();k.Key(0,NativeEntranceKeys.Stand()).Root(0,.88f,0,0);k.Key(3,NativeEntranceKeys.Stand()).Root(.4f,.88f,1.2f,0);
+                k.FromPack("round-trip",.5f,2.5f,0,1,true,NativeIntroPack.RootMode.Path,NativeIntroPack.All,.2f,.2f);
+                var a=new CapturedRig.Pose();var b=new CapturedRig.Pose();bool same=true;
+                for(int i=0;i<=90;i++)
+                {
+                    NativeIntroPack.Local=bank;NativeEntrancePose.Keyed(k,i/30f,a,out var ra,out _,ReadOnlySpan<float>.Empty);
+                    NativeIntroPack.Local=merged;NativeEntrancePose.Keyed(k,i/30f,b,out var rb,out _,ReadOnlySpan<float>.Empty);
+                    same&=ra==rb&&a.Position[CapturedRig.Body]==b.Position[CapturedRig.Body];for(int j=0;j<22;j++)same&=a.Rotation[j]==b.Rotation[j];
+                }
+                Check(same,"a clip plays through FromPack the same from the merged banks as from its own bank");
+                long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<300;i++)NativeEntrancePose.Keyed(k,i/120f,b,out _,out _,ReadOnlySpan<float>.Empty);
+                Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"a pack segment from the merged banks allocates nothing per frame");
+            }
+            finally{NativeIntroPack.Local=keep;}
+            // the match's clips, by source clip name (its take or its file's name; "~mirror" dropped)
+            var match=MatchNames(new[]{"Walk~mirror","Unarmed-Idle","M_Big_Sword@Idle"});
+            var own=NativeIntroPack.Read(NativeIntroPack.Write(names,parents,pos,rot,tracks,new[]{clips[0],("idle-b",(frames-1)/rate,rate,Vector2.Zero,Vector2.Zero,true,frames,data),("Mvm_Dash#sprint",(frames-1)/rate,rate,Vector2.Zero,Vector2.Zero,true,frames,data)},
+                new[]{"Assets/LocalAssets/Pack/Hero@Walk.FBX|Walk|0-47","Assets/LocalAssets/G/M_Big_Sword@Idle.fbx|Take 001|","Assets/LocalAssets/CLazy/CLazy@Mvm_Dash.FBX|Mvm_Dash|0-31"}),"own");
+            var hits=MatchPlayed(own,match);
+            Check(hits.Count==2&&hits[0].StartsWith("idle-b",StringComparison.Ordinal)&&hits[1].StartsWith("walk-b",StringComparison.Ordinal),"a clip the match plays is found by its take or its file's name, and only those ("+string.Join("; ",hits)+")");
+            Check(MatchPlayed(bank,match).Count==0,"a clip the match does not play passes");
         }
 
         // ---- the local bank ----
         private static string Local(string path)
         {
-            var bank=NativeIntroPack.Local;var sk=bank.Skeleton;int n=sk.Count;Check(bank.Clips.Count>0,"the local bank ("+path+") has clips");
-            var world=new Quaternion[n];var at=new Vector3[n];var joints=new Quaternion[22];var pose=new CapturedRig.Pose();var st=new NativeVisualRig.State(sk);
+            var bank=NativeIntroPack.Local;Check(bank.Clips.Count>0,"the local bank ("+path+") has clips");
+            NativeIntroPack.Bank owner=null;NativeVisualRig.Rig sk=null;var world=new Quaternion[0];var at=new Vector3[0];NativeVisualRig.State st=null;var joints=new Quaternion[22];var pose=new CapturedRig.Pose();
             var lines=new List<string>();float worstLimb=0,worstTurn=0,worstAnkle=0;string worstWhere="";var fails=new List<(string clip,bool ok,string what)>();
             foreach(var c in bank.Clips.Values.OrderBy(c=>c.Name,StringComparer.Ordinal))
             {
+                // (each clip on its own bank's skeleton: the banks may be baked apart)
+                if((c.Owner??bank)!=owner){owner=c.Owner??bank;sk=owner.Skeleton;world=new Quaternion[sk.Count];at=new Vector3[sk.Count];st=new NativeVisualRig.State(sk);}
                 float limb=0,turnErr=0,ankle=0;string where="",turnWhere="";
                 for(int f=0;f<c.Frames;f++)
                 {
