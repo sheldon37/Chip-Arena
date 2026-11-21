@@ -108,9 +108,9 @@ namespace ChipArena.UnityConversion
             // the props the scripts draw are the ones the script builds
             var built=new HashSet<string>(StringComparer.Ordinal);foreach(Match m in Regex.Matches(text,@"'((?:fire|water|lightning|darkness)/[a-z/-]+)'"))built.Add(m.Groups[1].Value);
             foreach(var s in Scripts()){var set=new Set{Bank=true};for(float t=0;t<=s.IntroTotal;t+=.1f)s.Set(t,set);foreach(var prop in set.Drawn){string rest=prop.Substring(prop.IndexOf('/')+1),numbered=Regex.Replace(prop,@"/\d+$","/%d"),restNumbered=Regex.Replace(rest,@"/\d+$","/%d");Check(built.Contains(prop)||text.Contains("'"+numbered+"'")||text.Contains("'"+rest+"'")||text.Contains("'"+restNumbered+"'"),s.Style+" draws "+prop+", which the set script builds");}}
-            // the cue keys are in the sound contract and requested in docs/audio/intros/I5.json
-            var rows=File.ReadAllText(Path.Combine(root,"..","..","docs","audio","intros","I5.json"));
-            foreach(var s in Scripts())foreach(var c in s.Cues){NativeIntroSoundKeys.Find(c.Key,out var def);Check(def.Key==c.Key,s.Style+" cue key "+c.Key+" in Core/NativeIntroSoundKeys.cs");Check(rows.Contains("\""+c.Key+"\""),s.Style+" cue key "+c.Key+" requested in docs/audio/intros/I5.json");
+            // the cue keys are in the sound contract and requested in docs/audio/intros-b2/I5.json
+            var rows=File.ReadAllText(Path.Combine(root,"..","..","docs","audio","intros-b2","I5.json"));
+            foreach(var s in Scripts())foreach(var c in s.Cues){NativeIntroSoundKeys.Find(c.Key,out var def);Check(def.Key==c.Key,s.Style+" cue key "+c.Key+" in Core/NativeIntroSoundKeys.cs");Check(rows.Contains("\""+c.Key+"\""),s.Style+" cue key "+c.Key+" requested in docs/audio/intros-b2/I5.json");
                 // the existing key plays as a one-shot: the bank refuses a loop entry here (Runtime NativeEffectsAudio.BankPlay)
                 Check(NativeSoundKeys.Find(c.Alt,out var alt)&&alt.Space!=NativeSoundSpace.Loop,s.Style+" cue "+c.Key+" falls back to "+c.Alt+", a known one-shot bank key");}
         }
@@ -136,6 +136,58 @@ namespace ChipArena.UnityConversion
                         +$" screen feet {Screen(feet)} chest {Screen(s.Anchor(NativeEntranceAnchor.Chest,t))} top {Screen(s.Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.24f,0))}");
                 }
             }
+        }
+        private static readonly string[] ModelBones={"pelvis","spine_03","spine_05","neck_01","head","upperarm_l","lowerarm_l","hand_l","middle_01_l","upperarm_r","lowerarm_r","hand_r","middle_01_r","thigh_l","calf_l","foot_l","ball_l","thigh_r","calf_r","foot_r","ball_r"};
+        /// <summary>
+        /// `--intro-elemental-model DIR [id]`: each intro's body as the model draws it (the keyed pose bound bone for bone on the measured
+        /// skeleton, the staff seated in the left fist and the grip IK's right fist on its shaft, as Runtime VisualBodyBind binds a v2
+        /// weapon intro), every 1/30 s, in the source frame, with the drawn staff's heel and head and the camera: JSON for the offline
+        /// stick-figure reviews from the side, at three-quarters and through the lens (a review aid, not a check).
+        /// </summary>
+        public static void Model(string[] args)
+        {
+            string folder=args.Length>1?args[1]:"elemental-model";Directory.CreateDirectory(folder);
+            string F(float x)=>x.ToString("0.####",CultureInfo.InvariantCulture);string P(Vector3 v)=>"["+F(v.X)+","+F(v.Y)+","+F(v.Z)+"]";
+            var rig=ModelPoseChecks.Measured();var at=new int[ModelBones.Length];for(int b=0;b<ModelBones.Length;b++)at[b]=Array.IndexOf(rig.Names,ModelBones[b]);
+            int rh=rig.Of[CapturedRig.RHand];
+            foreach(var s in Scripts())
+            {
+                if(args.Length>2&&!s.Style.Contains(args[2]))continue;
+                var st=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();var sb=new System.Text.StringBuilder();s.Context=new NativeIntroContext{Quality=1,Name="Pilot"};
+                sb.Append("{\"id\":\""+s.Style+"\",\"length\":"+F(s.IntroTotal)+",\"nameAt\":"+F(s.IntroNameAt)+",\"floor\":"+F(NativeEntranceStage.FloorY)+",\"bones\":[\""+string.Join("\",\"",ModelBones)+"\"],\"frames\":[");
+                string spec=NativeIntroCatalog.Find(s.Style)?.Spec;
+                for(int i=0;i<=(int)(s.IntroTotal*30);i++)
+                {
+                    float age=i/30f,t=s.Clock(age);s.Camera(age,out var v);s.Pose(t,pose,out var root,out var rot);pose.World();
+                    var grasp=new NativeVisualRig.Grasp{LeftGrip=1,Left=NativeVisualRig.StaffShaft,Relax=Math.Clamp(s.ArmsRelax(t),0,1),Exact=IntroPoseChecks.Packed(s,t,NativeIntroPack.Arms)};
+                    float grip=0;if(s is INativeIntroGrip g&&g.GripAt(t,out var ga)&&ga.Weight>.001f){grip=ga.Weight;NativeIntroGrip.Grasp(spec,ga,pose,ref grasp);}
+                    NativeVisualRig.Pose(st,pose,grasp,false,false);
+                    Vector3 W(Vector3 local)=>root+Vector3.Transform(local,rot);
+                    var hand=pose.WorldRotation[CapturedRig.LHand];var heel=W(st.LeftAnchor+Vector3.Transform(new Vector3(0,0,NativeIntroElementalScript.StaffHeel),hand));var head=W(st.LeftAnchor+Vector3.Transform(new Vector3(0,0,NativeIntroElementalScript.StaffHead),hand));
+                    var turn=Quaternion.Normalize(st.World[rh]*Quaternion.Inverse(rig.AlignedWorld[rh]));var fist=W(st.Position[rh]+Vector3.Transform(rig.FistCenter[1],turn));
+                    var hd=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Head]));var ch=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(rot*pose.WorldRotation[CapturedRig.Chest]));
+                    sb.Append(i>0?",":"").Append("{\"age\":"+F(age)+",\"t\":"+F(t)+",\"solid\":"+F(s.Solid(t,0))+",\"grip\":"+F(grip)+",\"root\":"+P(root)+",\"eye\":"+P(v.Eye)+",\"look\":"+P(v.Look)+",\"fov\":"+F(v.Fov)+",\"roll\":"+F(v.Up.LengthSquared()>1e-6f?(float)Math.Atan2(-v.Up.X,v.Up.Y):0)
+                        +",\"headFwd\":"+P(hd)+",\"chestFwd\":"+P(ch)+",\"heel\":"+P(heel)+",\"head\":"+P(head)+",\"fist\":"+P(fist)+",\"model\":[");
+                    for(int b=0;b<at.Length;b++)sb.Append(b>0?",":"").Append(P(at[b]<0?Vector3.Zero:W(st.Position[at[b]])));
+                    sb.Append("]}");
+                }
+                sb.Append("]}");File.WriteAllText(Path.Combine(folder,s.Style+"-model.json"),sb.ToString());Console.WriteLine("wrote "+Path.Combine(folder,s.Style+"-model.json"));
+            }
+        }
+        /// <summary>`--intro-elemental-limits [id]`: the framework's findings for these four only (IntroPoseChecks: the limits, the drawn feet
+        /// and the drawn grip), quicker than `--intro-limits` while keying.</summary>
+        public static void Limits(string[] args)
+        {
+            var rig=ModelPoseChecks.Measured();int total=0;
+            foreach(var e in NativeIntroCatalog.Entries)
+            {
+                if(e.Author!="I5"||args.Length>1&&!e.Id.Contains(args[1]))continue;
+                var s=e.Make();var l=IntroPoseChecks.Limits(e.Id,s,e.Duration,e.Spec);var feet=IntroPoseChecks.Feet(e.Make(),e.Duration,rig);var grip=IntroPoseChecks.Grip(e.Make(),e.Duration,e.Spec,rig);
+                Console.WriteLine(e.Id+": "+l.Count+" limit finding(s); feet slide "+feet.Slide.ToString("0.00",CultureInfo.InvariantCulture)+" m/s at "+feet.SlideAt.ToString("0.00",CultureInfo.InvariantCulture)+" ("+feet.SlideFoot+"), deepest "+(feet.Deepest*100).ToString("0",CultureInfo.InvariantCulture)+" cm ("+feet.DeepBone+" at "+feet.DeepestAt.ToString("0.00",CultureInfo.InvariantCulture)+"); grip off "+(grip.Worst*100).ToString("0.0",CultureInfo.InvariantCulture)+" cm at "+grip.WorstAt.ToString("0.00",CultureInfo.InvariantCulture)+" ("+grip.Frames+" frames)");
+                foreach(var f in l)Console.WriteLine("  "+f);
+                total+=l.Count+(feet.Slide>IntroPoseChecks.SlideMost?1:0)+(feet.Deepest>IntroPoseChecks.Through?1:0)+(grip.Worst>IntroPoseChecks.GripNear?1:0);
+            }
+            Console.WriteLine("elemental findings: "+total);
         }
         /// <summary>`--intro-elemental-pose id t...`: the keyed pose's joints (world, source frame) and the staff, one line a joint, for
         /// stick-figure sheets (the keyed animation checked without the Editor).</summary>

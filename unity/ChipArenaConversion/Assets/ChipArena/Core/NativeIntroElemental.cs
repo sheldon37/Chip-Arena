@@ -9,52 +9,65 @@ namespace ChipArena.UnityConversion
     /// element on its own modelled set (the local bank ChipArenaIntroElemental, tools/intros/elemental_set.py; the framework's
     /// dark lit void without it): Forgeborn (fire), Still Tide (water), Strike Point (lightning), Black Sun (darkness). They
     /// replace Cinder Crown, Tidal Serpent, Thunderstep and Eventide Gate, which stay archived in NativeEntranceWeapons.
-    /// The shared parts: the staff in the left hand placed by arm IK on a keyed grip track (the staff is where the effects
-    /// start), long streaks laid on their head's camera plane, the set's pieces by name (no strings built per frame).
+    /// The shared parts: the staff in the left fist keyed in the chest's frame (the framework's NativeIntroGrip.Hold, as the match
+    /// keys its holds) with the right hand put on its shaft by the grip IK (INativeIntroGrip), the feet keyed where the model's land
+    /// (ModelFeet), the effects on the body and the staff as drawn (the anchors), long streaks laid on their head's camera plane, the
+    /// set's pieces by name (no strings built per frame).
     /// Presentation only: pure functions of the intro's presentation clock, allocation-free per frame.
     /// </summary>
-    public abstract class NativeIntroElementalScript:NativeIntroV2Script
+    public abstract class NativeIntroElementalScript:NativeIntroV2Script,INativeIntroGrip
     {
         public const string Bank="ChipArenaIntroElemental";
         /// <summary>The staff: its grip at the wrist, its heel and its head along the hand's +z (Core NativeWeaponModels.Magic).</summary>
-        public const float StaffHead=.88f,StaffHeel=-.41f,StaffSupport=.40f;
+        public const float StaffHead=.88f,StaffHeel=-.41f;
         protected NativeIntroElementalScript(string id,float total,float cardAt,float hit,int accent):base(id,total,cardAt,hit,accent){}
         public override string SetBank=>Bank;
         protected override float TipLength(bool left)=>left?StaffHead:.1f;
+        /// <summary>The feet are keyed where the drawn model's ankles go and the drops in the model's metres (docs/INTROS-V2.md 9c).</summary>
+        protected override bool ModelFeet=>true;
         /// <summary>The hero facing's forward and left (the pilot ends facing Facing; +x the rig's left).</summary>
         protected static readonly Vector3 Fwd=new Vector3((float)Math.Sin(Facing),0,(float)Math.Cos(Facing)),Left=new Vector3((float)Math.Cos(Facing),0,-(float)Math.Sin(Facing));
         protected static Vector3 L(float x,float y,float z)=>Local(x,y,z);
         protected static readonly Vector3 White=Vector3.One;
         protected static Vector3 Hex(int hex,float gain=1)=>NativeEntranceFx.Hex(hex,gain);
 
-        // ---- the staff: a keyed grip track in the body's frame, the left arm reaching it ----
-        /// <summary>Grip keys: time, then the grip (x left, y up from the root, z ahead; the body's frame) and the staff's axis
-        /// (the same frame), seven floats a key. Set in the constructor.</summary>
-        protected float[] StaffTimes=Array.Empty<float>(),StaffKeys=Array.Empty<float>();
-        private const int StaffStride=6;
-        protected void StaffKey(int i,float t,float gx,float gy,float gz,float ax,float ay,float az)
+        // ---- the staff: the left fist keyed in the chest's frame, the right on the shaft by the grip IK (docs/INTROS-V2.md 9a, 9b) ----
+        /// <summary>
+        /// Hold keys (set in the constructor), twelve floats a key: the left wrist in the chest's frame (+x the chest's left, +y up it, +z
+        /// ahead; the keyed rig's proportions: its shoulder .345 m out and .18 m up), the shaft's direction toward the staff's head in the
+        /// body's frame (+x left, +y up, +z ahead: an upright staff stays upright whatever the chest does), the hand's back (its +y, toward
+        /// the forearm's side of the shaft) in the body's frame, and the elbow's pole in the chest's frame. The fist holds the shaft across
+        /// it, so the forearm lies near square to the shaft: a staff upright at the side rides a forearm pointing ahead.
+        /// </summary>
+        protected float[] HoldTimes=Array.Empty<float>(),HoldValues=Array.Empty<float>();
+        private const int HoldStride=12;
+        /// <summary>The left elbow out, down and a little back (the canonical staff hold's).</summary>
+        protected static readonly Vector3 ElbowOut=new Vector3(1,-.8f,-.2f);
+        protected void Hold(float t,Vector3 wrist,Vector3 shaft,Vector3 back,Vector3 pole=default)
         {
-            if(StaffTimes.Length<=i){Array.Resize(ref StaffTimes,i+1);Array.Resize(ref StaffKeys,(i+1)*StaffStride);}
-            var v=Vector3.Normalize(new Vector3(ax,ay,az));StaffTimes[i]=t;int o=i*StaffStride;StaffKeys[o]=gx;StaffKeys[o+1]=gy;StaffKeys[o+2]=gz;StaffKeys[o+3]=v.X;StaffKeys[o+4]=v.Y;StaffKeys[o+5]=v.Z;
+            int i=HoldTimes.Length;Array.Resize(ref HoldTimes,i+1);Array.Resize(ref HoldValues,(i+1)*HoldStride);HoldTimes[i]=t;int o=i*HoldStride;
+            shaft=Vector3.Normalize(shaft);back=Vector3.Normalize(back);if(pole.LengthSquared()<1e-6f)pole=ElbowOut;
+            HoldValues[o]=wrist.X;HoldValues[o+1]=wrist.Y;HoldValues[o+2]=wrist.Z;HoldValues[o+3]=shaft.X;HoldValues[o+4]=shaft.Y;HoldValues[o+5]=shaft.Z;
+            HoldValues[o+6]=back.X;HoldValues[o+7]=back.Y;HoldValues[o+8]=back.Z;HoldValues[o+9]=pole.X;HoldValues[o+10]=pole.Y;HoldValues[o+11]=pole.Z;
         }
-        /// <summary>The keyed grip and axis at `t` (body frame).</summary>
-        protected void StaffLocal(float t,out Vector3 grip,out Vector3 axis)
-        {
-            float C(int c)=>NativeEntranceMath.Curve(StaffTimes,StaffKeys,c,StaffStride,t);
-            grip=new Vector3(C(0),C(1),C(2));axis=new Vector3(C(3),C(4),C(5));if(axis.LengthSquared()<1e-6f)axis=Vector3.UnitY;axis=Vector3.Normalize(axis);
-        }
-        /// <summary>How much of the right hand rides the staff's support grip at `t` (0: keyed).</summary>
-        protected virtual float Support(float t)=>0;
+        private float HoldAt(int c,float t)=>NativeEntranceMath.Curve(HoldTimes,HoldValues,c,HoldStride,t);
+        /// <summary>The staff hand: the left wrist placed in the chest's frame with the shaft turned as keyed (NativeIntroGrip.Hold: the elbow to
+        /// its pole, the palm's roll in the forearm).</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            if(StaffTimes.Length==0)return;StaffLocal(t,out var g,out var a);
-            var grip=root+Vector3.Transform(g,rotation);var axis=Vector3.Transform(a,rotation);
-            pose.World();var shoulder=root+Vector3.Transform(pose.WorldPosition[CapturedRig.LArm],rotation);
-            // The hand's +y toward the shoulder (the fingers wrap the staff from its far side), +z along the staff.
-            var wrist=CapturedRig.Look(axis,shoulder-grip);NativeEntrancePose.Reach(pose,root,rotation,true,grip,wrist,1);
-            float s=Support(t);if(s<=.001f)return;
-            var shoulderR=root+Vector3.Transform(pose.WorldPosition[CapturedRig.RArm],rotation);var hold=grip+axis*StaffSupport;
-            NativeEntrancePose.Reach(pose,root,rotation,false,hold,CapturedRig.Look(axis,shoulderR-hold),s);
+            if(HoldTimes.Length==0)return;
+            var wrist=new Vector3(HoldAt(0,t),HoldAt(1,t),HoldAt(2,t));var shaft=new Vector3(HoldAt(3,t),HoldAt(4,t),HoldAt(5,t));var back=new Vector3(HoldAt(6,t),HoldAt(7,t),HoldAt(8,t));var pole=new Vector3(HoldAt(9,t),HoldAt(10,t),HoldAt(11,t));
+            pose.World();var turn=Quaternion.Normalize(Quaternion.Inverse(pose.WorldRotation[CapturedRig.Chest])*NativeIntroGrip.Look(shaft,back));
+            NativeIntroGrip.Hold(pose,true,WeaponSpec,wrist,turn,pole,1);
+        }
+        /// <summary>How much of the right hand is on the shaft at `t` (0: keyed by the keys; ease it over .12-.2 s), how far up it from the
+        /// grip's own place (.40 m over the left fist: NativeIntroGrip.StaffGrip), and its elbow's pole (zero: the grip's own).</summary>
+        protected virtual float TwoHands(float t)=>0;
+        protected virtual float Along(float t)=>0;
+        protected virtual Vector3 RightPole(float t)=>default;
+        public bool GripAt(float t,out NativeIntroGripAt grip)
+        {
+            float w=TwoHands(t);grip=new NativeIntroGripAt(w,RightPole(t),Along(t));return w>.001f;
         }
         /// <summary>The staff's heel and head at `t` (world): the drawn staff's head (the framework's model-aware LeftMuzzle) and its bore,
         /// the heel back along it; the keyed staff without the model.</summary>
@@ -162,42 +175,52 @@ namespace ChipArena.UnityConversion
         private static readonly string[] LavaProps={"fire/lava/0","fire/lava/1","fire/lava/2","fire/lava/3","fire/lava/4","fire/lava/5"},RiverProps={"fire/river/0","fire/river/1","fire/river/2","fire/river/3"};
         public NativeIntroForgeborn():base(Id,Total,CardAt,EruptAt,0xff6c32)
         {
-            var v=Vent;var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f,Facing,v.X,v.Z);
-            // Out of the fire: three heavy steps along the line to the mark.
-            Steps=new[]{Step(true,WalkFrom+.05f,WalkFrom+.5f,.16f,-.62f,.1f,.1f),Step(false,WalkFrom+.5f,WalkFrom+.95f,-.18f,-.12f,-.42f,.1f),Step(true,WalkFrom+.95f,WalkFrom+1.3f,.16f,.07f,.1f,.07f)};
-            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(-1.3f);var w1=R(-.95f);var w2=R(-.45f);var w3=R(-.08f);var w4=R(0);
-            // Forged in the fire: crouched and gathered, the fist at its chest, head down.
-            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.38f).J(B,.34f).J(Sp,.15f).J(C,.12f).J(Hd,.55f).J(RA,-.35f,0,-.25f).J(RE,-1.15f).J(LA,-.3f,0,.25f);
-            k.Key(RevealFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.34f).J(B,.3f).J(Sp,.13f).J(C,.1f).J(Hd,.45f).J(RA,-.35f,0,-.28f).J(RE,-1.1f).J(LA,-.3f,0,.25f).PassKey();
-            // It rises in the column, the chest opening, the arm unfolding from the fist.
-            k.Key(RevealFrom+.45f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,.08f).J(Sp,-.04f).J(C,-.12f).J(Hd,.1f).J(RA,-.15f,0,-.45f).J(RE,-.6f).J(LA,-.25f,0,.2f).PassKey();
-            k.Key(WalkFrom-.05f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(B,-.04f).J(C,-.1f).J(Hd,-.05f).J(RA,-.1f,0,-.3f).J(RE,-.4f).J(LA,-.25f,0,.2f);
-            // The walk: heavy contacts (down on each), the chest countering the stride, the free arm swinging.
-            k.Key(WalkFrom+.3f,stand).Root(w1.X,w1.Y,w1.Z,Facing).Drop(-.07f).J(B,.06f).J(C,0,.08f,0).J(Hd,.02f).J(RA,.28f,0,-.18f).J(RE,-.5f).J(LA,-.25f,0,.2f).PassKey();
-            k.Key(WalkFrom+.6f,stand).Root(w2.X,w2.Y,w2.Z,Facing).Drop(-.01f).J(B,.03f).J(C,0,-.07f,0).J(Hd,0).J(RA,-.32f,0,-.2f).J(RE,-.75f).J(LA,-.25f,0,.2f).PassKey();
-            k.Key(WalkFrom+.92f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.06f).J(B,.05f).J(C,0,.06f,0).J(Hd,.02f).J(RA,.2f,0,-.18f).J(RE,-.48f).J(LA,-.25f,0,.2f).PassKey();
-            // On the mark: the weight sinks, the head dips (the crown's anticipation).
-            k.Key(CrownAt-.15f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.09f).J(B,.1f).J(C,.06f).J(Hd,.14f).J(RA,-.25f,0,-.25f).J(RE,-.85f).J(LA,-.25f,0,.2f);
-            // The crown: up onto the toes, chin to the fire, the free hand raised open under it.
-            k.Key(CrownAt+.05f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.02f).J(B,-.08f).J(Sp,-.08f).J(C,-.2f).J(Hd,-.42f).J(RA,-2.35f,0,-.55f).J(RE,-.3f).J(RH,0,0,.3f).J(LA,-.6f,0,.2f);
-            k.Key(CrownSet-.15f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(0).J(B,-.1f).J(Sp,-.09f).J(C,-.22f).J(Hd,-.46f).J(RA,-2.55f,0,-.5f).J(RE,-.2f).J(RH,0,0,.35f).J(LA,-.7f,0,.2f).PassKey();
-            // The slam: both hands take the staff high, the back arches; then it is driven down, the knees giving deep.
-            k.Key(CrownSet+.05f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.03f).J(B,-.14f).J(Sp,-.08f).J(C,-.18f).J(Hd,-.22f).J(RA,-2.6f,0,-.15f).J(RE,-.6f).J(LA,-2.4f,0,.15f);
-            k.Key(SlamAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.42f).J(B,.32f).J(Sp,.15f).J(C,.12f).J(Hd,.22f).J(RA,-1.1f,0,.15f).J(RE,-.7f).J(LA,-1.1f,0,.1f).ImpactKey();
-            k.Key(SlamAt+.17f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.36f).J(B,.26f).J(Sp,.12f).J(C,.09f).J(Hd,.12f).J(RA,-.95f,0,.1f).J(RE,-.6f).J(LA,-1.0f,0,.1f);
-            // Up into the hero hold under the burning crown, the staff at its side.
-            k.Key(CardAt-.05f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.06f).J(B,0).J(C,-.08f).J(Hd,-.08f).J(RA,-.12f,0,-.22f).J(RE,-.4f).J(LA,-.25f,0,.2f);
-            var hero=NativeEntranceKeys.With(NativeEntranceKeys.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Head,-.08f,.1f,0);});
-            k.Key(CardAt+.25f,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.05f);
-            k.Key(Total,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.05f);Keys=k;
-            // The staff: upright at its side through the fire and the walk, thrust high for the crown, both hands, driven down, back.
-            int s=0;
-            StaffKey(s++,0,.38f,.05f,.15f,.1f,1,.1f);StaffKey(s++,RevealFrom+.45f,.42f,.12f,.12f,.08f,1,.08f);StaffKey(s++,WalkFrom,.42f,.08f,.1f,.08f,1,.1f);
-            StaffKey(s++,WalkFrom+.6f,.42f,.1f,.16f,.06f,1,.14f);StaffKey(s++,CrownAt-.15f,.42f,.06f,.1f,.08f,1,.06f);
-            StaffKey(s++,CrownAt+.05f,.22f,.62f,.22f,.05f,1,.02f);StaffKey(s++,CrownSet-.15f,.2f,.7f,.24f,.04f,1,0);
-            StaffKey(s++,CrownSet+.05f,.12f,.85f,.3f,.02f,1,.05f);StaffKey(s++,SlamAt,.12f,-.4f,.44f,.02f,1,.05f);StaffKey(s++,SlamAt+.17f,.13f,-.35f,.43f,.03f,1,.05f);
-            StaffKey(s++,CardAt-.05f,.4f,.06f,.12f,.12f,1,.06f);StaffKey(s++,CardAt+.25f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
+            var v=Vent;var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();var plan=new System.Collections.Generic.List<NativeEntrancePose.Step>();
+            // The feet (the model's ankles, ModelFeet): crouched in the vent, then three heavy steps out along the line to the mark, the
+            // right foot stepping out wide for the slam.
+            Start=Stance(.15f,.1f,.2f,-.15f,-.12f,-.3f,Facing,v.X,v.Z);
+            var line=new NativeIntroFeet.Track(v,Facing,WalkFrom,CrownAt,1.3f,.4f,.5f);RootPath=(t,r)=>{if(t<=WalkFrom||t>=CrownAt+.5f)return r;var a=line.At(t);return new Vector3(a.X,r.Y,a.Z);};
+            NativeIntroFeet.Walk(plan,line,true,3,WalkFrom+.05f,.48f,.42f,.1f,.1f,.07f);
+            plan.Add(Step(false,CrownAt+.12f,CrownAt+.36f,-.2f,.0f,-.32f,.05f));Steps=plan.ToArray();
+            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(-1.3f);var w4=R(0);
+            // Forged in the fire: crouched low and gathered over its knees, head bowed, the free fist held to its chest, the staff planted at
+            // its side; revealed from the feet up as the column takes it.
+            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.44f).J(B,.4f).J(Sp,.12f).J(C,.08f).J(Hd,.42f).J(RA,-.95f,.15f,-.12f).J(RE,-1.55f);
+            k.Key(RevealFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.42f).J(B,.38f).J(Sp,.11f).J(C,.07f).J(Hd,.38f).J(RA,-.95f,.15f,-.12f).J(RE,-1.55f).PassKey();
+            // It rises in the column: the chest opening first, the head lifting after it, the fist unfolding from the chest.
+            k.Key(RevealFrom+.45f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.2f).J(B,.16f).J(Sp,.02f).J(C,-.06f).J(Hd,.16f).J(RA,-.55f,.05f,-.2f).J(RE,-1.0f).PassKey();
+            k.Key(WalkFrom-.08f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(B,-.02f).J(C,-.1f).J(Hd,-.06f).J(RA,-.12f,0,-.24f).J(RE,-.45f);
+            // The walk out: heavy contacts (the hips sinking onto each), the body leaning into it, the pelvis turned with the leading leg and
+            // the chest against it, the free arm swinging against the legs; the staff swings with its hand.
+            for(int i=0;i<3;i++)
+            {
+                bool l=i%2==0;float sg=l?1:-1,lift=WalkFrom+.05f+i*.48f,land=lift+.42f,pass=lift+.21f;var p=line.At(pass);var c=line.At(land);float last=i==2?.5f:1;
+                k.Key(pass,stand).Root(p.X,.88f,p.Z,Facing).Drop(-.01f).J(B,.06f).J(P,0,0,-sg*.04f).J(C,-.04f).J(Hd,-.02f).J(RA,-.1f,0,-.16f).J(RE,-.4f).PassKey();
+                k.Key(land,stand).Root(c.X,.88f,c.Z,Facing).Drop(-.075f*last-.02f).J(B,.08f).J(P,0,sg*.1f*last).J(Sp,0,-sg*.05f*last).J(C,-.02f,-sg*.11f*last).J(Hd,.03f,sg*.07f*last)
+                    .J(RA,(l?-.42f:.3f)*last,0,-.16f).J(RE,l?-.7f:-.3f).PassKey();
+            }
+            // On the mark: it straightens up under the fire, the chin lifting, the free hand rising open beneath the crown as it gathers.
+            k.Key(CrownAt+.2f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.01f).J(B,-.04f).J(Sp,-.05f).J(C,-.14f).J(Hd,-.32f).J(RA,-1.75f,-.2f,-.45f).J(RE,-.55f).J(RH,0,0,.25f);
+            k.Key(CrownSet-.12f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.0f).J(B,-.06f).J(Sp,-.07f).J(C,-.18f).J(Hd,-.4f).J(RA,-2.3f,-.2f,-.45f).J(RE,-.35f).J(RH,0,0,.3f).PassKey();
+            // The slam: the staff swung up high out at its side, both arms raised under the crown, the body rising tall; then the staff is
+            // driven down beside its foot, the hips sinking deep over spread knees, the chest following it, the free arm thrown down and back.
+            k.Key(CrownSet+.06f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.02f).J(B,-.06f).J(Sp,-.07f).J(C,-.16f).J(Hd,-.3f).J(RA,-2.4f,-.2f,-.5f).J(RE,-.3f).J(RH,0,0,.3f);
+            k.Key(SlamAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.45f).J(B,.32f).J(Sp,.18f).J(C,.1f).J(Hd,.08f).J(RA,.35f,0,-.5f).J(RE,-.25f).ImpactKey();
+            k.Key(SlamAt+.17f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.4f).J(B,.28f).J(Sp,.15f).J(C,.08f).J(Hd,.04f).J(RA,.25f,0,-.42f).J(RE,-.3f);
+            // Up into the hero hold under the burning crown, the staff upright at its side, the free arm loose.
+            k.Key(CardAt-.05f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.05f).J(B,.02f).J(C,-.06f).J(Hd,-.06f).J(RA,-.14f,0,-.2f).J(RE,-.42f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Head,-.06f,.1f,0);});
+            k.Key(CardAt+.3f,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);
+            k.Key(Total,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);Keys=k;
+            // The staff: planted upright at its side through the fire, carried upright (swinging with its hand) out of it; lifted high in both
+            // hands; driven down beside its left foot; upright at its side for the hold.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);
+            Hold(0,new Vector3(.52f,-.12f,.3f),up,back);Hold(RevealFrom,new Vector3(.52f,-.12f,.3f),up,back);Hold(WalkFrom-.08f,new Vector3(.5f,-.1f,.22f),up,back);
+            Hold(WalkFrom+.47f,new Vector3(.5f,-.1f,.14f),up,back);Hold(WalkFrom+.95f,new Vector3(.5f,-.1f,.3f),up,back);Hold(WalkFrom+1.43f,new Vector3(.5f,-.1f,.18f),up,back);
+            Hold(CrownSet-.12f,new Vector3(.5f,-.1f,.22f),up,back);
+            Hold(CrownSet+.06f,new Vector3(.7f,.5f,.1f),new Vector3(-.12f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));
+            Hold(SlamAt,new Vector3(.56f,-.5f,.4f),new Vector3(.03f,1,.06f),new Vector3(-.3f,.45f,-1),new Vector3(1,-.2f,-1));Hold(SlamAt+.17f,new Vector3(.56f,-.47f,.38f),new Vector3(.03f,1,.06f),new Vector3(-.3f,.45f,-1),new Vector3(1,-.2f,-1));
+            Hold(CardAt-.05f,new Vector3(.5f,-.1f,.22f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
             // The camera: macro along a seam; a crane up and back to the caldera; low under the eruption; up the column; the walk
             // out at the lens; round under the crown; wide and low for the slam; the hero frame.
             Rig.Dolly(0,L(1.6f,.26f,8.6f),L(.9f,.3f,4.4f),L(1.1f,.04f,4.0f),L(.1f,.3f,-.8f),32,30).Ease(NativeIntroEase.InOut).Focus(0,0,.55f)
@@ -211,8 +234,6 @@ namespace ChipArena.UnityConversion
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
             Ramps.Ramp(EruptAt,.3f,.32f,.9f);
         }
-        /// <summary>Both hands on the staff for the slam.</summary>
-        protected override float Support(float t)=>NativeEntranceMath.Ramp(t,CrownSet-.07f,CrownSet+.03f)*(1-NativeEntranceMath.Ramp(t,SlamAt+.17f,SlamAt+.4f));
         /// <summary>Hidden in the fire until the column takes it, then built in from the feet up as it forms.</summary>
         public override float Solid(float t,int bone)
         {
@@ -446,41 +467,45 @@ namespace ChipArena.UnityConversion
         public NativeIntroStillTide():base(Id,Total,CardAt,SweepAt,0x63e2ff)
         {
             var m=Mark;var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f,Facing,m.X,m.Z);
-            // A brace step back against the wave, the lunge into the sweep, and back onto its mark.
-            Steps=new[]{Step(false,RearFrom+.32f,RearFrom+.6f,-.24f,-.42f,-.5f,.08f),Step(true,SweepAt-.12f,SweepAt+.12f,.26f,.3f,.15f,.07f),
-                Step(true,FreezeAt+.55f,FreezeAt+.85f,.16f,.07f,.1f,.06f),Step(false,FreezeAt+.85f,FreezeAt+1.15f,-.18f,-.1f,-.42f,.06f)};
+            // The feet (the model's ankles, ModelFeet): a still stance in the shallows; the right foot set back to brace as the wave rears,
+            // the left stepping out wide as the arms sweep apart, both brought back under it as it rises from the tap.
+            Start=Stance(.13f,.04f,.15f,-.13f,-.04f,-.3f,Facing,m.X,m.Z);
+            Steps=new[]{Step(false,RearFrom+.22f,RearFrom+.5f,-.19f,-.24f,-.45f,.06f),Step(true,SweepAt-.06f,SweepAt+.2f,.34f,.1f,.32f,.07f),
+                Step(true,FreezeAt+.75f,FreezeAt+1.05f,.14f,.04f,.15f,.05f),Step(false,FreezeAt+1.0f,FreezeAt+1.3f,-.13f,-.04f,-.3f,.05f)};
             Vector3 R(float z)=>OnLine(z,.88f);var r0=R(0);
-            // Ankle-deep and still, head bowed over the water.
-            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.05f).J(C,.06f).J(Hd,.38f).J(RA,-.08f,0,-.14f).J(RE,-.3f).J(LA,-.25f,0,.2f);
-            k.Key(RiseFrom-.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.05f).J(C,.06f).J(Hd,.33f).J(RA,-.08f,0,-.14f).J(RE,-.3f).J(LA,-.25f,0,.2f);
-            // It hears the sea: chin up, a look back over its shoulder (no more than a third of a turn).
-            k.Key(RearFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.05f).J(C,-.04f,.16f,0).J(Hd,-.22f,.3f,0).J(RA,-.18f,0,-.32f).J(RE,-.5f).J(LA,-.25f,0,.2f);
-            // Braced: the staff taken overhead in both hands against the wave, the weight back.
-            k.Key(RearFrom+.45f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.09f).J(B,-.1f).J(C,-.15f).J(Hd,-.3f).J(RA,-2.5f,0,-.3f).J(RE,-.5f).J(LA,-2.4f,0,.3f).J(LE,-.5f);
-            k.Key(RearAt+.15f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.1f).J(B,-.08f).J(C,-.12f,.12f,0).J(Hd,-.28f).J(RA,-2.4f,0,-.4f).J(RE,-.55f).J(LA,-2.3f,0,.35f).J(LE,-.55f).PassKey();
-            // The wind-up: the chest turned to its right, the staff carried back high.
-            k.Key(SweepAt-.08f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.13f).J(B,-.04f).J(C,-.06f,.34f,0).J(Hd,-.18f,.12f,0).J(RA,-1.9f,0,-.8f).J(RE,-.45f).J(LA,-1.8f,0,.1f).J(LE,-.6f);
-            // The sweep: through and across, the chest turning hard to its left, down into the lunge.
-            k.Key(SweepAt+.25f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.3f).J(B,.15f).J(C,.06f,-.45f,0).J(Hd,.05f,-.2f,0).J(RA,-1.3f,0,.2f).J(RE,-.4f).J(LA,-1.2f,0,.6f).J(LE,-.3f).ImpactKey();
-            k.Key(Parted,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.28f).J(B,.13f).J(C,.05f,-.5f,0).J(Hd,0,-.16f,0).J(RA,-1.2f,0,.35f).J(RE,-.35f).J(LA,-1.1f,0,.65f).J(LE,-.3f).PassKey();
-            // The tap: the staff lifted, then its heel struck into the water, the free hand thrown out palm down, eyes on the water.
-            k.Key(FreezeAt-.12f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.22f).J(B,.06f).J(C,0,-.2f,0).J(Hd,.05f).J(RA,-.6f,0,-.6f).J(RE,-.4f).J(LA,-.6f,0,.25f);
-            k.Key(FreezeAt,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.3f).J(B,.12f).J(C,.08f).J(Hd,.25f).J(RA,-.5f,0,-.9f).J(RE,-.2f).J(LA,-.4f,0,.25f).ImpactKey();
-            // Up slowly, looking along each frozen wall.
-            k.Key(FreezeAt+.45f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,.02f).J(C,0,.12f,0).J(Hd,-.05f,.24f,0).J(RA,-.2f,0,-.5f).J(RE,-.35f).J(LA,-.25f,0,.2f);
-            k.Key(HoldFrom-.15f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.08f).J(C,0,-.1f,0).J(Hd,-.05f,-.22f,0).J(RA,-.15f,0,-.3f).J(RE,-.38f).J(LA,-.25f,0,.2f).PassKey();
-            k.Key(HoldFrom+.55f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.05f).J(Hd,-.08f).J(RA,-.12f,0,-.22f).J(RE,-.4f).J(LA,-.25f,0,.2f);
-            var hero=NativeEntranceKeys.With(NativeEntranceKeys.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,0,-.06f,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.06f,.05f,0);});
-            k.Key(CardAt-.3f,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f);
-            k.Key(Total,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f);Keys=k;
-            // The staff: planted at its side, overhead and level in both hands, carried back, swept across, the tap, at its side.
-            int s=0;
-            StaffKey(s++,0,.42f,.06f,.08f,.12f,1,.04f);StaffKey(s++,RearFrom,.42f,.08f,.1f,.12f,1,.05f);
-            StaffKey(s++,RearFrom+.45f,.15f,.95f,.15f,-1,.15f,.1f);StaffKey(s++,RearAt+.15f,.2f,.9f,.1f,-1,.2f,.1f);
-            StaffKey(s++,SweepAt-.08f,-.05f,.75f,-.05f,-.7f,.3f,-.6f);StaffKey(s++,SweepAt+.25f,.45f,.45f,.45f,.75f,.15f,.65f);StaffKey(s++,Parted,.5f,.4f,.4f,.8f,.2f,.55f);
-            StaffKey(s++,FreezeAt-.12f,.22f,.35f,.4f,.05f,1,.05f);StaffKey(s++,FreezeAt,.2f,-.1f,.4f,.04f,1,.05f);
-            StaffKey(s++,FreezeAt+.45f,.34f,.06f,.2f,.1f,1,.08f);StaffKey(s++,CardAt-.3f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
+            // Ankle-deep and still, head bowed over the water, the staff upright at its side.
+            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(Sp,.04f).J(C,.06f).J(Hd,.36f).J(RA,-.08f,0,-.14f).J(RE,-.32f);
+            k.Key(RiseFrom-.05f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.025f).J(Sp,.05f).J(C,.07f).J(Hd,.33f).J(RA,-.08f,0,-.14f).J(RE,-.32f);
+            // It hears the sea: the chin comes up, a look back over its right shoulder (the chest turning a little with it).
+            k.Key(RearFrom-.05f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,0,-.08f,0).J(C,-.04f,-.18f,0).J(Hd,-.12f,-.42f,0).J(RA,-.12f,0,-.2f).J(RE,-.4f);
+            // It turns back to the front and takes the staff across its body in both hands, the weight settling back onto the braced foot.
+            k.Key(RearFrom+.5f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.07f).J(B,-.02f).J(C,-.04f,.06f,0).J(Hd,-.12f,.04f,0).J(RA,-.6f,0,-.2f).J(RE,-1.1f);
+            // Gathered: sinking lower under the rearing wave, the chest coiling a little to its right (the sweep's anticipation).
+            k.Key(SweepAt-.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.16f).J(B,.08f).J(Sp,0,-.1f,0).J(C,.04f,-.16f,0).J(Hd,.02f,.1f,0).J(RA,-.7f,0,-.15f).J(RE,-1.2f);
+            // The parting: the arms swept wide apart, the staff out to its left and the open right hand out to its right, the chest opening
+            // and the chin up, into a wide stance.
+            k.Key(SweepAt+.22f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,-.04f).J(Sp,0,.04f,0).J(C,-.12f,.05f,0).J(Hd,-.16f,-.04f,0).J(RA,-.3f,0,-1.35f).J(RE,-.15f).J(RH,0,0,.25f).ImpactKey();
+            k.Key(Parted,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.1f).J(B,-.05f).J(C,-.14f,.04f,0).J(Hd,-.2f,-.02f,0).J(RA,-.28f,0,-1.42f).J(RE,-.12f).J(RH,0,0,.25f).PassKey();
+            // The tap: the staff lifted a little, then its heel struck down into the water at its side, the knees giving, the chest over it,
+            // the free hand thrust down and out, palm down, eyes on the water.
+            k.Key(FreezeAt-.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.08f).J(B,-.02f).J(C,-.08f).J(Hd,-.08f).J(RA,-.5f,0,-.9f).J(RE,-.4f);
+            k.Key(FreezeAt,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.32f).J(B,.24f).J(Sp,.08f).J(C,.08f).J(Hd,.28f).J(RA,-.62f,0,-.55f).J(RE,-.2f).J(RH,.4f,0,0).ImpactKey();
+            k.Key(FreezeAt+.2f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.28f).J(B,.2f).J(Sp,.07f).J(C,.07f).J(Hd,.22f).J(RA,-.58f,0,-.55f).J(RE,-.22f).J(RH,.35f,0,0);
+            // Up slowly, looking along the left wall, then the right.
+            k.Key(FreezeAt+.7f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,.04f).J(C,-.02f,.12f,0).J(Hd,-.12f,.3f,0).J(RA,-.2f,0,-.32f).J(RE,-.42f);
+            k.Key(HoldFrom+.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.05f).J(C,-.04f,-.12f,0).J(Hd,-.12f,-.3f,0).J(RA,-.14f,0,-.24f).J(RE,-.4f).PassKey();
+            k.Key(HoldFrom+.6f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(C,-.04f).J(Hd,-.06f,-.05f,0).J(RA,-.12f,0,-.2f).J(RE,-.4f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,-.05f,-.06f,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.04f,.05f,0);});
+            k.Key(CardAt-.3f,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f);
+            k.Key(Total,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f);Keys=k;
+            // The staff: upright at its side; low across its body in both hands; swept out upright to its left; the tap
+            // beside its left foot; upright at its side.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);var across=new Vector3(-.68f,.52f,.5f);
+            Hold(0,new Vector3(.5f,-.12f,.2f),up,back);Hold(RearFrom,new Vector3(.5f,-.12f,.22f),up,back);
+            Hold(RearFrom+.5f,new Vector3(.2f,-.36f,.3f),across,new Vector3(.15f,.3f,-1));Hold(SweepAt-.1f,new Vector3(.18f,-.38f,.3f),across,new Vector3(.15f,.3f,-1));
+            Hold(SweepAt+.22f,new Vector3(.82f,.05f,.16f),new Vector3(.05f,1,.15f),new Vector3(-1,0,-.15f),new Vector3(.2f,-1,-.3f));Hold(Parted,new Vector3(.82f,.06f,.16f),new Vector3(.04f,1,.15f),new Vector3(-1,0,-.15f),new Vector3(.2f,-1,-.3f));
+            Hold(FreezeAt-.1f,new Vector3(.55f,.0f,.26f),up,back);Hold(FreezeAt,new Vector3(.45f,-.5f,.34f),new Vector3(.02f,1,.02f),back);Hold(FreezeAt+.2f,new Vector3(.45f,-.46f,.32f),new Vector3(.02f,1,.02f),back);
+            Hold(FreezeAt+.7f,new Vector3(.5f,-.14f,.22f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
             // The camera: a glide over the water to the figure; up as the tide comes; low under the rearing wave; front and low as
             // it parts; an orbit through the frozen moment; ahead of it walking out; the centred hero frame between the walls.
             Rig.Dolly(0,L(.5f,.36f,9.6f),L(.3f,.4f,4.8f),m+new Vector3(0,1.0f,0),m+new Vector3(0,1.15f,0),38,34).Ease(NativeIntroEase.Out).Focus(0,0,.4f)
@@ -493,8 +518,8 @@ namespace ChipArena.UnityConversion
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
             Ramps.Ramp(SweepAt,.5f,.16f,.32f).Ramp(FreezeAt,.22f,.5f,.95f);
         }
-        /// <summary>Both hands on the staff from the brace through the sweep.</summary>
-        protected override float Support(float t)=>NativeEntranceMath.Ramp(t,RearFrom+.25f,RearFrom+.45f)*(1-NativeEntranceMath.Ramp(t,Parted-.05f,FreezeAt-.12f));
+        /// <summary>Both hands on the staff from the gather to the sweep, which flings the right hand out.</summary>
+        protected override float TwoHands(float t)=>NativeEntranceMath.Ramp(t,RearFrom+.3f,RearFrom+.48f)*(1-NativeEntranceMath.Ramp(t,SweepAt-.02f,SweepAt+.1f));
         /// <summary>The water's top at `t` (world y).</summary>
         public static float Level(float t)=>NativeEntranceStage.FloorY+Shallow+(Tide-Shallow)*NativeEntranceMath.Ramp(t,RiseFrom,RearAt);
         /// <summary>How far the wave has reared (0 under the water .. 1 full height).</summary>
@@ -647,41 +672,47 @@ namespace ChipArena.UnityConversion
         public NativeIntroStrikePoint():base(Id,Total,CardAt,StrikeAt,0xc8aaff)
         {
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            Start=Stance(.2f,.36f,.15f,-.18f,-.12f,-.42f);
-            // Rising: the knee comes up off the stone and the foot plants under it.
-            Steps=new[]{Step(false,RiseFrom+.12f,RiseFrom+.42f,-.18f,-.1f,-.42f,.07f)};
-            // The landing: the front foot planted, the back knee on the stone, a hand flat on it, head bowed (the bolt's arrival).
-            float[] kneel(float drop,float lean,float head)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.Yaw]=Facing;v[NativeEntranceKeys.BodyY]=drop;v[NativeEntranceKeys.PlantL]=1;v[NativeEntranceKeys.PlantR]=0;
-                NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Sp,.14f,0,0);NativeEntranceKeys.Set(v,C,.1f,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);
-                NativeEntranceKeys.Set(v,LL,-1.3f,0,.22f);NativeEntranceKeys.Set(v,LK,1.8f,0,0);NativeEntranceKeys.Set(v,RL,.35f,0,-.12f);NativeEntranceKeys.Set(v,RK,1.5f,0,0);
-                NativeEntranceKeys.Set(v,RA,-.85f,0,-.25f);NativeEntranceKeys.Set(v,RE,-.2f,0,0);NativeEntranceKeys.Set(v,LA,-.5f,0,.45f);});
-            k.Key(0,kneel(-.52f,.48f,.45f)).Root(0,.88f,0,Facing);
-            k.Key(StrikeAt,kneel(-.52f,.5f,.48f)).Root(0,.88f,0,Facing).ImpactKey();
-            k.Key(StrikeAt+.12f,kneel(-.57f,.56f,.52f)).Root(0,.88f,0,Facing);
-            k.Key(StrikeAt+.6f,kneel(-.52f,.48f,.42f)).Root(0,.88f,0,Facing);
+            // The feet (the model's ankles, ModelFeet): it lands on one knee, the left foot planted ahead and the right knee down on the
+            // stone (ModelKneel); rising, the right foot comes forward to stand beside the left.
+            Start=Stance(.14f,.36f,.12f,-.13f,-.1f,-.3f);
+            Steps=new[]{Step(false,RiseFrom+.16f,RiseFrom+.46f,-.14f,.3f,-.28f,.08f)};
+            var r0=OnLine(0,.88f);var r1=OnLine(.3f,.88f);var rm=OnLine(.16f,.88f);
+            // The landing (the bolt is the pilot): down on one knee, the torso bowed over the front thigh, the head down, the free hand flat on
+            // the stone beside the front foot, the staff held out to its side; the impact compresses it, then it settles.
+            float[] kneel(float drop,float bow,float head,float reach)=>NativeEntranceKeys.With(NativeIntroPoses.Kneel(),v=>{v[NativeEntranceKeys.BodyY]=drop;
+                NativeEntranceKeys.Set(v,B,.22f*bow,0,0);NativeEntranceKeys.Set(v,Sp,.5f*bow,0,0);NativeEntranceKeys.Set(v,C,.3f*bow,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);
+                NativeEntranceKeys.Set(v,RA,-reach,.08f,-.1f);NativeEntranceKeys.Set(v,RE,-.06f,0,0);NativeEntranceKeys.Set(v,RH,-.3f,0,0);});
+            k.Key(0,kneel(-.62f,1.1f,.06f,1.16f)).Root(r0.X,r0.Y,r0.Z,Facing);
+            k.Key(StrikeAt,kneel(-.62f,1.1f,.08f,1.16f)).Root(r0.X,r0.Y,r0.Z,Facing).ImpactKey();
+            k.Key(StrikeAt+.12f,kneel(-.66f,1.18f,.14f,1.2f)).Root(r0.X,r0.Y,r0.Z,Facing);
+            k.Key(StrikeAt+.55f,kneel(-.63f,1.1f,.04f,1.16f)).Root(r0.X,r0.Y,r0.Z,Facing);
             // The head comes up out of the landing: it looks at the storm.
-            k.Key(RiseFrom-.4f,NativeEntranceKeys.With(kneel(-.51f,.42f,.04f),v=>NativeEntranceKeys.Set(v,C,-.05f,0,0))).Root(0,.88f,0,Facing);
-            // The push up: weight forward over the front foot, then up, the free arm crackling at its side.
-            k.Key(RiseFrom,kneel(-.48f,.56f,.12f)).Root(0,.88f,0,Facing).PassKey();
-            k.Key(RiseFrom+.42f,stand).Root(0,.88f,0,Facing).Drop(-.04f).J(B,.02f).J(C,-.06f).J(Hd,-.08f).J(RA,-.25f,0,-.42f).J(RE,-.5f).J(LA,-.25f,0,.2f);
-            // The call: a dip, the staff drawn down to the hip; then thrust to the sky, chest open, the free arm flung out.
-            k.Key(CallAt-.08f,stand).Root(0,.88f,0,Facing).Drop(-.12f).J(B,.1f).J(C,.05f).J(Hd,.1f).J(RA,-.12f,0,-.38f).J(RE,-.6f).J(LA,-.3f,0,.25f);
-            k.Key(CallAt+.15f,stand).Root(0,.88f,0,Facing).Drop(.02f).J(B,-.08f).J(C,-.14f).J(Hd,-.42f).J(RA,-.25f,0,-1.3f).J(RE,-.2f).J(LA,-2.6f,0,.2f);
+            k.Key(RiseFrom-.38f,NativeEntranceKeys.With(kneel(-.58f,.8f,-.45f,.95f),v=>NativeEntranceKeys.Set(v,CapturedRig.Neck,-.2f,0,0))).Root(r0.X,r0.Y,r0.Z,Facing);
+            // The push up: the weight forward over the front foot, the hand leaving the stone; then up, the right foot coming through.
+            k.Key(RiseFrom,kneel(-.55f,.9f,-.3f,.6f)).Root(r0.X,r0.Y,r0.Z,Facing).PassKey();
+            k.Key(RiseFrom+.24f,stand).Root(rm.X,rm.Y,rm.Z,Facing).Drop(-.2f).J(B,.22f).J(C,-.02f).J(Hd,-.06f).J(RA,-.3f,0,-.3f).J(RE,-.5f).PassKey();
+            k.Key(RiseFrom+.48f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.04f).J(B,.02f).J(C,-.06f).J(Hd,-.08f).J(RA,-.22f,0,-.36f).J(RE,-.5f);
+            // The call: a dip, the staff drawn down to the hip; then thrust up to the sky, the chest open, the head back, the free arm flung
+            // out and down.
+            k.Key(CallAt-.08f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.12f).J(B,.1f).J(C,.05f).J(Hd,.1f).J(RA,-.14f,0,-.34f).J(RE,-.62f);
+            k.Key(CallAt+.15f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(.0f).J(B,-.07f).J(C,-.14f).J(Hd,-.38f).J(RA,-.2f,0,-1.05f).J(RE,-.15f).J(RH,0,0,.2f);
             // The bolt hits the staff: rocked back by it.
-            k.Key(CallStrike,stand).Root(0,.88f,0,Facing).Drop(-.07f).J(B,-.15f).J(C,-.18f).J(Hd,-.45f).J(RA,-.3f,0,-1.45f).J(RE,-.15f).J(LA,-2.6f,0,.2f).ImpactKey();
-            k.Key(SpireFire-.08f,stand).Root(0,.88f,0,Facing).Drop(-.02f).J(B,-.06f).J(C,-.08f).J(Hd,-.3f).J(RA,-.3f,0,-1.35f).J(RE,-.2f).J(LA,-2.4f,0,.2f);
-            // The plant: the staff driven down, the knees giving, the arm swinging out with it.
-            k.Key(SpireFire,stand).Root(0,.88f,0,Facing).Drop(-.2f).J(B,.14f).J(C,.06f).J(Hd,.05f).J(RA,-.45f,0,-.95f).J(RE,-.3f).J(LA,-.8f,0,.2f).ImpactKey();
-            k.Key(SpireFire+.25f,stand).Root(0,.88f,0,Facing).Drop(-.16f).J(B,.1f).J(C,.04f).J(Hd,0).J(RA,-.35f,0,-.75f).J(RE,-.35f).J(LA,-.6f,0,.2f);
-            var hero=NativeEntranceKeys.With(NativeEntranceKeys.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Head,-.1f,.12f,0);NativeEntranceKeys.Set(q,CapturedRig.RArm,-.2f,0,-.35f);});
-            k.Key(CardAt-.2f,hero).Root(0,.88f,0,Facing).Drop(-.06f);
-            k.Key(Total,hero).Root(0,.88f,0,Facing).Drop(-.06f);Keys=k;
-            // The staff: held out to its side in the landing, up at its side, down to the hip, thrust up, driven down, at its side.
-            int s=0;
-            StaffKey(s++,0,.46f,-.18f,.18f,.55f,.8f,.25f);StaffKey(s++,RiseFrom,.44f,-.12f,.2f,.5f,.82f,.25f);
-            StaffKey(s++,RiseFrom+.42f,.42f,.06f,.1f,.12f,1,.05f);StaffKey(s++,CallAt-.08f,.3f,-.05f,.05f,.1f,1,-.1f);
-            StaffKey(s++,CallAt+.15f,.18f,.75f,.12f,.04f,1,0);StaffKey(s++,CallStrike+.1f,.18f,.72f,.12f,.04f,1,0);
-            StaffKey(s++,SpireFire,.24f,.02f,.32f,.05f,1,.05f);StaffKey(s++,CardAt-.2f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
+            k.Key(CallStrike,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.07f).J(B,-.13f).J(C,-.18f).J(Hd,-.42f).J(RA,-.26f,0,-1.2f).J(RE,-.12f).J(RH,0,0,.2f).ImpactKey();
+            k.Key(SpireFire-.08f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.03f).J(B,-.06f).J(C,-.1f).J(Hd,-.3f).J(RA,-.26f,0,-1.12f).J(RE,-.18f);
+            // The plant: the staff driven down beside its foot, the knees giving, the free arm swinging out with it.
+            k.Key(SpireFire,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.22f).J(B,.16f).J(C,.06f).J(Hd,.05f).J(RA,-.45f,0,-.85f).J(RE,-.3f).ImpactKey();
+            k.Key(SpireFire+.25f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.16f).J(B,.1f).J(C,.04f).J(Hd,0).J(RA,-.35f,0,-.65f).J(RE,-.35f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Head,-.08f,.12f,0);NativeEntranceKeys.Set(q,CapturedRig.RArm,-.16f,-.1f,-.3f);});
+            k.Key(CardAt-.2f,hero).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.04f);
+            k.Key(Total,hero).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.04f);Keys=k;
+            // The staff: held out to its side in the landing, upright at its side as it rises, down to the hip, thrust up to the sky, driven
+            // down beside its left foot, upright at its side.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);
+            Hold(0,new Vector3(.56f,.07f,.3f),new Vector3(.12f,1,.8f),back);Hold(RiseFrom,new Vector3(.55f,.04f,.3f),new Vector3(.1f,1,.7f),back);
+            Hold(RiseFrom+.48f,new Vector3(.5f,-.12f,.2f),up,back);Hold(CallAt-.08f,new Vector3(.46f,-.3f,.2f),up,back);
+            Hold(CallAt+.15f,new Vector3(.7f,.52f,.1f),new Vector3(-.12f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));Hold(CallStrike+.1f,new Vector3(.68f,.47f,.06f),new Vector3(-.12f,1,.04f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));
+            Hold(SpireFire,new Vector3(.44f,-.46f,.32f),new Vector3(.02f,1,.04f),back);Hold(SpireFire+.25f,new Vector3(.46f,-.38f,.28f),up,back);
+            Hold(CardAt-.2f,new Vector3(.5f,-.1f,.2f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
             // The camera: low and wide on the summit, tilting to the sky; straight up into the vortex, turning; down from the cloud;
             // the smash to the strike; a fast orbit; rising with it; wide with the spires firing; the hero frame.
             Rig.Dolly(0,L(4.6f,.42f,7.2f),L(4.1f,.46f,6.5f),L(0,1.8f,0),L(0,3.4f,-1.6f),52,54)
@@ -696,6 +727,8 @@ namespace ChipArena.UnityConversion
             Ramps.Ramp(StrikeAt,.22f,.38f,.9f);
         }
         public override float Solid(float t,int bone)=>t<StrikeAt?0:1;
+        /// <summary>The right knee down on the stone from the landing until it rises (the drawn knee on the floor, NativeIntroFeet.OnKnee).</summary>
+        protected override float ModelKneel(float t,bool left)=>left?0:1-NativeEntranceMath.Ramp(t,RiseFrom+.04f,RiseFrom+.28f);
         /// <summary>The strike's white-hot copy over the body, cooling.</summary>
         public override int Ghosts(float t,Span<NativeEntranceGhost> into)
         {
@@ -829,6 +862,8 @@ namespace ChipArena.UnityConversion
         public const string Id=NativeIntroCatalog.WeaponPrefix+"darkness";public const string Name="Black Sun";
         public const float Total=8.4f,CardAt=6.6f;
         public const float EclipseFrom=1.0f,PourFrom=1.35f,TotalityAt=2.8f,RiseFrom=2.9f,OpenAt=3.55f,StepFrom=3.75f,EyeAt=4.55f,WingsAt=5.05f,SnapAt=5.7f;
+        /// <summary>The walk out of the void: from WalkFrom to WalkTo, WalkLength m along the hero facing from 1.75 m behind the mark.</summary>
+        public const float WalkFrom=3.6f,WalkTo=5.0f,WalkLength=1.05f;
         /// <summary>The void (its centre: on the forward line behind the mark) and the plane the pilot crosses out of it.</summary>
         public static readonly Vector3 Void=OnLine(-1.55f,1.25f);
         /// <summary>The sun: behind the pilot and up (m), its disc's radius; the moon slides over it (rig darkness/moon).</summary>
@@ -841,33 +876,44 @@ namespace ChipArena.UnityConversion
         public static Vector3 Monolith(int i,float y=0){float a=Facing+Monoliths[i]*(float)(Math.PI/180);return new Vector3((float)Math.Sin(a)*MonolithRing,y,(float)Math.Cos(a)*MonolithRing);}
         public NativeIntroBlackSun():base(Id,Total,CardAt,TotalityAt,0xaf6eff)
         {
-            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();var v0=OnLine(-1.7f);
-            Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f,Facing,v0.X,v0.Z);
-            Steps=new[]{Step(true,StepFrom+.05f,StepFrom+.5f,.16f,-1.05f,.1f,.08f),Step(false,StepFrom+.5f,StepFrom+.95f,-.18f,-.5f,-.42f,.08f),Step(true,StepFrom+.95f,StepFrom+1.4f,.16f,.07f,.1f,.07f),Step(false,StepFrom+1.25f,StepFrom+1.6f,-.18f,-.1f,-.42f,.05f)};
-            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(-1.7f);var w1=R(-1.2f);var w2=R(-.62f);var w3=R(-.1f);var w4=R(0);
+            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();var v0=OnLine(-1.75f);var plan=new System.Collections.Generic.List<NativeEntrancePose.Step>();
+            // The feet (the model's ankles, ModelFeet): still in the void, then three slow, low steps out of it, the right foot set out wide
+            // as the wings open.
+            Start=Stance(.12f,.02f,.12f,-.12f,-.02f,-.25f,Facing,v0.X,v0.Z);
+            var line=new NativeIntroFeet.Track(v0,Facing,WalkFrom,WalkTo,WalkLength,.45f,.5f);RootPath=(t,r)=>{if(t<=WalkFrom||t>=WalkTo+.6f)return r;var a=line.At(t);return new Vector3(a.X,r.Y,a.Z);};
+            NativeIntroFeet.Walk(plan,line,true,3,WalkFrom+.05f,.46f,.4f,.1f,.08f,.06f);
+            var e=OnLine(-1.75f+WalkLength);plan.Add(Step(false,WingsAt-.02f,WingsAt+.18f,-.21f,-.02f,-.32f,.05f,Facing,e.X,e.Z));Steps=plan.ToArray();
+            var r0=new Vector3(v0.X,.88f,v0.Z);var w4=new Vector3(e.X,.88f,e.Z);
             // In the void: still, head bowed.
-            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(Sp,.08f).J(C,.1f).J(Hd,.42f).J(RA,-.08f,0,-.14f).J(RE,-.3f).J(LA,-.25f,0,.2f);
-            k.Key(StepFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(Sp,.08f).J(C,.1f).J(Hd,.38f).J(RA,-.08f,0,-.14f).J(RE,-.3f).J(LA,-.25f,0,.2f);
-            // Out of it: a slow, low walk, shoulders forward, the head rising with each step.
-            k.Key(StepFrom+.32f,stand).Root(w1.X,w1.Y,w1.Z,Facing).Drop(-.06f).J(B,.08f).J(C,.08f,.06f,0).J(Hd,.28f).J(RA,.18f,0,-.15f).J(RE,-.35f).J(LA,-.25f,0,.2f).PassKey();
-            k.Key(StepFrom+.75f,stand).Root(w2.X,w2.Y,w2.Z,Facing).Drop(-.02f).J(B,.05f).J(C,.05f,-.05f,0).J(Hd,.12f).J(RA,-.22f,0,-.15f).J(RE,-.45f).J(LA,-.25f,0,.2f).PassKey();
-            // On the mark: the head comes up level for the eye.
-            k.Key(EyeAt+.1f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.04f).J(Hd,-.04f).J(RA,-.1f,0,-.16f).J(RE,-.35f).J(LA,-.25f,0,.2f);
-            // The wings: a hunch, everything drawn in; then thrown open, the staff raised before it, the free arm swept out and back.
-            k.Key(WingsAt-.08f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.09f).J(B,.1f).J(Sp,.1f).J(C,.14f).J(Hd,.12f).J(RA,-.3f,0,.05f).J(RE,-1.0f).J(LA,-.4f,0,.15f);
-            k.Key(WingsAt+.3f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.02f).J(B,-.06f).J(Sp,-.06f).J(C,-.18f).J(Hd,-.22f).J(RA,.35f,0,-1.35f).J(RE,-.12f).J(LA,-1.2f,0,.15f);
-            k.Key(SnapAt-.08f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.03f).J(B,-.07f).J(Sp,-.07f).J(C,-.2f).J(Hd,-.24f).J(RA,.4f,0,-1.45f).J(RE,-.1f).J(LA,-1.25f,0,.15f).PassKey();
-            // The snap: the staff planted hard, the arm whipped in across the body.
-            k.Key(SnapAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.16f).J(B,.1f).J(C,.06f).J(Hd,.04f).J(RA,-.65f,0,.15f).J(RE,-.9f).J(LA,-.6f,0,.15f).ImpactKey();
-            k.Key(SnapAt+.3f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.1f).J(B,.05f).J(C,.03f).J(Hd,0).J(RA,-.3f,0,-.1f).J(RE,-.6f).J(LA,-.4f,0,.15f);
-            var hero=NativeEntranceKeys.With(NativeEntranceKeys.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,0,0,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.05f,0,0);});
-            k.Key(CardAt-.3f,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.04f);
-            k.Key(Total,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.04f);Keys=k;
-            // The staff: at its side out of the void, drawn in, raised before it, planted, at its side.
-            int s=0;
-            StaffKey(s++,0,.42f,.08f,.08f,.08f,1,.08f);StaffKey(s++,EyeAt+.1f,.42f,.08f,.1f,.08f,1,.08f);StaffKey(s++,WingsAt-.08f,.25f,.05f,.12f,.05f,1,.05f);
-            StaffKey(s++,WingsAt+.3f,.22f,.45f,.42f,.12f,.8f,.6f);StaffKey(s++,SnapAt-.08f,.2f,.5f,.44f,.1f,.85f,.55f);
-            StaffKey(s++,SnapAt,.24f,-.12f,.36f,.04f,1,.05f);StaffKey(s++,CardAt-.3f,.44f,.05f,.06f,.14f,1,.03f);StaffKey(s++,Total,.44f,.05f,.06f,.14f,1,.03f);
+            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.08f).J(C,.1f).J(Hd,.42f).J(RA,-.08f,0,-.14f).J(RE,-.3f);
+            k.Key(WalkFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(Sp,.08f).J(C,.1f).J(Hd,.4f).J(RA,-.08f,0,-.14f).J(RE,-.3f);
+            // Out of it: a slow, low, stalking walk, the hips sunk and the shoulders forward, the head rising a little with each step until it
+            // is level for the eye; the free arm barely swinging.
+            for(int i=0;i<3;i++)
+            {
+                bool l=i%2==0;float sg=l?1:-1,lift=WalkFrom+.05f+i*.46f,land=lift+.4f,pass=lift+.2f;var p=line.At(pass);var c=line.At(land);float head=i==0?.28f:i==1?-.1f:-.14f;
+                k.Key(pass,stand).Root(p.X,.88f,p.Z,Facing).Drop(-.08f).J(B,.17f).J(P,0,0,-sg*.04f).J(Sp,.04f).J(C,.06f).J(Hd,head-.04f).J(RA,-.08f,0,-.14f).J(RE,-.45f).PassKey();
+                k.Key(land,stand).Root(c.X,.88f,c.Z,Facing).Drop(-.13f).J(B,.18f).J(P,0,sg*.09f).J(Sp,.04f,-sg*.04f).J(C,.06f,-sg*.08f).J(Hd,head-.08f,sg*.05f)
+                    .J(RA,l?-.24f:.18f,0,-.14f).J(RE,l?-.6f:-.35f).PassKey();
+            }
+            // The eye lit, it draws in: a hunch over the planted foot, the shoulders up, the free arm folded in (the wings' anticipation).
+            k.Key(WingsAt-.06f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.12f).J(B,.15f).J(Sp,.1f).J(C,.12f).J(Hd,.06f).J(RA,-.42f,.1f,.05f).J(RE,-1.25f);
+            // The wings: both arms thrown up and wide, the staff high out at its left, the chest pushed out and the chin up.
+            k.Key(WingsAt+.3f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.0f).J(B,-.05f).J(Sp,-.06f).J(C,-.17f).J(Hd,-.24f).J(RA,-.3f,.1f,-2.1f).J(RE,-.2f).J(RH,0,0,.25f);
+            k.Key(SnapAt-.08f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.01f).J(B,-.06f).J(Sp,-.07f).J(C,-.19f).J(Hd,-.26f).J(RA,-.28f,.1f,-2.2f).J(RE,-.16f).J(RH,0,0,.25f).PassKey();
+            // The snap: the staff planted hard at its side, the free arm whipped in across the front of the body.
+            k.Key(SnapAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.17f).J(B,.12f).J(C,.06f).J(Hd,.06f).J(RA,-.95f,.25f,.15f).J(RE,-1.05f).ImpactKey();
+            k.Key(SnapAt+.3f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.1f).J(B,.05f).J(C,.03f).J(Hd,0).J(RA,-.4f,.1f,-.06f).J(RE,-.75f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,-.04f,-.04f,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.04f,.02f,0);});
+            k.Key(CardAt-.3f,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);
+            k.Key(Total,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);Keys=k;
+            // The staff: low at its side out of the void, drawn in, raised high out at its side, planted at its side.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);
+            Hold(0,new Vector3(.5f,-.16f,.18f),up,back);Hold(WalkFrom+.5f,new Vector3(.5f,-.16f,.12f),up,back);Hold(WalkFrom+.96f,new Vector3(.5f,-.15f,.26f),up,back);Hold(WalkFrom+1.42f,new Vector3(.5f,-.16f,.14f),up,back);
+            Hold(WingsAt-.06f,new Vector3(.4f,-.22f,.22f),up,back);
+            Hold(WingsAt+.3f,new Vector3(.72f,.46f,.12f),new Vector3(-.1f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));Hold(SnapAt-.08f,new Vector3(.72f,.5f,.1f),new Vector3(-.1f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));
+            Hold(SnapAt,new Vector3(.44f,-.48f,.32f),new Vector3(.02f,1,.04f),back);Hold(SnapAt+.3f,new Vector3(.46f,-.34f,.26f),up,back);
+            Hold(CardAt-.3f,new Vector3(.5f,-.1f,.2f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
             // The camera: centred through the gate on the sun; a dolly zoom on the centre as the shadows pour; low and centred up at the
             // void under the black sun; locked off as it steps out; the eye; a slow pull back; the centred hero frame.
             Rig.Dolly(0,L(0,1.6f,12.5f),L(0,1.55f,10.8f),L(0,3.6f,-20),L(0,4.2f,-20),46,44)
