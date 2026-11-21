@@ -54,9 +54,12 @@ namespace ChipArena.UnityConversion
         public const int SpawnBurst=4;
         public static int Cap(int lobby,int inCity)=>inCity<=0?0:Math.Min(96,24+16*Math.Max(1,Math.Min(8,lobby)));
         // Spawn into occupied streets; distant rings must not consume the local encounter budget.
-        public static double SpawnWeight(float distanceSquared,int nearby)
+        public const float NormalSpawnMin=12, SurpriseSpawnMin=6, SpawnMax=52, VisibleSpawnMin=18;
+        public const double SurpriseChance=.03;
+        public static double SpawnWeight(float distanceSquared,int nearby,bool surprise=false)
         {
-            if(distanceSquared<144||distanceSquared>3600)return 0;
+            float minimum=surprise?SurpriseSpawnMin:NormalSpawnMin;
+            if(!(distanceSquared>=minimum*minimum&&distanceSquared<=SpawnMax*SpawnMax))return 0;
             double d=distanceSquared/576d;
             return 1/((1+d*d)*(1+Math.Max(0,nearby)));
         }
