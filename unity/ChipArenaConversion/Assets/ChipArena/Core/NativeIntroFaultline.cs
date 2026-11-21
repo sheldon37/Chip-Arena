@@ -59,7 +59,9 @@ namespace ChipArena.UnityConversion
             k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(B,.08f).J(C,.02f,-.1f,0).J(Hd,.04f,.08f,0);
             k.Key(1.45f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.06f).J(B,.09f).J(C,.03f,-.08f,0).J(Hd,.06f,.05f,0);
             // Anticipation: it sinks as the blade rises and tips back over the head, the chest opening, the eyes up.
-            k.Key(1.9f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.14f).J(B,.06f).J(C,-.08f,-.04f,0).J(Hd,-.06f,0,0);
+            // (the chest turns right as the blade rises, taking the hilt out past the face, the head held to the front)
+            k.Key(1.7f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.1f).J(B,.08f).J(C,-.03f,-.32f,0).J(Hd,.02f,.28f,0);
+            k.Key(1.9f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.14f).J(B,.06f).J(C,-.08f,-.34f,0).J(Hd,-.06f,.28f,0);
             k.Key(2.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.2f).J(B,.18f).J(Sp,.04f).J(C,-.14f,0,0).J(N,-.06f).J(Hd,-.1f,0,0);
             // Off the floor: the legs drive it up, long, the blade high behind.
             k.Key(LeapAt,stand).Root(0,.95f,.02f,Facing).Planted(.3f).Drop(0).J(B,-.02f).J(C,-.2f,0,0).J(Hd,-.1f,0,0).J(LL,-.1f,0,.1f).J(LK,.12f).J(RL,.12f,0,-.1f).J(RK,.15f).PassKey();
