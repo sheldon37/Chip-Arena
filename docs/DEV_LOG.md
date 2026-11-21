@@ -1,3 +1,45 @@
+## 2026-11-20 — Claude (I5): elemental intros, batch 2: re-keyed on the framework's pose tools, Still Tide's wave and ice rebuilt, Black Sun's dusk sky (owner's intro revamp; presentation only)
+Owner: "Yes, we can do them in batches if this will improve the quality (Hopefully dramatically)"; the bar: "great animations and effects, non-block based background and designs ... great camera work".
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged. Shared `57110fe9` and the framework `510cbd09` merged in (DEV_LOG and PROJECT_STATE keep both sides). Code `2864afbf` (head `e6fdf0ac` adds only merges). Bank v10 (`F:/Chip Arena Development/scratch/intro-elemental/bank/ChipArenaIntroElemental.bytes`, 6,442,001 bytes, never committed). Notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **Every body re-keyed on the framework's pose tools** (`docs/INTROS-V2.md` 9a-9c). The staff's fist is keyed in the chest's frame (`NativeIntroGrip.Hold`) and held out at the side, so the drawn staff never stands across the face. The right hand goes on the shaft by the grip IK (`GripAt`) where both hands hold it. The feet and drops are in the model's metres (`ModelFeet`; Strike Point's kneel `ModelKneel`), the walks on `NativeIntroFeet`. `--intro-limits`: 48 findings → 0.
+  - Forgeborn: a crouch in the column, three heavy steps out, the free arm raised under the crown, both arms up, a deep one-handed slam beside the foot.
+  - Still Tide: the look back, the staff low across the body in both hands, the arms swept wide as the wave parts, the tap.
+  - Strike Point: a three-point landing on the right knee with the fist on the stone, the rise stepping through, the call with the staff high at its side.
+  - Black Sun: a low stalking walk, the head level as the eye lights, both arms thrown up wide for the wings, the snap.
+- **Cameras:** close and hero shots favour the pilot's right (Forgeborn's crown orbit, Strike Point's landing orbit, rise and hero, Black Sun's eye), so the staff at its left never stands between the lens and the head.
+- **Still Tide** (the integrator's review: "pillow wave", "flat magenta polygon ice"): the wave is a plunging breaker's section with a thin lip curling over a hollow barrel. It is dark glossy water mirroring the hall's own sky, lit through where the lip thins, with foam on the crest and in streaks. The ice is the same breaker frozen and lit from within: deep blue where thick, pale at its thin edges, clouded, cracked, rimed on the crest, with icicles and veins of light. The halves stand 3.5 m apart. (A bake bug left the mirrored right half dark; fixed.)
+- **Black Sun** ("reads plain still grey"): a dusk sky dome burning amber and rose along the horizon, cooled and dimmed through the eclipse to totality's sunset all round; polished obsidian mirrors it; the fog is held off the dome.
+- **Tests:** `--intro-elemental-limits` (the framework's findings for these four), `--intro-elemental-model DIR` (the body as the model draws it, for side and three-quarter stick reviews).
+- **Sounds:** the 31 rows moved to `docs/audio/intros-b2/I5.json` and compiled into batch 2's manifest (`--batch b2`; batch 1's sealed manifest byte-identical); each `targetSeconds.min` is at most 0.45 of its `generateSeconds`. No queue job.
+
+**Checks:** at `e6fdf0ac`:
+- Full CoreTests the relgen5 way: PASS (1,095 groups, exit 0); also at `2864afbf` (1,090) and `c09def1f` (1,092).
+- `--intro-limits`: none for all ten intros.
+- `--intros-v2`: PASS (6,688). `--intro-elemental`: PASS (20,523). `--voxel`: PASS (at `2864afbf`).
+- `check_unity_compile.py` (local Unity root): PASS. `git diff --check origin/claude/sleepy-ritchie-g8ruhv`: clean.
+- `compile_sound_requests.py --check` (b1 sealed, as pinned) and `--batch b2 --check`: PASS. `Tests/test_intro_sound_manifests.py`: 7 tests OK.
+- `--intro-pack`: not run (no pack clips played).
+
+**Captures** (clips `F:/Chip Arena Development/scratch/intro-elemental/clips/*-b2.*`):
+- Hold 7 (bank v9): all four at High in Cyber City, Still Tide on Polar (the same look: the intro owns its light). Three faults, all fixed: the staff passing the head from left-side cameras, Still Tide's mirrored half baked dark, the ice too close and flat.
+- Hold 8 (bank v10): Still Tide at High: the breaker lit through its lip, the ice lit from within. Hold 9 was cut off when the PC slept at 21:06.
+- Still to film: Forgeborn and Strike Point at High on their final cameras, the Low strips, the side and three-quarter proofs (offline model stick proofs stand in: `clips/*-sticks-b2.png`), and Black Sun on v10 (its clip is hold 7's on v9; only the obsidian's gloss and the eye shot's side differ).
+
+**Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
+
+**Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's keyed pose), as every v2 intro's does. No new voxel reads (the ratchet passes; the file is unpinned at zero).
+
+**Risks:**
+- The captures still to film: Forgeborn's and Strike Point's clips predate their right-side cameras and the crown's raised arm.
+- The ice is lit from within (emissive), bright in the hero frame; the wave reads best from the low front.
+- No pack clips (the per-author bake reached the queue late); the walks and the rise are keyed and mostly framed close or partly hidden.
+- Hold 7 ran 30 minutes, over the 25-minute guide; later holds were cut short for the queue.
+
+**Next:** the integrator's review and `PrototypeBuild.Validate`; bank v10 into the Drive zip; batch 2's sound job at release. Mocap through `ChipArenaIntroMotionElemental` could later replace Black Sun's walk (`2Hand-Staff-Crouch-Walk-Forward`, legs and torso) and Strike Point's rise.
+
 ## 2026-11-20 — Claude (I5): elemental intros, bespoke keyed animation (owner), the framework's drawn anchors and own light — PARTIAL, paused for batch 2 (presentation only)
 Owner: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these".
 
