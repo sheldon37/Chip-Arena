@@ -1,3 +1,28 @@
+## 2026-11-21 — Claude (I4): arm checks for every v2 intro: none through the head, none across the face (tests only)
+The coordinator, after the ranged arm fixes: generalise the two weapon-agnostic arm checks to every registered v2 intro.
+- **Branch/base:** `claude/intro-arm-checks` from shared `57110fe9`, with these merged in:
+  - `claude/intro-framework` `510cbd09`, `claude/intro-melee` `c372d16f`, `claude/intro-elemental` `d44f1f24`, `claude/intro-ranged` `ace64237`;
+  - DEV_LOG and PROJECT_STATE keep both sides' entries, each once;
+  - batch 2's sound manifest recompiled from I3, I4 and I5's rows (160 keys, sha `1248163e`); batch 1's unchanged (`68c49c12`).
+  No intro file edited. Pushed, not merged.
+- **Check:** `Tests/IntroArmChecks.cs` (`--intro-arms`, in the full run) covers every `INativeIntroV2` intro: 21 now (the dev intro,
+  five generic, seven melee, four ranged, four elemental). Each is bound on the model as the pose checks bind it, plus the guns' and the
+  bow's holds and the intro's grip. Every 1/30 s, through its own shot cameras:
+  - no arm through the drawn head (+3 cm);
+  - no arm over 15% of the face's disc on screen.
+  `--intro-arms` is strict. The full run lists the intros found failing (`IntroArmChecks.Known`) and fails on any other.
+- **Found, routed to the authors** (clip time; the shot by its start in intro time):
+  - `intro2-weapon-fangs` (Apex, I3): clip 3.87-4.03 s, both arms through the head (depth 0.51), the left across the face (92%), shot 3 (3.33 s);
+  - `intro2-weapon-katana` (Still Rain, I3): clip 4.60-4.77 s, the right arm across the face (83%), the left (66%), shot 5 (4.45 s);
+  - `intro2-weapon-greatsword` (Faultline, I3): clip 2.47-2.50 s, the left arm across the face (37%), shot 1 (2.05 s);
+  - `intro2-weapon-lightning` (Strike Point, I5): clip 3.63-3.70 s, the left arm across the face (35%), shot 4 (2.75 s).
+  The results are the same with the local intro motion banks loaded. The other 17 intros are clean.
+- **Checks:**
+  - full CoreTests the relgen5 way at `36680e14`: exit 0 (1,098 PASS, the four known intros listed);
+  - `--intro-arms` (strict) fails as designed: 31 frame-measures in the four;
+  - Unity compile 4/4; `git diff --check` clean.
+- **Next:** each author fixes their frames and removes their intro's id from `IntroArmChecks.Known`.
+
 ## 2026-11-21 — Claude (I3): intros v2 batch 2: the seven melee weapon intros re-keyed for the model, the Glaive's Orrery, Afterimage's walk on a pack clip, filmed (owner: batches "if this will improve the quality (Hopefully dramatically)"; presentation only)
 
 Owner: "a much higher quality standard, great animations and effects ... great camera work", then "think like the top dog and Bombardier ones, they have unique animations". Batch 2's melee part (`docs/INTROS-MELEE.md`; contract `docs/INTROS-V2.md` 9a-9d).
@@ -93,6 +118,299 @@ Owner: "I want to move the intros to a much higher quality standard, great anima
 - Then the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-melee/clips/`), merges after the framework, packs `ChipArenaIntroMelee.bytes` into the LocalAssets zip, and compiles the one sound job (`I3.json`, 59 keys).
 - Left for I0, written up in the notes' framework requests: dressed, clip-free ghosts (the echoes in the pilot's outfit), and a `Line` virtual (the drawn blade handed in for every weapon).
 - Left to build: the Glaive's Orrery (designed, its set modelled in `tools/intros/melee_observatory.py`, not banked or built).
+
+## 2026-11-20 — Claude (I5): elemental intros, batch 2: re-keyed on the framework's pose tools, Still Tide's wave and ice rebuilt, Black Sun's dusk sky (owner's intro revamp; presentation only)
+Owner: "Yes, we can do them in batches if this will improve the quality (Hopefully dramatically)"; the bar: "great animations and effects, non-block based background and designs ... great camera work".
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged. Shared `57110fe9` and the framework `510cbd09` merged in (DEV_LOG and PROJECT_STATE keep both sides). Code `2864afbf` (head `e6fdf0ac` adds only merges). Bank v10 (`F:/Chip Arena Development/scratch/intro-elemental/bank/ChipArenaIntroElemental.bytes`, 6,442,001 bytes, never committed). Notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **Every body re-keyed on the framework's pose tools** (`docs/INTROS-V2.md` 9a-9c). The staff's fist is keyed in the chest's frame (`NativeIntroGrip.Hold`) and held out at the side, so the drawn staff never stands across the face. The right hand goes on the shaft by the grip IK (`GripAt`) where both hands hold it. The feet and drops are in the model's metres (`ModelFeet`; Strike Point's kneel `ModelKneel`), the walks on `NativeIntroFeet`. `--intro-limits`: 48 findings → 0.
+  - Forgeborn: a crouch in the column, three heavy steps out, the free arm raised under the crown, both arms up, a deep one-handed slam beside the foot.
+  - Still Tide: the look back, the staff low across the body in both hands, the arms swept wide as the wave parts, the tap.
+  - Strike Point: a three-point landing on the right knee with the fist on the stone, the rise stepping through, the call with the staff high at its side.
+  - Black Sun: a low stalking walk, the head level as the eye lights, both arms thrown up wide for the wings, the snap.
+- **Cameras:** close and hero shots favour the pilot's right (Forgeborn's crown orbit, Strike Point's landing orbit, rise and hero, Black Sun's eye), so the staff at its left never stands between the lens and the head.
+- **Still Tide** (the integrator's review: "pillow wave", "flat magenta polygon ice"): the wave is a plunging breaker's section with a thin lip curling over a hollow barrel. It is dark glossy water mirroring the hall's own sky, lit through where the lip thins, with foam on the crest and in streaks. The ice is the same breaker frozen and lit from within: deep blue where thick, pale at its thin edges, clouded, cracked, rimed on the crest, with icicles and veins of light. The halves stand 3.5 m apart. (A bake bug left the mirrored right half dark; fixed.)
+- **Black Sun** ("reads plain still grey"): a dusk sky dome burning amber and rose along the horizon, cooled and dimmed through the eclipse to totality's sunset all round; polished obsidian mirrors it; the fog is held off the dome.
+- **Tests:** `--intro-elemental-limits` (the framework's findings for these four), `--intro-elemental-model DIR` (the body as the model draws it, for side and three-quarter stick reviews).
+- **Sounds:** the 31 rows moved to `docs/audio/intros-b2/I5.json` and compiled into batch 2's manifest (`--batch b2`; batch 1's sealed manifest byte-identical); each `targetSeconds.min` is at most 0.45 of its `generateSeconds`. No queue job.
+
+**Checks:** at `e6fdf0ac`:
+- Full CoreTests the relgen5 way: PASS (1,095 groups, exit 0); also at `2864afbf` (1,090) and `c09def1f` (1,092).
+- `--intro-limits`: none for all ten intros.
+- `--intros-v2`: PASS (6,688). `--intro-elemental`: PASS (20,523). `--voxel`: PASS (at `2864afbf`).
+- `check_unity_compile.py` (local Unity root): PASS. `git diff --check origin/claude/sleepy-ritchie-g8ruhv`: clean.
+- `compile_sound_requests.py --check` (b1 sealed, as pinned) and `--batch b2 --check`: PASS. `Tests/test_intro_sound_manifests.py`: 7 tests OK.
+- `--intro-pack`: not run (no pack clips played).
+
+**Captures** (clips `F:/Chip Arena Development/scratch/intro-elemental/clips/*-b2.*`):
+- Hold 7 (bank v9): all four at High in Cyber City, Still Tide on Polar (the same look: the intro owns its light). Three faults, all fixed: the staff passing the head from left-side cameras, Still Tide's mirrored half baked dark, the ice too close and flat.
+- Hold 8 (bank v10): Still Tide at High: the breaker lit through its lip, the ice lit from within. Hold 9 was cut off when the PC slept at 21:06.
+- Hold A (00:06-00:15, bank v10, on `e6fdf0ac`, through the Editor queue): Forgeborn and Strike Point at High on their final cameras, Black Sun at High, Still Tide on Polar (the same look as in Cyber City), and per intro one Low capture that is both its Low strip and its side and three-quarter proof at the beats. The proofs show no sideways legs, the heads on their bodies and the staff in hand, clear of the face from the right; model stick proofs as well (`clips/*-sticks-b2.png`).
+
+**Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
+
+**Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's keyed pose), as every v2 intro's does. No new voxel reads (the ratchet passes; the file is unpinned at zero).
+
+**Risks:**
+- The ice is lit from within (emissive), bright in the hero frame; the wave reads best from the low front.
+- No pack clips (the per-author bake reached the queue late); the walks and the rise are keyed and mostly framed close or partly hidden.
+- Hold 7 ran 30 minutes, over the 25-minute guide; later holds were cut short for the queue. The relaunched Editor films a capture in about 70 s (it took about 5 min before the PC slept).
+
+**Next:** the integrator's review and `PrototypeBuild.Validate`; bank v10 into the Drive zip; batch 2's sound job at release. Mocap through `ChipArenaIntroMotionElemental` could later replace Black Sun's walk (`2Hand-Staff-Crouch-Walk-Forward`, legs and torso) and Strike Point's rise.
+
+## 2026-11-20 — Claude (I5): elemental intros, bespoke keyed animation (owner), the framework's drawn anchors and own light — PARTIAL, paused for batch 2 (presentation only)
+Owner: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these".
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged; **partial**. Code `905db5c9`, with I0 merged up to `d0138423` (which includes `17380adb`). Bank v8. Paused by the owner's batching: the elemental intros are batch 2, after the framework's pose tools (every-bone mapping, joint limits, staff and two-hand grip IK, a pose-craft guide). Status note: `intro-elemental-status.md` in the notes folder. Design notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **No match clips:** the four intros play no motion-bank clip (`Clip` never true). Every beat is keyed (`NativeEntranceKeys`), as the Top Dog's and the Bombadier's are:
+  - Forgeborn: rises out of the fire, walks out heavily, goes up on its toes for the crown, takes the staff high in both hands and drives it down.
+  - Still Tide: looks back, braces with the staff level overhead, sweeps it across into a lunge, taps the water.
+  - Strike Point: lands kneeling with a hand on the stone; rises, dips and thrusts the staff up for the call, is rocked back by the bolt, plants the staff.
+  - Black Sun: a low walk out of the void, a hunch, the wings thrown open, the snap.
+  - The right hand rides the staff for the two-handed moves.
+  - Every hold grips the staff out at the side. Hold 5 showed a staff held close in front standing across the face, because the model copies the keyed joints' turns.
+- **On the framework's model-aware anchors** (`INTROS-V2` 2a): the crown sits on `Anchor(Head)`, the eye on `Anchor(Visor)`, the breath under `Anchor(Eyes)`, the staff's head on `Anchor(LeftMuzzle)`. `HeadShift`, `ModelHeadLift`, the drawn-wrist shift and the clip machinery are gone; only the eye close-up keeps a keyed framing (`CameraEyeLift`).
+- **Its own light** (`INTROS-V2` 3a): each set is lit by its own directional and ambient and mirrors its own sky (warm fire key; moon through the rose window; flashing cloud light; a violet horizon on the obsidian). With the arena's probe gone, the occlusion caps that hid it are lifted (bank v8).
+- **Still Tide** (bank v7):
+  - The ice's faces toward the barrel glow a faceted cyan to white, so it reads as ice in any arena.
+  - The liquid barrel is darker at its foot, its lip bright, and whitewater churns along the lip.
+- **Checks:** `--intro-elemental` fails on any match clip, a non-finite joint or a head turned more than .62 rad from its chest. `--intro-elemental-pose` dumps the keyed joints for stick-figure sheets, so the animation was checked before the Editor.
+
+**Checks:**
+- `--intros-v2`: PASS (3703, with the framework's model-aware anchor, socket, own-light and keyed-pose-on-model checks).
+- `--intro-elemental`: PASS (20438).
+- Full CoreTests the relgen5 way: PASS at `905db5c9` (1081 groups, exit 0).
+- `check_unity_compile.py`: PASS at `905db5c9`. After the `d0138423` merge, `--intros-v2` (3704), `--intro-elemental` and `--voxel` were re-run: PASS.
+- `git diff --check`: clean.
+- **Hold 5** (09:08-09:25): all four at High, plus Still Tide and Forgeborn at Low, on `e431f8d7` with bank v7, before the framework's drawn anchors and own light. It showed the keyed animation on the model, and the staff held close in front standing across the face (fixed in `905db5c9`, not captured).
+- **Not captured yet:** the drawn anchors, the own light, the side-held staff and bank v8. A hold queued for them was stopped at the integrator's word before it took the lock.
+- Clips: `F:/Chip Arena Development/scratch/intro-elemental/clips/` holds `*-v1` (the first pass) and `*-v2` (the polish pass). Hold 5's frames are in `cap/*-high5`; no new clips were made from them.
+
+**Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
+
+**Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's Classic pose), as the Top Dog and Bombadier intros do. No new voxel reads.
+
+**Risks:**
+- The re-light for the intro's own light was set blind (directionals, ambient and reflections, with the occlusion caps lifted). Nothing has been seen in the Editor since the framework change.
+- **Still Tide:**
+  - The wave reads as a glowing slab with a lip more than a breaking wave.
+  - The ice is unproven under the intro's own light: its faces toward the barrel glow cyan (bank v7/v8), and its lit outer faces read purple under the arena's light in hold 5.
+
+**Next:** batch 2: re-pose with the framework's pose tools, then capture all four at High, with Still Tide on Cyber City and Polar.
+
+## 2026-11-20 — Claude (I5): elemental intros polish pass (the integrator's review; presentation only)
+The integrator's review: the concepts are strong, but several elements read as placeholders under the owner's bar (Top Dog and Bombardier are the floor).
+
+**Branch and status:** `claude/intro-elemental`, pushed, not merged. Code at `d955fb94` (`5ff44c11` and the crest fix); the set script at `9b786b22` (bank v6). Notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:**
+- **Forgeborn:**
+  - The flat forge "sun" is now a modelled firebox. Its lining is graded from a white-yellow core to a deep red lip, on a bed of coals, with heat shimmer, sparks and embers.
+  - The column is layered flame tongues (white at the foot, orange, red tips) round a white-hot heart, with little smoke.
+  - The crown is a hot ring at the brow with curling tongues of uneven height, on the model's head (`ModelHeadLift`).
+  - The crown shot frames the whole figure.
+  - The dais is irregular fitted stones with the lava only in their cracks (no ring joints). The vent keeps a round lava throat, but its rim is broken by jagged rock lips and uneven crust.
+- **Still Tide:**
+  - The wave is a breaking curl: a hollow face, a barrel, and a thin lip lit through from dark teal to white. It rolls forward as it rears, with foam riding the crest and the lip spilling.
+  - The frozen halves are faceted cyan-white ice with a bright rim, frost and glints, and the hanging spray glitters.
+  - The frost over the water is broken, irregular patches. There are no rings (the owner's standing rule).
+  - Crest effects follow the wave's taper.
+- **Strike Point:**
+  - The floor is wet dark rock, with pools that catch every flash and a scorch with cooling cracks from the strike.
+  - The 4.3 s call shot is low and close, so the pilot reads.
+- **Black Sun:**
+  - The plain is near-black obsidian, with less ambient and a violet rim.
+  - The shadows stream in along the ground from all sides, seen from above.
+  - The eye has its own beat: a slow ramp and a slower push.
+  - The wings stand against the eclipse, five feathers a side edged with violet.
+- **All four:**
+  - The name sits in a band under the feet (card `Y` .86).
+  - Each ending has its own camera:
+    - Forgeborn: a low crane rising from its right.
+    - Still Tide: still and centred down the ice.
+    - Strike Point: a Dutch low orbit.
+    - Black Sun: a pull back under the black sun.
+- **Sets** (bank v6, 6,484,699 bytes):
+  - The dark sets bake a low occlusion, which NativeStageLit uses to scale the arena probe's reflection and the ambient.
+  - New props: `lightning/puddles` and `lightning/scorch`.
+
+**Systems touched:** `Core/NativeIntroElemental.cs`, `Tests/IntroElementalChecks.cs` (`FIRE_HEARTH`; the probe prints screen positions), `tools/intros/elemental_set.py`, and the docs. No runtime, wire, save or rule file.
+
+**Checks:**
+- On `d955fb94`:
+  - `--intros-v2`: PASS (2699).
+  - `--intro-elemental`: PASS (6820; peak FX: fire 372, water 313, lightning 486, darkness 295; Low peak 205 or fewer).
+- Full CoreTests the relgen5 way: PASS at `d955fb94` (1081 groups, exit 0). Later commits change only the set script (bank v6), the docs and the framework merge (`545faef6`, the Runtime card screen); `--intro-elemental` and `--intros-v2` were re-run after them: PASS.
+- `check_unity_compile.py`: PASS at `d262cb30` (the merge; all 4 assemblies).
+- `git diff --check`: clean.
+- **Editor holds:**
+  - **Hold 3** (05:42-05:59): all four at High (1/30 s) and Low (0.5 s) on `d955fb94` with bank v2, Black Sun's eye beat included. The Strike Point clip comes from it; bank v6 builds its set from the same source.
+  - **Hold 4** (06:45-07:00, the integrator's approved follow-up of about 12-13 min): Forgeborn, Still Tide and Black Sun again on `d955fb94` with bank v6. The reasons, from hold 3:
+    - the ice read lavender (the arena probe), with bright rim bars down the taper;
+    - the obsidian was still dark grey;
+    - the frost and Forgeborn's dais and vent showed ring shapes (the owner's standing rule: none).
+  - The clips reuse hold 2's archived captures.
+  - **Clips:** `F:/Chip Arena Development/scratch/intro-elemental/clips/` under the same names; the first ones are `*-v1.mp4`.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The intros' lengths and name times are unchanged.
+
+**Voxel dependency:** unchanged; the keyed `CapturedRig` pose is the anchors' source, as before.
+
+**Seen in hold 4, not fixed (no more Editor time):**
+- **Still Tide's ice** now reads purple in the Cyber City capture: the rim bars and the frost rings are gone, but the hue is wrong. The set takes the arena's own light volume (`ArenaGI` in NativeStageLit) and its probe. Cutting the probe exposed the volume's magenta.
+  - Candidates: a neutral light volume and probe while an intro set is drawn (a framework change, for I0), or a dim cyan emissive base on the ice.
+- **Black Sun's plain** is darker but still dark grey, not near-black. Its probe and ambient are already cut to 7%, so the grey is likely the direct key and fill lights' highlight on the glossy plates; the framework's void lights add a white key.
+  - Candidate: lower gloss on the plain, or no white key for this set.
+
+**Risks:**
+- The name's `X` stays .5; the framework now centres the kicker and the line on `X` too (`545faef6`, merged).
+- The occlusion trick also dims these sets' ambient on every map.
+- The wave and the ice are still set pieces, not a fluid.
+
+**Next:** the integrator reviews the new clips; the sound job and the Drive zip (bank and meta) as before.
+
+## 2026-11-20 — Claude (I5): the magic weapons' new intros: Forgeborn, Still Tide, Strike Point, Black Sun (owner request; presentation only)
+Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!"
+
+**Branch and status:** `claude/intro-elemental`, from shared `8d56f015`, with the framework `claude/intro-framework` merged up to its final `2da9c7fc`. Pushed, not merged. Design and as-built notes: `docs/INTROS-ELEMENTAL.md`.
+
+**What changed:** four v2 weapon intros, each registered on its weapon's slot. They replace Cinder Crown, Tidal Serpent, Thunderstep and Eventide Gate (archived by the framework, code kept).
+- **Forgeborn** (fire, 7.8 s, name at 6.0): in a caldera forge the lava cracks light in from the rim and a fire column erupts from the dais. The pilot walks out of it, the fire gathers into a crown of flame on its head, and the staff sends fire racing across the floor.
+- **Still Tide** (water, 8.2 s, name at 6.4): in a moonlit drowned hall the tide rises into a wave behind the pilot. At a sweep of the staff the wave parts round the pilot, then freezes mid-curl at a tap, the spray hanging as glints.
+- **Strike Point** (lightning, 7.2 s, name at 5.5): on a storm summit six spires charge, and the bolt comes down as the pilot, landing white-hot in a crouch. The pilot then calls a second bolt into the staff and sends it to every spire.
+- **Black Sun** (darkness, 8.4 s, name at 6.6): on an obsidian plain the moon covers the sun and every shadow pours into a void. The pilot steps out of it with one eye of light, the dark spreading like wings.
+
+How it is built:
+- **Core** `NativeIntroElemental.cs` (one family file).
+  - A keyed rig with the staff placed by arm IK, plus the model's own staff casts from the motion bank (`INativeIntroBody` windows, never back to the keys).
+  - The crown, the eye and the breath follow the drawn head (`INativeIntroHead`).
+  - Authored camera rigs with speed ramps. Lights and effects stay inside the v2 budgets. Every streak over 1 m is laid on its head's camera plane; one behind the lens is not drawn.
+  - Fractal bolts, name cards (Rise, Wipe, Slam, Assemble) and cue timelines.
+- **Sets:** `tools/intros/elemental_set.py` (Blender and the stage kit). The local bank `ChipArenaIntroElemental.bytes` (6,065,215 bytes) is never committed; without it the intros play on the framework's void.
+- **Sounds:**
+  - **Requested:** 31 sounds in `docs/audio/intros/I5.json`, with their keys on the I5 slot of `Core/NativeIntroSoundKeys.cs`.
+  - **Until they are generated:** each cue plays a one-shot key the installed bank fills (per the 2026-11-16 audio inventory), and a built-in clip if the bank is missing.
+  - **Fallback fix:** seven of the first fallbacks were loop keys or empty keys, which `BankPlay` skips, so they were swapped (`0b71051d`).
+- **Checks:** `Tests/IntroElementalChecks.cs` (`--intro-elemental`, one Program line).
+
+**Systems touched:** the new Core file and its checks; one registry line per intro (`NativeIntroCatalog`); the I5 sound-key slot; the sound rows; the set script; the docs. No runtime, wire, save or rule file.
+
+**Checks:**
+- `--intros-v2`: PASS (2699 checks; every registered intro: determinism, no allocation, budgets, Reduced effects, streaks, cues, sets). Run at the final code.
+- `--intro-elemental`: PASS (6697 checks), at the final code.
+- `--voxel`: PASS (no new ratchet counts), at the final code.
+- Full CoreTests the relgen5 way: PASS at `7f3f05bf` (1081 PASS lines, exit 0). The later commits change only fallback keys, one check, the eye's height and docs; the three runs above cover them.
+- `check_unity_compile.py`: PASS at `b83501d8` (Unity.InputSystem, ChipArena.Player, Assembly-CSharp, Assembly-CSharp-Editor; exit 0).
+- `git diff --check`: clean.
+
+Editor (two holds, both under 25 min):
+- **Hold 1** (03:25-03:49) filmed the first cut. Fixes came from it:
+  - Forgeborn: a darker caldera lit by its lava, the crown on the head, thin fire on the slam, the falls on the rim.
+  - Still Tide: a wave that reads as one wall with a curl.
+  - Strike Point: fractal bolts.
+  - All four: the staff beside the body, and low gloss on the sets.
+- **Hold 2** (04:21-04:43) filmed the final cut at High (1/30 s) and at Low (every 0.5 s), and the archived signatures on `8d56f015`. The Editor went back to `9319026b`, with its banks unchanged.
+- **After hold 2:** its frames showed Black Sun's eye on the collar, and its close-up framing the chest. The drawn head is the game joint's frame, which sits about 20 cm under the model's head bone. The eye and the close-up are now raised .16 m, measured from those frames (`b83501d8`). This has not been captured yet.
+- **Clips and strips:** `F:/Chip Arena Development/scratch/intro-elemental/clips/`. The captures have no sound; the cue clock is checked by the managed tests.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; these are intro presentations only. The match reads each intro's Duration and NameAt from the v2 registry, so these four weapons' intro phases run 7.2-8.4 s instead of 4.8 s, as the v2 contract defines.
+
+**Voxel dependency:** the keyed `CapturedRig` pose is the anchors' source and the Classic pose, as the v2 contract sets it. No new voxel reads; the ratchet is unchanged.
+
+**Risks:**
+- **Black Sun's raised eye** has not been seen in the Editor.
+- **Look, to review in the clips:**
+  - Still Tide's wave reads as a smooth wall more than a curling crest, and the frozen halves look lavender and matte.
+  - Forgeborn's column reads as much as smoke as fire.
+  - The name card sits over the pilot's legs in the hero frames.
+- **Reflections:** set finishes take the arena's reflection probe, so their gloss is held at .35 or less.
+- **The water:** the wave is two set pieces lifted, swung and swapped for their frozen form, not a fluid.
+- **Sound:** not heard. The generated sounds wait for the integrator's compiled queue job and a builder run.
+
+**Next:**
+- The integrator reviews the clips and captures Black Sun's eye beat once.
+- Compile the sound rows into the queue job (`tools/intros/compile_sound_requests.py`).
+- Pack `ChipArenaIntroElemental.bytes` (+ meta) into the Drive zip from `F:/Chip Arena Development/scratch/intro-elemental/bank/`.
+
+## 2026-11-21 — Claude (I4, batch 2 review): the arms the owner flagged on the machine gun and the bow (presentation only)
+Owner on the batch-2 clips: "Arm doing weird things on machine gun intro again, and check that bow one again as well." Brass Storm's
+trigger elbow was chicken-winged up beside the helmet through the burst. Lightfall's raised arm crossed the face in the low full-draw
+shot, and the head and arms read oddly at 3.7-4.1 s of the clip (the slowed release, seen from low behind).
+- **Branch/base:** `claude/intro-ranged`, code at `d10ba85e` (fix `712f74a7`, cameras `de9a52c7`, `84a8d231`, `d10ba85e`; on `4bfd14b3`).
+  Pushed, not merged, not released.
+- **Why the limits missed it:** the canonical long-gun hold (`NativeIntroPoses.AimRifle`) keys a straight trigger arm on the keyed
+  rig's wide shoulders. With the stock in the drawn shoulder, the drawn elbow had no side to keep and landed level with the shoulder
+  (the canonical machine-gun pose does the same on the model: 92°). One Breath had it too (+0.07 m over the shoulder). The canonical
+  bow pole (back and up) took the drawn string elbow 0.25 m over the shoulder at the 50° sky shot, and the forearm through the helmet.
+- **Long guns:** `NativeRangedIntro.ShoulderGun` (Brass Storm and One Breath) keeps the match's hold but brings the keyed trigger wrist
+  back, down and out, with the elbow pole down and out. The drawn trigger elbow sits .13-.18 m under the shoulder (the upper arm 50-60°
+  off hanging), with the stock in the shoulder pocket and the forearms along the gun. Brass Storm's sweep is on the hips and the chest
+  (the arms keep the hold), and the rack slides .2 m (.3 put the off elbow in the chest).
+- **Bow:** `DrawElbow` points back along the arrow and a little down, in the leaned side-on chest's frame. The drawn string elbow sits
+  on the arrow's line at the shoulder's height (at most +0.04 m), with the forearm beside the head to the jaw. The grip takes the string
+  hand over the hook's last 30% (no flip).
+- **Bow cameras:** the slowed release is in profile from the chest's side at the head's height, held through the bloom. Hold 7's bloom
+  shot, and a first rework of it, looked up through the canopy and showed only leaves.
+- **One Breath:** a cut into the name's shot (the 0.5 s blend took the eye under the parapet's coping for a frame, in hold 7 too).
+- **New checks** (`Tests/IntroRangedChecks`, in the suite; `--intro-ranged-arms ID` prints the measures per frame). They run every
+  1/30 s of all four intros through their own shot cameras:
+  - no arm through the drawn head (+3 cm);
+  - no arm over 15% of the face's disc on screen;
+  - a long gun's trigger elbow at least 8 cm under its shoulder while shouldered;
+  - the pistol's arm straight on its line through the aim;
+  - the bow's string elbow under 10 cm over its shoulder through the draw.
+  They fail on hold 7's poses and pass on these.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; durations,
+  shots and name beats unchanged).
+- **Checks:**
+  - full CoreTests the relgen5 way at `712f74a7`: exit 0 (1,095 PASS); at `d10ba85e`: exit 0 (1,095 PASS);
+  - at `d10ba85e`: `--intro-ranged` 4,714 checks; `--intros-v2` 6,819; `--intro-limits` exit 0 (none for the four);
+    `--intro-pack` 127 (at `712f74a7`); Unity compile 4/4; `git diff --check` clean.
+- **Editor holds** (by the integrator's queue): 8 (01:02-01:08, on `712f74a7`: the three intros at High, proofs, Low); 9 (01:14-01:18,
+  on `84a8d231`: bow and rifle High and Low); 10 (01:19-01:22, on `d10ba85e`: bow High and Low). Each play took 25-41 s. The Editor is
+  back on `9319026b`, banks unchanged. Every frame of the three High captures was looked at through the shot cameras.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-ranged/clips/b2/`:
+  - `machinegun-`, `rifle-`, `bow-fix-before-after.mp4`: hold 7 as reviewed beside the fix;
+  - High, before beside after (the first v2), proof and Low strips, beat and stick sheets;
+  - the pistol is unchanged from hold 7.
+- **Not run:** a Windows build; sound in a capture; generated sounds.
+- **Risks / next:** the sets show only with `ChipArenaIntroRanged.bytes` installed (7,212,499 bytes). The bloom itself is still not
+  framed (the canopy hides that part of the sky). Next: the owner's review of the three re-captured intros.
+
+## 2026-11-20 — Claude (I4, batch 2): the ranged intros' bodies on the model, a trained shooter's holds (owner: "arms looked really odd"; presentation only)
+Owner on One Breath: "almost all have weird orientations lol ... Like the rifle one you did, arms looked really odd?" (a limp front hand under the barrel, tangled arms on the aim, arms crossed at the end). Batch 2 of the intros revamp.
+- **Branch/base:** `claude/intro-ranged` at `f79564a6`, with shared `57110fe9` and `claude/intro-framework` `510cbd09` merged in. Pushed, not merged, not released.
+- **One Breath (rifle):** a high kneel on the model (`ModelFeet`, `ModelKneel`), the torso bladed as `RifleAim`, the cheek on the stock with the visor at the scope, the match's long-gun hold, the off fist on the handguard by the grip IK, the stock in the drawn shoulder; the rise off the knee to the low carry (rest low). The camera, the lens and the case on the drawn rifle.
+- **Brass Storm (machine gun):** the low carry and the head to each flood; the step in with the rack (the grip's slide); the burst from the shoulder, the cheek on the stock, walked in one smooth sweep (shutter, drum, wall, crate; it whipped 30° each way before), the hips taking three quarters, each round's aim from the drawn grip.
+- **Sundown (pistol):** the framework's walk on the model, the gun low by the thigh; the draw to the high ready, snapped onto the falling bell along a straight arm, the shot from the drawn muzzle; the barrel up beside the right cheek for the blow (the pistol is 0.5 m long). One-handed: a duelist's shot.
+- **Lightfall (bow):** side-on to the shot (`BowDraw`), the string hand on the nock by the grip, the bow arm straight and the string at the drawn jaw (pull 0.6 on a full extension; the canonical 0.55 bent the drawn bow arm 120°); the arrow on the string from the start (the quiver reach could not stay inside the limits), the string hooked on an arc outside the body.
+- **Camera:** framings fixed from hold 6 (Sundown's toll profile, One Breath's lens at the drawn scope and the drone's view, Brass Storm's drum shot over the left shoulder, Lightfall's hook and full draw).
+- **Checks code:** `Tests/IntroRangedChecks.cs` (`--intro-ranged`, in the suite): limits, feet and grips clean; each shot on its mark from the drawn weapon (pistol under 2.5°, rifle under 1.5°, every machine-gun round under 3°: worst 2.33°); the long guns shouldered with the cheek on the stock and resting low at the name; the bow arm straight with the string at the jaw. Probes: `--intro-ranged-dump` (stick figures), `-limits`, `-fit`, `-twist`.
+- **Sounds:** rows moved to `docs/audio/intros-b2/I4.json` (55 keys, 72 takes, 131.7 s; mins at most half of each generate length); batch 2's manifest compiled (`--batch b2`, sha `2d25a136`); batch 1's manifest byte-identical (`68c49c12`); no queue job. Every cue keeps its alt or clip.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; durations and name beats unchanged.
+- **Checks (at `f79564a6`):** full CoreTests the relgen5 way exit 0 (1,095 PASS); `--intro-limits` exit 0 (0 findings for all four); `--intros-v2` 6,819 checks; `--intro-ranged` 526 checks; `--intro-pack` 127 (no clips of mine); Unity compile 4/4; `git diff --check` clean.
+- **Editor:** hold 6 (20:32-20:57, on `c06dd973`): all four at High. Hold 7 (23:59:54-00:06:04, by the integrator's Editor queue, on `4bfd14b3`): all four at High again with the reframed shots, a proof strip each from the side or 3/4 (BoZo `introeye`, every 0.25 s) and the Low strips: 12 plays of 20-34 s (no tool version bump per play, each ended on the arena clock by `endarena`; the relaunched Editor reloads quickly). Editor back on `9319026b`, banks unchanged.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-ranged/clips/b2/` from hold 7: High (7.7-8.2 s, each intro's own length; 1.2-1.8 MB), before beside after, Low strips, proof strips (pistol and machine gun at 3/4, rifle and bow from the side), beat sheets; stick-figure sheets of the drawn model. A capture runs on into the next pilot's entrance, so each clip ends on its intro's last frame.
+- **Not run:** a Windows build; sound in a capture; generated sounds; pack clips (none used; candidates in `docs/INTROS-RANGED.md`).
+- **Risks / next:** the sets show only with `ChipArenaIntroRanged.bytes` installed (7,212,499 bytes). The rifle's scope height (.055) came from hold 6's lens macro; hold 7's puts the drone's red in the glass. The proof eyes see the rifle and the bow from behind as much as from the side; the arms read right in all four. Next: the owner's review of the clips.
+
+## 2026-11-20 — Claude: the ranged weapons' new intros: Sundown, One Breath, Brass Storm, Lightfall (owner request; presentation only)
+Owner (2026-11-20): "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" I4 of the Intros v2 overnight run (contract `docs/INTROS-V2.md`, framework I0).
+- **Branch/base:** `claude/intro-ranged` from shared `8d56f015`, with `claude/intro-framework` merged in (through `545faef6`, the card fix). Pushed, not merged, not released.
+- **What:** four weapon intros registered on their slots, replacing the archived signatures (Deadeye, Longwatch, Belt Rattle, Arrowfall): pistol **Sundown** (7.8 s, name 6.0), rifle **One Breath** (8.4 s, 6.4), machine gun **Brass Storm** (7.8 s, 6.0), bow **Lightfall** (8.0 s, 6.2). Stories, beats, sets, motion and sound in `docs/INTROS-RANGED.md`.
+- **Sets:** four modelled sets (a frontier street at sundown with its belfry, a night rooftop over a city avenue with a drone, a depot yard with a roll-up shutter, a moonlit forest shrine) scripted in Blender (`tools/intros/ranged_*.py`, on stagekit) into the local bank `ChipArenaIntroRanged` (7.2 MB, not committed; master in `F:/Chip Arena Development/scratch/intro-ranged/bank/`). Skies and far scenery inside the 200 m far plane, drawn round the eye. Without the bank each draws the dark lit void.
+- **Systems:** Core `NativeIntroRanged.cs` (shared), `NativeIntroSundown.cs`, `NativeIntroOneBreath.cs`, `NativeIntroBrassStorm.cs`, `NativeIntroLightfall.cs`; four registry lines in `NativeIntroCatalog.cs`; the I4 slot in `NativeIntroSoundKeys.cs`; `docs/audio/intros/I4.json` (55 keys, 110 takes, about 200 s, for the integrator's compiled job). One test line: `Tests/BowChecks.cs` now expects the Bow's signature to be its v2 intro once registered (as the check after it already did; it failed the suite at the registration).
+- **Motion:** the pistol plays motion-bank clips on the model (`Armed-Walk-Slow`, `Armed-Unsheath-R-FromArmed-Hips`, `Armed-Idle-Pistol-R`, `Pistol-Attack-R1`); the rifle and machine gun are keyed with arm IK so the drawn gun's bore points where the keys aim (the owner's rest-low rule kept at the ends); the bow uses the Bow's own arms (`NativeBowPose`) with the match's bow drawn from the intro's view (`INativeIntroBow`). No rebake.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The match reads each intro's Duration and NameAt from the registry (the old signatures were 4.8 s / 3.2 s; these are 7.8 to 8.4 s): the match start's hold is the framework's (I0). `Tests/ParityFollowupChecks` needs a pistol intro to end within 8.0 s: Sundown is 7.8 s (kept, not re-pinned).
+- **Voxel dependency:** the intros pose the keyed rig (the anchors' and the Classic body's source) as every v2 intro does through `NativeProceduralEntrance`; no new `CapturedRig.Pose` is authored in these files (the ratchet passes).
+- **Checks (final `afca30d2`; the same on `31863628` and `2dbdf869`):** full CoreTests the relgen way (throwaway worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS`): exit 0, 1,080 PASS lines; inside it `--intros-v2` PASS (2,798 checks, 5 registered intros incl. the sets check with a fake bank) and the bow checks PASS (5,050); Unity assembly compile (`tools/check_unity_compile.py` on the local 6000.3.24f1 references): all four assemblies PASS; pins against the framework: 0 broken; `git diff --check` clean; `tools/intros/compile_sound_requests.py --check`: the 55 rows validate (the manifest is the integrator's to compile). Editor captures (BoZo, High at 1/15 s and Low stills, set bank in and out): hold 1 on `54a6d5a8` (03:49-04:21), hold 2 on `2dbdf869` with the old signatures on the resting `9319026b` (04:50-05:09), hold 3 on `31863628` at High (06:18-06:27, integrator-approved after the head-lift and name-card notes), hold 4 on `afca30d2`, the pistol only (07:43-07:47, integrator-approved: the blow recalibrated from hold 3's frames now holds the barrel upright beside the visor at the mouth's height, and the card's kicker and line follow its x). Side-by-side clips and Low strips in `F:/Chip Arena Development/scratch/intro-ranged/clips/`. The stage banks and the motion bank were checked unchanged at every lock.
+- **Not run:** a Windows build or package; multiplayer (the intros are presentation only); sound in a capture (the captures are silent: the cue sync is checked by the managed cue clock at 60 Hz and 20 Hz only); the generated sounds (not generated yet).
+- **Follow-up (2026-11-20 morning, owner: bespoke animation only; framework `7c0f3783`):** Sundown plays no match clips any more: a keyed gunslinger's walk (every contact and pass), a fast draw with a high-ready flourish, a settled aim, the head following the bell (`2ef332d1`). On the model-aware anchors (`f027dfeb`): `ModelHeadLift` removed (the breath from `Anchor(Eyes)`; Sundown's blow IK stays in the keyed rig's space, where Arms runs), muzzles, tracers and brass from `RightMuzzle`/`RightGrip`/`WeaponBore`, Lightfall's arrow on `LeftMuzzle`; the sets re-lit under the intro's own light (Brass Storm's floods as the sodium key directional, Lightfall's bloom as a flash, reflections set). Checks on `f027dfeb`: full suite exit 0 (1,080 PASS; intros v2 3,800 incl. the keyed pose on the model), Unity compile 4/4. **Not captured yet:** the integrator paused the Editor for I0c's verification; the recapture of all four at High waits for the go-ahead (`F:/Chip Arena Development/scratch/intro-ranged/tools/hold5.sh f027dfeb`), so the light re-tune and the keyed Sundown are unverified in the Editor.
+- **Risks / next:** the sets show only where `ChipArenaIntroRanged.bytes` is installed (LocalAssets): the integrator adds it to the zip for the builder, else the void. The match now holds 7.8 to 8.4 s per ranged intro (was 4.8 s). The grove's night air is silent until generated. The rifle, machine gun and bow clips (hold 3) predate the framework's card fix (`545faef6`): their kicker and line sit at screen centre there. The Low strips show `2dbdf869` (before the card placement, the head lift and the softer rays). Editor hold 1 ran 32 minutes (over the 25-minute brief: every capture ran to its 220 s run limit; later holds sized the limits).
 
 ## 2026-11-20 — Claude (I0e): intros v2 framework for batch 2: its own sound manifest, a motion bank per author, the bake request, I2b's two pack notes, the pack index (presentation only)
 
@@ -1017,8 +1335,6 @@ Low draws without tone mapping, so a warm glow over a warm finish clips (fixed w
 Flashbulb is silent until its generated take lands. Next: the integrator merges the branch with the framework and packs the bank
 into the Drive zip; the generated sounds come with the builder's next audio run.
 
-
-
 ## 2026-11-20 — Claude (I0d): intros v2: pack clips as keys from the intros' own motion bank (Slipstream's run), and the name card on bright sets (owner request; presentation only)
 
 Owner (2026-11-20, on Slipstream): "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I
@@ -1676,6 +1992,7 @@ None.
 - **Checks:** `--bleed` PASS (11,025 pieces, 74 draws); `zfight.py` on the same three scenes and modes: no bleed pair; the compile gate PASS; `git diff --check` clean. Bank: 1,820,244 bytes. No captures in this pass.
 
 **Next:** the integrator reviews the clips; D3 wires ThemeAt after D1 merges; Astra takes the contracts above.
+
 ## 2026-11-19 — Claude: the Meridian dress's fix pass on the integrator's review (D1; presentation only)
 
 Branch `claude/meridian-dress` (base shared `8790610c`; shared has since moved to `821d75c4`, which merges with only the usual DEV_LOG/PROJECT_STATE conflicts). D2's `origin/claude/meridian-landmarks` (`345657a4`) merged in as `1f059828` (both sides kept); the fix pass is `85e62d07` and `8dcebbfc`. Pushed, not merged; not released. No Editor capture this time (the integrator's call): D3 makes the night captures of the complete look.
@@ -2488,6 +2805,7 @@ Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientati
   model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
   **Next:** review of the landing fix; then merge.
 - **Released:** shared `1b356c0c` (the builder at `1b356c0c`), test channel revision `639306602307778517` (build `3e6ba858`); the suite at `86a37fce` (1,040 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
 ## 2026-11-18 — Claude: Expedition W0, the generated city's latent fixes and its frame budget (owner report; presentation only)
 
 Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`. The overhaul's first package for Claude (`docs/EXPEDITION-OVERHAUL.md` W0, release 1), approved with every default ("Yes, use defaults").
@@ -2992,7 +3310,6 @@ Branch `codex/expedition-a4-greybox`, base `15dab150`. Editor and Development Bu
 
 The managed `--layered-walk` sweep passed eight seeds at each size, checking gate-to-hall distances, continuous Hulk-width support and headroom. Measurements and controls are in `docs/EXPEDITION-OVERHAUL-ASTRA.md`. The owner walk and native frame captures are pending. The full surface graph, the chunked city kit, enemy spawning and the deployment swap belong to M5. This preview has no combat or network changes.
 - **Merged and released (Claude, integrator, so the owner can walk it):** PR #413 (`codex/expedition-a4-greybox` at `35eb821f`) merged on `claude/merge-astra-greybox` into shared `859a90c6` (the builder at `859a90c6`), test channel revision `639306350457222805` (build `dc56acbc`); the suite at `35eb821f` (1,037 groups, exit 0), the Unity compile. A0 (PR #412) is held for Claude's pod crash (`claude/exp-w4-crash`), with which it ships.
-
 
 ## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
 

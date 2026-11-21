@@ -1,0 +1,1078 @@
+using System;
+using System.Numerics;
+
+namespace ChipArena.UnityConversion
+{
+    /// <summary>
+    /// The four magic weapons' v2 intros (owner 2026-11-20: "a much higher quality standard, great animations and effects,
+    /// non-block based background and designs ... With great camera work as well!"; docs/INTROS-ELEMENTAL.md). Each summons its
+    /// element on its own modelled set (the local bank ChipArenaIntroElemental, tools/intros/elemental_set.py; the framework's
+    /// dark lit void without it): Forgeborn (fire), Still Tide (water), Strike Point (lightning), Black Sun (darkness). They
+    /// replace Cinder Crown, Tidal Serpent, Thunderstep and Eventide Gate, which stay archived in NativeEntranceWeapons.
+    /// The shared parts: the staff in the left fist keyed in the chest's frame (the framework's NativeIntroGrip.Hold, as the match
+    /// keys its holds) with the right hand put on its shaft by the grip IK (INativeIntroGrip), the feet keyed where the model's land
+    /// (ModelFeet), the effects on the body and the staff as drawn (the anchors), long streaks laid on their head's camera plane, the
+    /// set's pieces by name (no strings built per frame).
+    /// Presentation only: pure functions of the intro's presentation clock, allocation-free per frame.
+    /// </summary>
+    public abstract class NativeIntroElementalScript:NativeIntroV2Script,INativeIntroGrip
+    {
+        public const string Bank="ChipArenaIntroElemental";
+        /// <summary>The staff: its grip at the wrist, its heel and its head along the hand's +z (Core NativeWeaponModels.Magic).</summary>
+        public const float StaffHead=.88f,StaffHeel=-.41f;
+        protected NativeIntroElementalScript(string id,float total,float cardAt,float hit,int accent):base(id,total,cardAt,hit,accent){}
+        public override string SetBank=>Bank;
+        protected override float TipLength(bool left)=>left?StaffHead:.1f;
+        /// <summary>The feet are keyed where the drawn model's ankles go and the drops in the model's metres (docs/INTROS-V2.md 9c).</summary>
+        protected override bool ModelFeet=>true;
+        /// <summary>The hero facing's forward and left (the pilot ends facing Facing; +x the rig's left).</summary>
+        protected static readonly Vector3 Fwd=new Vector3((float)Math.Sin(Facing),0,(float)Math.Cos(Facing)),Left=new Vector3((float)Math.Cos(Facing),0,-(float)Math.Sin(Facing));
+        protected static Vector3 L(float x,float y,float z)=>Local(x,y,z);
+        protected static readonly Vector3 White=Vector3.One;
+        protected static Vector3 Hex(int hex,float gain=1)=>NativeEntranceFx.Hex(hex,gain);
+
+        // ---- the staff: the left fist keyed in the chest's frame, the right on the shaft by the grip IK (docs/INTROS-V2.md 9a, 9b) ----
+        /// <summary>
+        /// Hold keys (set in the constructor), twelve floats a key: the left wrist in the chest's frame (+x the chest's left, +y up it, +z
+        /// ahead; the keyed rig's proportions: its shoulder .345 m out and .18 m up), the shaft's direction toward the staff's head in the
+        /// body's frame (+x left, +y up, +z ahead: an upright staff stays upright whatever the chest does), the hand's back (its +y, toward
+        /// the forearm's side of the shaft) in the body's frame, and the elbow's pole in the chest's frame. The fist holds the shaft across
+        /// it, so the forearm lies near square to the shaft: a staff upright at the side rides a forearm pointing ahead.
+        /// </summary>
+        protected float[] HoldTimes=Array.Empty<float>(),HoldValues=Array.Empty<float>();
+        private const int HoldStride=12;
+        /// <summary>The left elbow out, down and a little back (the canonical staff hold's).</summary>
+        protected static readonly Vector3 ElbowOut=new Vector3(1,-.8f,-.2f);
+        protected void Hold(float t,Vector3 wrist,Vector3 shaft,Vector3 back,Vector3 pole=default)
+        {
+            int i=HoldTimes.Length;Array.Resize(ref HoldTimes,i+1);Array.Resize(ref HoldValues,(i+1)*HoldStride);HoldTimes[i]=t;int o=i*HoldStride;
+            shaft=Vector3.Normalize(shaft);back=Vector3.Normalize(back);if(pole.LengthSquared()<1e-6f)pole=ElbowOut;
+            HoldValues[o]=wrist.X;HoldValues[o+1]=wrist.Y;HoldValues[o+2]=wrist.Z;HoldValues[o+3]=shaft.X;HoldValues[o+4]=shaft.Y;HoldValues[o+5]=shaft.Z;
+            HoldValues[o+6]=back.X;HoldValues[o+7]=back.Y;HoldValues[o+8]=back.Z;HoldValues[o+9]=pole.X;HoldValues[o+10]=pole.Y;HoldValues[o+11]=pole.Z;
+        }
+        private float HoldAt(int c,float t)=>NativeEntranceMath.Curve(HoldTimes,HoldValues,c,HoldStride,t);
+        /// <summary>The staff hand: the left wrist placed in the chest's frame with the shaft turned as keyed (NativeIntroGrip.Hold: the elbow to
+        /// its pole, the palm's roll in the forearm).</summary>
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
+        {
+            if(HoldTimes.Length==0)return;
+            var wrist=new Vector3(HoldAt(0,t),HoldAt(1,t),HoldAt(2,t));var shaft=new Vector3(HoldAt(3,t),HoldAt(4,t),HoldAt(5,t));var back=new Vector3(HoldAt(6,t),HoldAt(7,t),HoldAt(8,t));var pole=new Vector3(HoldAt(9,t),HoldAt(10,t),HoldAt(11,t));
+            pose.World();var turn=Quaternion.Normalize(Quaternion.Inverse(pose.WorldRotation[CapturedRig.Chest])*NativeIntroGrip.Look(shaft,back));
+            NativeIntroGrip.Hold(pose,true,WeaponSpec,wrist,turn,pole,1);
+        }
+        /// <summary>How much of the right hand is on the shaft at `t` (0: keyed by the keys; ease it over .12-.2 s), how far up it from the
+        /// grip's own place (.40 m over the left fist: NativeIntroGrip.StaffGrip), and its elbow's pole (zero: the grip's own).</summary>
+        protected virtual float TwoHands(float t)=>0;
+        protected virtual float Along(float t)=>0;
+        protected virtual Vector3 RightPole(float t)=>default;
+        public bool GripAt(float t,out NativeIntroGripAt grip)
+        {
+            float w=TwoHands(t);grip=new NativeIntroGripAt(w,RightPole(t),Along(t));return w>.001f;
+        }
+        /// <summary>The staff's heel and head at `t` (world): the drawn staff's head (the framework's model-aware LeftMuzzle) and its bore,
+        /// the heel back along it; the keyed staff without the model.</summary>
+        protected void Staff(float t,out Vector3 heel,out Vector3 head)
+        {
+            head=Anchor(NativeEntranceAnchor.LeftMuzzle,t);var axis=WeaponBore(true,t);heel=head-axis*(StaffHead-StaffHeel);
+        }
+        /// <summary>The keyed camera's framing only: the model's visor stands this far above the keyed eye line (the camera reads the
+        /// keyed anchors; effects read the drawn ones, INTROS-V2 2a).</summary>
+        protected const float CameraEyeLift=.16f;
+
+        // ---- effects helpers ----
+        /// <summary>The camera at presentation time `t` (what the long streaks are laid against).</summary>
+        protected void ViewAt(float t,out NativeEntranceView view){Rig.Evaluate(this,Math.Min(t,SettleAt),Context.Reduced,out view);}
+        /// <summary>A streak from `tail` to `head`; one longer than NativeCacheOpenFx.ExactStreak lies on its head's camera plane.</summary>
+        protected static void Beam(INativeEntranceFx fx,in NativeEntranceView v,Vector3 head,Vector3 tail,Vector3 color,float width,float taper,float u,float seed)
+        {
+            var axis=head-tail;float tp=taper;
+            if(axis.LengthSquared()>NativeCacheOpenFx.ExactStreak*NativeCacheOpenFx.ExactStreak)
+            {
+                var f=v.Look-v.Eye;float l=f.Length();
+                // (a long one whose head is behind the lens is not drawn: it could not be laid on its plane, and it is not seen)
+                if(l>1e-5f){f/=l;float ax=axis.X,ay=axis.Y,az=axis.Z;if(!NativeCacheOpenFx.OntoHeadPlane(v.Eye.X,v.Eye.Y,v.Eye.Z,f.X,f.Y,f.Z,.2f,head.X,head.Y,head.Z,ref ax,ref ay,ref az,ref tp))return;axis=new Vector3(ax,ay,az);}
+            }
+            if(axis.LengthSquared()<1e-10f)return;fx.Streak(head,axis,color,width,.01f,1,tp,u,seed);
+        }
+        /// <summary>A jagged bolt from `a` to `b` (its segments short; each laid on its head's plane), re-shaped every `flicker` s, forks
+        /// off every third joint, hot glows at some joints. Returns the FX calls made.</summary>
+        protected int Bolt(INativeEntranceFx fx,in NativeEntranceView v,float t,Vector3 a,Vector3 b,float jag,float flicker,Vector3 core,Vector3 halo,float width,int seed,int forks,float quality,float detail=1)
+        {
+            var axis=b-a;float len=axis.Length();if(len<1e-3f)return 0;var dir=axis/len;
+            float seg=(Context.Low?.9f:(len<3?.24f:.42f))/Math.Max(.3f,detail);int segments=Math.Max(4,Math.Min(Context.Low?9:(int)(18*Math.Min(1,detail)+.5f),(int)(len/seg)+2));if(Context.Low)forks=Math.Min(forks,1);
+            int phase=(int)Math.Floor(t/Math.Max(.02f,flicker));int s=seed*31+phase*977;
+            var side=Vector3.Normalize(Vector3.Cross(dir,Math.Abs(dir.Y)<.9f?Vector3.UnitY:Vector3.UnitX));var side2=Vector3.Cross(dir,side);
+            // the wander: two slow waves along it (a bolt's large bends); the jitter: each joint's own kink, a share of its segment
+            float w1=Math.Min(1.2f,.09f*len)*jag,w2=Math.Min(.45f,.035f*len)*jag,jit=Math.Min(.13f,.42f*len/segments)*jag;
+            float p1=NativeEntranceMath.Rand(s,1)*6.283f,p2=NativeEntranceMath.Rand(s,2)*6.283f,p3=NativeEntranceMath.Rand(s,3)*6.283f,p4=NativeEntranceMath.Rand(s,4)*6.283f;
+            var prev=a;int calls=0;
+            for(int i=1;i<=segments;i++)
+            {
+                float u=(float)i/segments,env=(float)Math.Sin(Math.PI*u);
+                float o1=(float)(Math.Sin(u*Math.PI*1.3+p1)*w1+Math.Sin(u*Math.PI*4.1+p2)*w2)*env+NativeEntranceMath.Signed(s,i*2)*jit*env;
+                float o2=(float)(Math.Sin(u*Math.PI*1.1+p3)*w1+Math.Sin(u*Math.PI*3.7+p4)*w2)*env+NativeEntranceMath.Signed(s,i*2+1)*jit*env;
+                var p=i==segments?b:a+axis*u+side*o1+side2*o2;
+                Beam(fx,v,p,prev,core,width*(1-.35f*u),.15f,0,s+i);calls++;
+                if(i%4==0&&NativeEntranceMath.Rand(s,i+40)<quality){fx.Glow(p,halo,0,width*10,1,0,s+i);calls++;}
+                if(forks>0&&i%5==2&&i<segments-1&&NativeEntranceMath.Rand(s,i+50)<Math.Max(.35f,quality))
+                {
+                    // a fork: three short kinked runs off the joint, thinning
+                    var f=p;var fd=Vector3.Normalize(dir*.6f+side*NativeEntranceMath.Signed(s,i+70)+side2*NativeEntranceMath.Signed(s,i+90)*.6f);float fl=len*(.07f+.08f*NativeEntranceMath.Rand(s,i+110));
+                    for(int j=1;j<=3;j++){var q=p+fd*(fl*j/3)+(side*NativeEntranceMath.Signed(s,i*7+j)+side2*NativeEntranceMath.Signed(s,i*7+j+3))*(fl*.12f);Beam(fx,v,q,f,core*(.7f-.15f*j),width*(.6f-.12f*j),.3f,0,s+i*5+j+200);f=q;calls++;}
+                }
+                prev=p;
+            }
+            return calls;
+        }
+        /// <summary>A four-point star (NativeEntranceFx.Glint's look) whose long rays are laid on their head's camera plane.</summary>
+        protected static void Star(INativeEntranceFx fx,in NativeEntranceView v,Vector3 at,Vector3 color,float size,Vector3 axisA,Vector3 axisB,int seed)
+        {
+            if(size<=1e-3f)return;fx.Glow(at,color,0,size,1,0,seed);
+            Beam(fx,v,at+axisA*size*1.1f,at-axisA*size*1.1f,color*1.4f,size*.08f,0,0,seed+1);Beam(fx,v,at+axisB*size*.8f,at-axisB*size*.8f,color*1.2f,size*.07f,0,0,seed+2);
+        }
+        /// <summary>The weapons' flame puff where the sink draws it, else a hot glow.</summary>
+        protected static void Flame(INativeEntranceFx fx,Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor)
+        {
+            if(fx is INativeEntranceFire fire)fire.Fire(at,tint,opacity,size,u,seed,floor);
+            else fx.Glow(at,tint*(2.2f*opacity),0,size*.8f,1,u,seed);
+        }
+        /// <summary>A count thinned by the effects quality and the Low tier (at least one).</summary>
+        protected int N(int full,float quality){float n=full*Math.Max(.3f,Math.Min(1,quality));if(Context.Low)n*=.5f;return Math.Max(1,(int)n);}
+        /// <summary>A slow, Reduced-safe flicker in 0..1 (no component faster than about 2.6 Hz).</summary>
+        protected static float Flicker(float t,float seed)=>.5f+.25f*(float)Math.Sin(t*7.1f+seed)+.25f*(float)Math.Sin(t*11.3f+seed*1.7f);
+        /// <summary>A world point at height `y` on the forward line `z` m ahead of the hero mark (negative: behind it).</summary>
+        protected static Vector3 OnLine(float z,float y=0)=>Fwd*z+new Vector3(0,y,0);
+        protected static Vector3 Flat(Vector3 v){v.Y=0;return v;}
+        /// <summary>Where every elemental name sits (screen share): a band low in the frame, under the hero frame's feet (each
+        /// ending frames the pilot above it). The kicker and the line stay centred (Runtime NativeIntroCardScreen), so X stays .5.</summary>
+        protected const float CardBand=.86f;
+    }
+
+    // =====================================================================================================================
+    // FORGEBORN (fire)
+    // =====================================================================================================================
+    /// <summary>
+    /// Forgeborn, the fire staff's intro (7.8 s, the name at 6.0 s; docs/INTROS-ELEMENTAL.md). In a dead volcano's forge the
+    /// cracks in the caldera floor race in from the rim, a column of fire erupts from the dais's vent, the pilot walks out of it
+    /// with the flame peeling off its shoulders, the column's fire spirals up into a crown of flame over its head, and the staff
+    /// comes down on the dais: fire runs out along every seam. The hero frame holds under the burning crown.
+    /// </summary>
+    public sealed class NativeIntroForgeborn:NativeIntroElementalScript
+    {
+        public const string Id=NativeIntroCatalog.WeaponPrefix+"fire";public const string Name="Forgeborn";
+        public const float Total=7.8f,CardAt=6.0f;
+        public const float CrackFrom=1.0f,EruptAt=2.15f,RevealFrom=2.5f,WalkFrom=3.3f,CrownAt=4.75f,CrownSet=5.25f,SlamAt=5.45f;
+        /// <summary>The vent (the column's foot): on the forward line, 1.3 m behind the hero mark (tools/intros/elemental_set.py FIRE_VENT).</summary>
+        public static readonly Vector3 Vent=OnLine(-1.3f,NativeEntranceStage.FloorY);
+        /// <summary>The lava rings' outer radii about the hero mark (rig fire/lava/1..5; fire/lava/0 under the dais), the rivers' bearings.</summary>
+        public static readonly float[] Rings={6.5f,9.5f,13f,17.5f,25f};
+        public static readonly float[] Rivers={-2.45f,-1.0f,.55f,2.2f};
+        public const float ForgeZ=-11.5f;
+        /// <summary>The forge's firebox: its back wall and its mouth (z), over the caldera's plates (tools/intros/elemental_set.py
+        /// FIRE_HEARTH, FIRE_FLOOR_Y).</summary>
+        public const float HearthBack=-12.58f,HearthFront=-11.92f,FireFloorY=-.1f;
+        private static readonly Vector3 Flame0=Hex(0xffd27a),White0=Hex(0xfff2c8),Orange=Hex(0xff6c32),Deep=Hex(0xd83410),Ember=Hex(0xff7a2a),Ash=new Vector3(.05f,.04f,.035f),Cool=Hex(0x4a90b8);
+        private static readonly string[] LavaProps={"fire/lava/0","fire/lava/1","fire/lava/2","fire/lava/3","fire/lava/4","fire/lava/5"},RiverProps={"fire/river/0","fire/river/1","fire/river/2","fire/river/3"};
+        public NativeIntroForgeborn():base(Id,Total,CardAt,EruptAt,0xff6c32)
+        {
+            var v=Vent;var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();var plan=new System.Collections.Generic.List<NativeEntrancePose.Step>();
+            // The feet (the model's ankles, ModelFeet): crouched in the vent, then three heavy steps out along the line to the mark, the
+            // right foot stepping out wide for the slam.
+            Start=Stance(.15f,.1f,.2f,-.15f,-.12f,-.3f,Facing,v.X,v.Z);
+            var line=new NativeIntroFeet.Track(v,Facing,WalkFrom,CrownAt,1.3f,.4f,.5f);RootPath=(t,r)=>{if(t<=WalkFrom||t>=CrownAt+.5f)return r;var a=line.At(t);return new Vector3(a.X,r.Y,a.Z);};
+            NativeIntroFeet.Walk(plan,line,true,3,WalkFrom+.05f,.48f,.42f,.1f,.1f,.07f);
+            plan.Add(Step(false,CrownAt+.12f,CrownAt+.36f,-.2f,.0f,-.32f,.05f));Steps=plan.ToArray();
+            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(-1.3f);var w4=R(0);
+            // Forged in the fire: crouched low and gathered over its knees, head bowed, the free fist held to its chest, the staff planted at
+            // its side; revealed from the feet up as the column takes it.
+            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.44f).J(B,.4f).J(Sp,.12f).J(C,.08f).J(Hd,.42f).J(RA,-.95f,.15f,-.12f).J(RE,-1.55f);
+            k.Key(RevealFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.42f).J(B,.38f).J(Sp,.11f).J(C,.07f).J(Hd,.38f).J(RA,-.95f,.15f,-.12f).J(RE,-1.55f).PassKey();
+            // It rises in the column: the chest opening first, the head lifting after it, the fist unfolding from the chest.
+            k.Key(RevealFrom+.45f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.2f).J(B,.16f).J(Sp,.02f).J(C,-.06f).J(Hd,.16f).J(RA,-.55f,.05f,-.2f).J(RE,-1.0f).PassKey();
+            k.Key(WalkFrom-.08f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(B,-.02f).J(C,-.1f).J(Hd,-.06f).J(RA,-.12f,0,-.24f).J(RE,-.45f);
+            // The walk out: heavy contacts (the hips sinking onto each), the body leaning into it, the pelvis turned with the leading leg and
+            // the chest against it, the free arm swinging against the legs; the staff swings with its hand.
+            for(int i=0;i<3;i++)
+            {
+                bool l=i%2==0;float sg=l?1:-1,lift=WalkFrom+.05f+i*.48f,land=lift+.42f,pass=lift+.21f;var p=line.At(pass);var c=line.At(land);float last=i==2?.5f:1;
+                k.Key(pass,stand).Root(p.X,.88f,p.Z,Facing).Drop(-.01f).J(B,.06f).J(P,0,0,-sg*.04f).J(C,-.04f).J(Hd,-.02f).J(RA,-.1f,0,-.16f).J(RE,-.4f).PassKey();
+                k.Key(land,stand).Root(c.X,.88f,c.Z,Facing).Drop(-.075f*last-.02f).J(B,.08f).J(P,0,sg*.1f*last).J(Sp,0,-sg*.05f*last).J(C,-.02f,-sg*.11f*last).J(Hd,.03f,sg*.07f*last)
+                    .J(RA,(l?-.42f:.3f)*last,0,-.16f).J(RE,l?-.7f:-.3f).PassKey();
+            }
+            // On the mark: it straightens up under the fire, the chin lifting, the free arm rising open out at its side beneath the crown as it
+            // gathers (out at the side, so the near camera keeps the face).
+            k.Key(CrownAt+.2f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.01f).J(B,-.04f).J(Sp,-.05f).J(C,-.14f).J(Hd,-.32f).J(RA,-.55f,-.2f,-1.8f).J(RE,-.5f).J(RH,0,0,.25f);
+            k.Key(CrownSet-.12f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.0f).J(B,-.06f).J(Sp,-.07f).J(C,-.18f).J(Hd,-.4f).J(RA,-.45f,-.2f,-2.15f).J(RE,-.35f).J(RH,0,0,.3f).PassKey();
+            // The slam: the staff swung up high out at its side, both arms raised under the crown, the body rising tall; then the staff is
+            // driven down beside its foot, the hips sinking deep over spread knees, the chest following it, the free arm thrown down and back.
+            k.Key(CrownSet+.06f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.02f).J(B,-.06f).J(Sp,-.07f).J(C,-.16f).J(Hd,-.3f).J(RA,-.4f,-.2f,-2.25f).J(RE,-.3f).J(RH,0,0,.3f);
+            k.Key(SlamAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.45f).J(B,.32f).J(Sp,.18f).J(C,.1f).J(Hd,.08f).J(RA,.35f,0,-.5f).J(RE,-.25f).ImpactKey();
+            k.Key(SlamAt+.17f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.4f).J(B,.28f).J(Sp,.15f).J(C,.08f).J(Hd,.04f).J(RA,.25f,0,-.42f).J(RE,-.3f);
+            // Up into the hero hold under the burning crown, the staff upright at its side, the free arm loose.
+            k.Key(CardAt-.05f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.05f).J(B,.02f).J(C,-.06f).J(Hd,-.06f).J(RA,-.14f,0,-.2f).J(RE,-.42f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Head,-.06f,.1f,0);});
+            k.Key(CardAt+.3f,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);
+            k.Key(Total,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);Keys=k;
+            // The staff: planted upright at its side through the fire, carried upright (swinging with its hand) out of it; lifted high in both
+            // hands; driven down beside its left foot; upright at its side for the hold.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);
+            Hold(0,new Vector3(.52f,-.12f,.3f),up,back);Hold(RevealFrom,new Vector3(.52f,-.12f,.3f),up,back);Hold(WalkFrom-.08f,new Vector3(.5f,-.1f,.22f),up,back);
+            Hold(WalkFrom+.47f,new Vector3(.5f,-.1f,.14f),up,back);Hold(WalkFrom+.95f,new Vector3(.5f,-.1f,.3f),up,back);Hold(WalkFrom+1.43f,new Vector3(.5f,-.1f,.18f),up,back);
+            Hold(CrownSet-.12f,new Vector3(.5f,-.1f,.22f),up,back);
+            Hold(CrownSet+.06f,new Vector3(.7f,.5f,.1f),new Vector3(-.12f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));
+            Hold(SlamAt,new Vector3(.56f,-.5f,.4f),new Vector3(.03f,1,.06f),new Vector3(-.3f,.45f,-1),new Vector3(1,-.2f,-1));Hold(SlamAt+.17f,new Vector3(.56f,-.47f,.38f),new Vector3(.03f,1,.06f),new Vector3(-.3f,.45f,-1),new Vector3(1,-.2f,-1));
+            Hold(CardAt-.05f,new Vector3(.5f,-.1f,.22f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
+            // The camera: macro along a seam; a crane up and back to the caldera; low under the eruption; up the column; the walk
+            // out at the lens; round under the crown; wide and low for the slam; the hero frame.
+            Rig.Dolly(0,L(1.6f,.26f,8.6f),L(.9f,.3f,4.4f),L(1.1f,.04f,4.0f),L(.1f,.3f,-.8f),32,30).Ease(NativeIntroEase.InOut).Focus(0,0,.55f)
+               .Crane(CrackFrom+.05f,L(2.4f,.85f,5.6f),L(4.2f,.85f,9.6f),3.1f,L(0,.4f,-1.3f),L(0,1.9f,-3.6f),44,50).In(NativeIntroCut.Blend,.45f)
+               .Dolly(EruptAt-.05f,L(3.0f,.3f,4.3f),L(2.7f,.32f,3.9f),OnLine(-1.3f,2.4f),OnLine(-1.3f,4.6f),52,48)
+               .Crane(EruptAt+.6f,L(1.8f,.5f,2.3f),L(1.5f,.5f,1.8f),6.2f,OnLine(-1.3f,1.0f),OnLine(-1.3f,7.6f),42,46).Ease(NativeIntroEase.InOut)
+               .Dolly(WalkFrom,L(.15f,1.25f,4.6f),L(.1f,1.3f,3.25f),new Vector3(0,.08f,0),new Vector3(0,.12f,0),34,31).Follow(NativeEntranceAnchor.Chest,.05f).Handheld(.4f)
+               .Orbit(CrownAt-.15f,Vector3.Zero,-25,-58,3.1f,2.9f,1.05f,1.2f,new Vector3(0,1.2f,0),new Vector3(0,1.32f,0),48,45)
+               .Dolly(SlamAt-.08f,L(-3.6f,.45f,5.0f),L(-3.3f,.5f,4.5f),L(0,.7f,-.3f),L(0,.75f,-.2f),48,46)
+               .Crane(CardAt-.2f,L(-2.85f,.35f,4.75f),L(-2.55f,.35f,4.3f),.25f,L(-.55f,.88f,0),L(-.5f,.92f,0),44,42).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
+               .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
+            Ramps.Ramp(EruptAt,.3f,.32f,.9f);
+        }
+        /// <summary>Hidden in the fire until the column takes it, then built in from the feet up as it forms.</summary>
+        public override float Solid(float t,int bone)
+        {
+            if(t<RevealFrom)return 0;float h=bone==CapturedRig.LFoot||bone==CapturedRig.RFoot||bone==CapturedRig.LToe||bone==CapturedRig.RToe?0:bone==CapturedRig.LKnee||bone==CapturedRig.RKnee?.2f:bone==CapturedRig.Head||bone==CapturedRig.Neck?1:bone>=CapturedRig.LClav&&bone<=CapturedRig.RHand?.75f:.5f;
+            return NativeEntranceMath.Smooth((t-RevealFrom-h*.35f)/.3f);
+        }
+        protected override Vector3 Focus(float t,Vector3 chest)=>t<WalkFrom?Vent+new Vector3(0,1.4f,0):chest;
+        public override string AccentAt(float t)=>t<RevealFrom?"#3a1406":t<CrownAt?"#ff6c32":"#ffb040";
+        /// <summary>How far the cracks have lit inward (0 none .. 1 to the dais) at `t`, and the slam's wave out.</summary>
+        public static float Ring(int k,float t)
+        {
+            // k: 0 the dais, 1..5 outward. The wave in: the rim first (k 5) at CrackFrom, the dais last just before the eruption.
+            float on=CrackFrom+(5-k)*.2f;float level=.35f+.6f*NativeEntranceMath.Ramp(t,on,on+.25f);
+            level+=.6f*NativeEntranceMath.Pulse(t,EruptAt+(k*.05f),.05f,.5f);
+            level+=.9f*NativeEntranceMath.Pulse(t,SlamAt+k*.07f,.04f,.45f);
+            return level;
+        }
+        /// <summary>The column's strength (0..1): erupting, roaring, drawn up into the crown.</summary>
+        public static float Column(float t)=>NativeEntranceMath.Ramp(t,EruptAt-.04f,EruptAt+.12f)*(1-NativeEntranceMath.Ramp(t,CrownAt-.1f,CrownSet));
+        public override void Lights(float t,NativeEntranceLights l)
+        {
+            base.Lights(t,l);l.FogNear=12;l.FogFar=62;var smoke=Vector3.Lerp(Hex(0x0b0504),Hex(0x2a0f07),.4f*Column(t)+.25f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt));l.Fog=smoke;l.Background=smoke;
+            l.Sky=Hex(0x5a2a1a,.08f+.22f*Column(t)+.12f*NativeEntranceMath.Ramp(t,EruptAt,CardAt));l.Ground=Hex(0x5a1c0a,.3f+.6f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt));
+            float col=Column(t),fl=Flicker(t,1.3f);
+            // (the set takes only directionals and the ambient: a warm key from the fire over the dais, strongest while the column roars)
+            l.Directional(new Vector3(0,1,0)+Fwd*.45f+Left*.2f,Hex(0xff9050,.18f+.25f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt)+.95f*col+.35f*NativeEntranceMath.Ramp(t,CrownAt,CardAt)));
+            l.ReflectSky=Hex(0x1a0a06);l.ReflectHorizon=Hex(0x5a2410,.8f);l.ReflectGround=Hex(0xff6c32,.35f);
+            // the lava's glow from below: the rivers, the vent, the hearth
+            l.Add(new Vector3(-6,.4f,-4),Ember*(1.4f+1.2f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt)),9);l.Add(new Vector3(6.5f,.4f,-2.5f),Ember*(1.2f+1.2f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt)),9);
+            l.Add(new Vector3(0,FireFloorY+1.0f,HearthFront+.7f),Orange*(2.3f*(.85f+.15f*fl)),7.5f);
+            l.Add(Vent+new Vector3(0,.35f,0),Flame0*(.6f+2.4f*NativeEntranceMath.Ramp(t,CrackFrom+1,EruptAt)+4*Flash(t,EruptAt,.03f,.4f)),4.5f);
+            // the column
+            if(col>.01f){l.Add(Vent+new Vector3(0,2.0f,.4f),Flame0*(9*col*(.85f+.15f*fl)),11);l.Add(Vent+new Vector3(0,5.5f,0),Orange*(7*col),13);}
+            // the crown
+            float crown=NativeEntranceMath.Ramp(t,CrownAt,CrownSet);if(crown>.01f)l.Add(Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.42f,.12f),Flame0*(3.4f*crown*(.9f+.1f*fl)),4.5f);
+            // the slam's flash at the heel, and the hero's warm key with a cool fill for the hold
+            float slam=Flash(t,SlamAt,.02f,.35f);if(slam>.01f){Staff(SlamAt,out var heel,out _);l.Add(heel+new Vector3(0,.3f,0),Flame0*(7*slam),6);}
+            float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c+L(1.4f,.6f,1.8f),Flame0*(2.4f*hero),6);l.Add(c+L(-2.2f,.4f,1.2f),Cool*(1.1f*hero),6);}
+        }
+        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Orange);v.Far=Hex(0x0d0504);v.Floor=Hex(0x120a08);v.Pool=Ember;v.Key=.04f+.16f*NativeEntranceMath.Ramp(t,EruptAt,EruptAt+.5f);v.PoolLevel=.3f+1.5f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt);return v;}
+        protected override bool Scene(float t,INativeIntroSet set)
+        {
+            if(!set.Has("fire/near"))return false;var one=Vector3.One;var q=Quaternion.Identity;
+            set.Piece("fire/near",Vector3.Zero,q,1,one,one);set.Piece("fire/mid",Vector3.Zero,q,1,one,one);set.Piece("fire/far",Vector3.Zero,q,1,one,one);
+            for(int k=0;k<LavaProps.Length;k++){float g=Ring(k,t);set.Piece(LavaProps[k],Vector3.Zero,q,1,one,one*g);}
+            float rivers=.75f+.25f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt);for(int k=0;k<RiverProps.Length;k++)set.Piece(RiverProps[k],Vector3.Zero,q,1,one,one*(rivers*(.92f+.08f*Flicker(t,k))));
+            set.Piece("fire/falls",Vector3.Zero,q,1,one,one*(.6f+.08f*Flicker(t,7)));
+            float vent=.3f+.5f*NativeEntranceMath.Ramp(t,CrackFrom+.6f,EruptAt)+.7f*Column(t)+.4f*Flash(t,SlamAt,.05f,.5f);set.Piece("fire/vent",Vector3.Zero,q,1,one,one*vent);
+            float seams=.25f+.75f*NativeEntranceMath.Ramp(t,CrackFrom+.4f,EruptAt)+.8f*Flash(t,EruptAt,.05f,.6f)+1.2f*Flash(t,SlamAt+.2f,.05f,.6f);set.Piece("fire/forge-seams",Vector3.Zero,q,1,one,one*seams);
+            set.Piece("fire/hearth",Vector3.Zero,q,1,one,one*(.5f+.08f*Flicker(t,3)));
+            return true;
+        }
+        public override void Card(float t,ref NativeIntroCardState card)
+        {
+            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Rise;card.Ink=new Vector3(1,.93f,.82f);card.Glow=Hex(0xff7a2a,1.6f);card.Y=CardBand;
+        }
+        private static readonly NativeIntroCue[] cues=
+        {
+            new NativeIntroCue(.05f,"intro2.fire.rumble","structure.rumble","stone",.5f),
+            new NativeIntroCue(CrackFrom,"intro2.fire.crack","structure.crack","stone",.6f),
+            new NativeIntroCue(EruptAt,"intro2.fire.erupt","blast.fire","explosion",.9f),
+            new NativeIntroCue(EruptAt+.2f,"intro2.fire.column","hazard.lava","fire",.55f),
+            new NativeIntroCue(WalkFrom+.5f,"intro2.fire.step","impact.stone","stone",.32f),
+            new NativeIntroCue(WalkFrom+.95f,"intro2.fire.step","impact.stone","stone",.3f),
+            new NativeIntroCue(CrownAt,"intro2.fire.crown","magic.flame-lance","fire",.6f),
+            new NativeIntroCue(SlamAt,"intro2.fire.slam","magic.fire.hit","explosion",.8f),
+            new NativeIntroCue(CardAt,"intro2.fire.name","melee.greatsword.hit","metal",.45f),
+        };
+        public override NativeIntroCue[] Cues=>cues;
+        public override void Effects(float t,INativeEntranceFx fx,float q)
+        {
+            ViewAt(t,out var view);float floor=NativeEntranceStage.FloorY,col=Column(t);
+            // Embers rising over the whole caldera, thicker once it erupts.
+            NativeEntranceFx.Embers(fx,t,0,Total+.5f,new Vector3(0,.1f,-2),11,Context.Low?10:20,1.3f,2.8f,Ember*1.6f,.035f,7100,q,.5f);
+            // High smoke drifting under the caldera's lid.
+            for(int i=0,n=N(10,q);i<n;i++){float u=(t*.05f+i/(float)n)%1;var p=new Vector3(NativeEntranceMath.Signed(7150,i)*14,7.5f+3*NativeEntranceMath.Rand(7150,i+20),-6+NativeEntranceMath.Signed(7150,i+40)*8)+new Vector3(u*3,0,0);fx.Smoke(p,new Vector3(.06f,.035f,.03f),.35f*(float)Math.Sin(Math.PI*u),3.5f+2*u,u,7150+i,-10);}
+            // The forge's mouth: heat shimmering up off it, sparks popping out of its coals, embers drifting out and up.
+            {
+                var mouth=new Vector3(0,FireFloorY+.8f,HearthFront+.05f);
+                fx.Glow(mouth+new Vector3(0,.2f,.25f),Orange*(.6f*(.85f+.15f*Flicker(t,5))),0,2.4f,0,0,8500);
+                for(int i=0,n=N(8,q);i<n;i++){float u=(t*.55f+i/(float)n)%1;var foot=new Vector3(NativeEntranceMath.Signed(8510,i)*.8f,FireFloorY+2.3f+.1f*u,HearthFront+.3f);var head=foot+new Vector3((float)Math.Sin(t*2.3f+i*1.7f)*.12f,.9f+.6f*u,.15f*u);Beam(fx,view,head,foot,Orange*(.12f*(float)Math.Sin(Math.PI*u)),.16f+.08f*NativeEntranceMath.Rand(8511,i),.4f,u,8510+i);}
+                for(int i=0,n=N(10,q);i<n;i++)
+                {
+                    float period=1.1f+.8f*NativeEntranceMath.Rand(8530,i),age=(t+NativeEntranceMath.Rand(8531,i)*period)%period;if(age>.7f)continue;
+                    var o=new Vector3(NativeEntranceMath.Signed(8532,i)*.7f,FireFloorY+.48f,HearthFront-.25f+.2f*NativeEntranceMath.Rand(8533,i));var v=new Vector3(NativeEntranceMath.Signed(8534,i)*.6f,1.6f+1.4f*NativeEntranceMath.Rand(8535,i),1.2f+1.4f*NativeEntranceMath.Rand(8536,i));
+                    var at=o+v*age+new Vector3(0,-4.9f*age*age,0);fx.Streak(at,v+new Vector3(0,-9.8f*age,0),Flame0*(2.6f*(1-age/.7f)),.012f,.04f,.04f,.5f,age/.7f,8530+i);
+                }
+                NativeEntranceFx.Embers(fx,t,0,Total+.5f,mouth+new Vector3(0,.4f,.4f),.6f,Context.Low?5:10,1.0f,1.6f,Ember*1.8f,.025f,8560,q,1.2f);
+            }
+            // The cracks racing in: sparks running down the radial seams at the wave's front.
+            if(t>=CrackFrom&&t<EruptAt+.2f)
+            {
+                float u=NativeEntranceMath.Clamp01((t-CrackFrom)/(EruptAt-CrackFrom));float front=24*(1-u)+2.8f*u;
+                for(int i=0,n=N(28,q);i<n;i++){float a=i*6.2831853f/n+NativeEntranceMath.Signed(7200,i)*.1f,r=front+NativeEntranceMath.Signed(7210,i)*.6f;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));var p=d*r+new Vector3(0,floor+.02f,0);Beam(fx,view,p,p+d*.7f,Flame0*(2.4f*(1-u*.3f)),.025f,.6f,0,7200+i);}
+            }
+            // The rivers: bright glints riding the lava toward the dais, smoke off the falls.
+            for(int k=0;k<4;k++)for(int i=0,n=N(8,q);i<n;i++)
+            {
+                float u=1-((t*.06f+i/(float)n+k*.17f)%1),r=6+19*u;var p=River(k,r)+new Vector3(0,-.08f,0);var nx=River(k,r-.5f)+new Vector3(0,-.08f,0);Beam(fx,view,p,p+(p-nx)*.6f,Flame0*1.8f,.05f,.8f,0,7300+k*20+i);
+            }
+            for(int k=0;k<2;k++){float a=Rivers[k]+(k==0?.05f:.03f);var foot=new Vector3((float)Math.Cos(a)*24.2f,floor+.3f,(float)Math.Sin(a)*24.2f);NativeEntranceFx.Jet(fx,t,0,Total+1,foot,new Vector3(0,1,0),3,.6f,2.5f,2.4f,new Vector3(.08f,.05f,.04f),.45f,7400+k*30,q*.6f,floor,.8f,.4f);}
+            // The vent before: a shimmer of flame licking up, a thread of smoke.
+            if(t<EruptAt+.1f)
+            {
+                float pre=NativeEntranceMath.Ramp(t,CrackFrom+.6f,EruptAt);
+                for(int i=0,n=N(8,q);i<n;i++){float u=((t*1.6f+i/(float)n)%1);var p=Vent+new Vector3(NativeEntranceMath.Signed(7500,i)*.3f*(1-u),.1f+(.3f+1.1f*pre)*u,NativeEntranceMath.Signed(7501,i)*.3f*(1-u));Flame(fx,p,Vector3.Lerp(Flame0,Deep,u),(.35f+.6f*pre)*(1-u),.25f+.25f*pre,u,7500+i,floor);}
+                NativeEntranceFx.Jet(fx,t,0,EruptAt,Vent+new Vector3(0,.2f,0),new Vector3(0,1,0),3,.5f,2.2f,.9f,new Vector3(.12f,.09f,.08f),.35f,7520,q*.6f,floor,.6f,.3f);
+            }
+            // The column: sheets of flame round a white-hot heart: tongues licking up it in four tiers, white at their feet, orange,
+            // their tips red; the fire's own puffs inside it; a little dark smoke off its head; a burst of sparks as it erupts.
+            if(col>.01f)
+            {
+                float top=9.5f*NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-EruptAt)/.45f));
+                for(int k=0;k<5;k++){float h=.4f+top*(k/5f);fx.Glow(Vent+new Vector3((float)Math.Sin(t*1.9f+k)*.08f,h,(float)Math.Cos(t*1.6f+k)*.08f),White0*(1.5f*col*(1-.12f*k)),0,1.15f-.1f*k,1,0,7680+k);}
+                {var foot=Vent+new Vector3(0,.2f,0);var head=Vent+new Vector3((float)Math.Sin(t*2.3f)*.1f,.2f+top*.85f,(float)Math.Cos(t*1.9f)*.1f);Beam(fx,view,head,foot,White0*(1.3f*col),.22f,.6f,0,7692);}
+                fx.Glow(Vent+new Vector3(0,1.6f,0),Orange*(.9f*col),0,2.6f,0,0,7690);fx.Glow(Vent+new Vector3(0,4.6f,0),Orange*(.6f*col),0,3.4f,0,0,7691);fx.Glow(Vent+new Vector3(0,7.6f,0),Deep*(.45f*col),0,3.0f,0,0,7694);
+                int per=Context.Low?5:9;
+                for(int tier=0;tier<4;tier++)for(int i=0;i<per;i++)
+                {
+                    int id=tier*16+i;float life=.55f+.3f*NativeEntranceMath.Rand(7600,id),u=((t-EruptAt)/life+NativeEntranceMath.Rand(7601,id))%1;if(u<0)u+=1;
+                    float a=(i+.5f*tier)*6.2831853f/per+t*(.5f+.25f*tier)+NativeEntranceMath.Signed(7602,id)*.3f,r=(.6f-.07f*tier)*(.75f+.25f*col);
+                    var dir=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));var foot=Vent+dir*r+new Vector3(0,.15f+top*(tier/4f),0);
+                    float h=(1.3f+1.0f*NativeEntranceMath.Rand(7603,id))*(1-.15f*tier)*(.6f+.4f*col);
+                    Tongue(fx,view,foot,dir*.35f,h,.34f-.05f*tier,.6f*NativeEntranceMath.Signed(7604,id),id*1.3f,t,u,1,col,7600+id*4);
+                }
+                for(int i=0,m=N(26,q);i<m;i++){float life=.6f+.35f*NativeEntranceMath.Rand(7620,i),u=((t-EruptAt)/life+NativeEntranceMath.Rand(7621,i))%1;if(u<0)u+=1;float y=top*(float)Math.Pow(u,.85f),r=.35f*(1-.4f*u),a=NativeEntranceMath.Rand(7622,i)*6.283f+t*1.4f;Flame(fx,Vent+new Vector3((float)Math.Cos(a)*r,.2f+y,(float)Math.Sin(a)*r),Vector3.Lerp(Orange,Deep,u),.55f*col*(1-u),.45f+.5f*u,u,7620+i,floor);}
+                for(int i=0,m=N(6,q);i<m;i++){float u=((t-EruptAt)*.45f+i/(float)m)%1;var at=Vent+new Vector3(NativeEntranceMath.Signed(7700,i)*1.2f*u,top+.6f+2.2f*u,NativeEntranceMath.Signed(7701,i)*1.2f*u);fx.Smoke(at,new Vector3(.05f,.035f,.03f),.8f*col*(1-u)*u,1.4f+2.2f*u,u,7700+i,floor);}
+            }
+            NativeEntranceFx.Sparks(fx,t,EruptAt,Vent+new Vector3(0,.4f,0),new Vector3(0,1,0),.8f,Context.Low?24:56,13,1.3f,9,.4f,Flame0*3,Ember,.02f,7750,q,floor);
+            NativeEntranceFx.GroundDust(fx,t,EruptAt,Vent,N(18,q),.8f,5,1.4f,new Vector3(.09f,.06f,.05f),.5f,.9f,7820,q,floor);
+            // Walking out: flame peeling off its shoulders, arms and back, embers in its steps.
+            if(t>=WalkFrom-.2f&&t<CrownAt+.3f)
+            {
+                float peel=1-NativeEntranceMath.Ramp(t,WalkFrom+.6f,CrownAt+.2f);var back=-Fwd;
+                for(int i=0,n=N(24,q);i<n;i++)
+                {
+                    var src=(NativeEntranceAnchor)(i%6==0?(int)NativeEntranceAnchor.LeftShoulder:i%6==1?(int)NativeEntranceAnchor.RightShoulder:i%6==2?(int)NativeEntranceAnchor.LeftElbow:i%6==3?(int)NativeEntranceAnchor.RightElbow:i%6==4?(int)NativeEntranceAnchor.Chest:(int)NativeEntranceAnchor.Head);
+                    float u=((t*2.2f+i/(float)n)%1);float born=t-u*.45f;var p=Anchor(src,born)+back*(.5f*u)+new Vector3(NativeEntranceMath.Signed(7900,i)*.08f,.55f*u,NativeEntranceMath.Signed(7901,i)*.08f);
+                    Flame(fx,p,Vector3.Lerp(Orange,Deep,u),peel*(1-u)*.7f,.07f+.1f*u,u,7900+i,floor);
+                }
+                NativeEntranceFx.Embers(fx,t,WalkFrom,CrownAt,Anchor(NativeEntranceAnchor.Pelvis,t),.4f,Context.Low?8:16,1.1f,1.0f,Ember*1.8f,.03f,7950,q,1.5f);
+            }
+            // The crown: the column's fire spirals in round the pilot and gathers on its head: a hot ring at the brow (on the model's
+            // drawn head), flame tongues standing off it, uneven and curling, their tips flickering, embers lifting off them.
+            float gather=NativeEntranceMath.Ramp(t,CrownAt-.2f,CrownSet),crown=NativeEntranceMath.Ramp(t,CrownAt+.15f,CrownSet+.1f);
+            var brow=Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.05f,0);var crownAt=brow+new Vector3(0,.14f,0);
+            if(t>CrownAt-.2f&&t<CrownSet+.3f)
+            {
+                float fade=gather*(1-crown*.8f);
+                for(int i=0,n=N(16,q);i<n;i++)
+                {
+                    float u=((t*1.3f+i/(float)n)%1),a=i*.393f+t*4+u*6,r=2.0f*(1-u)+.24f*u,y=-1.8f*(1-u);var head=crownAt+new Vector3((float)Math.Cos(a)*r,y,(float)Math.Sin(a)*r);
+                    float a2=a-.5f,r2=r+.35f*(1-u);var tail=crownAt+new Vector3((float)Math.Cos(a2)*r2,y-.25f,(float)Math.Sin(a2)*r2);
+                    Beam(fx,view,head,tail,Vector3.Lerp(Orange,Flame0,u)*(1.6f*fade),.035f,.8f,u,8000+i);if(i%3==0)fx.Glow(head,Orange*(.5f*fade),0,.12f,0,u,8040+i);
+                }
+            }
+            if(crown>.01f)
+            {
+                var fwd=ForwardOf(t);var right=RightOf(t);
+                for(int i=0;i<14;i++){float a=i*.4488f;var d=fwd*(float)Math.Cos(a)+right*(float)Math.Sin(a);fx.Glow(brow+d*.172f,White0*(1.3f*crown*(.8f+.2f*Flicker(t,i))),0,.055f,1,0,8140+i);}
+                fx.Glow(brow+new Vector3(0,.04f,0),Orange*(.6f*crown),0,.48f,0,0,8190);
+                for(int i=0;i<9;i++)
+                {
+                    float a=i*.6981f+.35f*NativeEntranceMath.Signed(8100,i);var d=fwd*(float)Math.Cos(a)+right*(float)Math.Sin(a);
+                    float h=(.22f+.3f*NativeEntranceMath.Rand(8101,i))*(.82f+.18f*Flicker(t,i*1.7f));
+                    Tongue(fx,view,brow+d*.15f+new Vector3(0,.02f,0),d*.3f,h,.085f,.9f*NativeEntranceMath.Signed(8103,i),i*1.9f,t,.35f,0,crown,8100+i*4);
+                }
+                NativeEntranceFx.Embers(fx,t,CrownAt+.2f,Total+.5f,crownAt+new Vector3(0,.15f,0),.22f,Context.Low?6:12,.9f,1.4f,Ember*1.8f,.022f,8200,q,1.2f);
+            }
+            // The slam: fire racing out along the floor from the heel, sparks, a ring of ash puffs hugging the floor.
+            float sw=t-SlamAt;
+            if(sw>=0&&sw<.9f)
+            {
+                Staff(SlamAt,out var heel,out _);var hit=new Vector3(heel.X,floor+.03f,heel.Z);
+                for(int i=0,n=N(26,q);i<n;i++){float a=i*6.2831853f/n+NativeEntranceMath.Signed(8300,i)*.12f;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float reach=.3f+(5.5f+2.5f*NativeEntranceMath.Rand(8301,i))*NativeEntranceMath.EaseOut(sw/.7f),u=sw/.9f;var p=hit+d*reach;Beam(fx,view,p,p-d*(.4f+.35f*(1-u)),Vector3.Lerp(Flame0,Orange,u)*(1.7f*(1-u)),.022f,.6f,u,8300+i);}
+                for(int i=0,n=N(14,q);i<n;i++){float a=i*6.2831853f/n;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float u=NativeEntranceMath.Clamp01(sw/.6f);Flame(fx,hit+d*(.25f+1.3f*u)+new Vector3(0,.1f+.22f*u,0),Vector3.Lerp(Orange,Deep,u),(1-u)*.8f,.18f+.28f*u,u,8350+i,floor);}
+            }
+            NativeEntranceFx.Sparks(fx,t,SlamAt,Vent,new Vector3(0,1,0),1.1f,Context.Low?18:40,7,.9f,9,.5f,Flame0*3,Ember,.016f,8400,q,floor);
+            {Staff(SlamAt,out var heel,out _);NativeEntranceFx.GroundDust(fx,t,SlamAt,new Vector3(heel.X,floor,heel.Z),N(16,q),.3f,4,1.2f,Ash*3,.55f,.6f,8450,q,floor);}
+        }
+        /// <summary>A flame tongue from `foot`: three tapering segments up `height` m leaning out along `lean`, swaying, curling sideways by
+        /// `curl`, white-hot at its foot, orange, its tip red; `life` 0..1 (it grows, then thins and fades), climbing by `climb` of its
+        /// height as it lives. Slow sways only (Reduced-safe).</summary>
+        private static void Tongue(INativeEntranceFx fx,in NativeEntranceView v,Vector3 foot,Vector3 lean,float height,float width,float curl,float phase,float t,float life,float climb,float gain,int seed)
+        {
+            if(gain<=.01f||height<=.02f)return;
+            float grow=NativeEntranceMath.Smooth(life/.3f),fade=(1-NativeEntranceMath.Smooth((life-.55f)/.45f))*gain;if(fade<=.01f)return;
+            var side=new Vector3(-lean.Z,0,lean.X);float sl=side.Length();side=sl>1e-4f?side/sl:Vector3.UnitX;
+            var start=foot+new Vector3(0,height*.6f*life*climb,0);var prev=start;float len=height*grow;
+            for(int k=1;k<=3;k++)
+            {
+                float u=k/3f,sway=((float)Math.Sin(t*3.1f+phase+u*2.2f)*.16f+(float)Math.Sin(t*1.7f+phase*1.3f)*.07f)*u*len;
+                var p=start+new Vector3(0,len*u,0)+lean*(len*u*u)+side*(sway+curl*u*u*len*.35f);
+                var c=k==1?Vector3.Lerp(White0*3.2f,Flame0*2.6f,.3f):k==2?Orange*2.1f:Deep*1.3f;
+                Beam(fx,v,prev,p,c*fade,width*(1.05f-.3f*k),.55f,life,seed+k);prev=p;
+            }
+        }
+        /// <summary>River `k`'s centre at radius `r` (the same path the set script lays: tools/intros/elemental_set.py fire_river).</summary>
+        public static Vector3 River(int k,float r){float a=Rivers[k]+.22f*(float)Math.Sin(r*.31f+k*1.7f)+.08f*(float)Math.Sin(r*.83f+k);return new Vector3((float)Math.Cos(a)*r,NativeEntranceStage.FloorY-.1f,(float)Math.Sin(a)*r);}
+    }
+
+    // =====================================================================================================================
+    // STILL TIDE (water)
+    // =====================================================================================================================
+    /// <summary>
+    /// Still Tide, the water staff's intro (8.2 s, the name at 6.4 s; docs/INTROS-ELEMENTAL.md). A drowned colonnade under the moon:
+    /// the pilot stands ankle-deep, head bowed; the tide comes in and a wave rears up behind it, its lip curling; at a sweep of the
+    /// staff the wave parts down its middle and its halves surge past on either side; the staff taps the water and frost races up
+    /// both walls, freezing them mid-curl, the spray hanging in the air as glints (the camera orbits through the stopped moment); the
+    /// pilot walks out between the frozen waves. The two halves are the bank's own pieces (liquid, then frozen), posed by Half.
+    /// </summary>
+    public sealed class NativeIntroStillTide:NativeIntroElementalScript
+    {
+        public const string Id=NativeIntroCatalog.WeaponPrefix+"water";public const string Name="Still Tide";
+        public const float Total=8.2f,CardAt=6.4f;
+        public const float RiseFrom=1.3f,RearFrom=1.75f,RearAt=2.4f,SweepAt=2.95f,Parted=3.55f,FreezeAt=3.75f,HoldFrom=4.85f;
+        /// <summary>Where the pilot stands throughout: the hero mark (the walls freeze on either side of it).</summary>
+        public static readonly Vector3 Mark=OnLine(0);
+        /// <summary>The water over the floor (m) before and after the tide (tools/intros/elemental_set.py WATER_*).</summary>
+        public const float Shallow=.14f,Tide=.22f;
+        /// <summary>The halves: their length, how far out to each side they end, how far behind the mark they rear and end.</summary>
+        public const float HalfLength=5f,Apart=3.5f,BehindRear=3.4f,BehindFinal=3.6f,Overlap=.02f;
+        /// <summary>The frost's rings round the mark (rig water/ice/k: from the previous radius to this one).</summary>
+        public static readonly float[] IceRings={1.6f,3.2f,5.5f,8.5f,14f};
+        /// <summary>The hall's skylights (hall frame: x across, z along; tools/intros/elemental_set.py WATER_SKYLIGHTS) and its height.</summary>
+        public static readonly float[] Skylights={-14f,-6f,2f};public const float VaultTop=14.2f,RoseZ=-23.6f,RoseY=10.8f;
+        private static readonly Vector3 Cyan=Hex(0x63e2ff),Foam=Hex(0xeaffff),Deep=Hex(0x2b8bd6),Moon=Hex(0xa6d4ff),Ice=Hex(0xd6faff),Teal=Hex(0x0e3a4a);
+        private static readonly string[] IceProps={"water/ice/0","water/ice/1","water/ice/2","water/ice/3","water/ice/4"};
+        /// <summary>A hall-frame point in the world (the hall runs along the hero facing).</summary>
+        public static Vector3 Hall(float x,float y,float z)=>Left*x+Fwd*z+new Vector3(0,y,0);
+        public NativeIntroStillTide():base(Id,Total,CardAt,SweepAt,0x63e2ff)
+        {
+            var m=Mark;var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
+            // The feet (the model's ankles, ModelFeet): a still stance in the shallows; the right foot set back to brace as the wave rears,
+            // the left stepping out wide as the arms sweep apart, both brought back under it as it rises from the tap.
+            Start=Stance(.13f,.04f,.15f,-.13f,-.04f,-.3f,Facing,m.X,m.Z);
+            Steps=new[]{Step(false,RearFrom+.22f,RearFrom+.5f,-.19f,-.24f,-.45f,.06f),Step(true,SweepAt-.06f,SweepAt+.2f,.34f,.1f,.32f,.07f),
+                Step(true,FreezeAt+.75f,FreezeAt+1.05f,.14f,.04f,.15f,.05f),Step(false,FreezeAt+1.0f,FreezeAt+1.3f,-.13f,-.04f,-.3f,.05f)};
+            Vector3 R(float z)=>OnLine(z,.88f);var r0=R(0);
+            // Ankle-deep and still, head bowed over the water, the staff upright at its side.
+            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(Sp,.04f).J(C,.06f).J(Hd,.36f).J(RA,-.08f,0,-.14f).J(RE,-.32f);
+            k.Key(RiseFrom-.05f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.025f).J(Sp,.05f).J(C,.07f).J(Hd,.33f).J(RA,-.08f,0,-.14f).J(RE,-.32f);
+            // It hears the sea: the chin comes up, a look back over its right shoulder (the chest turning a little with it).
+            k.Key(RearFrom-.05f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,0,-.08f,0).J(C,-.04f,-.18f,0).J(Hd,-.12f,-.42f,0).J(RA,-.12f,0,-.2f).J(RE,-.4f);
+            // It turns back to the front and takes the staff across its body in both hands, the weight settling back onto the braced foot.
+            k.Key(RearFrom+.5f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.07f).J(B,-.02f).J(C,-.04f,.06f,0).J(Hd,-.12f,.04f,0).J(RA,-.6f,0,-.2f).J(RE,-1.1f);
+            // Gathered: sinking lower under the rearing wave, the chest coiling a little to its right (the sweep's anticipation).
+            k.Key(SweepAt-.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.16f).J(B,.08f).J(Sp,0,-.1f,0).J(C,.04f,-.16f,0).J(Hd,.02f,.1f,0).J(RA,-.7f,0,-.15f).J(RE,-1.2f);
+            // The parting: the arms swept wide apart, the staff out to its left and the open right hand out to its right, the chest opening
+            // and the chin up, into a wide stance.
+            k.Key(SweepAt+.22f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,-.04f).J(Sp,0,.04f,0).J(C,-.12f,.05f,0).J(Hd,-.16f,-.04f,0).J(RA,-.3f,0,-1.35f).J(RE,-.15f).J(RH,0,0,.25f).ImpactKey();
+            k.Key(Parted,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.1f).J(B,-.05f).J(C,-.14f,.04f,0).J(Hd,-.2f,-.02f,0).J(RA,-.28f,0,-1.42f).J(RE,-.12f).J(RH,0,0,.25f).PassKey();
+            // The tap: the staff lifted a little, then its heel struck down into the water at its side, the knees giving, the chest over it,
+            // the free hand thrust down and out, palm down, eyes on the water.
+            k.Key(FreezeAt-.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.08f).J(B,-.02f).J(C,-.08f).J(Hd,-.08f).J(RA,-.5f,0,-.9f).J(RE,-.4f);
+            k.Key(FreezeAt,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.32f).J(B,.24f).J(Sp,.08f).J(C,.08f).J(Hd,.28f).J(RA,-.62f,0,-.55f).J(RE,-.2f).J(RH,.4f,0,0).ImpactKey();
+            k.Key(FreezeAt+.2f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.28f).J(B,.2f).J(Sp,.07f).J(C,.07f).J(Hd,.22f).J(RA,-.58f,0,-.55f).J(RE,-.22f).J(RH,.35f,0,0);
+            // Up slowly, looking along the left wall, then the right.
+            k.Key(FreezeAt+.7f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.12f).J(B,.04f).J(C,-.02f,.12f,0).J(Hd,-.12f,.3f,0).J(RA,-.2f,0,-.32f).J(RE,-.42f);
+            k.Key(HoldFrom+.1f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.05f).J(C,-.04f,-.12f,0).J(Hd,-.12f,-.3f,0).J(RA,-.14f,0,-.24f).J(RE,-.4f).PassKey();
+            k.Key(HoldFrom+.6f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(C,-.04f).J(Hd,-.06f,-.05f,0).J(RA,-.12f,0,-.2f).J(RE,-.4f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,-.05f,-.06f,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.04f,.05f,0);});
+            k.Key(CardAt-.3f,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f);
+            k.Key(Total,hero).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f);Keys=k;
+            // The staff: upright at its side; low across its body in both hands; swept out upright to its left; the tap
+            // beside its left foot; upright at its side.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);var across=new Vector3(-.68f,.52f,.5f);
+            Hold(0,new Vector3(.5f,-.12f,.2f),up,back);Hold(RearFrom,new Vector3(.5f,-.12f,.22f),up,back);
+            Hold(RearFrom+.5f,new Vector3(.2f,-.36f,.3f),across,new Vector3(.15f,.3f,-1));Hold(SweepAt-.1f,new Vector3(.18f,-.38f,.3f),across,new Vector3(.15f,.3f,-1));
+            Hold(SweepAt+.22f,new Vector3(.82f,.05f,.16f),new Vector3(.05f,1,.15f),new Vector3(-1,0,-.15f),new Vector3(.2f,-1,-.3f));Hold(Parted,new Vector3(.82f,.06f,.16f),new Vector3(.04f,1,.15f),new Vector3(-1,0,-.15f),new Vector3(.2f,-1,-.3f));
+            Hold(FreezeAt-.1f,new Vector3(.55f,.0f,.26f),up,back);Hold(FreezeAt,new Vector3(.45f,-.5f,.34f),new Vector3(.02f,1,.02f),back);Hold(FreezeAt+.2f,new Vector3(.45f,-.46f,.32f),new Vector3(.02f,1,.02f),back);
+            Hold(FreezeAt+.7f,new Vector3(.5f,-.14f,.22f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
+            // The camera: a glide over the water to the figure; up as the tide comes; low under the rearing wave; front and low as
+            // it parts; an orbit through the frozen moment; ahead of it walking out; the centred hero frame between the walls.
+            Rig.Dolly(0,L(.5f,.36f,9.6f),L(.3f,.4f,4.8f),m+new Vector3(0,1.0f,0),m+new Vector3(0,1.15f,0),38,34).Ease(NativeIntroEase.Out).Focus(0,0,.4f)
+               .Dolly(RiseFrom,L(2.6f,1.7f,7.0f),L(2.2f,1.9f,6.2f),m+L(0,1.6f,-1.5f),m+L(0,2.6f,-2.8f),44,47).In(NativeIntroCut.Blend,.5f)
+               .Dolly(RearAt-.3f,L(.65f,.32f,1.9f),L(.5f,.3f,1.6f),m+L(0,2.4f,-2.4f),m+L(0,4.0f,-3.2f),54,58)
+               .Dolly(SweepAt-.05f,L(0,.55f,3.6f),L(0,.6f,3.2f),m+new Vector3(0,1.5f,0),m+new Vector3(0,1.45f,0),58,54)
+               .Orbit(FreezeAt-.07f,m,-38,38,3.4f,3.2f,.6f,1.4f,new Vector3(0,1.3f,0),new Vector3(0,1.1f,0),44,40).Ease(NativeIntroEase.Linear)
+               .Dolly(HoldFrom-.05f,L(.12f,1.3f,1.6f),L(.15f,1.25f,3.7f),L(0,1.4f,0),L(0,1.22f,0),40,35)
+               .Dolly(CardAt-.6f,L(0,1.12f,5.8f),L(0,1.12f,5.15f),L(0,.9f,0),L(0,.9f,0),40,40).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
+               .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
+            Ramps.Ramp(SweepAt,.5f,.16f,.32f).Ramp(FreezeAt,.22f,.5f,.95f);
+        }
+        /// <summary>Both hands on the staff from the gather to the sweep, which flings the right hand out.</summary>
+        protected override float TwoHands(float t)=>NativeEntranceMath.Ramp(t,RearFrom+.3f,RearFrom+.48f)*(1-NativeEntranceMath.Ramp(t,SweepAt-.02f,SweepAt+.1f));
+        /// <summary>The water's top at `t` (world y).</summary>
+        public static float Level(float t)=>NativeEntranceStage.FloorY+Shallow+(Tide-Shallow)*NativeEntranceMath.Ramp(t,RiseFrom,RearAt);
+        /// <summary>How far the wave has reared (0 under the water .. 1 full height).</summary>
+        public static float Reared(float t)=>NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-RearFrom)/(RearAt-RearFrom)));
+        /// <summary>How far the halves have swept round to the sides (0 one wall behind .. 1 flanking), held from the freeze.</summary>
+        public static float Swept(float t)=>NativeEntranceMath.Smoother((Math.Min(t,FreezeAt)-SweepAt)/(Parted-SweepAt));
+        /// <summary>Half `left`'s place and turn at `t` (its mesh: the wall along its +z from its origin, the curl toward its +x for
+        /// the right half and -x for the left; tools/intros/elemental_set.py water_half).</summary>
+        public static void Half(bool left,float t,out Vector3 at,out Quaternion turn)
+        {
+            float rise=Reared(t),sweep=Swept(t);var rear=Mark-Fwd*BehindRear-(left?Left:-Left)*Overlap;var fin=Mark+(left?Left:-Left)*Apart-Fwd*BehindFinal;
+            at=Vector3.Lerp(rear,fin,sweep);at.Y=NativeEntranceStage.FloorY-5.4f*(1-rise)*(1-rise);
+            // (it rolls: the crest pitching forward over the barrel as it rears and sweeps, held from the freeze)
+            float roll=.08f*NativeEntranceMath.Ramp(Math.Min(t,FreezeAt),RearFrom+.3f,FreezeAt);
+            float yaw=Facing+(left?1:-1)*(float)Math.PI/2*(1-sweep);float lean=(left?-1:1)*(.22f*(1-rise)+.06f*(float)Math.Sin(Math.PI*sweep)+roll);
+            turn=Quaternion.Normalize(NativeEntranceMath.Yaw(yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,-lean));
+        }
+        /// <summary>A point on half `left`'s crest (u 0..1 along it) at `t`.</summary>
+        private static Vector3 Crest(bool left,float t,float u,float height=4.68f,float reach=1.42f){Half(left,t,out var at,out var q);float e=Env(u);return at+Vector3.Transform(new Vector3((left?-1:1)*reach*(.72f+.28f*e),height*e,HalfLength*u),q);}
+        /// <summary>A half's height along its length (tools/intros/elemental_set.py wave_env): full where the halves meet (u 0), tapering
+        /// into the water over its outer third, so what rides the crest follows it down.</summary>
+        public static float Env(float u)=>(float)Math.Pow(Math.Max(0,Math.Sin(Math.PI/2*Math.Min(1,(1-u)/.32f))),.6f);
+        /// <summary>How far the frost has spread from the tap (m).</summary>
+        public static float Frost(float t)=>t<FreezeAt?0:18*NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-FreezeAt)/.7f));
+        protected override Vector3 Focus(float t,Vector3 chest)=>t<SweepAt?Mark+new Vector3(0,2.2f*Reared(t)+.8f,-1.4f*Reared(t)):chest;
+        public override string AccentAt(float t)=>t<FreezeAt?"#63e2ff":"#cff6ff";
+        public override void Lights(float t,NativeEntranceLights l)
+        {
+            base.Lights(t,l);l.FogNear=10;l.FogFar=48;var far=Hex(0x02080c);l.Fog=far;l.Background=far;l.Sky=Hex(0x4a6f8f,.42f);l.Ground=Hex(0x0e2a33,.4f);
+            l.Directional(Hall(0,RoseY,RoseZ)-Mark+new Vector3(0,4,0),Moon*(.55f+.25f*NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.6f)));
+            l.ReflectSky=Hex(0xbfe4ff,.7f);l.ReflectHorizon=Hex(0x1a5a70,.6f);l.ReflectGround=Hex(0x041014);
+            l.Add(Hall(0,RoseY,RoseZ+1.5f),Moon*3.2f,18);
+            for(int i=0;i<Skylights.Length;i++){var p=Hall(.6f,.3f,Skylights[i]-1.2f);l.Add(p+new Vector3(0,.4f,0),Moon*1.8f,6);}
+            float rear=Reared(t)*(1-NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.4f));if(rear>.01f)l.Add(Mark-Fwd*2.6f+new Vector3(0,3.2f,0),Cyan*(3.5f*rear),8);
+            float flash=Flash(t,FreezeAt,.03f,.5f);if(flash>.01f)l.Add(Mark+new Vector3(0,1.2f,.4f),Ice*(9*flash),7);
+            float ice=NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.5f);if(ice>.01f){l.Add(Mark+Left*2.3f+new Vector3(0,2.6f,0)-Fwd*.4f,Ice*(2.6f*ice),6.5f);l.Add(Mark-Left*2.3f+new Vector3(0,2.6f,0)-Fwd*.4f,Ice*(2.6f*ice),6.5f);}
+            float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c+L(.6f,.8f,2.2f),Moon*(2.2f*hero),6);}
+        }
+        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Cyan);v.Far=Hex(0x02080c);v.Floor=Hex(0x061418);v.Pool=Moon;v.Key=.8f;v.PoolLevel=.6f;return v;}
+        protected override bool Scene(float t,INativeIntroSet set)
+        {
+            if(!set.Has("water/hall"))return false;var one=Vector3.One;var q=Quaternion.Identity;
+            set.Piece("water/hall",Vector3.Zero,q,1,one,one*.9f);set.Piece("water/vault",Vector3.Zero,q,1,one,one);set.Piece("water/far",Vector3.Zero,q,1,one,one);
+            set.Piece("water/surface",new Vector3(0,Level(t),0),q,1,one,one);
+            if(t<FreezeAt){Half(true,t,out var a,out var qa);set.Piece("water/wave/L",a,qa,1,one,one);Half(false,t,out var b,out var qb);set.Piece("water/wave/R",b,qb,1,one,one);}
+            else
+            {
+                float frost=1+1.6f*Flash(t,FreezeAt+.15f,.06f,.7f);
+                Half(true,t,out var a,out var qa);set.Piece("water/frozen/L",a,qa,1,one,one*frost);Half(false,t,out var b,out var qb);set.Piece("water/frozen/R",b,qb,1,one,one*frost);
+                float front=Frost(t),r0=0;var lvl=new Vector3(Mark.X,Level(FreezeAt)+.006f,Mark.Z);
+                for(int k=0;k<IceProps.Length;k++){if(front>r0)set.Piece(IceProps[k],lvl,NativeEntranceMath.Yaw(Facing),1,one,one*(1+.8f*Flash(t,FreezeAt+r0/18*.7f,.05f,.5f)));r0=IceRings[k];}
+            }
+            return true;
+        }
+        public override void Card(float t,ref NativeIntroCardState card){base.Card(t,ref card);card.Style=NativeIntroCardStyle.Wipe;card.Ink=new Vector3(.9f,.97f,1);card.Glow=Hex(0x63e2ff,1.5f);card.Y=CardBand;}
+        private static readonly NativeIntroCue[] cues=
+        {
+            new NativeIntroCue(.05f,"intro2.water.drips","boss.deepend.drip","water",.45f),
+            new NativeIntroCue(RiseFrom,"intro2.water.rise","boss.deepend.tide","water",.6f),
+            new NativeIntroCue(RearFrom,"intro2.water.rear","magic.tidal-wave","water",.75f),
+            new NativeIntroCue(SweepAt,"intro2.water.part","boss.deepend.wave","water",.85f),
+            new NativeIntroCue(FreezeAt,"intro2.water.freeze","blast.frost","shield",.85f),
+            new NativeIntroCue(HoldFrom+.1f,"intro2.water.settle","impact.glass","shield",.3f),
+            new NativeIntroCue(CardAt,"intro2.water.name","boss.noctiel.ripple","install",.5f),
+        };
+        public override NativeIntroCue[] Cues=>cues;
+        public override void Effects(float t,INativeEntranceFx fx,float q)
+        {
+            ViewAt(t,out var view);float floor=NativeEntranceStage.FloorY,level=Level(t);
+            // Moon shafts through the broken vault, motes turning in them.
+            if(!Context.Low||q>.5f)for(int i=0;i<Skylights.Length;i++){var top=Hall(-.8f,VaultTop,Skylights[i]+.6f);var bottom=Hall(.6f,level,Skylights[i]-1.2f);NativeEntranceFx.Shaft(fx,t,top,bottom,.9f,1.5f,Moon*.06f,1,Context.Low?5:8,Context.Low?4:8,9100+i*20,q);}
+            // Drips from the vault, each a falling bead and a little splash.
+            for(int i=0,n=N(10,q);i<n;i++){float period=1.3f+.7f*NativeEntranceMath.Rand(9150,i),u=((t+NativeEntranceMath.Rand(9151,i)*period)%period)/period;var x=NativeEntranceMath.Signed(9152,i)*4;var z=-12+NativeEntranceMath.Rand(9153,i)*18;var top=Hall(x,VaultTop-1,z);var at=Vector3.Lerp(top,Hall(x,level,z),u*u);if(u<.97f)fx.Streak(at,new Vector3(0,-1,0)*(.3f+.6f*u),Foam*.6f,.008f,.05f,1,.5f,u,9150+i);else fx.Smoke(Hall(x,level+.04f,z),Foam*.6f,.35f,.12f,(u-.97f)/.03f,9160+i,floor);}
+            // The water's face: the moon laid on it under each skylight (short drifting sheens toward the lens), glints, slow.
+            for(int k=0;k<Skylights.Length;k++)for(int i=0,n=N(9,q);i<n;i++)
+            {
+                float u=(i+.5f)/n,drift=(float)Math.Sin(t*.7f+i*1.9f+k)*.25f;var c=Hall(.6f+drift,level+.006f,Skylights[k]-1.2f+(u-.5f)*5.5f);float w=.35f+.5f*(float)Math.Abs(Math.Sin(i*2.3f+t*.9f));
+                Beam(fx,view,c+Left*w,c-Left*w,Moon*(.22f*(.6f+.4f*(float)Math.Sin(t*1.3f+i*2.7f))),.018f,.5f,0,9180+k*20+i);
+            }
+            for(int i=0,n=N(22,q);i<n;i++){var p=Mark+new Vector3(NativeEntranceMath.Signed(9200,i)*5,0,NativeEntranceMath.Signed(9201,i)*5);p.Y=level+.004f;float tw=.5f+.5f*(float)Math.Sin(t*1.7f+i*2.1f);fx.Glow(p,Moon*(.16f*tw),0,.06f,3,0,9200+i);}
+            // The tide coming in: foam rolling along the colonnade's feet.
+            float tide=NativeEntranceMath.Ramp(t,RiseFrom,RearAt)*(1-NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.3f));
+            if(tide>.01f)for(int i=0,n=N(16,q);i<n;i++){float side=i%2==0?1:-1,z=-16+((t*2.4f+i*1.7f)%26);var p=Hall(side*4.7f,level+.06f,z);fx.Smoke(p,Foam,.45f*tide,.5f+.3f*NativeEntranceMath.Rand(9250,i),((t*.8f+i*.13f)%1),9250+i,floor);}
+            // The wave: spray tearing off its crest and lip, foam on its face, sheets of water running off it.
+            float liquid=t<FreezeAt?Reared(t):0;
+            if(liquid>.05f)for(int h=0;h<2;h++)
+            {
+                bool left=h==0;
+                // the foam line riding along the crest (it rolls), bright glints on it, the lip spilling into the barrel
+                for(int i=0,n=N(22,q);i<n;i++){float u=((i+.5f)/n+t*.11f)%1;var c=Crest(left,t,u)+new Vector3(0,.04f+.08f*NativeEntranceMath.Rand(9301+h,i),0);fx.Smoke(c,Foam,.5f*liquid,.22f+.16f*NativeEntranceMath.Rand(9300+h,i),((t*1.5f+i*.17f)%1),9300+h*40+i,floor);}
+                for(int i=0,n=N(8,q);i<n;i++){float u=((i+.3f)/n+t*.16f)%1;fx.Glow(Crest(left,t,u,4.78f,.95f),Foam*(.9f*liquid*(.6f+.4f*(float)Math.Sin(t*2.1f+i*2.3f))),0,.07f,3,0,9330+h*20+i);}
+                // whitewater along the lip's edge, churning
+                for(int i=0,n=N(12,q);i<n;i++){float u=((i+.5f)/n+t*.07f)%1;var lip=Crest(left,t,u,2.9f,2.7f)+new Vector3(0,.05f*(float)Math.Sin(t*2.3f+i),0);fx.Smoke(lip,Foam,.55f*liquid,.2f+.12f*NativeEntranceMath.Rand(9540+h,i),((t*1.2f+i*.21f)%1),9540+h*20+i,floor);}
+                for(int i=0,n=N(10,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.4f+i*.37f)%1);var top=Crest(left,t,u,2.72f,2.62f);var p=top+new Vector3(0,-1.2f*a,0)+Vector3.Normalize(Crest(left,t,u,2.72f,1.5f)-top)*(.25f*a);Beam(fx,view,p,top+new Vector3(0,-.9f*a+.15f,0),Foam*(.55f*liquid*(1-a)),.02f,.5f,a,9520+h*20+i);}
+                for(int i=0,n=N(14,q);i<n;i++){float u=NativeEntranceMath.Rand(9350+h,i),age=((t*1.8f+i*.11f)%1)*.55f;var c=Crest(left,t-age,u,4.1f,2.2f);var v=(Crest(left,t,u,4.1f,2.2f)-Crest(left,t-.05f,u,4.1f,2.2f))*20+new Vector3(0,1.4f,0)+Fwd*1.6f;var p=c+v*age+new Vector3(0,-4.9f*age*age,0);if(p.Y<level)continue;var vel=v+new Vector3(0,-9.8f*age,0);Beam(fx,view,p,p-vel*.035f,Foam*(.9f*liquid*(1-age/.55f)),.018f,.6f,age,9350+h*40+i);}
+                for(int i=0,n=N(14,q);i<n;i++){float u=(i+.5f)/n,a=((t*1.2f+i*.31f)%1);var top=Crest(left,t,u,2.9f-2.4f*a,.52f+.1f*a);var bot=Crest(left,t,u,2.45f-2.4f*a,.5f+.12f*a);Beam(fx,view,bot,top,Hex(0xbff0ff)*(.5f*liquid*(1-a)),.02f,.6f,a,9420+h*20+i);}
+            }
+            // The parting: a crash of spray from the middle, its droplets stopping in the air at the freeze and hanging there.
+            if(t>=SweepAt-.05f)
+            {
+                for(int i=0,n=N(40,q);i<n;i++)
+                {
+                    float born=SweepAt+.25f*NativeEntranceMath.Rand(9500,i),life=1.1f+.5f*NativeEntranceMath.Rand(9501,i);float age=Math.Min(t,FreezeAt)-born;if(age<0)continue;
+                    var d=NativeEntranceMath.Direction(9502,i,true);var v=new Vector3(d.X*3.2f,1.8f+3.4f*NativeEntranceMath.Rand(9503,i),d.Z*2.2f)+Fwd*1.2f;var o=Mark-Fwd*(2.4f+NativeEntranceMath.Rand(9504,i))+new Vector3(NativeEntranceMath.Signed(9505,i)*.6f,1.2f+2.2f*NativeEntranceMath.Rand(9506,i),0);
+                    var p=o+v*age+new Vector3(0,-4.9f*age*age,0);if(p.Y<level)continue;
+                    if(t<FreezeAt){if(age<life)fx.Streak(p,v+new Vector3(0,-9.8f*age,0),Foam*(1-age/life),.02f,.05f,.03f,.6f,age/life,9500+i);}
+                    else{float hang=t-FreezeAt;p+=new Vector3((float)Math.Sin(i+hang*.4f),(float)Math.Sin(i*1.7f+hang*.3f),(float)Math.Cos(i+hang*.35f))*(.02f*hang);float tw=.5f+.5f*(float)Math.Sin(hang*2.2f+i*1.9f);fx.Glow(p,Ice*(.75f*tw),0,.045f,3,0,9500+i);if(i%6==0&&tw>.55f)Star(fx,view,p,Ice*(.9f*(tw-.5f)),.09f,RightOf(t),Vector3.UnitY,9570+i);}
+                }
+                if(t<FreezeAt)for(int i=0,n=N(14,q);i<n;i++){float u=NativeEntranceMath.Clamp01((t-SweepAt)/.8f);var p=Mark-Fwd*(2.6f-1.8f*u)+new Vector3(NativeEntranceMath.Signed(9560,i)*(.6f+1.6f*u),.2f+1.4f*u*NativeEntranceMath.Rand(9561,i),0);fx.Smoke(p,Foam,.45f*(1-u),.45f+.8f*u,u,9560+i,floor);}
+            }
+            // The freeze: frost racing up both walls from their feet, a white bloom, sparkle, cold mist rolling low.
+            if(t>=FreezeAt)
+            {
+                float f=NativeEntranceMath.Clamp01((t-FreezeAt)/.45f);
+                if(f<1)for(int h=0;h<2;h++)for(int i=0,n=N(12,q);i<n;i++){float u=(i+.5f)/n;var foot=Crest(h==0,t,u,.2f,.1f);var top=Crest(h==0,t,u,.2f+4.3f*f,.1f+.9f*f*f);Beam(fx,view,top,Vector3.Lerp(foot,top,.55f),Ice*(2.2f*(1-f*.5f)),.03f,.6f,f,9600+h*20+i);}
+                for(int h=0;h<2;h++)for(int i=0,n=N(16,q);i<n;i++){var p=Crest(h==0,t,NativeEntranceMath.Rand(9650+h,i),.4f+4.2f*NativeEntranceMath.Rand(9652+h,i),.3f+1.6f*NativeEntranceMath.Rand(9654+h,i));float tw=.5f+.5f*(float)Math.Sin(t*2.4f+i*2.7f+h),on=NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.4f);fx.Glow(p,Ice*(.7f*tw*on),0,.06f,3,0,9650+h*20+i);if(i%4==1&&tw>.6f)Star(fx,view,p,Ice*(1.2f*(tw-.5f)*on),.16f,RightOf(t),Vector3.UnitY,9690+h*20+i);}
+                for(int i=0,n=N(12,q);i<n;i++){float u=((t-FreezeAt)*.18f+i/(float)n)%1;var p=Mark+new Vector3(NativeEntranceMath.Signed(9700,i)*3.5f,level+.15f+.2f*u,NativeEntranceMath.Signed(9701,i)*3.5f);fx.Smoke(new Vector3(p.X,level+.08f+.08f*u,p.Z),Ice*.8f,.14f*(float)Math.Sin(Math.PI*u)*NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.5f),.7f+.5f*u,u,9700+i,floor);}
+                Staff(FreezeAt,out var heel,out _);NativeEntranceFx.Sparks(fx,t,FreezeAt,new Vector3(heel.X,level+.02f,heel.Z),new Vector3(0,1,0),1.2f,Context.Low?14:30,3.5f,.6f,6,.8f,Ice*2.4f,Cyan,.012f,9750,q,floor);
+            }
+            // The ice settling: a shiver of frost off each wall's crest; the breath frosting at the hero hold.
+            for(int h=0;h<2;h++)NativeEntranceFx.Sparks(fx,t,HoldFrom+.1f+.25f*h,Crest(h==0,t,.5f,4.4f,1.0f),new Vector3(0,-1,0),1.2f,Context.Low?6:12,1.2f,.9f,5,.8f,Ice*1.4f,Cyan,.008f,9800+h*20,q,floor);
+            if(t>=CardAt-.4f){var head=Anchor(NativeEntranceAnchor.Eyes,t)-new Vector3(0,.07f,0);for(int i=0;i<3;i++){float u=((t-CardAt)*.42f+i/3f)%1;if(u<0)u+=1;fx.Smoke(head+Fwd*(.15f+.35f*u)+new Vector3(0,-.04f+.08f*u,0),Ice,.18f*(1-u),.08f+.2f*u,u,9850+i,floor);}}
+        }
+    }
+
+    // =====================================================================================================================
+    // STRIKE POINT (lightning)
+    // =====================================================================================================================
+    /// <summary>
+    /// Strike Point, the lightning staff's intro (7.2 s, the name at 5.5 s; docs/INTROS-ELEMENTAL.md). A summit under a storm: rain
+    /// on the slate, the clouds lit from inside, six conductor spires humming; arcs leap spire to spire and crawl in, the cloud over the
+    /// summit turns into a vortex and a point of light gathers in its eye; the bolt comes down with branching forks and is the pilot,
+    /// landing white-hot in a crouch (a lag-0 afterimage over the body, cooling); the branches die in the air, arcs run out over the
+    /// stone; it rises with arcs crawling on its limbs, calls a second bolt into the staff and sends it to every spire, which fire back
+    /// into the sky. In Reduced effects the flickers are held to one slow swell.
+    /// </summary>
+    public sealed class NativeIntroStrikePoint:NativeIntroElementalScript
+    {
+        public const string Id=NativeIntroCatalog.WeaponPrefix+"lightning";public const string Name="Strike Point";
+        public const float Total=7.2f,CardAt=5.5f;
+        public const float ChargeFrom=1.1f,GatherAt=2.0f,StrikeAt=2.45f,RiseFrom=3.7f,CallAt=4.3f,CallStrike=4.55f,SpireFire=4.78f;
+        /// <summary>The six spires: their bearings from the hero facing (degrees, + toward the pilot's left), their ring and their tips'
+        /// height (tools/intros/elemental_set.py SPIRE_*).</summary>
+        public static readonly float[] SpireBearings={30,90,150,-30,-90,-150};public const float SpireRing=7.6f,SpireTip=6.2f;
+        private static readonly Vector3 Violet=Hex(0xc8aaff,2.4f),Core=Hex(0xf3ecff,4.2f),Storm=Hex(0x8fa4c8),Rain=Hex(0x9fb0cc);
+        private static readonly string[] SeamProps={"lightning/seams/0","lightning/seams/1","lightning/seams/2","lightning/seams/3","lightning/seams/4","lightning/seams/5"};
+        /// <summary>The cloud's own flashes (presentation s); in Reduced only those at least .45 s apart, each widened.</summary>
+        private static readonly float[] CloudFlashes={.35f,.82f,1.24f,1.55f,1.9f,2.18f,3.25f,3.9f,5.05f,5.75f,6.5f};
+        public static Vector3 Spire(int i,float y=0){float a=Facing+SpireBearings[i]*(float)(Math.PI/180);return new Vector3((float)Math.Sin(a)*SpireRing,y,(float)Math.Cos(a)*SpireRing);}
+        public NativeIntroStrikePoint():base(Id,Total,CardAt,StrikeAt,0xc8aaff)
+        {
+            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
+            // The feet (the model's ankles, ModelFeet): it lands on one knee, the left foot planted ahead and the right knee down on the
+            // stone (ModelKneel); rising, the right foot comes forward to stand beside the left.
+            Start=Stance(.14f,.36f,.12f,-.13f,-.1f,-.3f);
+            Steps=new[]{Step(false,RiseFrom+.16f,RiseFrom+.46f,-.14f,.3f,-.28f,.08f)};
+            var r0=OnLine(0,.88f);var r1=OnLine(.3f,.88f);var rm=OnLine(.16f,.88f);
+            // The landing (the bolt is the pilot): down on one knee, the torso bowed over the front thigh, the head down, the free hand flat on
+            // the stone beside the front foot, the staff held out to its side; the impact compresses it, then it settles.
+            float[] kneel(float drop,float bow,float head,float reach)=>NativeEntranceKeys.With(NativeIntroPoses.Kneel(),v=>{v[NativeEntranceKeys.BodyY]=drop;
+                NativeEntranceKeys.Set(v,B,.22f*bow,0,0);NativeEntranceKeys.Set(v,Sp,.5f*bow,0,0);NativeEntranceKeys.Set(v,C,.3f*bow,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);
+                NativeEntranceKeys.Set(v,RA,-reach,.08f,-.1f);NativeEntranceKeys.Set(v,RE,-.06f,0,0);NativeEntranceKeys.Set(v,RH,-.3f,0,0);});
+            k.Key(0,kneel(-.62f,1.1f,.06f,1.16f)).Root(r0.X,r0.Y,r0.Z,Facing);
+            k.Key(StrikeAt,kneel(-.62f,1.1f,.08f,1.16f)).Root(r0.X,r0.Y,r0.Z,Facing).ImpactKey();
+            k.Key(StrikeAt+.12f,kneel(-.66f,1.18f,.14f,1.2f)).Root(r0.X,r0.Y,r0.Z,Facing);
+            k.Key(StrikeAt+.55f,kneel(-.63f,1.1f,.04f,1.16f)).Root(r0.X,r0.Y,r0.Z,Facing);
+            // The head comes up out of the landing: it looks at the storm.
+            k.Key(RiseFrom-.38f,NativeEntranceKeys.With(kneel(-.58f,.8f,-.45f,.95f),v=>NativeEntranceKeys.Set(v,CapturedRig.Neck,-.2f,0,0))).Root(r0.X,r0.Y,r0.Z,Facing);
+            // The push up: the weight forward over the front foot, the hand leaving the stone; then up, the right foot coming through.
+            k.Key(RiseFrom,kneel(-.55f,.9f,-.3f,.6f)).Root(r0.X,r0.Y,r0.Z,Facing).PassKey();
+            k.Key(RiseFrom+.24f,stand).Root(rm.X,rm.Y,rm.Z,Facing).Drop(-.2f).J(B,.22f).J(C,-.02f).J(Hd,-.06f).J(RA,-.3f,0,-.3f).J(RE,-.5f).PassKey();
+            k.Key(RiseFrom+.48f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.04f).J(B,.02f).J(C,-.06f).J(Hd,-.08f).J(RA,-.22f,0,-.36f).J(RE,-.5f);
+            // The call: a dip, the staff drawn down to the hip; then thrust up to the sky, the chest open, the head back, the free arm flung
+            // out and down.
+            k.Key(CallAt-.08f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.12f).J(B,.1f).J(C,.05f).J(Hd,.1f).J(RA,-.14f,0,-.34f).J(RE,-.62f);
+            k.Key(CallAt+.15f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(.0f).J(B,-.07f).J(C,-.14f).J(Hd,-.38f).J(RA,-.2f,0,-1.05f).J(RE,-.15f).J(RH,0,0,.2f);
+            // The bolt hits the staff: rocked back by it.
+            k.Key(CallStrike,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.07f).J(B,-.13f).J(C,-.18f).J(Hd,-.42f).J(RA,-.26f,0,-1.2f).J(RE,-.12f).J(RH,0,0,.2f).ImpactKey();
+            k.Key(SpireFire-.08f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.03f).J(B,-.06f).J(C,-.1f).J(Hd,-.3f).J(RA,-.26f,0,-1.12f).J(RE,-.18f);
+            // The plant: the staff driven down beside its foot, the knees giving, the free arm swinging out with it.
+            k.Key(SpireFire,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.22f).J(B,.16f).J(C,.06f).J(Hd,.05f).J(RA,-.45f,0,-.85f).J(RE,-.3f).ImpactKey();
+            k.Key(SpireFire+.25f,stand).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.16f).J(B,.1f).J(C,.04f).J(Hd,0).J(RA,-.35f,0,-.65f).J(RE,-.35f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Head,-.08f,.12f,0);NativeEntranceKeys.Set(q,CapturedRig.RArm,-.16f,-.1f,-.3f);});
+            k.Key(CardAt-.2f,hero).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.04f);
+            k.Key(Total,hero).Root(r1.X,r1.Y,r1.Z,Facing).Drop(-.04f);Keys=k;
+            // The staff: held out to its side in the landing, upright at its side as it rises, down to the hip, thrust up to the sky, driven
+            // down beside its left foot, upright at its side.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);
+            Hold(0,new Vector3(.56f,.07f,.3f),new Vector3(.12f,1,.8f),back);Hold(RiseFrom,new Vector3(.55f,.04f,.3f),new Vector3(.1f,1,.7f),back);
+            Hold(RiseFrom+.48f,new Vector3(.5f,-.12f,.2f),up,back);Hold(CallAt-.08f,new Vector3(.46f,-.3f,.2f),up,back);
+            Hold(CallAt+.15f,new Vector3(.7f,.52f,.1f),new Vector3(-.12f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));Hold(CallStrike+.1f,new Vector3(.68f,.47f,.06f),new Vector3(-.12f,1,.04f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));
+            Hold(SpireFire,new Vector3(.44f,-.46f,.32f),new Vector3(.02f,1,.04f),back);Hold(SpireFire+.25f,new Vector3(.46f,-.38f,.28f),up,back);
+            Hold(CardAt-.2f,new Vector3(.5f,-.1f,.2f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
+            // The camera: low and wide on the summit, tilting to the sky; straight up into the vortex, turning; down from the cloud;
+            // the smash to the strike; a fast orbit; rising with it; wide with the spires firing; the hero frame.
+            Rig.Dolly(0,L(4.6f,.42f,7.2f),L(4.1f,.46f,6.5f),L(0,1.8f,0),L(0,3.4f,-1.6f),52,54)
+               .Hold(ChargeFrom,L(0,.55f,.9f),L(0,18f,-5f),72).Roll(0,24).Ease(NativeIntroEase.Linear)
+               .Dolly(GatherAt,L(.4f,19f,6.5f),L(.3f,15f,5f),new Vector3(0,0,0),new Vector3(0,.5f,0),40,44)
+               .Dolly(StrikeAt,L(3.2f,.25f,3.8f),L(3.0f,.3f,3.5f),L(0,1.0f,0),L(0,.8f,0),62,56)
+               .Orbit(StrikeAt+.3f,Vector3.Zero,-40,-205,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
+               .Crane(RiseFrom,L(-1.1f,.55f,2.3f),L(-.95f,.55f,2.05f),.9f,new Vector3(0,-.1f,0),Vector3.Zero,38,36).Follow(NativeEntranceAnchor.Head,.04f)
+               .Dolly(CallAt-.05f,L(.35f,.5f,6.4f),L(.3f,.55f,5.8f),L(0,2.3f,0),L(0,2.1f,0),58,56)
+               .Orbit(CardAt-.55f,OnLine(.3f),-34,-22,4.3f,4.1f,.8f,.85f,L(.15f,.85f,.3f),L(.12f,.86f,.3f),46,44).Roll(9,7).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.4f)
+               .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.08f,0);
+            Ramps.Ramp(StrikeAt,.22f,.38f,.9f);
+        }
+        public override float Solid(float t,int bone)=>t<StrikeAt?0:1;
+        /// <summary>The right knee down on the stone from the landing until it rises (the drawn knee on the floor, NativeIntroFeet.OnKnee).</summary>
+        protected override float ModelKneel(float t,bool left)=>left?0:1-NativeEntranceMath.Ramp(t,RiseFrom+.04f,RiseFrom+.28f);
+        /// <summary>The strike's white-hot copy over the body, cooling.</summary>
+        public override int Ghosts(float t,Span<NativeEntranceGhost> into)
+        {
+            if(t<StrikeAt||t>StrikeAt+.6f||into.Length<1)return 0;float u=(t-StrikeAt)/.6f;
+            into[0]=new NativeEntranceGhost{Lag=0,Opacity=(1-u)*(1-u),Color=Vector3.Lerp(new Vector3(1.4f,1.35f,1.6f),Hex(0xc8aaff,1.4f),u),Offset=Vector3.Zero};return 1;
+        }
+        protected override Vector3 Focus(float t,Vector3 chest)=>t<StrikeAt?new Vector3(0,1.2f,0):chest;
+        public override string AccentAt(float t)=>t<StrikeAt?"#1a1430":"#c8aaff";
+        /// <summary>The spires' charge 0..1: humming from the start, rising to the strike, spent, charged again by the call.</summary>
+        public static float Charge(float t)=>.2f+.8f*NativeEntranceMath.Ramp(t,ChargeFrom,StrikeAt-.05f)*(1-NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.4f))+.9f*NativeEntranceMath.Ramp(t,CallStrike,SpireFire)*(1-NativeEntranceMath.Ramp(t,SpireFire+.3f,SpireFire+1.2f));
+        /// <summary>The cloud's flash level at `t` (Reduced: only those .45 s apart, widened by Flash).</summary>
+        private float Cloud(float t)
+        {
+            float v=0,last=-10;for(int i=0;i<CloudFlashes.Length;i++){float at=CloudFlashes[i];if(Context.Reduced&&at-last<.45f)continue;last=at;v=Math.Max(v,Flash(t,at,.02f,.12f));}
+            return v;
+        }
+        public override void Lights(float t,NativeEntranceLights l)
+        {
+            base.Lights(t,l);float cloud=Cloud(t),strike=Flash(t,StrikeAt,.015f,.3f),call=Flash(t,CallStrike,.015f,.25f);
+            l.FogNear=12;l.FogFar=70;var far=Vector3.Lerp(Hex(0x05070c),Hex(0x2a2f44),.6f*cloud+.8f*strike);l.Fog=far;l.Background=far;
+            l.Sky=Storm*(.22f+.7f*cloud+1.4f*strike);l.Ground=Hex(0x101420,.3f);
+            l.Directional(new Vector3(-.3f,1,-.25f),Storm*(.14f+1.0f*cloud+2.2f*strike+1.3f*call));
+            l.ReflectSky=Storm*(.35f+1.2f*cloud+2.4f*strike+1.4f*call);l.ReflectHorizon=Hex(0x2a3044,.8f);l.ReflectGround=Hex(0x05070c);
+            l.Add(new Vector3(-6,26,-14),Storm*(14*cloud),60);
+            float charge=Charge(t);l.Add(Spire(0,4)+Spire(1,0)*.3f,Violet*(1.4f*charge),9);l.Add(Spire(4,4)+Spire(3,0)*.3f,Violet*(1.4f*charge),9);
+            float eye=NativeEntranceMath.Ramp(t,GatherAt-.3f,StrikeAt)*(1-NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.1f));if(eye>.01f)l.Add(new Vector3(0,16,0),Core*(3*eye),30);
+            if(strike>.01f)l.Add(new Vector3(0,2.2f,.3f),Core*(16*strike),14);
+            float glow=NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.05f)*(1-NativeEntranceMath.Ramp(t,StrikeAt+.3f,RiseFrom+.5f));if(glow>.01f)l.Add(new Vector3(0,.3f,0),Violet*(2.5f*glow),4);
+            if(call>.01f){Staff(CallStrike,out _,out var head);l.Add(head,Core*(9*call),9);}
+            float crackle=NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.1f);if(crackle>.01f){Staff(t,out _,out var head);l.Add(head+new Vector3(0,.1f,0),Violet*((.8f+.4f*Flicker(t,2))*crackle),3);}
+            float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c-Fwd*1.6f+new Vector3(0,.9f,0),Violet*(3.5f*hero),6);}
+        }
+        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Hex(0xc8aaff));v.Far=Hex(0x05070c);v.Floor=Hex(0x0c0f16);v.Pool=Violet;v.Key=.45f;v.PoolLevel=.3f+1.6f*Flash(t,StrikeAt,.02f,.5f);return v;}
+        protected override bool Scene(float t,INativeIntroSet set)
+        {
+            if(!set.Has("lightning/plateau"))return false;var one=Vector3.One;var q=Quaternion.Identity;
+            set.Piece("lightning/plateau",Vector3.Zero,q,1,one,one);set.Piece("lightning/spires",Vector3.Zero,q,1,one,one);set.Piece("lightning/far",Vector3.Zero,q,1,one,one);
+            float charge=Charge(t);for(int i=0;i<SeamProps.Length;i++)set.Piece(SeamProps[i],Vector3.Zero,q,1,one,one*(.15f+1.6f*charge*(.85f+.15f*Flicker(t,i))));
+            // the pools: dark, catching every flash (the cloud's, the strike's, the call's, the spires') and the spires' charge
+            float flash=Math.Max(.8f*Cloud(t),Math.Max(1.7f*Flash(t,StrikeAt,.015f,.4f),Math.Max(1.3f*Flash(t,CallStrike,.015f,.3f),1.1f*Flash(t,SpireFire,.02f,.35f))));
+            set.Piece("lightning/puddles",Vector3.Zero,q,1,one,one*(.05f+.25f*charge+1.6f*flash));
+            // the scorch round the strike: there from the strike on, its cracks cooling from white-hot
+            if(t>=StrikeAt){float hot=1-NativeEntranceMath.Ramp(t,StrikeAt+.05f,StrikeAt+1.8f);set.Piece("lightning/scorch",Vector3.Zero,q,1,one,one*(.12f+2.6f*hot));}
+            set.Piece("lightning/crater",Vector3.Zero,q,1,one,one*(.3f+2.2f*NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.05f)*(1-NativeEntranceMath.Ramp(t,StrikeAt+.2f,RiseFrom+1))));
+            return true;
+        }
+        public override void Card(float t,ref NativeIntroCardState card){base.Card(t,ref card);card.Style=NativeIntroCardStyle.Slam;card.Ink=new Vector3(.97f,.95f,1);card.Glow=Hex(0xc8aaff,1.8f);card.Y=CardBand;}
+        private static readonly NativeIntroCue[] cues=
+        {
+            new NativeIntroCue(.05f,"intro2.storm.bed","structure.rumble","lightning",.45f),
+            new NativeIntroCue(ChargeFrom,"intro2.storm.charge","blast.static","lightning",.55f),
+            new NativeIntroCue(GatherAt,"intro2.storm.gather","chip.vacuum","dash",.6f),
+            new NativeIntroCue(StrikeAt,"intro2.storm.strike","magic.lightning.hit","lightning",1f),
+            new NativeIntroCue(StrikeAt+.25f,"intro2.storm.after","blast.shock","explosion",.6f),
+            new NativeIntroCue(RiseFrom,"intro2.storm.crackle","status.shock-zap","electric-hook",.45f),
+            new NativeIntroCue(CallStrike,"intro2.storm.call","magic.lightning.shot","electric-hook-hit",.8f),
+            new NativeIntroCue(CardAt,"intro2.storm.name","blast.quake","explosion",.5f),
+        };
+        public override NativeIntroCue[] Cues=>cues;
+        public override void Effects(float t,INativeEntranceFx fx,float q)
+        {
+            ViewAt(t,out var view);float floor=NativeEntranceStage.FloorY,flick=Context.Reduced?.42f:.05f,cloud=Cloud(t);
+            // Rain, slanting.
+            var slant=new Vector3(.9f,-11,.4f);
+            for(int i=0,n=N(46,q);i<n;i++){float u=((t*1.1f+NativeEntranceMath.Rand(10100,i))%1);var p=new Vector3(NativeEntranceMath.Signed(10101,i)*9,9-9*u,NativeEntranceMath.Signed(10102,i)*9)+Fwd*2;if(p.Y<floor)continue;fx.Streak(p,slant,Rain*(.18f+.25f*cloud),.006f,.2f,.04f,.3f,u,10100+i);}
+            // The cloud's underside, lit from inside.
+            for(int i=0,n=N(18,q);i<n;i++){float a=i*.349f+t*.06f+(t>ChargeFrom?(t-ChargeFrom)*.5f*(1-i/18f):0),r=4+16*NativeEntranceMath.Rand(10150,i);var p=new Vector3((float)Math.Sin(a)*r,19+3*NativeEntranceMath.Rand(10151,i),(float)Math.Cos(a)*r);fx.Smoke(p,Hex(0x1a1f2c)+Storm*(.25f*cloud),.75f,6+4*NativeEntranceMath.Rand(10152,i),.4f,10150+i,-50);}
+            for(int i=0;i<3;i++){float c=cloud*(i==0?1:.5f);if(c>.02f)fx.Glow(new Vector3(-6+i*7,22,-14+i*5),Storm*(1.4f*c),0,9,0,0,10180+i);}
+            for(int i=0,n=N(16,q);i<n;i++){float a=Facing+(float)Math.PI+(i/(float)n-.5f)*4.2f,r=34+10*NativeEntranceMath.Rand(10160,i);var p=new Vector3((float)Math.Sin(a)*r,5+7*NativeEntranceMath.Rand(10161,i),(float)Math.Cos(a)*r);float lit=cloud*(.5f+.5f*NativeEntranceMath.Rand(10162,i));fx.Smoke(p,Hex(0x161b26)+Storm*(.35f*lit),.7f,7+5*NativeEntranceMath.Rand(10163,i),.45f,10160+i,-50);}
+            // St Elmo's fire on the spire tips and arcs creeping up them; arcs leaping spire to spire and crawling in over the stone.
+            float charge=Charge(t);
+            for(int i=0;i<6;i++){var tip=Spire(i,SpireTip);fx.Glow(tip,Violet*(.5f*charge*(.8f+.2f*Flicker(t,i))),0,.4f+.3f*charge,1,0,10200+i);if(charge>.3f&&NativeEntranceMath.Rand(10210+i,(int)(t/flick))<q)Bolt(fx,view,t,tip,tip+NativeEntranceMath.Direction(10220+i,(int)(t/flick),true)*.6f,1.2f,flick,Violet*(charge*.8f),Violet*.15f,.01f,10220+i*7,0,q);}
+            if(t>=ChargeFrom&&t<StrikeAt-.06f)
+            {
+                float u=NativeEntranceMath.Clamp01((t-ChargeFrom)/(StrikeAt-ChargeFrom));
+                for(int i=0;i<6;i++){if(NativeEntranceMath.Rand(10300+i,(int)(t/Math.Max(flick,.12f)))>.35f+.5f*u)continue;Bolt(fx,view,t,Spire(i,SpireTip-.2f),Spire((i+1)%6,SpireTip-.2f),1,flick,Core*(.5f+.5f*u),Violet*.2f,.016f,10300+i*11,i%2,q,.75f);}
+                for(int i=0;i<6;i++){var from=Spire(i,.08f);var to=Vector3.Lerp(from,new Vector3(0,.08f,0),.25f+.7f*u);Bolt(fx,view,t,from,to,.8f,flick,Violet*(.6f+.4f*u),Violet*.12f,.012f,10400+i*9,0,q,.7f);}
+            }
+            // The vortex: the cloud turning over the summit, a point of light gathering in its eye.
+            float eye=NativeEntranceMath.Ramp(t,GatherAt-.4f,StrikeAt)*(1-NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.06f));
+            if(t>ChargeFrom&&t<StrikeAt+.3f){for(int i=0,n=N(16,q);i<n;i++){float a=i*.3927f+(t-ChargeFrom)*(1.2f+.8f*i/16f),r=1.5f+6*(i/16f)*(1-.4f*eye);fx.Smoke(new Vector3((float)Math.Sin(a)*r,17.5f-1.2f*i/16f,(float)Math.Cos(a)*r),Hex(0x2a3044)+Violet*(.05f*eye),.6f,3.5f,.5f,10500+i,-50);}}
+            if(eye>.01f){fx.Glow(new Vector3(0,16.5f,0),Core*(.8f*eye),0,1.4f*eye,1,0,10550);fx.Glow(new Vector3(0,16.5f,0),Violet*(.4f*eye),0,4*eye,0,0,10551);}
+            // The strike: the trunk and its forks from the eye to the crouch, white over violet; the branches hang and die.
+            float trunk=NativeEntranceMath.Ramp(t,StrikeAt-.03f,StrikeAt)*(1-NativeEntranceMath.Ramp(t,StrikeAt+.12f,StrikeAt+.45f));
+            if(trunk>.01f)
+            {
+                var top=new Vector3(0,16.5f,0);var bottom=new Vector3(0,1.1f,0);float rf=Context.Reduced?.42f:.06f;
+                Bolt(fx,view,t,top,bottom,1.0f,rf,Core*trunk,Violet*(.5f*trunk),.07f,10600,3,q);Bolt(fx,view,t+.017f,top,bottom,1.3f,rf,Violet*(.7f*trunk),Violet*(.1f*trunk),.03f,10650,2,q);
+            }
+            float branches=NativeEntranceMath.Ramp(t,StrikeAt-.02f,StrikeAt)*(1-NativeEntranceMath.Ramp(t,StrikeAt+.1f,StrikeAt+1.1f));
+            if(branches>.01f)for(int b=0;b<6;b++)
+            {
+                float h=4+9*NativeEntranceMath.Rand(10700,b),a=NativeEntranceMath.Rand(10701,b)*6.283f;var from=new Vector3(NativeEntranceMath.Signed(10702,b)*.4f,h,NativeEntranceMath.Signed(10703,b)*.4f);
+                var to=from+new Vector3((float)Math.Sin(a)*(2+3*NativeEntranceMath.Rand(10704,b)),-(1.5f+3*NativeEntranceMath.Rand(10705,b)),(float)Math.Cos(a)*(2+3*NativeEntranceMath.Rand(10704,b)));
+                Bolt(fx,view,StrikeAt+b*.01f,from,to,1.1f,10,Violet*(branches*(.6f+.4f*NativeEntranceMath.Rand(10706,b))),Violet*(.08f*branches),.014f,10710+b*13,b%2,q);
+            }
+            if(t>=StrikeAt&&t<StrikeAt+.25f){float w=1-(t-StrikeAt)/.25f;fx.Glow(new Vector3(0,1.0f,0),(Vector3.One*1.2f+Violet*.5f)*w*(Context.Reduced?.5f:1),0,2.6f,1,0,10790);}
+            // Arcs racing out over the stone, chips of rock and a burst of rain thrown off.
+            float g=t-StrikeAt;
+            if(g>0&&g<.7f){int arcs=Context.Low?4:7;for(int i=0;i<arcs;i++){float a=i*6.2831853f/arcs+.3f,R=.3f+g*7;var from=new Vector3((float)Math.Sin(a)*.2f,floor+.02f,(float)Math.Cos(a)*.2f);var to=new Vector3((float)Math.Sin(a)*R,floor+.02f,(float)Math.Cos(a)*R);Bolt(fx,view,t,from,to,.7f,flick,Violet*(1.4f*(1-g/.7f)),Violet*(.1f*(1-g/.7f)),.016f,10800+i*7,0,q,.6f);}}
+            NativeEntranceFx.Sparks(fx,t,StrikeAt,new Vector3(0,.2f,0),new Vector3(0,1,0),1.3f,Context.Low?16:36,8,.8f,9,.6f,Core,Violet,.014f,10900,q,floor);
+            NativeEntranceFx.GroundDust(fx,t,StrikeAt,new Vector3(0,floor,0),N(16,q),.3f,5,1.1f,Hex(0x3a3f4c),.5f,.6f,10950,q,floor);
+            if(g>0&&g<.6f)for(int i=0,n=N(28,q);i<n;i++){var d=NativeEntranceMath.Direction(10980,i,true);var v=new Vector3(d.X*6,2+3*Math.Abs(d.Y),d.Z*6);var p=new Vector3(0,.5f,0)+v*g+new Vector3(0,-4.9f*g*g,0);if(p.Y<floor)continue;fx.Streak(p,v,Rain*(.8f*(1-g/.6f)),.008f,.05f,.04f,.4f,g,10980+i);}
+            // Arcs crawling over its limbs while it rises; the staff head crackling from then on.
+            if(t>=StrikeAt&&t<CallAt+.2f)
+            {
+                float on=1-NativeEntranceMath.Ramp(t,RiseFrom+.4f,CallAt+.2f);
+                for(int i=0;i<(Context.Low?3:6);i++){var a=Anchor((NativeEntranceAnchor)((int)NativeEntranceAnchor.LeftShoulder+(i%2)),t);var b=Anchor(i<2?NativeEntranceAnchor.LeftHand+(i%2):i<4?NativeEntranceAnchor.LeftKnee+(i%2):NativeEntranceAnchor.Chest,t);Bolt(fx,view,t,a,b,1.4f,flick,Violet*(1.1f*on),Violet*(.08f*on),.008f,11000+i*7,0,q);}
+            }
+            if(t>=StrikeAt){Staff(t,out _,out var head);for(int i=0;i<2;i++)Bolt(fx,view,t,head,head+NativeEntranceMath.Direction(11050+i,(int)(t/flick),true)*.35f,1.2f,flick,Violet*.9f,Violet*.1f,.008f,11050+i*7,0,q);fx.Glow(head,Violet*(.6f+.2f*Flicker(t,4)),0,.22f,1,0,11060);}
+            // The call: a bolt from the cloud into the staff head; from the head to every spire; the spires firing back into the sky.
+            float call=NativeEntranceMath.Ramp(t,CallStrike-.02f,CallStrike)*(1-NativeEntranceMath.Ramp(t,CallStrike+.1f,SpireFire+.05f));
+            if(call>.01f){Staff(CallStrike,out _,out var head);Bolt(fx,view,t,new Vector3(head.X+.4f,17,head.Z-.6f),head,1.1f,Context.Reduced?.42f:.06f,Core*call,Violet*(.4f*call),.05f,11100,2,q);}
+            float fire=NativeEntranceMath.Ramp(t,SpireFire-.02f,SpireFire)*(1-NativeEntranceMath.Ramp(t,SpireFire+.25f,SpireFire+.7f));
+            if(fire>.01f){Staff(SpireFire,out _,out var head);for(int i=0;i<6;i++){Bolt(fx,view,t,head,Spire(i,SpireTip),1,flick,Core*(.8f*fire),Violet*(.15f*fire),.022f,11200+i*13,0,q);Bolt(fx,view,t,Spire(i,SpireTip),Spire(i,SpireTip)+new Vector3(NativeEntranceMath.Signed(11300,i)*1.5f,13,NativeEntranceMath.Signed(11301,i)*1.5f),1.2f,flick,Core*(.7f*fire),Violet*(.12f*fire),.03f,11300+i*13,0,q,.6f);}}
+        }
+    }
+
+    // =====================================================================================================================
+    // BLACK SUN (darkness)
+    // =====================================================================================================================
+    /// <summary>
+    /// Black Sun, the darkness staff's intro (8.4 s, the name at 6.6 s; docs/INTROS-ELEMENTAL.md). An obsidian plain at dusk, the sun
+    /// framed in a broken gate: the moon slides over it and the light drains; every monolith's shadow peels off the ground and pours to
+    /// the centre like ink; at totality the corona blooms round the black sun and the poured dark rises into a void; the pilot steps out
+    /// of it (built in as it crosses the void's face), the dark running off its body; one eye of light ignites on its visor; the staff
+    /// rises and the dark spreads behind its shoulders like wings, then snaps back to the monoliths. Centred, symmetrical frames.
+    /// </summary>
+    public sealed class NativeIntroBlackSun:NativeIntroElementalScript
+    {
+        public const string Id=NativeIntroCatalog.WeaponPrefix+"darkness";public const string Name="Black Sun";
+        public const float Total=8.4f,CardAt=6.6f;
+        public const float EclipseFrom=1.0f,PourFrom=1.35f,TotalityAt=2.8f,RiseFrom=2.9f,OpenAt=3.55f,StepFrom=3.75f,EyeAt=4.55f,WingsAt=5.05f,SnapAt=5.7f;
+        /// <summary>The walk out of the void: from WalkFrom to WalkTo, WalkLength m along the hero facing from 1.75 m behind the mark.</summary>
+        public const float WalkFrom=3.6f,WalkTo=5.0f,WalkLength=1.05f;
+        /// <summary>The void (its centre: on the forward line behind the mark) and the plane the pilot crosses out of it.</summary>
+        public static readonly Vector3 Void=OnLine(-1.55f,1.25f);
+        /// <summary>The sun: behind the pilot and up (m), its disc's radius; the moon slides over it (rig darkness/moon).</summary>
+        public static readonly Vector3 Sun=OnLine(-58f,17f);public const float SunRadius=5.2f;
+        /// <summary>The monoliths' bearings from the hero facing (degrees) and ring (tools/intros/elemental_set.py DARK_*); the gate
+        /// stands behind at GateZ on the forward line.</summary>
+        public static readonly float[] Monoliths={55,95,135,-55,-95,-135};public const float MonolithRing=11.5f,GateZ=-14f;
+        private static readonly Vector3 Violet=Hex(0xaf6eff),Rim=Hex(0xc04dff),Halo=Hex(0xd9a6ff),Ink=new Vector3(.012f,.006f,.02f),Dusk=Hex(0xffd9b0),Mote=Hex(0xf0b0ff);
+        private static readonly string[] GlyphProps={"darkness/glyphs/0","darkness/glyphs/1","darkness/glyphs/2","darkness/glyphs/3","darkness/glyphs/4","darkness/glyphs/5"};
+        public static Vector3 Monolith(int i,float y=0){float a=Facing+Monoliths[i]*(float)(Math.PI/180);return new Vector3((float)Math.Sin(a)*MonolithRing,y,(float)Math.Cos(a)*MonolithRing);}
+        public NativeIntroBlackSun():base(Id,Total,CardAt,TotalityAt,0xaf6eff)
+        {
+            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();var v0=OnLine(-1.75f);var plan=new System.Collections.Generic.List<NativeEntrancePose.Step>();
+            // The feet (the model's ankles, ModelFeet): still in the void, then three slow, low steps out of it, the right foot set out wide
+            // as the wings open.
+            Start=Stance(.12f,.02f,.12f,-.12f,-.02f,-.25f,Facing,v0.X,v0.Z);
+            var line=new NativeIntroFeet.Track(v0,Facing,WalkFrom,WalkTo,WalkLength,.45f,.5f);RootPath=(t,r)=>{if(t<=WalkFrom||t>=WalkTo+.6f)return r;var a=line.At(t);return new Vector3(a.X,r.Y,a.Z);};
+            NativeIntroFeet.Walk(plan,line,true,3,WalkFrom+.05f,.46f,.4f,.1f,.08f,.06f);
+            var e=OnLine(-1.75f+WalkLength);plan.Add(Step(false,WingsAt-.02f,WingsAt+.18f,-.21f,-.02f,-.32f,.05f,Facing,e.X,e.Z));Steps=plan.ToArray();
+            var r0=new Vector3(v0.X,.88f,v0.Z);var w4=new Vector3(e.X,.88f,e.Z);
+            // In the void: still, head bowed.
+            k.Key(0,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.08f).J(C,.1f).J(Hd,.42f).J(RA,-.08f,0,-.14f).J(RE,-.3f);
+            k.Key(WalkFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.04f).J(Sp,.08f).J(C,.1f).J(Hd,.4f).J(RA,-.08f,0,-.14f).J(RE,-.3f);
+            // Out of it: a slow, low, stalking walk, the hips sunk and the shoulders forward, the head rising a little with each step until it
+            // is level for the eye; the free arm barely swinging.
+            for(int i=0;i<3;i++)
+            {
+                bool l=i%2==0;float sg=l?1:-1,lift=WalkFrom+.05f+i*.46f,land=lift+.4f,pass=lift+.2f;var p=line.At(pass);var c=line.At(land);float head=i==0?.28f:i==1?-.1f:-.14f;
+                k.Key(pass,stand).Root(p.X,.88f,p.Z,Facing).Drop(-.08f).J(B,.17f).J(P,0,0,-sg*.04f).J(Sp,.04f).J(C,.06f).J(Hd,head-.04f).J(RA,-.08f,0,-.14f).J(RE,-.45f).PassKey();
+                k.Key(land,stand).Root(c.X,.88f,c.Z,Facing).Drop(-.13f).J(B,.18f).J(P,0,sg*.09f).J(Sp,.04f,-sg*.04f).J(C,.06f,-sg*.08f).J(Hd,head-.08f,sg*.05f)
+                    .J(RA,l?-.24f:.18f,0,-.14f).J(RE,l?-.6f:-.35f).PassKey();
+            }
+            // The eye lit, it draws in: a hunch over the planted foot, the shoulders up, the free arm folded in (the wings' anticipation).
+            k.Key(WingsAt-.06f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.12f).J(B,.15f).J(Sp,.1f).J(C,.12f).J(Hd,.06f).J(RA,-.42f,.1f,.05f).J(RE,-1.25f);
+            // The wings: both arms thrown up and wide, the staff high out at its left, the chest pushed out and the chin up.
+            k.Key(WingsAt+.3f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.0f).J(B,-.05f).J(Sp,-.06f).J(C,-.17f).J(Hd,-.24f).J(RA,-.3f,.1f,-2.1f).J(RE,-.2f).J(RH,0,0,.25f);
+            k.Key(SnapAt-.08f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.01f).J(B,-.06f).J(Sp,-.07f).J(C,-.19f).J(Hd,-.26f).J(RA,-.28f,.1f,-2.2f).J(RE,-.16f).J(RH,0,0,.25f).PassKey();
+            // The snap: the staff planted hard at its side, the free arm whipped in across the front of the body.
+            k.Key(SnapAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.17f).J(B,.12f).J(C,.06f).J(Hd,.06f).J(RA,-.95f,.25f,.15f).J(RE,-1.05f).ImpactKey();
+            k.Key(SnapAt+.3f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.1f).J(B,.05f).J(C,.03f).J(Hd,0).J(RA,-.4f,.1f,-.06f).J(RE,-.75f);
+            var hero=NativeEntranceKeys.With(NativeIntroPoses.Hero(),q=>{NativeEntranceKeys.Set(q,CapturedRig.Chest,-.04f,-.04f,0);NativeEntranceKeys.Set(q,CapturedRig.Head,-.04f,.02f,0);});
+            k.Key(CardAt-.3f,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);
+            k.Key(Total,hero).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.03f);Keys=k;
+            // The staff: low at its side out of the void, drawn in, raised high out at its side, planted at its side.
+            var up=new Vector3(0,1,.06f);var back=new Vector3(-.25f,0,-1);
+            Hold(0,new Vector3(.5f,-.16f,.18f),up,back);Hold(WalkFrom+.5f,new Vector3(.5f,-.16f,.12f),up,back);Hold(WalkFrom+.96f,new Vector3(.5f,-.15f,.26f),up,back);Hold(WalkFrom+1.42f,new Vector3(.5f,-.16f,.14f),up,back);
+            Hold(WingsAt-.06f,new Vector3(.4f,-.22f,.22f),up,back);
+            Hold(WingsAt+.3f,new Vector3(.72f,.46f,.12f),new Vector3(-.1f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));Hold(SnapAt-.08f,new Vector3(.72f,.5f,.1f),new Vector3(-.1f,1,.06f),new Vector3(-.7f,-.7f,0),new Vector3(1,-.3f,-.3f));
+            Hold(SnapAt,new Vector3(.44f,-.48f,.32f),new Vector3(.02f,1,.04f),back);Hold(SnapAt+.3f,new Vector3(.46f,-.34f,.26f),up,back);
+            Hold(CardAt-.3f,new Vector3(.5f,-.1f,.2f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
+            // The camera: centred through the gate on the sun; a dolly zoom on the centre as the shadows pour; low and centred up at the
+            // void under the black sun; locked off as it steps out; the eye; a slow pull back; the centred hero frame.
+            Rig.Dolly(0,L(0,1.6f,12.5f),L(0,1.55f,10.8f),L(0,3.6f,-20),L(0,4.2f,-20),46,44)
+               .Crane(EclipseFrom+.25f,L(.4f,7.6f,10.5f),L(.3f,5.6f,7.2f),-.6f,Void-new Vector3(0,1.25f,.6f),Void-new Vector3(0,1.15f,0),50,52).Ease(NativeIntroEase.InOut)
+               .Dolly(TotalityAt-.05f,L(0,.3f,5.2f),L(0,.32f,4.8f),L(0,4.0f,-9),L(0,4.6f,-10),50,48)
+               .Hold(OpenAt-.05f,L(0,1.3f,3.9f),OnLine(-1.0f,1.2f),38)
+               .Dolly(EyeAt-.12f,Fwd*1.32f-Left*.12f+new Vector3(0,1.42f+CameraEyeLift,0),Fwd*1.12f-Left*.1f+new Vector3(0,1.44f+CameraEyeLift,0),new Vector3(0,CameraEyeLift-.1f,0),new Vector3(0,CameraEyeLift-.1f,0),26,22).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.75f).Ease(NativeIntroEase.Out)
+               .Dolly(WingsAt-.05f,L(0,.3f,3.25f),L(0,.28f,3.85f),L(0,1.95f,-2.2f),L(0,2.05f,-2.2f),44,42).In(NativeIntroCut.Cut,.1f)
+               .Dolly(CardAt-.6f,L(0,.55f,5.5f),L(0,.6f,7.3f),L(0,1.4f,-.7f),L(0,1.4f,-.7f),40,40).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
+               .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
+            Ramps.Ramp(TotalityAt,.4f,.26f,.5f).Ramp(EyeAt-.03f,.35f,.3f,.6f);
+        }
+        /// <summary>The eclipse's progress (0 the sun clear .. 1 totality).</summary>
+        public static float Eclipse(float t)=>NativeEntranceMath.Smoother((t-EclipseFrom)/(TotalityAt-EclipseFrom));
+        /// <summary>The void's size (0..1): risen from the poured dark, held while it opens, closing behind the pilot.</summary>
+        public static float VoidSize(float t)=>NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-RiseFrom)/.6f))*(1-NativeEntranceMath.Ramp(t,StepFrom+.9f,StepFrom+1.6f));
+        /// <summary>Built in as each part crosses out of the void's face.</summary>
+        public override float Solid(float t,int bone)
+        {
+            if(t<OpenAt)return 0;if(t>StepFrom+1.8f)return 1;
+            NativeEntranceAnchor a;switch(bone){case CapturedRig.Head:case CapturedRig.Neck:a=NativeEntranceAnchor.Head;break;case CapturedRig.Chest:case CapturedRig.Spine:a=NativeEntranceAnchor.Chest;break;
+                case CapturedRig.LClav:case CapturedRig.LArm:a=NativeEntranceAnchor.LeftShoulder;break;case CapturedRig.RClav:case CapturedRig.RArm:a=NativeEntranceAnchor.RightShoulder;break;
+                case CapturedRig.LElbow:a=NativeEntranceAnchor.LeftElbow;break;case CapturedRig.RElbow:a=NativeEntranceAnchor.RightElbow;break;case CapturedRig.LHand:a=NativeEntranceAnchor.LeftHand;break;case CapturedRig.RHand:a=NativeEntranceAnchor.RightHand;break;
+                case CapturedRig.LKnee:a=NativeEntranceAnchor.LeftKnee;break;case CapturedRig.RKnee:a=NativeEntranceAnchor.RightKnee;break;case CapturedRig.LFoot:case CapturedRig.LToe:a=NativeEntranceAnchor.LeftFoot;break;case CapturedRig.RFoot:case CapturedRig.RToe:a=NativeEntranceAnchor.RightFoot;break;
+                default:a=NativeEntranceAnchor.Pelvis;break;}
+            float d=Vector3.Dot(Anchor(a,t)-Void,Fwd);return NativeEntranceMath.Smooth((d+.05f)/.22f);
+        }
+        protected override Vector3 Focus(float t,Vector3 chest)=>t<OpenAt?Void:chest;
+        public override string AccentAt(float t)=>t<OpenAt?"#000000":t<EyeAt?"#2a0f40":"#af6eff";
+        /// <summary>The visor's lit eye (the pilot's left), from the head anchor.</summary>
+        private Vector3 Eye(float t)=>Anchor(NativeEntranceAnchor.Visor,t)+ForwardOf(t)*.01f+RightOf(t)*-.055f;
+        public static Vector3 Moon(float t){float e=Eclipse(t);return Sun+Fwd*2.5f+Left*(7.2f*(1-e))+new Vector3(0,1.8f*(1-e),0);}
+        /// <summary>The sky dome's tint (tools/intros/elemental_set.py sky_colours): the dusk's warm light, draining and cooling to the
+        /// eclipse's violet, the burning horizon band left all round at totality.</summary>
+        public static Vector3 SkyGlow(float t){float e=Eclipse(t);return Vector3.Lerp(new Vector3(1f,.86f,.8f),new Vector3(.62f,.4f,.92f),e)*(1-.38f*e);}
+        public override void Lights(float t,NativeEntranceLights l)
+        {
+            base.Lights(t,l);float e=Eclipse(t),tot=NativeEntranceMath.Ramp(t,TotalityAt-.1f,TotalityAt+.3f);
+            // (the fog held off the near plain and most of the sky's dome, 120 m out: its own gradient is the distance)
+            l.FogNear=35;l.FogFar=300;var far=Vector3.Lerp(Hex(0x2a1428),Hex(0x0c0612),e);l.Fog=far;l.Background=far;
+            l.Sky=Vector3.Lerp(Hex(0x7a4a6a,.22f),Hex(0x2a1240,.09f),e);l.Ground=Vector3.Lerp(Hex(0x3a2030,.14f),Hex(0x10061a,.07f),e);
+            if(e<.98f)l.Directional(Sun-new Vector3(0,8,0),Dusk*(.8f*(1-e)));
+            // the obsidian mirrors the sky: the dusk's amber horizon, then the eclipse's violet
+            l.ReflectSky=Vector3.Lerp(Hex(0x4a2a5a,.7f),Hex(0x0c0418),e);l.ReflectHorizon=Vector3.Lerp(Hex(0xe07a48,.75f),Vector3.Lerp(Hex(0x8a3aa0,.6f),Rim*.55f,tot),e);l.ReflectGround=Hex(0x020104);
+            if(tot>.01f)l.Add(-Fwd*5+new Vector3(0,3.6f,0),Rim*(5.5f*tot),12);
+            l.Add(-Fwd*7.5f+new Vector3(0,.4f,0),Rim*(1.4f+2.6f*tot),15);
+            float rise=VoidSize(t);if(rise>.01f)l.Add(Void+Fwd*.6f,Violet*(3*rise),5);
+            float eye=NativeEntranceMath.Ramp(t,EyeAt-.02f,EyeAt+.08f);if(eye>.01f)l.Add(Eye(t)+ForwardOf(t)*.12f,Halo*(1.6f*eye+2.2f*Flash(t,EyeAt,.02f,.35f)),1.6f);
+            float wings=NativeEntranceMath.Ramp(t,WingsAt,WingsAt+.3f)*(1-NativeEntranceMath.Ramp(t,SnapAt,SnapAt+.3f));if(wings>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c-Fwd*.8f+new Vector3(0,.4f,0),Rim*(3.5f*wings),5);}
+            float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c+Fwd*2.4f+new Vector3(0,.6f,0),Hex(0x8a7aa8,1.1f*hero),6);}
+        }
+        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Violet);float e=Eclipse(t);v.Far=Vector3.Lerp(Hex(0x2a2433),Hex(0x030205),e);v.Floor=Vector3.Lerp(Hex(0x1a1620),Hex(0x050307),e);v.Pool=Violet;v.Key=.3f*(1-e)+.08f;v.PoolLevel=.5f;return v;}
+        protected override bool Scene(float t,INativeIntroSet set)
+        {
+            if(!set.Has("darkness/plain"))return false;var one=Vector3.One;var q=Quaternion.Identity;
+            set.Piece("darkness/plain",Vector3.Zero,q,1,one,one);set.Piece("darkness/stones",Vector3.Zero,q,1,one,one);set.Piece("darkness/far",Vector3.Zero,q,1,one,one);
+            float e=Eclipse(t),glyph=.2f+.8f*NativeEntranceMath.Ramp(t,PourFrom,TotalityAt)+1.2f*Flash(t,SnapAt+.15f,.05f,.5f);for(int i=0;i<GlyphProps.Length;i++)set.Piece(GlyphProps[i],Vector3.Zero,q,1,one,one*glyph);
+            set.Piece("darkness/moon",Moon(t),NativeEntranceMath.Yaw(Facing),1,one,one);
+            set.Piece("darkness/sky",Vector3.Zero,q,1,one,SkyGlow(t));
+            return true;
+        }
+        public override void Card(float t,ref NativeIntroCardState card){base.Card(t,ref card);card.Style=NativeIntroCardStyle.Assemble;card.Ink=new Vector3(.93f,.88f,1);card.Glow=Hex(0xaf6eff,1.7f);card.Y=CardBand;}
+        private static readonly NativeIntroCue[] cues=
+        {
+            new NativeIntroCue(.05f,"intro2.void.wind","boss.noctiel.glide","darkness",.4f),
+            new NativeIntroCue(PourFrom,"intro2.void.pour","boss.noctiel.eclipse.pool","darkness",.6f),
+            new NativeIntroCue(TotalityAt,"intro2.void.totality","boss.noctiel.eclipse","darkness",.8f),
+            new NativeIntroCue(OpenAt,"intro2.void.emerge","blast.implosion","dash",.65f),
+            new NativeIntroCue(EyeAt,"intro2.void.eye","boss.noctiel.hush.open","install",.5f),
+            new NativeIntroCue(WingsAt,"intro2.void.wings","boss.noctiel.wings.open","dash",.6f),
+            new NativeIntroCue(SnapAt,"intro2.void.snap","magic.darkness.hit","darkness",.7f),
+            new NativeIntroCue(CardAt,"intro2.void.name","blast.void","darkness",.45f),
+        };
+        public override NativeIntroCue[] Cues=>cues;
+        public override void Effects(float t,INativeEntranceFx fx,float q)
+        {
+            ViewAt(t,out var view);float floor=NativeEntranceStage.FloorY,e=Eclipse(t),tot=NativeEntranceMath.Ramp(t,TotalityAt-.1f,TotalityAt+.25f);
+            // Ash motes drifting, catching the dusk, then the violet.
+            var mote=Vector3.Lerp(Dusk*.3f,Mote*.35f,e);for(int i=0,n=N(22,q);i<n;i++){var p=new Vector3(NativeEntranceMath.Signed(12000,i)*7,.2f+3*NativeEntranceMath.Rand(12001,i),NativeEntranceMath.Signed(12002,i)*7)+new Vector3((float)Math.Sin(t*.2f+i)*.3f,t*.04f,(float)Math.Cos(t*.17f+i)*.3f);fx.Glow(p,mote*(.25f+.15f*(float)Math.Sin(t*.8f+i)),0,.03f,0,0,12000+i);}
+            // The sun: a hot disc and its glare, its light going as the moon covers it; the corona and the diamond at totality.
+            float sun=1-e*.97f;fx.Glow(Sun,Dusk*(3.2f*sun),0,SunRadius*2.1f,1,0,12050);fx.Glow(Sun,Dusk*(.8f*sun),0,SunRadius*6,0,0,12051);
+            if(tot>.01f)
+            {
+                fx.Glow(Sun-Fwd*.5f,Halo*(1.1f*tot),0,SunRadius*2.8f,0,0,12060);fx.Glow(Sun-Fwd*.5f,Rim*(.6f*tot),0,SunRadius*5,0,0,12061);
+                for(int i=0,n=N(22,q);i<n;i++)
+                {
+                    float a=i*6.2831853f/n+NativeEntranceMath.Signed(12070,i)*.12f+t*.02f,len=SunRadius*(.5f+1.3f*NativeEntranceMath.Rand(12071,i))*(1+.06f*(float)Math.Sin(t*1.3f+i));
+                    var d=Left*(float)Math.Cos(a)+Vector3.UnitY*(float)Math.Sin(a);var from=Sun+Fwd*1.6f+d*SunRadius*1.02f;Beam(fx,view,from+d*len,from,Halo*(.9f*tot),.18f+.12f*NativeEntranceMath.Rand(12072,i),.9f,0,12070+i);
+                }
+                float diamond=Flash(t,TotalityAt,.04f,.3f);if(diamond>.01f){var p=Sun+Fwd*2.6f+(Left*.7f+Vector3.UnitY*.7f)*SunRadius;Star(fx,view,p,Vector3.One*(3.5f*diamond),2.2f*diamond,Left,Vector3.UnitY,12095);}
+            }
+            // The pour: every shadow peels off the ground and streams in along it from all sides, converging on the centre before it
+            // rises: dark streams sliding over the obsidian (covering sprites and ink), their leading edges catching the violet.
+            if(t>=PourFrom&&t<RiseFrom+.6f)
+            {
+                float u=NativeEntranceMath.Clamp01((t-PourFrom)/(TotalityAt-PourFrom)),gone=1-NativeEntranceMath.Ramp(t,RiseFrom,RiseFrom+.6f);var centre=new Vector3(Void.X,floor,Void.Z);
+                int streams=Context.Low?8:14,per=N(8,q);
+                for(int k=0;k<streams;k++)
+                {
+                    float a0=k*6.2831853f/streams+NativeEntranceMath.Signed(12100,k)*.18f,R0=8.5f+5*NativeEntranceMath.Rand(12101,k),delay=.3f*NativeEntranceMath.Rand(12102,k);
+                    var from=centre+new Vector3((float)Math.Sin(a0)*R0,0,(float)Math.Cos(a0)*R0);var side=RightOfLine(from,centre);
+                    float reach=NativeEntranceMath.Clamp01((u-delay)*1.3f);if(reach<=0)continue;
+                    for(int i=0;i<per;i++)
+                    {
+                        float s=reach*(i+.5f)/per;var p=Vector3.Lerp(from,centre,s)+side*(float)Math.Sin(s*3.1f+k)*1.0f*(1-s);p.Y=floor+.03f;
+                        fx.Glow(p,Vector3.Zero,.8f*gone,.7f+.6f*(1-s),0,0,12100+k*16+i);
+                        if(i%2==0)fx.Smoke(p+new Vector3(0,.05f,0),Ink,.65f*gone,.3f+.3f*(1-s),.3f,12300+k*16+i,floor-.1f);
+                    }
+                    var head=Vector3.Lerp(from,centre,reach)+side*(float)Math.Sin(reach*3.1f+k)*1.0f*(1-reach);head.Y=floor+.04f;var back=Vector3.Lerp(from,centre,Math.Max(0,reach-.12f))+side*(float)Math.Sin(Math.Max(0,reach-.12f)*3.1f+k)*1.0f*(1-Math.Max(0,reach-.12f));back.Y=floor+.04f;
+                    Beam(fx,view,head,back,Rim*(.9f*gone),.05f,.6f,0,12500+k);fx.Glow(head,Rim*(.35f*gone),0,.25f,0,0,12520+k);
+                }
+            }
+            // The void: the dark gathered into a black core against a violet glare behind it, motes falling in.
+            float vs=VoidSize(t);
+            if(vs>.01f)
+            {
+                fx.Glow(Void-Fwd*.6f,Rim*(1.2f*vs),0,2.6f*vs,0,0,12200);fx.Glow(Void-Fwd*.9f,Halo*(.5f*vs),0,4.2f*vs,0,0,12201);
+                for(int i=0,n=N(26,q);i<n;i++){var d=NativeEntranceMath.Direction(12210,i);var p=Void+d*(.55f*vs*NativeEntranceMath.Rand(12211,i))+new Vector3(0,(float)Math.Sin(t*1.7f+i)*.05f,0);fx.Smoke(p,Ink,.95f*vs,.9f*vs,.45f+.1f*(float)Math.Sin(t+i),12210+i,floor);}
+                for(int i=0,n=N(20,q);i<n;i++){float u=((t*.7f+i/(float)n)%1),a=i*2.4f+u*4;float r=2.4f*(1-u)*vs+.3f;var p=Void+(Left*(float)Math.Cos(a)+Vector3.UnitY*(float)Math.Sin(a))*r+Fwd*.2f;fx.Glow(p,Mote*(.5f*u*vs),0,.03f,0,u,12260+i);}
+            }
+            // Stepping out: the dark running off the body and dripping from it.
+            if(t>=OpenAt&&t<StepFrom+1.8f)
+            {
+                float on=1-NativeEntranceMath.Ramp(t,StepFrom+1f,StepFrom+1.8f);
+                for(int i=0,n=N(22,q);i<n;i++)
+                {
+                    var src=(NativeEntranceAnchor)(i%5==0?(int)NativeEntranceAnchor.Head:i%5==1?(int)NativeEntranceAnchor.LeftShoulder:i%5==2?(int)NativeEntranceAnchor.RightShoulder:i%5==3?(int)NativeEntranceAnchor.LeftHand:(int)NativeEntranceAnchor.RightHand);
+                    float u=((t*1.6f+i/(float)n)%1);var p=Anchor(src,t-u*.3f)-Fwd*(.25f*u)+new Vector3(0,-.6f*u*u,0);if(p.Y<floor)continue;fx.Smoke(p,Ink,.8f*on*(1-u),.12f+.18f*u,u,12300+i,floor);
+                }
+            }
+            // The eye: one point of light on the visor, a star of glints when it lights.
+            if(t>=EyeAt-.02f)
+            {
+                var eye=Eye(t);float lit=NativeEntranceMath.Ramp(t,EyeAt-.02f,EyeAt+.06f),flare=Flash(t,EyeAt,.02f,.3f);
+                fx.Glow(eye,Vector3.One*(3.0f*lit)+Halo*(1.4f*lit),0,.06f,1,0,12400);fx.Glow(eye,Halo*(.9f*lit+1.8f*flare),0,.22f+.3f*flare,0,0,12401);
+                if(flare>.01f)Star(fx,view,eye+ForwardOf(t)*.02f,Halo*(2.6f*flare),.45f*flare,RightOf(t),Vector3.UnitY,12402);
+            }
+            // The wings: the dark spreading from behind the shoulders in three tapering feathers a side, violet along their edges; the
+            // snap back to the monoliths.
+            float wings=NativeEntranceMath.Ramp(t,WingsAt,WingsAt+.35f)*(1-NativeEntranceMath.Ramp(t,SnapAt-.02f,SnapAt+.12f));
+            if(wings>.01f)for(int side=0;side<2;side++)
+            {
+                var sh=Anchor(side==0?NativeEntranceAnchor.LeftShoulder:NativeEntranceAnchor.RightShoulder,t)-ForwardOf(t)*.18f;var outward=(side==0?-1:1)*RightOf(t);
+                for(int fe=0;fe<5;fe++)
+                {
+                    float rise=.95f-.24f*fe,span=(2.3f-.3f*fe)*wings;
+                    for(int i=0,n=N(7,q);i<n;i++)
+                    {
+                        float u=(i+.5f)/n;var p=sh+outward*(span*u)+new Vector3(0,rise*(float)Math.Sin(Math.PI*.8f*u)*wings-.25f*fe*u,0)-ForwardOf(t)*(.15f*u)+new Vector3(0,(float)Math.Sin(t*3+i+fe)*.025f,0);
+                        fx.Smoke(p,Ink,.9f*wings*(1-.3f*u),(.26f-.035f*fe)*(1-.5f*u)+.07f,.4f,12600+side*100+fe*20+i,floor);
+                        if(i>0){float u0=(i-.5f)/n;var p0=sh+outward*(span*u0)+new Vector3(0,rise*(float)Math.Sin(Math.PI*.8f*u0)*wings-.25f*fe*u0,0)-ForwardOf(t)*(.15f*u0);Beam(fx,view,p+new Vector3(0,.11f,0),p0+new Vector3(0,.11f,0),Rim*(1.3f*wings*(1-.6f*u)),.016f,.5f,0,12800+side*100+fe*20+i);}
+                    }
+                }
+            }
+            float snap=t-SnapAt;
+            if(snap>=0&&snap<.8f){float u=snap/.8f;for(int m=0;m<6;m++){var to=Monolith(m,floor+.05f);var d=Vector3.Normalize(Flat(to));var head=d*(1+10*NativeEntranceMath.EaseOut(u))+new Vector3(0,floor+.05f,0);Beam(fx,view,head,head-d*(1.6f*(1-u)+.2f),Rim*(1.6f*(1-u)),.05f,.6f,u,13000+m);}}
+            NativeEntranceFx.GroundDust(fx,t,SnapAt,new Vector3(0,floor,0),N(14,q),.4f,4,1,Hex(0x1a1024),.6f,.6f,12650,q,floor);
+        }
+        private static Vector3 RightOfLine(Vector3 a,Vector3 b){var d=b-a;d.Y=0;if(d.LengthSquared()<1e-6f)return Vector3.UnitX;d=Vector3.Normalize(d);return new Vector3(d.Z,0,-d.X);}
+    }
+}
