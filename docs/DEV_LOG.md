@@ -1,5 +1,26 @@
+## 2026-11-21 — Claude: release 13: the shipped game is lit as the approved Editor looks were (integrator)
+The owner plays on High: the live build read 2-7 times darker than the Editor clips the owner approved.
+- **Published:** shared and the builder at `a7bda65f`. Test channel revision `639308945926123514` (build `d41b3f08`, 394.0 MiB).
+- **Merged:**
+  - `claude/render-parity` `b11c7288` (R1). Its entry below has the cause, the proof and the impact: presentation only, with no
+    rules, timing, hitbox or network change.
+  - Astra's PR #440 (`6acce2ca`: Expedition wave zombies placed near living players) landed on shared during the suite and went
+    out in the same build. Its own checks are in its PR.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `b11c7288`;
+  - the full suite at `b11c7288` (1,102 groups, exit 0);
+  - the Unity compile after the merge with shared;
+  - the build.
+  - Not run: the suite on the merge with #440, two clients, GPU profiling of the second shadowed directional light.
+- **Editor:** the shared Editor now plays `Prototype.unity` (BoZo tool) and rests on `a7bda65f`. A branch without this release
+  captures as dark as the old player: merge shared in before filming.
+- **Packs (local only, not in git):**
+  - 10 Asset Store packs from the owner's bundles are parked in `F:/Chip Arena Development/AssetStoreCache`, with a README that
+    says what each is usable for in the Built-in pipeline.
+  - Bunker Builder was skipped (C: filled during its unpack).
+
 ## 2026-11-21 — Claude (R1): the shipped player draws what the Editor showed (render parity; presentation only)
-Owner: the live test build reads much darker than the clips he approved (Crown Hill's plaza at night, build `f4d8b9b5`).
+Owner: the live test build reads much darker than the clips the owner approved (Crown Hill's plaza at night, build `f4d8b9b5`).
 **Branch:** `claude/render-parity` from shared `8ffefafd`; code `7afe5721`, check `cd617e04`, docs follow. Pushed, not merged, not released.
 - **Cause (proved with local player builds next to the Editor, same poses, Crown Hill's live deal xseed 2027808452, High):**
   - Editor Play ran in the open **Untitled** scene, not `Prototype.unity`. That scene's default **Directional Light** (FFF4D6,
