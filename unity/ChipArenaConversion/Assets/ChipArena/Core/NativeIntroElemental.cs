@@ -199,12 +199,13 @@ namespace ChipArena.UnityConversion
                 k.Key(land,stand).Root(c.X,.88f,c.Z,Facing).Drop(-.075f*last-.02f).J(B,.08f).J(P,0,sg*.1f*last).J(Sp,0,-sg*.05f*last).J(C,-.02f,-sg*.11f*last).J(Hd,.03f,sg*.07f*last)
                     .J(RA,(l?-.42f:.3f)*last,0,-.16f).J(RE,l?-.7f:-.3f).PassKey();
             }
-            // On the mark: it straightens up under the fire, the chin lifting, the free hand rising open beneath the crown as it gathers.
-            k.Key(CrownAt+.2f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.01f).J(B,-.04f).J(Sp,-.05f).J(C,-.14f).J(Hd,-.32f).J(RA,-1.75f,-.2f,-.45f).J(RE,-.55f).J(RH,0,0,.25f);
-            k.Key(CrownSet-.12f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.0f).J(B,-.06f).J(Sp,-.07f).J(C,-.18f).J(Hd,-.4f).J(RA,-2.3f,-.2f,-.45f).J(RE,-.35f).J(RH,0,0,.3f).PassKey();
+            // On the mark: it straightens up under the fire, the chin lifting, the free arm rising open out at its side beneath the crown as it
+            // gathers (out at the side, so the near camera keeps the face).
+            k.Key(CrownAt+.2f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.01f).J(B,-.04f).J(Sp,-.05f).J(C,-.14f).J(Hd,-.32f).J(RA,-.55f,-.2f,-1.8f).J(RE,-.5f).J(RH,0,0,.25f);
+            k.Key(CrownSet-.12f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.0f).J(B,-.06f).J(Sp,-.07f).J(C,-.18f).J(Hd,-.4f).J(RA,-.45f,-.2f,-2.15f).J(RE,-.35f).J(RH,0,0,.3f).PassKey();
             // The slam: the staff swung up high out at its side, both arms raised under the crown, the body rising tall; then the staff is
             // driven down beside its foot, the hips sinking deep over spread knees, the chest following it, the free arm thrown down and back.
-            k.Key(CrownSet+.06f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.02f).J(B,-.06f).J(Sp,-.07f).J(C,-.16f).J(Hd,-.3f).J(RA,-2.4f,-.2f,-.5f).J(RE,-.3f).J(RH,0,0,.3f);
+            k.Key(CrownSet+.06f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(.02f).J(B,-.06f).J(Sp,-.07f).J(C,-.16f).J(Hd,-.3f).J(RA,-.4f,-.2f,-2.25f).J(RE,-.3f).J(RH,0,0,.3f);
             k.Key(SlamAt,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.45f).J(B,.32f).J(Sp,.18f).J(C,.1f).J(Hd,.08f).J(RA,.35f,0,-.5f).J(RE,-.25f).ImpactKey();
             k.Key(SlamAt+.17f,stand).Root(w4.X,w4.Y,w4.Z,Facing).Drop(-.4f).J(B,.28f).J(Sp,.15f).J(C,.08f).J(Hd,.04f).J(RA,.25f,0,-.42f).J(RE,-.3f);
             // Up into the hero hold under the burning crown, the staff upright at its side, the free arm loose.
