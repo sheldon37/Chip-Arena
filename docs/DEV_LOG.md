@@ -1,3 +1,46 @@
+## 2026-11-20 — Claude (M2): Meridian's streets come alive: honest street life in the live run and the walk (part 1), and the solid street props proposed for Astra with a DEV preview (part 2)
+
+Owner: "Also, streets seem very empty? (Not talking about zombies, but like theres no life essentially like props or anything, it
+still feels kind of 'grey box-ish'". **Branch:** `claude/meridian-streets` from shared `7115bad3`, with shared `076ae3fc` (`d2b5e8c0`)
+and `8181bc56` (`ddeb4ce8`: the camp's walk hooks and checks beside ours, both kept) merged in; the work is `134490b5` and
+`2e695fc4`; this entry and docs/expedition/MERIDIAN-STREETS.md follow them. Pushed, not merged, not released.
+
+- **Part 1, street life (presentation only, no collider):** 81 kinds in six mounts that keep the honesty rule: flat paint of
+  6 cm or less (markings, cracks, litter, blood, chalk, the Civil Defence's lanes, flares); flat wall art 6.2-10 cm out
+  (posters, graffiti, boards, notices); low clutter within 0.25 m of a wall and under 1.6 m; everything else 3.1 m or more up
+  (air conditioners, awnings, blade signs, banners, floods, washing lines, wires, bunting, festoons, signals). By district (the
+  D1 lot styles) and by street; the camp's plaza gets the evacuation's marks, tents' pitches and a ring of flares. Where the
+  fittings stand is the layout's; the story and every light's state are the run's. Signs flicker at 2.7 steps a second at most,
+  slower and steady with Reduced effects. Planned on a worker (1.8-2.4 s in the Editor, 0.2-0.3 s in .NET); worst views High
+  39-91 k triangles and 97 draws at most, Low 15-37 k and 62. Two-line hooks in `NativeExpeditionWorldPresentation.ShowMeridian`
+  and `NativeLayeredCityWalkPreview`; no D1/D2/D3 or M1 file touched. `--ca-no-city-streets` switches it off.
+- **Part 2, the solid props (Astra's to build):** 16 stems (car, wreck, police, bus, shelter, bench, bin, dumpster, barricade,
+  barrier, newsstand, kiosk, planter, bollard, hydrant, lamp) with block sizes, placement rules (clear lanes for the horde and
+  Hulks, keep-outs, the gap rule, the lattice), density (268-677 candidates a layout, about 80% filled a run) and seeding.
+  `Core/NativeMeridianStreetProps*.cs`; the contract in docs/expedition/MERIDIAN-STREETS.md part 2 and the notes'
+  `meridian-street-props-astra.md`. The DEV preview draws every prop on its proposed block in the Developer walk only
+  (P props, O blocks and clear lanes, L street life). Nothing solid draws in a live run.
+- **Banks (local, never committed; for the zip):** `ChipArenaCityStreets.bytes` 1,307,384 bytes (81 kinds; without it nothing
+  draws) and `ChipArenaCityStreetProps.bytes` 2,846,835 bytes (29 models, the DEV preview), each with its .meta, in
+  `F:/Chip Arena Development/scratch/meridian-streets/bank/ChipArenaLocal/Resources/`. Built by `tools/stages/meridian_streets.py`
+  and `tools/stages/meridian_street_props.py` (Blender 5.2, on the committed street kit `tools/stages/meridian_street_kit/`).
+- **Checks:** full CoreTests the relgen5 way (LF worktree, `expedition_path.patch`, banks-next) on `d2b5e8c0`: exit 0, 1,089
+  groups; on the merge `ddeb4ce8`: exit 0, 1,091 groups. On the merge with the banks: `--streets` 6,371,019 checks, `--street-props`
+  37,381,639 and `--camp` 67,181, all PASS. The offline Unity compile PASS (four assemblies) on both; `git diff --check` clean. Editor
+  (two holds): live runs on hub-zfight's deals of Crown Hill, The Arcades and The Stride with the street life switched off then
+  on in the same run, and the DEV preview in The Stride's walk (571 candidates, 458 filled, 29 models); no errors. Clips:
+  `F:/Chip Arena Development/scratch/meridian-streets/clips/` (eight 6 s before/after MP4s, stills, the preview's sheet).
+  Moving the Editor back to its resting commit met a stale file list twice (CS2001 for files only the branch has); one more
+  refresh under the lock compiled it clean both times. Not run: Windows player builds, multiplayer, the Low tier and
+  Reduced effects in the Editor (both covered by the managed checks).
+- **Risks:** floor paint reads faintly at night at eye height (the lit and overhead pieces carry the look); the main-thread
+  share of the drawer's setup was not timed in the Editor; traffic signals are rare (0-2 a plan). D3's bleed flicker
+  (`Runtime/NativeCityBleedDraw.cs:219`) steps at 11 Hz with no Reduced-effects path: a follow-up for its owner.
+- **For Astra:** the prop blocks per the contract (recommended: bake each layout's candidates into its plan data and fill by
+  the world seed at world build, before the lattice, spawns, caches and exits; make the lattice treat `prop-` tops like
+  `fire-escape-`); the Stride's live exits would shift for 3 of 110, the rest 0. **Next (Claude):** the live dresser keyed to
+  `prop-` blocks with the props bank, landing with or before the blocks; the integrator packs the two banks.
+
 ## 2026-11-20 — Claude: intros v2 batch 1 released, with the hub z-fight fix and the floor seams (integrator)
 Owner: "Ship five now" (the dev intro and four generic intros; Slipstream follows on its Runner Action pack run). Shared `076ae3fc`; the builder at `076ae3fc`, test channel revision `639308124444299384` (build `a24d67a4`, 380.9 MiB). Earlier today: the hub z-fight fix alone, shared `5d54766c`, revision `639308000396336573`.
 - **Merged:** `claude/intro-v2` (framework `claude/intro-framework` to `de6c5207`, generic `claude/intro-generic` `1525dfc6`, dev `claude/intro-dev-architect` `8783ab51`) as `139b40e4`, then five fix merges; `claude/dress-seams` (`72ab4d28`) as `7115bad3`; `claude/hub-zfight` (`f279813f`, plus the PartyLoadingChecks re-pin for #437) as `5d54766c`.

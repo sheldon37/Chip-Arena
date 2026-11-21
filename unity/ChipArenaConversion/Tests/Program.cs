@@ -85,6 +85,12 @@ internal static class Program
             if(args.Length==2&&args[0]=="--camp-motion-probe"){CampChecks.MotionProbe(args[1]);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--camp")CampChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--camp")return 0;
+            // Meridian's street life (docs/expedition/MERIDIAN-STREETS.md): honest pieces, keep-outs, determinism, flashes, budgets, hooks.
+            if(args.Length==1&&args[0]=="--streets-probe"){StreetLifeChecks.Probe(ProjectRoot());return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--streets")StreetLifeChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--streets")return 0;
+            if(args.Length==0||args.Length==1&&args[0]=="--street-props")StreetPropsChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--street-props")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--landmark-reads")LandmarkReadChecks.Run();
             if(args.Length==1&&args[0]=="--landmark-reads")return 0;
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
