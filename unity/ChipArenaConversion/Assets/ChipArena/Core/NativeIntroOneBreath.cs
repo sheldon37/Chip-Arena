@@ -25,9 +25,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The kneel's facing (the hips square to the drone; the chest bladed off it by the aim) and the aim's pitch up to it.</summary>
         public static readonly float KneelYaw=(float)Math.Atan2(AimDir.X,AimDir.Z),AimPitch=(float)Math.Asin(AimDir.Y);
         private static readonly Vector3 Up=Vector3.Normalize(Vector3.UnitY-AimDir*AimDir.Y),Right=Vector3.Normalize(Vector3.Cross(AimDir,Vector3.UnitY));
-        /// <summary>The rifle model's scope (its line .175 over the bore; the objective lens .31 ahead of the grip, the eyepiece .135 behind it)
-        /// and the muzzle's crown along the bore (NativeMuzzleFx.Crown, the Standard skin).</summary>
-        public const float ScopeY=.175f,ScopeAt=.31f,EyepieceAt=-.135f,MuzzleAt=1.21f;
+        /// <summary>The drawn rifle's scope (its objective lens .31 ahead of the grip and .055 over the weapon frame's origin, as the Editor
+        /// draws it: hold 6's lens macro put the model's .175 a hand over the glass) and the muzzle's crown along the bore (NativeMuzzleFx.Crown,
+        /// the Standard skin).</summary>
+        public const float ScopeY=.055f,ScopeAt=.31f,EyepieceAt=-.135f,MuzzleAt=1.21f;
         /// <summary>The scope's lens on the aim (for the camera).</summary>
         private static readonly Vector3 AimLens=AimWrist+AimDir*ScopeAt+Up*ScopeY;
         private static readonly Vector3 Ice=NativeEntranceFx.Hex(0x9fd8ff),Red=NativeEntranceFx.Hex(0xff2a20),Warm=NativeEntranceFx.Hex(0xffb070),Rain=NativeEntranceFx.Hex(0x9ab0d0);
@@ -82,7 +83,7 @@ namespace ChipArena.UnityConversion
             var flyFrom=muzzle+AimDir*.6f+Right*.5f+Up*.22f;var flyTo=Drone-AimDir*4.5f+Right*1.4f+Up*.6f;
             Rig.Spline(0,new[]{L(-3.6f,8.2f,-9.4f),L(-2.7f,5.2f,-6.2f),L(-1.5f,2.3f,-3.1f)},L(0,.9f,3),L(0,1.25f,9),46,40).Ease(NativeIntroEase.InOut).Focus(0,0,.25f)
                .Dolly(LensAt,scope+Right*.34f+AimDir*.42f+Up*.05f,scope+Right*.3f+AimDir*.36f+Up*.05f,scope,scope,20,18).Focus(0,0,.8f)
-               .Dolly(2.0f,Drone-AimDir*3.5f+Right*1.2f+Up*.3f,Drone-AimDir*3.6f+Right*1.1f+Up*.3f,scope+new Vector3(0,2.2f,0),scope+new Vector3(0,2.25f,0),3.6f,3.0f).Focus(0,0,.15f)
+               .Dolly(2.0f,Drone-AimDir*3.5f+Right*1.2f+Up*.3f,Drone-AimDir*3.6f+Right*1.1f+Up*.3f,scope+new Vector3(0,.5f,0),scope+new Vector3(0,.55f,0),2.3f,1.9f).Focus(0,0,.15f)
                .Dolly(BreathFrom,L(-1.5f,1.3f,.52f),L(-1.38f,1.28f,.58f),L(-.1f,1.2f,.36f),L(-.1f,1.21f,.38f),30,27).Focus(0,0,.6f)
                .Dolly(ShotAt-.03f,muzzle+Right*1.25f+AimDir*1.4f+Up*.25f,muzzle+Right*1.2f+AimDir*1.32f+Up*.28f,muzzle-AimDir*.4f,muzzle-AimDir*.35f,40,38)
                .Dolly(ShotAt+.06f,flyFrom,flyTo,flyFrom+AimDir*6,Drone,48,30).Ease(NativeIntroEase.Linear)

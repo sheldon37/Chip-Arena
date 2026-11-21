@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
             var bellLook=L(2.2f,5.4f,10.6f);var muzzle=ShotFrom;var hit=BellAt(HitAt)+SDir(0,-.45f,-.3f);
             var dir=Vector3.Normalize(hit-muzzle);var side=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,dir));
             Rig.Dolly(0,L(-.62f,.3f,-7.4f),L(-.48f,.36f,-6.1f),L(.6f,2.0f,9),L(.8f,2.4f,9),34,30).Ease(NativeIntroEase.Linear).Focus(3.4f,3.2f,.4f)
-               .Dolly(1.08f,L(-1.18f,1.56f,-.05f),L(-1.06f,1.57f,.06f),L(0,1.56f,-.12f),L(0,1.58f,.0f),24,22).Focus(0,0,.55f)
+               .Dolly(1.08f,L(-1.18f,1.56f,-.05f),L(-1.06f,1.57f,.06f),L(0,1.5f,-.06f),L(0,1.54f,.06f),34,31).Focus(0,0,.55f)
                .Dolly(1.62f,L(-.78f,1.74f,-2.25f),L(-.7f,1.72f,-1.95f),bellLook,bellLook+new Vector3(0,.05f,0),16,14).Focus(0,0,.3f)
                .Dolly(2.24f,L(-1.25f,1.02f,1.45f),L(-1.05f,1.0f,1.25f),L(-.25f,.98f,.05f),L(-.22f,1.0f,.08f),26,24).Focus(0,0,.6f)
                .Dolly(2.78f,L(-5.6f,1.55f,-3.2f),L(-5.3f,1.62f,-2.75f),L(1.3f,2.6f,4.0f),L(1.4f,2.45f,4.1f),45,43).Focus(0,0,.2f)

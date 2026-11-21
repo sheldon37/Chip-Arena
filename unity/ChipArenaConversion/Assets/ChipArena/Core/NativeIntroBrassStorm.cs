@@ -74,8 +74,8 @@ namespace ChipArena.UnityConversion
             Rig.Spline(0,new[]{L(-9.6f,6.6f,-4.6f),L(-8.2f,4.8f,-4.0f),L(-6.8f,3.4f,-3.2f)},L(0,1.3f,6.5f),L(0,1.2f,5),50,46).Ease(NativeIntroEase.InOut).Focus(0,0,.2f)
                .Dolly(StepUp-.03f,L(1.32f,.36f,2.65f),L(1.06f,.4f,2.3f),L(0,1.24f,0),L(0,1.3f,0),38,35).Focus(0,0,.45f)
                .Dolly(FireFrom-.02f,L(-.76f,1.56f,-1.46f),L(-.68f,1.5f,-1.3f),L(-.4f,1.9f,12),L(-2.4f,1.5f,12),42,40).Handheld(.9f).Focus(0,0,.15f)
-               // the drum knocked over in the foreground, the gun firing at the lens behind it
-               .Dolly(2.42f,L(-3.1f,.62f,10.0f),L(-3.0f,.6f,9.7f),L(-.3f,1.18f,.6f),L(-.32f,1.15f,.6f),27,25).Handheld(.5f).Focus(0,0,.2f)
+               // over the left shoulder down the gun to the drum as the rounds walk onto it and knock it over
+               .Dolly(2.42f,L(1.4f,1.72f,-1.5f),L(1.3f,1.68f,-1.36f),L(-2.4f,.6f,8.2f),L(-2.5f,.5f,8.3f),34,32).Handheld(.5f).Focus(0,0,.2f)
                // the brass pouring out (slowed), then the heap round the boots at the floor
                .Dolly(2.9f,L(-2.3f,1.32f,1.05f),L(-2.1f,1.24f,.4f),L(-.25f,1.22f,.5f),L(-.3f,1.08f,.3f),36,34).Focus(0,0,.55f)
                .Dolly(3.4f,L(-2.25f,.1f,.95f),L(-2.1f,.12f,.78f),L(-.5f,.62f,.3f),L(-.5f,.66f,.28f),52,50).Focus(0,0,.4f)

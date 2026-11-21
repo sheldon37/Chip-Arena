@@ -78,9 +78,9 @@ namespace ChipArena.UnityConversion
             // ---- the camera ----
             var sky=L(0,24,20);
             Rig.Spline(0,new[]{L(2.6f,11.5f,-6.8f),L(1.9f,6.8f,-4.8f),L(1.25f,2.5f,-3.45f)},L(0,1.0f,2),L(0,1.25f,0),55,42).Ease(NativeIntroEase.InOut).Focus(0,0,.3f)
-               .Dolly(NockFrom-.03f,L(-.78f,1.76f,-.92f),L(-.66f,1.71f,-.78f),L(-.1f,1.42f,-.1f),L(.02f,1.38f,.18f),34,30).Focus(0,0,.6f)
+               .Dolly(NockFrom-.03f,L(1.0f,1.3f,1.4f),L(.9f,1.35f,1.25f),L(0,1.3f,.1f),L(-.1f,1.45f,.05f),36,33).Focus(0,0,.6f)
                .Orbit(DrawFrom-.1f,Vector3.Zero,-72,-22,2.65f,2.4f,.45f,.62f,new Vector3(0,1.4f,0),new Vector3(0,1.9f,.3f),40,38).Focus(0,0,.35f)
-               .Hold(Full-.08f,L(-.62f,1.66f,.62f),L(-.05f,1.62f,.12f),26).Focus(0,0,.75f)
+               .Hold(Full-.08f,L(.35f,1.3f,1.25f),L(-.04f,1.66f,.06f),40).Focus(0,0,.75f)
                .Dolly(Release-.03f,L(.62f,.42f,-.82f),L(.52f,.46f,-.7f),L(0,6,4),L(0,14,10),52,50).Focus(0,0,.1f)
                .Dolly(3.6f,L(3.3f,1.0f,-3.1f),L(3.1f,1.1f,-2.9f),sky,sky+new Vector3(0,-2,0),60,58).Focus(0,0,.05f)
                .Spline(RainFrom-.06f,new[]{L(5.6f,11.2f,-7.2f),L(5.0f,10.2f,-6.4f),L(4.5f,9.4f,-5.7f)},L(0,0,1.0f),L(0,.2f,.6f),56,54).Focus(0,0,.1f)
