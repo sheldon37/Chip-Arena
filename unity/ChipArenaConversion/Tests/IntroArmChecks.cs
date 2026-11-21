@@ -114,9 +114,10 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        /// <summary>The intros whose failing frames were found when this check came in (2026-11-21), routed to their authors: the full run lists
-        /// them and fails on any other intro; `--intro-arms` fails on these too. Remove an intro's id once it passes.</summary>
-        internal static readonly string[] Known={"intro2-weapon-greatsword","intro2-weapon-katana","intro2-weapon-fangs","intro2-weapon-lightning"};
+        /// <summary>Intros allowed to fail while their fix is routed to the author: the full run lists them and fails on any other intro;
+        /// `--intro-arms` fails on these too. Empty since batch 2's integration (2026-11-21): Faultline, Still Rain, Apex and Strike Point,
+        /// found when this check came in, were fixed by their authors, so every v2 intro is held to the rule.</summary>
+        internal static readonly string[] Known={};
 
         /// <summary>`--intro-arms` (`strict`): every registered v2 intro, failing on any failing frame (each listed). The full run (not `strict`)
         /// lists the Known intros' frames and fails on any other intro's. `only`: one intro, its measures per frame.</summary>
