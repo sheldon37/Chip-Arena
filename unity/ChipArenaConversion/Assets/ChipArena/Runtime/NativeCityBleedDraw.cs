@@ -147,7 +147,8 @@ namespace ChipArena.UnityConversion
                 float over=head.y-floor;
                 bool ceiling=K.Key.StartsWith("level0.ceiling",StringComparison.Ordinal);
                 // its light on the walls and floors round it, in its colour, reaching its floor and past it (the grid)
-                float strength=ceiling?.8f:1.2f;lamps.Add(new NativeCityLamps.Lamp{At=head,Range=Mathf.Clamp(over*1.8f,5f,10f),R=lc.x*strength,G=lc.y*strength,B=lc.z*strength});pieces.Add(i);
+                // thrown down from its head (NativeCityLamps.Overhead: sideways 1.2, a troffer's 0.8, as a slot's all round)
+                float strength=(ceiling?.8f:1.2f)/NativeCityLamps.DownFloor;lamps.Add(NativeCityLamps.Overhead(head,Mathf.Clamp(over*1.8f,5f,10f),lc.x*strength,lc.y*strength,lc.z*strength));pieces.Add(i);
                 float s=K.Key=="poolrooms.poollamp"?.45f:ceiling?.6f:.35f;
                 Quad(h,new Vector3(s,0,0),new Vector3(0,s,0),new Color(col.r,col.g,col.b,.5f));Quad(h,new Vector3(0,0,s),new Vector3(0,s,0),new Color(col.r,col.g,col.b,.5f));
                 if(p.Lamp!=NativeCityBleedDress.LampState.Steady)fxLamps.Add((i,from,v.Count-from));

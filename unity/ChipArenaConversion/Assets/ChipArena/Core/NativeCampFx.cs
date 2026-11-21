@@ -168,7 +168,9 @@ namespace ChipArena.UnityConversion
         public NativeCityLamps.Lamp[] CityLamps()
         {
             var o=new NativeCityLamps.Lamp[sources.Length];
-            for(int i=0;i<o.Length;i++){var s=sources[i];o[i]=new NativeCityLamps.Lamp{At=new V3(s.X,s.Y,s.Z),Range=s.Range,R=s.R,G=s.G,B=s.B};}
+            // a lamp, flood or the board's lamp throws its light down (NativeCityLamps.Overhead: sideways its light as before); a fire glows all round
+            for(int i=0;i<o.Length;i++){var s=sources[i];var at=new V3(s.X,s.Y,s.Z);float k=1/NativeCityLamps.DownFloor;
+                o[i]=kind[i]==KindFire?new NativeCityLamps.Lamp{At=at,Range=s.Range,R=s.R,G=s.G,B=s.B}:NativeCityLamps.Overhead(at,s.Range,s.R*k,s.G*k,s.B*k);}
             return o;
         }
         /// <summary>Each light's level this frame on the grid (`into` as <see cref="CityLamps"/>): the lamps steady, a fire breathing

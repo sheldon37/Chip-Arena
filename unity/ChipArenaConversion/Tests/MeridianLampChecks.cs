@@ -150,7 +150,7 @@ internal static class MeridianLampChecks
         {
             var K=NativeCityBleedDress.Kinds[p.Kind];if(!K.Lamp||p.Lamp==NativeCityBleedDress.LampState.Dead)continue;var head=NativeCityBleedDress.Local(p,K.Head);
             float floor=NativeCityBleedDress.FloorBelow(map.blocks,all,new V3(head.x,head.y-.05f,head.z));if(floor<-1e8f)floor=head.y-4.6f;bool ceiling=K.Key.StartsWith("level0.ceiling",StringComparison.Ordinal);
-            float s=ceiling?.8f:1.2f;uint c=p.Light!=0?p.Light:0xFFFFFF;lamps.Add(new NativeCityLamps.Lamp{At=head,Range=Math.Max(5f,Math.Min(10f,(head.y-floor)*1.8f)),R=Lin(c,16)*s,G=Lin(c,8)*s,B=Lin(c,0)*s});bleed++;
+            float s=(ceiling?.8f:1.2f)/NativeCityLamps.DownFloor;uint c=p.Light!=0?p.Light:0xFFFFFF;lamps.Add(NativeCityLamps.Overhead(head,Math.Max(5f,Math.Min(10f,(head.y-floor)*1.8f)),Lin(c,16)*s,Lin(c,8)*s,Lin(c,0)*s));bleed++;
         }
         var campLights=new NativeCampFx(NativeCamp.Live(seed)).CityLamps();lamps.AddRange(campLights);camp=campLights.Length;
         return lamps;
@@ -159,8 +159,8 @@ internal static class MeridianLampChecks
     {
         string R(string f)=>System.IO.File.ReadAllText(System.IO.Path.Combine(root,f));
         var inc=R("Assets/ChipArena/Resources/NativeCityLamps.cginc");var stage=R("Assets/ChipArena/Resources/NativeStageLit.shader");
-        Check(inc.Contains("#define CITY_SPOT_FLOOR 0.08")&&Math.Abs(NativeCityLamps.SpotFloor-.08f)<1e-6f,"the shader's spot floor is the Core's");
-        Check(inc.Contains("float a=1.0-q*q;float3 l=d/len;float k=a*a;")&&inc.Contains("if(q>=1.0)continue;")&&inc.Contains("k*=CITY_SPOT_FLOOR+(1.0-CITY_SPOT_FLOOR)*pow(saturate(-dot(l,aim)),lc.w);")
+        Check(Math.Abs(NativeCityLamps.SpotOf(1,2.5f,NativeCityLamps.SpotFloor)-1)<1e-6f&&Math.Abs(NativeCityLamps.SpotOf(0,2.5f,.45f)-.45f)<1e-6f&&NativeCityLamps.SpotOf(-1,0,.45f)==1,"a lobe keeps its floor off its aim, all of it on its aim; no lobe lights all round");
+        Check(inc.Contains("float a=1.0-q*q;float3 l=d/len;float k=a*a;")&&inc.Contains("if(q>=1.0)continue;")&&inc.Contains("k*=aim.w+(1.0-aim.w)*pow(saturate(-dot(l,aim.xyz)),lc.w);")&&R("Assets/ChipArena/Core/NativeCityLamps.cs").Contains("into[o+7]=l.Floor;")
             &&inc.Contains("float ndl=saturate((dot(n,l)+wrap)/(1.0+wrap));"),"the shader's lamp is the Core's (the slots' fall-off, the flood's cone, N.L)");
         Check(inc.Contains("if(_CityLampGrid.w<0.5)return sum;")&&inc.Contains("bool CityLampSlot(float w){return _CityLampGrid.w>0.5&&w<-0.5;}")&&inc.Contains("float id=ids[j];if(id<0.0)return sum;"),"the grid is off unless turned on (every other map draws as before); a cell's list ends at its first empty");
         Check(Regex(stage,"#include \"NativeCityLamps.cginc\"")==1&&stage.Contains("if(CityLampSlot(_ArenaLightColor[k].w))continue;")&&stage.Contains("sum+=CityLamps(world,n,v,wrap,sharp,spec);"),"StageLit takes the city's lamps from the grid and leaves their slots to the pilots and zombies (never twice)");

@@ -180,7 +180,8 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<NativeMapLooks.MaxLights;s++)
             {
                 int i=s<slots?nearest[s]:-1;slotBeam[s]=0;if(i<0){slotPos[s*4]=0;slotPos[s*4+1]=-10000;slotPos[s*4+2]=0;slotPos[s*4+3]=1;slotRgb[s*3]=slotRgb[s*3+1]=slotRgb[s*3+2]=0;continue;}
-                var g=lampLight[i];float k=dark?0:NativeMeridianDress.LampLevel(lamps[i],time,reduced);
+                // (the slot all round at the lamp's sideways light: the pilots and zombies take what they took before the reflector's lobe)
+                var g=lampLight[i];float k=(dark?0:NativeMeridianDress.LampLevel(lamps[i],time,reduced))*(g.Spot>0?g.Floor:1);
                 slotPos[s*4]=g.At.x;slotPos[s*4+1]=g.At.y;slotPos[s*4+2]=g.At.z;slotPos[s*4+3]=g.Range;slotRgb[s*3]=g.R*k;slotRgb[s*3+1]=g.G*k;slotRgb[s*3+2]=g.B*k;slotBeam[s]=CitySlot;
             }
             NativeLighting.PickedLights(slotPos,slotRgb,slotBeam);NativeLighting.ActorLights(true);

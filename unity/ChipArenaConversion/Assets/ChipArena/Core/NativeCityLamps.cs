@@ -21,9 +21,10 @@ namespace ChipArena.UnityConversion
         public const float Cell=8f;public const int PerCell=16,CellTexels=PerCell/4;public const float SpotFloor=.08f;
         /// <summary>The most lamps a table holds (the data textures' rows).</summary>
         public const int Capacity=4096;
-        /// <summary>A lamp: the light's point, its reach (m), its colour (linear, times its intensity), and a flood's aim (unit, its
-        /// cone's power in <see cref="Spot"/>; 0 lights all round).</summary>
-        public struct Lamp{public V3 At;public float Range,R,G,B;public V3 Aim;public float Spot;}
+        /// <summary>A lamp: the light's point, its reach (m), its colour (linear, times its intensity), and its aim (unit) with its
+        /// lobe's power in <see cref="Spot"/> (0 lights all round) and the share it keeps off its aim in <see cref="Floor"/> (a flood's
+        /// <see cref="SpotFloor"/>; a street lamp's reflector throws most of its light down and keeps half of it sideways).</summary>
+        public struct Lamp{public V3 At;public float Range,R,G,B;public V3 Aim;public float Spot,Floor;}
         public readonly Lamp[] Lamps;public readonly float MinX,MinZ;public readonly int Nx,Nz;
         /// <summary>Each cell's lamps (Nx x Nz cells, PerCell each, -1 past the last).</summary>
         public readonly float[] Cells;
@@ -33,8 +34,14 @@ namespace ChipArena.UnityConversion
 
         /// <summary>The slots' fall-off at distance d of a reach r (NativeStageLit's practical slots and the grid's lamps).</summary>
         public static float Falloff(float d,float r){if(!(r>0))return 0;float q=d/r;if(q>=1)return 0;float a=1-q*q;return a*a;}
-        /// <summary>A flood's share at the cosine `c` off its aim: SpotFloor all round, its cone (c^spot) toward its aim.</summary>
-        public static float SpotOf(float c,float spot)=>spot<=0?1:SpotFloor+(1-SpotFloor)*(float)Math.Pow(Math.Max(0,c),spot);
+        /// <summary>An overhead lamp's reflector (a street lamp's bowl, a mast's lamp): its lobe straight down of power DownPower,
+        /// keeping DownFloor of its light sideways.</summary>
+        public const float DownPower=1.2f,DownFloor=.45f;
+        /// <summary>An overhead lamp at `at`: `peak` (r, g, b) straight down, DownFloor of it sideways and up (a lamp's sideways light as a
+        /// practical slot gave it all round is peak x DownFloor).</summary>
+        public static Lamp Overhead(V3 at,float range,float r,float g,float b)=>new Lamp{At=at,Range=range,R=r,G=g,B=b,Aim=new V3(0,-1,0),Spot=DownPower,Floor=DownFloor};
+        /// <summary>A lobe's share at the cosine `c` off its aim: `floor` all round, its cone (c^spot) toward its aim (spot 0: 1).</summary>
+        public static float SpotOf(float c,float spot,float floor)=>spot<=0?1:floor+(1-floor)*(float)Math.Pow(Math.Max(0,c),spot);
         private static float Luma(in Lamp l)=>l.R*.2126f+l.G*.7152f+l.B*.0722f;
 
         /// <summary>The table for these lamps: the grid over their reach, each cell's lamps ranked by the most light they can give in
@@ -83,7 +90,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<PerCell;k++)
             {
                 int i=(int)Cells[c*PerCell+k];if(i<0)break;var l=Lamps[i];var d=l.At-p;float len=Math.Max(d.Length,.0001f);
-                float f=Falloff(len,l.Range);if(f<=0)continue;var dir=d/len;if(l.Spot>0)f*=SpotOf(-V3.Dot(dir,l.Aim),l.Spot);
+                float f=Falloff(len,l.Range);if(f<=0)continue;var dir=d/len;if(l.Spot>0)f*=SpotOf(-V3.Dot(dir,l.Aim),l.Spot,l.Floor);
                 float ndl=Math.Max(0,V3.Dot(n,dir))*f*(level==null?1:level[i]);sum=sum+new V3(l.R*ndl,l.G*ndl,l.B*ndl);
             }
             return sum;
@@ -95,14 +102,14 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Lamps.Length;i++)
             {
                 var l=Lamps[i];var d=l.At-p;float len=Math.Max(d.Length,.0001f);float f=Falloff(len,l.Range);if(f<=0)continue;var dir=d/len;
-                if(l.Spot>0)f*=SpotOf(-V3.Dot(dir,l.Aim),l.Spot);float ndl=Math.Max(0,V3.Dot(n,dir))*f*(level==null?1:level[i]);sum=sum+new V3(l.R*ndl,l.G*ndl,l.B*ndl);
+                if(l.Spot>0)f*=SpotOf(-V3.Dot(dir,l.Aim),l.Spot,l.Floor);float ndl=Math.Max(0,V3.Dot(n,dir))*f*(level==null?1:level[i]);sum=sum+new V3(l.R*ndl,l.G*ndl,l.B*ndl);
             }
             return sum;
         }
-        /// <summary>The static data texture (2 texels a lamp, a row each): (x, y, z, reach), (aim x, y, z, 0).</summary>
+        /// <summary>The static data texture (2 texels a lamp, a row each): (x, y, z, reach), (aim x, y, z, the lobe's floor).</summary>
         public void PackData(float[] into)
         {
-            for(int i=0;i<Lamps.Length;i++){var l=Lamps[i];int o=i*8;into[o]=l.At.x;into[o+1]=l.At.y;into[o+2]=l.At.z;into[o+3]=l.Range;into[o+4]=l.Aim.x;into[o+5]=l.Aim.y;into[o+6]=l.Aim.z;into[o+7]=0;}
+            for(int i=0;i<Lamps.Length;i++){var l=Lamps[i];int o=i*8;into[o]=l.At.x;into[o+1]=l.At.y;into[o+2]=l.At.z;into[o+3]=l.Range;into[o+4]=l.Aim.x;into[o+5]=l.Aim.y;into[o+6]=l.Aim.z;into[o+7]=l.Floor;}
         }
         /// <summary>The cell texture (4 texels a cell, Nx x 4 wide and Nz high): each cell's lamps as Cells holds them.</summary>
         public void PackCells(float[] into)

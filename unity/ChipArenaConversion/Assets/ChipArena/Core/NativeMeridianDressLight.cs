@@ -10,22 +10,29 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Sodium (bible 3.1): the lamp #FFA14A, a route home's warmer #FF8E3A (linear).</summary>
         public static readonly V3 Sodium=new V3(1f,.631f,.29f),RouteSodium=new V3(1f,.557f,.227f);
-        /// <summary>A working lamp's light (times the sodium), its reach over its pool's radius, the light's drop under a swan-neck's
-        /// bowl (inside its shade) and how far a flush lamp's light stands off its wall (its lens throws forward, so the wall round it
-        /// takes some: at its lens it would light only the street).</summary>
-        public const float LampIntensity=1.35f,LampReach=1.25f,BowlDrop=.15f,FlushOut=.3f,FlushIntensity=.85f;
+        /// <summary>A working swan-neck's or pendant's light straight down (times the sodium): its reflector throws most of its light
+        /// down, a lobe (NativeCityLamps.Overhead) keeping NativeCityLamps.DownFloor of it sideways (so the wall at the bracket takes
+        /// what a practical slot gave it, 1.35, the wall under it and the setts under the lamp about twice that: on dark setts the slot's
+        /// light all round read as no pool at all once the flat disc was gone); its reach over its pool's radius; the light's drop under
+        /// the bowl (inside its shade); a flush lamp's light all round and how far it stands off its wall (its lens throws forward, so
+        /// the wall round it takes some: at its lens it would light only the street).</summary>
+        public const float LampIntensity=3f,LampReach=1.35f,BowlDrop=.15f,FlushOut=.3f,FlushIntensity=1.6f;
         /// <summary>A flickering lamp's steps a second (the photosensitivity rule: under 3) and, with Reduced effects, its slow breath (Hz)
         /// between <see cref="ReducedFloor"/> and full, without the dark beats.</summary>
         public const float FlickerHz=2.7f,ReducedHz=.35f,ReducedFloor=.6f;
 
-        /// <summary>A lamp's light: a swan-neck's just under its bowl, a pendant's under its bowl, a flush lamp's a little off its wall in
-        /// front of its lens; its reach the pool's radius times <see cref="LampReach"/>; sodium, a route home's warmer. A dead lamp has none
-        /// (reach 0: no cell lists it).</summary>
+        /// <summary>A lamp's light: a swan-neck's just under its bowl and a pendant's under its bowl, thrown down (the reflector's lobe);
+        /// a flush lamp's a little off its wall in front of its lens, all round; its reach the pool's radius times <see cref="LampReach"/>;
+        /// sodium, a route home's warmer. A dead lamp has none (reach 0: no cell lists it).</summary>
         public static NativeCityLamps.Lamp LightOf(Lamp l)
         {
-            var c=l.Protected?RouteSodium:Sodium;float k=LampIntensity*(l.Kind==Flush?FlushIntensity:1);var at=l.Bowl-new V3(0,BowlDrop,0);
-            if(l.Kind==Flush){var n=l.Bowl-l.Mount;n=new V3(n.x,0,n.z);float len=n.Length;at=len>1e-4f?l.Bowl+n*(FlushOut/len):l.Bowl;}
-            return new NativeCityLamps.Lamp{At=at,Range=l.State==Dead?0:l.Radius*LampReach,R=c.x*k,G=c.y*k,B=c.z*k};
+            var c=l.Protected?RouteSodium:Sodium;float range=l.State==Dead?0:l.Radius*LampReach;
+            if(l.Kind==Flush)
+            {
+                var n=l.Bowl-l.Mount;n=new V3(n.x,0,n.z);float len=n.Length;var at=len>1e-4f?l.Bowl+n*(FlushOut/len):l.Bowl;
+                return new NativeCityLamps.Lamp{At=at,Range=range,R=c.x*FlushIntensity,G=c.y*FlushIntensity,B=c.z*FlushIntensity};
+            }
+            return NativeCityLamps.Overhead(l.Bowl-new V3(0,BowlDrop,0),range,c.x*LampIntensity,c.y*LampIntensity,c.z*LampIntensity);
         }
         /// <summary>Every lamp's light, in the plan's order.</summary>
         public static NativeCityLamps.Lamp[] LightsOf(Plan plan)
