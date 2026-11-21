@@ -710,6 +710,31 @@
       ],
       "maxRequests": 84,
       "maxSeconds": 163.8
+    },
+    {
+      "id": "intros-b3-2026-11-21-v1a",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros-b3.json",
+      "manifestSha256": "46092b74b428b0c144d78fa715aec3dd5b899115340339bd2424707971b7b9b1",
+      "keys": [
+        "intro2.brass.hiss",
+        "intro2.brass.flood",
+        "intro2.fire.slam",
+        "intro2.lightfall.release",
+        "intro2.onebreath.crash",
+        "intro2.fire.crack",
+        "intro2.storm.call",
+        "intro2.afterimage.name",
+        "intro2.sundown.shot",
+        "intro2.faultline.name",
+        "intro2.stillrain.still"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "maxRequests": 22,
+      "maxSeconds": 40.3
     }
   ]
 }

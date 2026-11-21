@@ -38,10 +38,15 @@ Each batch therefore has its own rows folder and its own manifest:
 | Batch | Rows | Manifest (and its byte-identical bundle copy) | State |
 | --- | --- | --- | --- |
 | `b1` (the default) | `docs/audio/intros/*.json` | `docs/audio/sound-requests-intros.json` | shipped, sealed by its approved jobs `intros-v2-2026-11-20-*` (sha256 `68c49c12`) |
-| `b2` | `docs/audio/intros-b2/*.json` (I3, I4, I5) | `docs/audio/sound-requests-intros-b2.json` | batch 2, the 15 weapon intros |
+| `b2` | `docs/audio/intros-b2/*.json` (I3, I4, I5) | `docs/audio/sound-requests-intros-b2.json` | batch 2, the 15 weapon intros; shipped over three slices, sealed by its jobs `intros-b2-2026-11-21-*` |
+| `b3` | `docs/audio/intros-b3/*.json` (integrator) | `docs/audio/sound-requests-intros-b3.json` | batch 2's retries: keys whose takes came back shorter than their minimum after trimming |
 
 - **Never add rows to `docs/audio/intros/`.** The compiler refuses to write a sealed manifest with other bytes and says so; it also
   refuses a key that another batch already requests (every batch feeds the one effects bank).
+- **Retries (2026-11-21).** A retry batch (`RETRIES` in the compiler: `b3` retries `b2`) may re-request keys of the batch it
+  retries, and only those. Its job's accepted takes replace the key's clips in the effects bank (the importer's mode "replace"),
+  so a key whose takes the importer rejected (too short after trimming) is asked again with a lower `targetSeconds.min`, and
+  the sealed manifest stays as it is. Set `min` well under `generateSeconds` for short sounds in the first place.
 - `Tests/test_intro_sound_manifests.py` pins batch 1's bytes and bundle copy, checks every approved job against its manifest (the
   bundle copies too), checks batch 2's manifest when it exists (bundle copy, keys in the contract, none shared with batch 1), and
   runs a second intro manifest through the queue's `plan()` and the importer's contract check.

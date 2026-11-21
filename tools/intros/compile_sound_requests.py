@@ -3,8 +3,11 @@
 Merges every author's rows of one batch ({"author": "...", "sounds": [<the manifest's sound entries>]}) into that batch's manifest
 on the existing schema, and its byte-identical bundle copy under unity/ChipArenaConversion/tools/sound_bundle/docs/audio/:
 - `--batch b1` (the default): docs/audio/intros/*.json -> docs/audio/sound-requests-intros.json (batch 1 and Slipstream, shipped);
-- `--batch b2`: docs/audio/intros-b2/*.json -> docs/audio/sound-requests-intros-b2.json (batch 2, the 15 weapon intros).
-It checks each key: "intro2.<intro>.<cue>", letters/digits/dots, unique across every batch, and in Core/NativeIntroSoundKeys.cs with a
+- `--batch b2`: docs/audio/intros-b2/*.json -> docs/audio/sound-requests-intros-b2.json (batch 2, the 15 weapon intros);
+- `--batch b3`: docs/audio/intros-b3/*.json -> docs/audio/sound-requests-intros-b3.json (batch 2's retries: keys whose generated
+  takes the importer rejected as shorter than their minimum after trimming, asked again with lower minimums).
+It checks each key: "intro2.<intro>.<cue>", letters/digits/dots, unique across every batch (but a retry batch, RETRIES, which may only
+re-request keys of the batch it retries), and in Core/NativeIntroSoundKeys.cs with a
 cap at least its targetSeconds.max. A manifest that an approved job of docs/audio/sound-queue.json pins (its manifestSha256) is sealed:
 tools/sound_queue.py re-checks every approved job, finished ones too, against that hash, so changed bytes there fail the builder at the
 sound queue. The compiler refuses to write them; new rows go in a new batch. With --job ID it also prints the approved builder job
@@ -33,7 +36,15 @@ BATCHES = {
            "Batch 1's manifest (sound-requests-intros.json) is pinned by its approved jobs and stays as it is. Until imported, every cue "
            "plays its existing bank key or built-in clip (NativeIntroCue.Alt / Clip). Contract: docs/audio/SOUND-REQUESTS.md; requests: "
            "docs/audio/intros/README.md."),
+    "b3": ("intros-b3", "sound-requests-intros-b3.json",
+           "Intros v2, batch 2's retries (owner 2026-11-21: \"Yes, retry them\"): keys of batch 2 whose generated takes the importer "
+           "rejected as shorter than their minimum after trimming, asked again with lower minimums. A retry job's accepted takes replace "
+           "the key's clips in the effects bank; until imported, each cue keeps what it has (an accepted take, or NativeIntroCue.Alt / "
+           "Clip). Contract: docs/audio/SOUND-REQUESTS.md; requests: docs/audio/intros/README.md."),
 }
+# (a retry batch re-requests keys of the batch it retries whose takes the importer rejected; its later job's accepted takes replace
+# that key's clips in the effects bank (import mode "replace"), so its keys repeat there and only there, and it may hold no other key)
+RETRIES = {"b3": "b2"}
 
 
 def paths(root, batch):
@@ -76,13 +87,17 @@ def main(argv=None):
     source = open(os.path.join(root, "unity", "ChipArenaConversion", "Assets", "ChipArena", "Core", "NativeIntroSoundKeys.cs"),
                   encoding="utf-8").read()
     contract = {m.group(1): float(m.group(2)) for m in re.finditer(r'K\("([^"]+)",([0-9.]+)f', source)}
-    # (a key belongs to one batch only: every batch's manifest feeds the one effects bank)
-    elsewhere = {}
+    # (a key belongs to one batch only: every batch's manifest feeds the one effects bank; a retry batch and the batch it retries
+    # share keys, and the retry may hold no key of its own)
+    elsewhere, retried = {}, None
     for other in sorted(BATCHES):
-        if other != a.batch:
-            for name, rows in rows_of(root, other):
-                for s in rows.get("sounds", []):
-                    elsewhere.setdefault(s.get("key", ""), "%s (%s)" % (other, name))
+        if other == a.batch or RETRIES.get(a.batch) == other or RETRIES.get(other) == a.batch:
+            continue
+        for name, rows in rows_of(root, other):
+            for s in rows.get("sounds", []):
+                elsewhere.setdefault(s.get("key", ""), "%s (%s)" % (other, name))
+    if a.batch in RETRIES:
+        retried = {s.get("key", "") for _, rows in rows_of(root, RETRIES[a.batch]) for s in rows.get("sounds", [])}
     sounds, seen, errors = [], set(), []
     for name, rows in rows_of(root, a.batch):
         for s in rows.get("sounds", []):
@@ -93,6 +108,8 @@ def main(argv=None):
                 errors.append("%s: duplicate key %s" % (name, k))
             if k in elsewhere:
                 errors.append("%s: %s is already requested by batch %s" % (name, k, elsewhere[k]))
+            if retried is not None and k not in retried:
+                errors.append("%s: %s is not a key of batch %s (a retry batch only re-requests its keys)" % (name, k, RETRIES[a.batch]))
             seen.add(k)
             cap = contract.get(k)
             if cap is None:
