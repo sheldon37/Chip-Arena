@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     /// Until Astra's blocks exist nothing here draws in a live run: the preview is the Developer walk's only, compiled into the
     /// Editor and development builds, and answers to the walk's maps alone.
     /// </summary>
-    public static class NativeMeridianStreetProps
+    public static partial class NativeMeridianStreetProps
     {
         public const string Version="meridian-street-props-1";
         /// <summary>The bank file (Resources) the preview's models come from (rig/props/&lt;model&gt;/&lt;tier&gt;).</summary>
@@ -81,6 +81,40 @@ namespace ChipArena.UnityConversion
             public string Id,Stem,Model;public V3 Pos,Size;public float Yaw;public bool Filled;public int Slot;
             public V3 Lo=>Pos-Size*.5f;public V3 Hi=>Pos+Size*.5f;
         }
+        private static Block Row(int slot, string stem, string model, float x, float y, float z,
+            float width, float height, float depth, float yaw)
+        {
+            return new Block { Slot = slot, Stem = stem, Model = model, Pos = new V3(x, y, z),
+                Size = new V3(width, height, depth), Yaw = yaw,
+                Id = IdPrefix + stem + "-" + slot.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+        }
+
+        // The same filled records supply collision and the live dresser's model and quarter turn.
+        internal static Block[] Candidates(uint layout)
+        {
+            switch (layout)
+            {
+                case 647: return Plan647();
+                case 784: return Plan784();
+                case 1058: return Plan1058();
+                case 1332: return Plan1332();
+                case 1606: return Plan1606();
+                default: throw new ArgumentOutOfRangeException(nameof(layout));
+            }
+        }
+
+        public static IEnumerable<Block> Filled(uint layout, uint worldSeed)
+        {
+            uint seed = NativeMeridianDress.Mix(NativeMeridianDress.Mix(layout, 0x5bd1e995u), worldSeed ^ 0x27d4eb2fu);
+            foreach (var candidate in Candidates(layout))
+            {
+                if (!NativeMeridianStreetLife.FillProp(seed, candidate.Slot, StemOf(candidate.Stem).Fill)) continue;
+                var filled = candidate;
+                filled.Filled = true;
+                yield return filled;
+            }
+        }
+
         /// <summary>A stem's block in the world for a turn: its size with x and z swapped on a quarter turn.</summary>
         public static V3 WorldSize(Stem s,float yaw){bool quarter=Math.Abs(Math.Sin(yaw))>.5;return quarter?new V3(s.Size.z,s.Size.y,s.Size.x):s.Size;}
         /// <summary>A prop's collision block as the map would hold it (axis-aligned, static).</summary>

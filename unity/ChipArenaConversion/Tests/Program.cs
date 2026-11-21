@@ -8,6 +8,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==2&&args[0]=="--bake-street-props"){StreetPropsChecks.Bake(args[1]);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--intro-architect"){IntroArchitectChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--instance-cache-routes")InstanceCacheRouteChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--instance-cache-routes")return 0;

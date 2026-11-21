@@ -53,8 +53,10 @@ namespace ChipArena.UnityConversion
         public ExpeditionWorldAnchor[] Caches { get; private set; } = Array.Empty<ExpeditionWorldAnchor>();
         public NativeLayeredCityWalk(Plan plan) : this(true, plan.Seed, plan) { }
         public NativeLayeredCityWalk(Plan plan,uint worldSeed) : this(true,worldSeed,plan) { }
+        internal NativeLayeredCityWalk(Plan plan, uint worldSeed, IEnumerable<NativeMeridianStreetProps.Block> props)
+            : this(true, worldSeed, plan, props) { }
         public NativeLayeredCityWalk(bool large, uint seed) : this(large, seed, null) { }
-        private NativeLayeredCityWalk(bool large, uint seed, Plan plan)
+        private NativeLayeredCityWalk(bool large, uint seed, Plan plan, IEnumerable<NativeMeridianStreetProps.Block> props = null)
         {
 
             halfX = large ? 300 : 210;
@@ -71,6 +73,8 @@ namespace ChipArena.UnityConversion
                 bounds = BuildStreetPlan(plan.Seed);
                 // The Navigation's towpath roof meets the upper quay at grade. Pilots and Hulks can walk on from the bank.
                 if(plan.Seed==784)Box("towpath-store-roof",-30,-80,12,10,-.6f,0);
+                if (props != null)
+                    foreach (var prop in props) blocks.Add(NativeMeridianStreetProps.ToBlock(prop));
                 Caches=NativeCityLayout.CacheAnchors(plan,seed);
                 foreach(var cache in Caches)
                 {

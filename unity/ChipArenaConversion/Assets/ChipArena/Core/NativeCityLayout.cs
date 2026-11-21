@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             }
             return anchors;
         }
-        private static ExpeditionPoint[] CacheBays(uint plan)
+        internal static ExpeditionPoint[] CacheBays(uint plan)
         {
             ExpeditionPoint P(float x,float y,float z,float yaw)=>new ExpeditionPoint{x=x,y=y,z=z,yaw=yaw};
             switch(plan)

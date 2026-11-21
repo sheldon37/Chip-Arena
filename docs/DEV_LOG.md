@@ -1,3 +1,7 @@
+## 2026-11-20 Astra M2 / Meridian street collision
+
+Branch `codex/meridian-street-blocks`, shared base `e9b3441a`. Generated worlds install baked static metal props before cache placement, navigation and encounter setup. The filled records in `ExpeditionGeneratedWorld.StreetProps` carry IDs, models and turns for Claude's live dresser. The survey reserves all cache bays and The Stride's rooftop drop apron. All five all-prop lattices and live managed startup passed. All 608 reference-deal exit coordinates match the prior layout. No wire fields added. Hold integration and Update for the live dresser and packed street-props bank. Native physics, visuals and bank fit await that combined build.
+
 ## 2026-11-20 — Claude (M2): Meridian's streets come alive: honest street life in the live run and the walk (part 1), and the solid street props proposed for Astra with a DEV preview (part 2)
 
 Owner: "Also, streets seem very empty? (Not talking about zombies, but like theres no life essentially like props or anything, it

@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionGeneratedWorld
     {
         public NativeLayeredCityWalk City;
+        public NativeMeridianStreetProps.Block[] StreetProps;
         public NativeCityBleed Bleed;
         public string[] HallSlots;
         public ContentMap Map;
@@ -21,7 +22,7 @@ namespace ChipArena.UnityConversion
     }
     public static partial class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-blockout-5";
+        public const string Version="deployment-world-blockout-6";
         public const string MapId="expedition-generated-city";
         internal static V3 CacheForward(float yaw)
         {
@@ -74,7 +75,8 @@ namespace ChipArena.UnityConversion
             var state=room.Snapshot();
             if(!state.worldRolled)throw new InvalidOperationException("Roll instances before generating a world.");
             var plan=NativeCityLayout.Plans[room.Ticket.cityPlan];
-            var city=new NativeLayeredCityWalk(plan,state.worldSeed);
+            var props = NativeMeridianStreetProps.Filled(plan.Seed, state.worldSeed).ToArray();
+            var city=new NativeLayeredCityWalk(plan,state.worldSeed,props);
             city.Map.id=MapId;
             city.Map.tag="Expedition";
             city.Map.look="expedition-night";
@@ -98,7 +100,7 @@ namespace ChipArena.UnityConversion
             }
             var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,slots=NativeExpeditionHubPlan.LandingField(state.worldSeed),
                 sanctuary=new[]{Volume(0,0,49.6f,49.6f)}};
-            var result=new ExpeditionGeneratedWorld{Area=area,Blueprint=state,Hub=new ExpeditionHubLayout{Area=area.id,Fence=fences.ToArray(),Gates=gates.ToArray()}};
+            var result=new ExpeditionGeneratedWorld{StreetProps=props,Area=area,Blueprint=state,Hub=new ExpeditionHubLayout{Area=area.id,Fence=fences.ToArray(),Gates=gates.ToArray()}};
             PopulateMeridian(result,city);
             NativeMapRules.Validate(result.Map);
             result.Compatibility=Digest(room.Ticket,result);

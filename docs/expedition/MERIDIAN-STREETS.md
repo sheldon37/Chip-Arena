@@ -97,6 +97,20 @@ overhead pieces to 55% of their reach and the rest to 70%.
 
 ## Part 2: the solid street props (the proposal for Astra)
 
+### Solid collision handoff
+
+Generated Expedition worlds bake the five surveys into `Core/NativeMeridianStreetPropsData.cs`.
+The compiled table gives Unity and CoreTests the same data without reading files or running dress planners at startup.
+`ExpeditionGeneratedWorld.StreetProps` holds the filled records, including each block ID, model and yaw in radians.
+The live dresser should use those records directly. Filter the street-life dressing around the corresponding map blocks.
+Release collision together with the live dresser and the `ChipArenaCityStreetProps.bytes` bank.
+
+The survey uses the dressed walk at seed 77, reserves both cache locations in each bay, and leaves the shared rooftop
+drop apron at (88, 7, 116) on The Stride clear. Reserved slots keep their original numbers in the seed calculation.
+To update the survey deliberately, run CoreTests with `--bake-street-props <output.cs>`, review the data diff, then run
+`--street-props` and `--live-meridian`. The former compares the compiled records with the survey and pins the reference
+deals' actual exit positions.
+
 The props stand only on collision blocks, which are Astra's to build. `Core/NativeMeridianStreetProps.cs` holds the table and the
 rules; `Core/NativeMeridianStreetPropsPlan.cs` (`NativeMeridianStreetLife.ProposeProps`) places one layout's candidates by them. The
 contract for Astra is the notes folder's `meridian-street-props-astra.md`; this section is its summary.
