@@ -50,6 +50,7 @@ namespace ChipArena.UnityConversion
         private FxMesh halos,steam;
         // the lit pieces' light on the city's lamp grid (in `lit`'s order)
         private NativeCityLamps.Lamp[] lampLights;private NativeCityLampLight.Block lampBlock;
+        private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow"),LiftId=Shader.PropertyToID("_StageLift");
         /// <summary>Last frame: pieces drawn, draws, and the effects' quads.</summary>
         public int Drawn{get;private set;}public int Draws{get;private set;}public int FxQuads{get;private set;}
         public NativeMeridianStreetLife.Plan Plan=>plan;
