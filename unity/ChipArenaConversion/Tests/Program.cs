@@ -45,6 +45,7 @@ internal static class Program
             if(args.Length==2&&args[0]=="--intro-ranged-fit"){IntroRangedChecks.Fit(args[1]);return 0;}
             if(args.Length==1&&args[0]=="--intro-ranged-limits"){IntroRangedChecks.Limits();return 0;}
             if(args.Length==2&&args[0]=="--intro-ranged-twist"){IntroRangedChecks.Twist(args[1]);return 0;}
+            if(args.Length>=2&&args.Length<=4&&args[0]=="--intro-ranged-arms"){IntroRangedChecks.Arms(args[1],args.Length>2?float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture):0,args.Length>3?float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture):99);return 0;}
             if(args.Length==1&&args[0]=="--weapon-flourish")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--blind-choices")BlindChoiceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--blind-choices")return 0;

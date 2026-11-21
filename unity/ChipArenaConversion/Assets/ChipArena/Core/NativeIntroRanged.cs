@@ -30,6 +30,20 @@ namespace ChipArena.UnityConversion
         public static Vector3 L(float x,float y,float z)=>Local(x,y,z);
         protected static readonly float Floor=NativeEntranceStage.FloorY;
 
+        // ---- the long guns' shouldered hold ----
+        /// <summary>A rifle or machine gun shouldered and aimed `yaw`, `pitch` (rad) off the pilot's facing, blended in by `weight`: the match's
+        /// long-gun hold (NativeIntroPoses.AimRifle: the wrist under the cheek, the butt .30 m behind it) with the trigger wrist brought back,
+        /// down and out toward the shoulder (the chest's frame, the keyed rig's proportions), so the keyed arm bends with its elbow down and
+        /// out and the drawn arm keeps that side when the stock goes into the drawn shoulder: the drawn trigger elbow well under the shoulder,
+        /// the upper arm 50-60 deg off hanging (owner 2026-11-21: "Arm doing weird things on machine gun intro again"; AimRifle's straight
+        /// keyed arm left the drawn elbow level with the shoulder, a chicken wing). Tests/IntroRangedChecks holds the elbow.</summary>
+        protected static void ShoulderGun(CapturedRig.Pose pose,string spec,float yaw,float pitch,float weight=1)
+        {
+            var aim=NativeIntroGrip.Aim(pose,yaw,pitch);var at=new Vector3(-.11f,.245f,.155f)-Vector3.Transform(new Vector3(0,-.04f,-.30f),aim)+TriggerWristIn;
+            NativeIntroGrip.Hold(pose,false,spec,at,aim,TriggerElbow,weight);
+        }
+        private static readonly Vector3 TriggerWristIn=new Vector3(-.08f,-.12f,-.14f),TriggerElbow=new Vector3(-1.7f,-1,-.1f);
+
         // ---- the drawn gun (model-aware anchors, docs/INTROS-V2.md 2a: the model's weapon while it is drawn; the keyed rig otherwise) ----
         /// <summary>The drawn gun's muzzle (where the match's flash leaves it) and bore (its grip to its muzzle) at `t`.</summary>
         protected bool Drawn(float t,out Vector3 muzzle,out Vector3 bore){muzzle=Anchor(NativeEntranceAnchor.RightMuzzle,t);bore=WeaponBore(false,t);return true;}

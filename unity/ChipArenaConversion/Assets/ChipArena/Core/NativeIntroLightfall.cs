@@ -26,6 +26,11 @@ namespace ChipArena.UnityConversion
         /// <summary>The full draw's pull on the drawn model: the bow arm straight (the bow's own extension, 1) and the string at the drawn jaw
         /// (Tests/IntroRangedChecks: the model's narrow shoulders put the jaw nearer the riser than the keyed rig's anchor).</summary>
         public const float DrawPull=.6f;
+        /// <summary>The string elbow's side in the raised draw (the chest's frame, leaned and turned side-on by the Bow's torso: back along the
+        /// arrow, a little down and behind): the drawn elbow on the arrow's line at the shoulder's height, the forearm beside the head to the
+        /// jaw (owner 2026-11-21: "check that bow one again"; the canonical bow pole, back and up, took the drawn elbow over the helmet and the
+        /// forearm through it at this sky shot's 50 deg; Tests/IntroRangedChecks holds the elbow and the head).</summary>
+        private static readonly Vector3 DrawElbow=new Vector3(-.8f,-.2f,-.55f);
         private static readonly Vector3 Gold=NativeEntranceFx.Hex(0xffd88a),White=new Vector3(1,1,1),Moonlight=NativeEntranceFx.Hex(0x9ab8ff),Firefly=NativeEntranceFx.Hex(0xc8ff8a),Mist=NativeEntranceFx.Hex(0x8a9ab8);
         /// <summary>The moon (ranged_lightfall.py MOON: behind the pilot, up to the left), the six lanterns' fire boxes.</summary>
         private static readonly Vector3 Moon=Vector3.Normalize(SDir(.40f,.39f,-.83f));
@@ -76,13 +81,14 @@ namespace ChipArena.UnityConversion
             }
             for(int l=0;l<6;l++){lights[l]=16+l;}
             // ---- the camera ----
-            var sky=L(0,24,20);
             Rig.Spline(0,new[]{L(2.6f,11.5f,-6.8f),L(1.9f,6.8f,-4.8f),L(1.25f,2.5f,-3.45f)},L(0,1.0f,2),L(0,1.25f,0),55,42).Ease(NativeIntroEase.InOut).Focus(0,0,.3f)
                .Dolly(NockFrom-.03f,L(1.0f,1.3f,1.4f),L(.9f,1.35f,1.25f),L(0,1.3f,.1f),L(-.1f,1.45f,.05f),36,33).Focus(0,0,.6f)
                .Orbit(DrawFrom-.1f,Vector3.Zero,-72,-22,2.65f,2.4f,.45f,.62f,new Vector3(0,1.4f,0),new Vector3(0,1.9f,.3f),40,38).Focus(0,0,.35f)
                .Hold(Full-.08f,L(.35f,1.3f,1.25f),L(-.04f,1.66f,.06f),40).Focus(0,0,.75f)
                .Dolly(Release-.03f,L(.62f,.42f,-.82f),L(.52f,.46f,-.7f),L(0,6,4),L(0,14,10),52,50).Focus(0,0,.1f)
-               .Dolly(3.6f,L(3.3f,1.0f,-3.1f),L(3.1f,1.1f,-2.9f),sky,sky+new Vector3(0,-2,0),60,58).Focus(0,0,.05f)
+               // the bolt climbing away: the archer in profile from the chest side at the head's height, looking up along the shot, the bloom's
+               // light falling on the face (the low shot from behind read the head and the arms oddly)
+               .Dolly(3.6f,L(-.77f,1.5f,2.23f),L(-.7f,1.52f,2.05f),L(.17f,2.16f,.13f),L(.2f,2.25f,.14f),50,48).Focus(0,0,.45f)
                .Spline(RainFrom-.06f,new[]{L(5.6f,11.2f,-7.2f),L(5.0f,10.2f,-6.4f),L(4.5f,9.4f,-5.7f)},L(0,0,1.0f),L(0,.2f,.6f),56,54).Focus(0,0,.1f)
                .Dolly(LowerFrom,L(-2.25f,1.2f,1.2f),L(-2.05f,1.26f,1.42f),L(0,1.2f,.2f),L(0,1.22f,.2f),34,33).Focus(0,0,.45f)
                .Dolly(LowerTo+.2f,L(1.62f,.56f,3.45f),L(1.25f,.62f,2.95f),L(.23f,1.26f,-.1f),L(.23f,1.3f,-.1f),34,30).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
@@ -113,12 +119,13 @@ namespace ChipArena.UnityConversion
         public static float PitchAt(float t)=>SkyPitch*NativeEntranceMath.Ramp(t,RaiseFrom,Full);
         // ---- the body on the model (docs/INTROS-V2.md 9a-9c) ----
         protected override bool ModelFeet=>true;
-        /// <summary>The string hand on the string at the nock while the arrow is on it (the grip IK: its pull the bow view's), off at the release.</summary>
+        /// <summary>The string hand on the string at the nock while the arrow is on it (the grip IK: its pull the bow view's), taking the hand
+        /// over the hook's last 30% (so the drawn elbow comes onto its side as the hand arrives, no flip), off at the release.</summary>
         public bool GripAt(float t,out NativeIntroGripAt g)
         {
-            // (the string elbow as the Bow's own: down and out with the bow low, back and high as it is raised to the draw)
-            var v=ViewAt(t);float on=OnString(t);var pole=Vector3.Normalize(Vector3.Lerp(new Vector3(-1,-.7f,-.2f),NativeIntroGrip.Pole(NativeIntroGrip.Kind.Bow),v.Raised));
-            float w=on>=.999f?1:0;g=new NativeIntroGripAt(w,pole,0,v.Pull,0);return w>0;
+            // (the string elbow down and out with the bow low, back along the arrow as it is raised to the draw)
+            var v=ViewAt(t);float on=OnString(t);var pole=Vector3.Normalize(Vector3.Lerp(new Vector3(-1,-.7f,-.2f),DrawElbow,v.Raised));
+            float w=NativeEntranceMath.Clamp01((on-.7f)/.3f);g=new NativeIntroGripAt(w,pole,0,v.Pull,0);return w>0;
         }
         /// <summary>How far the string hand is on the string at `t` (the arrow seated .. the release).</summary>
         private static float OnString(float t)=>t>=Release?0:NativeEntranceMath.Ramp(t,NockTo-.14f,NockTo);
@@ -168,7 +175,7 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<3;i++)pose.Rotation[RightArm[i]]=keyed[i];pose.World();var hang=pose.WorldPosition[RH];
                     var chest=pose.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var outward=Vector3.Transform(-Vector3.UnitX,chest);
                     float u=NativeEntranceMath.Smooth(on);var at=Vector3.Lerp(hang,string0,u)+outward*(.16f*(float)Math.Sin(Math.PI*u))+Vector3.Transform(Vector3.UnitZ,chest)*(.06f*(float)Math.Sin(Math.PI*u));
-                    var turn=Quaternion.Slerp(pose.WorldRotation[RH],Quaternion.Normalize(onString*Quaternion.Inverse(StringHand)),u);var pole=Vector3.Normalize(Vector3.Lerp(new Vector3(-1,-.6f,-.1f),NativeIntroGrip.Pole(NativeIntroGrip.Kind.Bow),u*u));
+                    var turn=Quaternion.Slerp(pose.WorldRotation[RH],Quaternion.Normalize(onString*Quaternion.Inverse(StringHand)),u);var pole=Vector3.Normalize(Vector3.Lerp(new Vector3(-1,-.6f,-.1f),DrawElbow,u*u));
                     CapturedRig.Arm(pose,false,Vector3.Transform(at-pose.WorldPosition[CapturedRig.Chest],inv),Quaternion.Normalize(inv*turn),pole);pose.World();
                 }
             }

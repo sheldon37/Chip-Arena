@@ -62,10 +62,10 @@ namespace ChipArena.UnityConversion
             // the step in, the gun coming up (the hips forward, the chest blading)
             k.Key(StepUp+.26f,NativeIntroPoses.RifleAim()).Root(Fwd(.08f).X,.88f,Fwd(.08f).Z,Facing).Drop(-.07f).J(B,.1f).J(Sp,0,-.2f).J(C,0,-.25f).J(CapturedRig.Neck,.3f,0,.12f).J(Hd,-.15f,.45f,.15f).PassKey();
             // the burst: the hips swing with the traverse, the weight in the gun
-            k.Key(FireFrom-.12f,Aim(.12f,-.075f)).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(0));
-            foreach(int r in TurnRounds){float lean=.13f+.035f*(r%2);k.Key(Fired(r),Aim(lean,-.08f-.012f*(r%2))).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(r));}
+            k.Key(FireFrom-.12f,Aim(.12f,-.075f,Bearing(0))).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(0));
+            foreach(int r in TurnRounds){float lean=.13f+.035f*(r%2);k.Key(Fired(r),Aim(lean,-.08f-.012f*(r%2),Bearing(r))).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(r));}
             // dry: a beat on the stock, then the head up out of the smoke and the gun down
-            k.Key(Dry+.3f,Aim(.11f,-.075f)).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(Rounds-1));
+            k.Key(Dry+.3f,Aim(.11f,-.075f,Bearing(Rounds-1))).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(Rounds-1));
             k.Key(Lower+.2f,stand).Root(Fwd(.06f).X,.88f,Fwd(.06f).Z,Facing).Drop(-.05f).J(B,.05f).J(C,-.02f,-.1f).J(Hd,-.08f,.1f).PassKey();
             k.Key(Lower+.6f,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.03f).J(C,-.05f,-.08f).J(Hd,-.02f,-.04f);
             k.Key(Total,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.03f).J(C,-.06f,-.1f).J(Hd,0,-.06f);Keys=k;
@@ -120,8 +120,11 @@ namespace ChipArena.UnityConversion
         public static bool Holed(int i)=>Math.Abs(i-DrumRound)>1&&Math.Abs(i-CrateRound)>1;
         public static float Fired(int i)=>FireFrom+i*Rate;
         /// <summary>The aim's body at the burst: RifleAim's blade with the cheek down on the stock (the neck bowed, the head tilted back level and
-        /// rolled onto it: the fit in Tests/IntroRangedChecks), leaning `lean` into the gun, the hips `drop` lower (the model's metres).</summary>
-        private static float[] Aim(float lean,float drop)=>NativeEntranceKeys.With(NativeIntroPoses.RifleAim(),v=>{v[NativeEntranceKeys.BodyY]=drop;
+        /// rolled onto it: the fit in Tests/IntroRangedChecks), leaning `lean` into the gun, the hips `drop` lower (the model's metres), the spine
+        /// and the chest turned with the sweep at `bearing` for the share the hips leave (the torso and hips carry the sweep, the arms keep the
+        /// hold; owner 2026-11-21 on the burst: "Arm doing weird things on machine gun intro again").</summary>
+        private static float[] Aim(float lean,float drop,float bearing)=>NativeEntranceKeys.With(NativeIntroPoses.RifleAim(),v=>{v[NativeEntranceKeys.BodyY]=drop;
+            float turn=(1-HipShare)*bearing;NativeEntranceKeys.Set(v,Sp,0,-.34f+.45f*turn,0);NativeEntranceKeys.Set(v,C,0,-.41f+.55f*turn,0);
             NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,CapturedRig.Neck,.6f,0,.25f);NativeEntranceKeys.Set(v,Hd,-.3f,.75f,.3f);});
         /// <summary>The world yaw and pitch from the gun to where it points at `t` (the traverse across the shutter; the first strike before it).</summary>
         public static void TargetAngles(float t,Vector3 from,out float yaw,out float pitch)
@@ -132,7 +135,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The drawn gun's grip in the root's frame while it is shouldered (Tests/IntroRangedChecks holds the bore on every strike
         /// from there): the aim's line starts at the drawn gun as the hips swing it.</summary>
         private static readonly Vector3 GripOnRoot=new Vector3(-.174f,1.3f-.88f,.398f);
-        /// <summary>How much of the sweep the hips take (the arms the rest), so the head stays on the gun.</summary>
+        /// <summary>How much of the sweep the hips take (the spine and the chest the rest), so the arms keep their hold and the head stays on the gun.</summary>
         private const float HipShare=.75f;
         /// <summary>The rounds the hips are keyed on through the burst (the sweep's turns among them).</summary>
         private static readonly int[] TurnRounds={0,5,DrumRound,15,20,25,CrateRound,34,Rounds-1};
@@ -143,11 +146,11 @@ namespace ChipArena.UnityConversion
 
         // ---- the body on the model (docs/INTROS-V2.md 9a-9c) ----
         protected override bool ModelFeet=>true;
-        /// <summary>The off hand on the handguard throughout: racked back along the gun to the handle and home as it comes up, the stock in the
-        /// drawn shoulder while it is up.</summary>
-        public bool GripAt(float t,out NativeIntroGripAt g){g=new NativeIntroGripAt(1,default,-.3f*NativeEntranceMath.Bump(t,Rack-.14f,Rack+.2f),0,Up(t));return true;}
+        /// <summary>The off hand on the handguard throughout: racked back along the gun toward the handle and home as it comes up (.2 m: the
+        /// gun held in at the shoulder, further put the off elbow in the chest), the stock in the drawn shoulder while it is up.</summary>
+        public bool GripAt(float t,out NativeIntroGripAt g){g=new NativeIntroGripAt(1,default,-.2f*NativeEntranceMath.Bump(t,Rack-.14f,Rack+.2f),0,Up(t));return true;}
         /// <summary>Only the main hand is keyed here (the off hand is the grip's): the low carry (the muzzle down and across the body), then the
-        /// match's long-gun aim along the traverse (the yaw the hips leave), each round's kick lifting the muzzle (a steady lean in Reduced).</summary>
+        /// shouldered hold along the traverse (the torso turned with it), each round's kick lifting the muzzle (a steady lean in Reduced).</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
             float up=Up(t);
@@ -156,7 +159,7 @@ namespace ChipArena.UnityConversion
             {
                 var f=Vector3.Transform(Vector3.UnitZ,rotation);float facing=(float)Math.Atan2(f.X,f.Z);TargetAngles(t,root+Vector3.Transform(GripOnRoot,rotation),out float yaw,out float pitch);
                 float kick=t>=FireFrom&&t<FireTo+.05f?(Context.Reduced?.5f:(float)Math.Exp(-((t-FireFrom)%Rate)/(Rate*.35f))):0;
-                NativeIntroPoses.AimRifle(pose,"machinegun",Wrap(yaw-facing),pitch+.03f*kick,up);
+                ShoulderGun(pose,"machinegun",Wrap(yaw-facing),pitch+.03f*kick,up);
             }
         }
         /// <summary>The low carry: the right wrist by the right hip (the chest's frame, the keyed rig's proportions).</summary>

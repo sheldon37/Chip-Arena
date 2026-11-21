@@ -110,7 +110,7 @@ namespace ChipArena.UnityConversion
         {
             float kick=NativeEntranceMath.Pulse(t,ShotAt,.015f,.14f),carry=NativeEntranceMath.Ramp(t,RiseFrom+.04f,RiseFrom+.46f);
             var f=Vector3.Transform(Vector3.UnitZ,rotation);float facing=(float)Math.Atan2(f.X,f.Z);
-            if(carry<.999f)NativeIntroPoses.AimRifle(pose,"rifle",Wrap(KneelYaw-facing),AimPitch+.06f*kick);
+            if(carry<.999f)ShoulderGun(pose,"rifle",Wrap(KneelYaw-facing),AimPitch+.06f*kick);
             if(carry>.001f)NativeIntroGrip.Hold(pose,false,"rifle",CarryAt,NativeIntroGrip.Aim(pose,CarryYaw,CarryPitch),new Vector3(-1,-.7f,-.2f),carry);
         }
         /// <summary>The low carry: the right wrist by the right hip (the chest's frame, the keyed rig's proportions), the bore down and across.</summary>

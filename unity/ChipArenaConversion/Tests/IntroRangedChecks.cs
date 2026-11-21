@@ -198,6 +198,53 @@ namespace ChipArena.UnityConversion
                 Console.WriteLine(line);
             }
         }
+        // ---- the arms as they read (owner 2026-11-21: "Arm doing weird things on machine gun intro again, and check that bow one again") ----
+        /// <summary>How deep arm `left`'s drawn bone lines (shoulder to elbow to wrist to the knuckles) go into the drawn head: the least of
+        /// |l / (radii + margin)| over the lines, `l` a point's offset from the head's centre in the head's frame (NativeVisualRig's head
+        /// ellipsoid, Rig.HeadCenter and HeadRadii, the one fists and weapons are kept out of). Under 1 is inside.</summary>
+        internal static float HeadDepth(Drawn d,bool left,float margin)=>HeadDepth(d,left,margin,out _);
+        internal static float HeadDepth(Drawn d,bool left,float margin,out float where)
+        {
+            string sd=left?"l":"r";var q=d.Turn("head");var c=d.Bone("head")+Vector3.Transform(d.Rig.HeadCenter,q);var inv=Quaternion.Inverse(q);var radii=d.Rig.HeadRadii+new Vector3(margin);
+            var pts=new[]{d.Bone("upperarm_"+sd),d.Bone("lowerarm_"+sd),d.Bone("hand_"+sd),d.Bone("middle_01_"+sd)};float least=float.MaxValue;where=0;
+            for(int k=0;k+1<pts.Length;k++)for(int i=0;i<=20;i++){var l=Vector3.Transform(Vector3.Lerp(pts[k],pts[k+1],i/20f)-c,inv);float depth=(l/radii).Length();if(depth<least){least=depth;where=k+i/20f;}}
+            return least;
+        }
+        /// <summary>Arm `left`'s drawn elbow over its shoulder joint (m; under 0 below it), and over the shoulder-to-wrist line (m, toward world up).</summary>
+        internal static void Elbow(Drawn d,bool left,out float overShoulder,out float overLine)
+        {
+            string sd=left?"l":"r";var sh=d.Bone("upperarm_"+sd);var el=d.Bone("lowerarm_"+sd);var wr=d.Bone("hand_"+sd);overShoulder=el.Y-sh.Y;
+            var line=wr-sh;float u=Math.Clamp(Vector3.Dot(el-sh,line)/Math.Max(line.LengthSquared(),1e-8f),0,1);overLine=el.Y-(sh+line*u).Y;
+        }
+        /// <summary>How far arm `left` crosses the face in the shot's camera: the deepest share (0..1+) of the face's disc on screen that a drawn
+        /// arm point in front of the face covers (the face the drawn eyes, its disc `radius` m round them; 0 when nothing in front).</summary>
+        internal static float FaceCover(Drawn d,bool left,in NativeEntranceView view,float radius)
+        {
+            var fwd=view.Look-view.Eye;if(fwd.LengthSquared()<1e-8f)return 0;fwd=Vector3.Normalize(fwd);var right=Vector3.Cross(fwd,view.Up.LengthSquared()>1e-6f?view.Up:Vector3.UnitY);if(right.LengthSquared()<1e-8f)return 0;right=Vector3.Normalize(right);var up=Vector3.Cross(right,fwd);
+            var face=d.Eyes(out _)-view.Eye;float fz=Vector3.Dot(face,fwd);if(fz<.05f)return 0;float fx=Vector3.Dot(face,right)/fz,fy=Vector3.Dot(face,up)/fz,fr=radius/fz;
+            string sd=left?"l":"r";var pts=new[]{d.Bone("upperarm_"+sd),d.Bone("lowerarm_"+sd),d.Bone("hand_"+sd)};float most=0;
+            for(int k=0;k+1<pts.Length;k++)for(int i=0;i<=16;i++)
+            {
+                var p=Vector3.Lerp(pts[k],pts[k+1],i/16f)-view.Eye;float z=Vector3.Dot(p,fwd);if(z<.05f||z>fz-.06f)continue;
+                float dx=Vector3.Dot(p,right)/z-fx,dy=Vector3.Dot(p,up)/z-fy;float off=(float)Math.Sqrt(dx*dx+dy*dy)/fr;most=Math.Max(most,1-off);
+            }
+            return most;
+        }
+        /// <summary>`--intro-ranged-arms ID [FROM TO]`: per frame (1/30 s of presentation), each drawn arm's elbow over its shoulder and over its
+        /// shoulder-wrist line, its depth into the head (1 is the head's surface + 3 cm) and how much of the face it covers in the shot's camera.</summary>
+        public static void Arms(string id,float from=0,float to=99)
+        {
+            NativeIntroV2Script s;string spec;float duration;
+            if(id.StartsWith("gallery:",StringComparison.Ordinal)){var g=IntroPoseGallery.Make(id.Substring(8));s=g;spec=g.Spec;duration=g.Seconds;}
+            else{var e=NativeIntroCatalog.Find(id);s=(NativeIntroV2Script)e.Make();spec=e.Spec;duration=e.Duration;}
+            var d=new Drawn(ModelPoseChecks.Measured());
+            for(int i=0;i<=duration*30+.5f;i++)
+            {
+                float age=i/30f,t=s.Clock(age);Bind(s,spec,d,t);if(t<from||t>to)continue;s.Camera(age,out var view);var line=new StringBuilder("t "+t.ToString("0.00"));
+                foreach(bool left in new[]{false,true}){Elbow(d,left,out float sh,out float ln);line.Append("  "+(left?"L":"R")+" elbow "+sh.ToString("+0.00;-0.00")+" line "+ln.ToString("+0.00;-0.00")+" head "+HeadDepth(d,left,.03f,out float where).ToString("0.00")+"@"+where.ToString("0.00")+" face "+FaceCover(d,left,view,.11f).ToString("0.00"));}
+                Console.WriteLine(line.Append("  shouldered "+d.State.Shouldered.ToString("0.00")));
+            }
+        }
         // ---- the checks ----
         private static NativeIntroV2Script Make(string id)=>(NativeIntroV2Script)NativeIntroCatalog.Find(id).Make();
         /// <summary>Binds `s` up to `t` from a third of a second before (the binding's weights settle frame to frame, as in the game).</summary>
@@ -208,6 +255,31 @@ namespace ChipArena.UnityConversion
             count=0;var rig=ModelPoseChecks.Measured();string F2(float v)=>v.ToString("0.00");
             foreach(var id in Ids)Check(NativeIntroCatalog.Find(id)!=null,id+" is registered");
             int findings=Limits(false);Check(findings==0,findings+" finding(s) in the ranged intros' limits, feet or grips (--intro-ranged-limits lists them)");
+            // Every arm as it reads, every 1/30 s of each intro through its own shot camera (owner 2026-11-21: "Arm doing weird things on machine
+            // gun intro again, and check that bow one again as well"; the limits passed while they looked wrong): no arm through the drawn head
+            // (its ellipsoid + 3 cm, NativeVisualRig's, the fists' and weapons' own), no arm across more than 15% of the face's disc on screen,
+            // and in the aim and fire beats a long gun's trigger elbow at least 8 cm under its shoulder (no chicken wing), the pistol's arm straight
+            // on its line (the elbow within 5 cm over the shoulder, 4 cm over the shoulder-wrist line) and the bow's string elbow on the arrow's
+            // line at the shoulder's height (under 10 cm over it, not over the head). --intro-ranged-arms ID prints the measures per frame.
+            foreach(var id in Ids)
+            {
+                var e=NativeIntroCatalog.Find(id);var s=(NativeIntroV2Script)e.Make();var d=new Drawn(rig);float head=99,face=0,headAt=0,faceAt=0,elbow=-9,elbowAt=0;bool bow=NativeBowWire.Is(e.Spec);
+                for(int i=0;i<=e.Duration*30+.5f;i++)
+                {
+                    float age=i/30f,t=s.Clock(age);Bind(s,e.Spec,d,t);s.Camera(age,out var view);
+                    foreach(bool left in new[]{false,true})
+                    {
+                        float hd=HeadDepth(d,left,.03f);if(hd<head){head=hd;headAt=t;}Check(hd>=1,id+": the drawn "+(left?"left":"right")+" arm clear of the head (t "+F2(t)+": depth "+F2(hd)+", under 1 is inside the head + 3 cm)");
+                        float fc=FaceCover(d,left,view,.11f);if(fc>face){face=fc;faceAt=t;}Check(fc<=.15f,id+": the drawn "+(left?"left":"right")+" arm off the face in the shot camera (t "+F2(t)+": "+(fc*100).ToString("0")+"% of its disc covered)");
+                    }
+                    Elbow(d,false,out float sh,out float line);bool beat;
+                    if(e.Spec=="rifle"||e.Spec=="machinegun"){beat=d.State.Shouldered>.95f;if(beat)Check(sh<-.08f,id+": the trigger elbow under the shoulder while the gun is shouldered (t "+F2(t)+": "+F2(sh)+" m over it)");}
+                    else if(e.Spec=="pistol"){beat=t>=NativeIntroSundown.AimFrom+.1f&&t<=NativeIntroSundown.ShotAt+.15f;if(beat)Check(sh<.05f&&line<.04f,id+": the pistol arm straight on its line through the aim (t "+F2(t)+": the elbow "+F2(sh)+" m over the shoulder, "+F2(line)+" m over the line)");}
+                    else{beat=bow&&t>=NativeIntroLightfall.DrawFrom&&t<NativeIntroLightfall.Release-.02f;if(beat)Check(sh<.1f,id+": the string elbow on the arrow's line at the shoulder's height through the draw (t "+F2(t)+": "+F2(sh)+" m over the shoulder)");}
+                    if(beat&&sh>elbow){elbow=sh;elbowAt=t;}
+                }
+                Console.WriteLine("  "+id+": the arms at least "+F2(head)+" (t "+F2(headAt)+") of the head's reach + 3 cm out, at most "+(face*100).ToString("0")+"% of the face covered in the shot camera (t "+F2(faceAt)+"), the "+(bow?"string":"trigger")+" elbow at most "+F2(elbow)+" m over the shoulder in the aim (t "+F2(elbowAt)+")");
+            }
             // Sundown: the shot leaves the drawn muzzle along the drawn bore onto the bell's strike, from where the camera's bullet ride starts
             {
                 var s=Make(NativeIntroSundown.Id);var d=new Drawn(rig);Settle(s,"pistol",d,NativeIntroSundown.ShotAt);var m=d.Muzzle(out var bore);
@@ -259,7 +331,7 @@ namespace ChipArena.UnityConversion
                     Check(near<.25f&&below>-.02f&&below<.15f,"Lightfall: the string hand at the drawn jaw at full draw (t "+F2(t)+": "+F2(near)+" m from the eyes, "+F2(below)+" m under them)");
                 }
             }
-            Console.WriteLine("PASS ranged intros: "+count+" checks (four registered; limits, feet and grips clean; the shots on their marks from the drawn weapons; the long guns shouldered with the cheek on the stock and resting low at the name; the bow's straight arm and jaw anchor)");
+            Console.WriteLine("PASS ranged intros: "+count+" checks (four registered; limits, feet and grips clean; every arm clear of the head and off the face in the shot cameras, the aiming elbows placed; the shots on their marks from the drawn weapons; the long guns shouldered with the cheek on the stock and resting low at the name; the bow's straight arm and jaw anchor)");
         }
     }
 }
