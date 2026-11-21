@@ -89,7 +89,7 @@ namespace ChipArena.UnityConversion
                  .Key(2.02f,V(-.26f,.25f,.15f),V(-.5f,.75f,-.4f)).Pass()
                  .Key(2.12f,V(-.26f,.3f,.2f),V(-.55f,-.35f,-.76f))
                  .Key(LeapAt,V(-.24f,.34f,.2f),V(-.35f,-.39f,-.85f)).Pass()
-                 .Key(LeapAt+.27f,V(-.14f,.46f,.2f),V(-.35f,-.2f,-.92f))
+                 .Key(LeapAt+.27f,V(-.2f,.46f,.16f),V(-.35f,-.2f,-.92f))
                  // (the chop comes over with the blade square to the forearms, and the wrists snap it down onto the floor only at the bite)
                  .Key(LeapAt+.38f,V(-.1f,.5f,.24f),V(0,.98f,-.2f)).Pass()
                  .Key(LeapAt+.46f,V(-.12f,.42f,.32f),V(0,.9f,-.42f)).Pass()
@@ -101,7 +101,7 @@ namespace ChipArena.UnityConversion
             // The camera: low over the floor to the pilot; wide and low as it leaps; the blow, craning up over the breaking ring; high over the
             // cracks racing to the walls; the hero.
             Rig.Dolly(0,V(-2.6f,.42f,5.4f),V(-1.55f,.55f,3.55f),V(0,.85f,0),V(0,1.12f,0),44,40).Ease(NativeIntroEase.Out).Handheld(.3f)
-               .Dolly(LeapAt-.15f,V(3.4f,.38f,1.7f),V(3.55f,.42f,1.95f),V(0,1.6f,0),V(0,1.2f,.1f),52,52)
+               .Dolly(LeapAt-.15f,V(3.4f,1.35f,1.7f),V(3.55f,1.4f,1.95f),V(0,1.6f,0),V(0,1.2f,.1f),52,52)
                .Crane(SlamAt-.06f,V(-2.4f,1.0f,3.1f),V(-1.5f,1.5f,3.4f),5.2f,V(0,.4f,.6f),V(0,.2f,.4f),50,60).Ease(NativeIntroEase.InOut)
                .Dolly(SlamAt+1.15f,V(.9f,9.6f,3.4f),V(.4f,9.1f,1.9f),V(0,0,-.8f),V(0,0,-.4f),58,54);// (on the blow's clock: the cracks' later start must not crowd it into the hero)
             HeroFull(RiseAt+.3f,1,5.6f,33,.4f,0);
