@@ -1,3 +1,71 @@
+## 2026-11-20 — Claude (M1): Meridian's flights on their lines: no staircasing; the fire escapes iron and caged (owner report; presentation only)
+
+**Branch and status:** `claude/meridian-stairs` from shared `7115bad3`; work `3113c4e0` and `1a30006f`, shared `d4ee788c` merged in
+(`6bc300fa`). Pushed, not merged. **The owner:** "a lot of unnatural staircasing (reference right of picture)".
+
+**The cause.** Every flight is Astra's MapRamp: a pilot stands on a closed wedge up to its slope, and its treads are boxes from the
+flight's bottom up to flat tops. The dress drew each tread's sides on its own:
+- fire escapes (192 of them, 527 flights) stood as solid stepped brick wedges, every upper flight hanging from its landing;
+- sloped streets' sides stepped every 3-4 m with their copings, and the walls beside them stopped at the treads' tops (notches);
+- stairs' stone sides stepped tread by tread.
+
+**What changed** (`Core/NativeMeridianDressStairs.cs`, with small changes in `NativeMeridianDressPlan.cs`, `NativeMeridianDress.cs`
+and `NativeMeridianChunks.cs`):
+- Each tread side is cut on its flight's line under a 0.3 m band, as trapezoids (`Quad.Taper`).
+- Sloped streets: brick retaining walls under a sloped coping. Stairs: stone cheeks under a sloped coping.
+- Fire escapes: iron. A stringer runs along the nosings; the wedge, solid to a pilot, is caged by bars 0.3 m apart, with a grating
+  under it and the floor running on beneath.
+- No collider or rule change.
+
+**The check:** `MeridianStairsChecks` (`--meridian-stairs`, in the full suite), which fails on the old dress.
+**Cost:** the worst views stay under budget; the Editor load is +0.03-0.07 s (figures in `docs/expedition/MERIDIAN-DRESS.md`).
+**Captures:** `F:/Chip Arena Development/scratch/meridian-stairs/clips/`, before/after in the Editor at night.
+
+**Checks:** full CoreTests the relgen5 way at `6bc300fa`, 1088 groups, exit 0. Also passing: `--meridian-dress` with the bank,
+`--dress-seams`, `--hub-zfight`, `--bleed`, the Unity compile gate, `git diff --check` and the pin scan. Not run: a Windows
+player build, multiplayer, the Low tier in the Editor.
+
+**Risks:** the cage is honest but still a cage; far bars may shimmer; two route lamps hang on cages.
+**For Astra:** thin, open fire-escape flights with rails (the notes' `meridian-staircasing-astra.md`).
+
+## 2026-11-20 — Claude (M1): no hole where the street dress gives a bay to the bleed: the lot's wall under Ward Zero's growth (owner report; presentation only)
+
+**Branch and status:** `claude/bleed-growth-wall` from shared `d4ee788c`: the fix `3b2db7e4`, shared `3f788a3d` merged in
+(`4397873c`), and `a1cd97f8` keeps the check's Program.cs lines clear of `claude/meridian-stairs`' (the two merge cleanly).
+Pushed, not merged into shared.
+**The owner:** "Weird building bug found near ward zero" (The Navigation, near the Ward Zero door, test channel `076ae3fc`).
+
+**The cause.** The street dress (D1) hands bays to the bleed (D3); not Astra's geometry:
+- The street dress leaves a facade bay's module out wherever nine points across the bay lie under the bleed's skins
+  (`NativeCityBleedDress.Covers`).
+- Ward Zero's warp skin, its containment growth, has no wall of its own: `tools/stages/meridian_bleed.py` `wall_growth` draws
+  only the violet blooms and their lit nodules.
+- On a 4 m ground storey, the growth covers the lower points and the quarantine sheeting above covers the top one. So the bay
+  was given away and left empty: a hole through the lot to the next street, the blooms floating in it. Those are the owner's
+  dark blobs with purple dots, and the lit street behind.
+- Two more skins need that wall: the quarantine sheeting hangs 6-26 cm off it, and the Ironworks' riveted plates leave 2 cm
+  seams.
+
+**What changed:** a bay given to the bleed keeps the lot's own plain wall, which the skins hang on (`BleedBay` in
+`Core/NativeMeridianDressLots.cs`; the bleed draws nine layers up, so nothing fights). Banks unchanged.
+
+**The check:** `BleedSkinChecks` (`--bleed-skins`, in the full suite). Every street plan's first four live deals and a deal
+like the owner's (`1126921887`: four growth bays in a row under the sheeting) are dressed with the bleed as the live run
+dresses them. Every bay given to the bleed must be walled. It fails on shared's code. Diagnostics come with it:
+`--bleed-skins-probe` and `--bleed-skins-export`.
+
+**Before/after:** `F:/Chip Arena Development/scratch/bleed-growth-wall/offline-wardzero-growth-before-after.jpg` (offline
+renders of that deal with both banks, back faces culled as in the game).
+
+**Checks:** the full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `a1cd97f8`:
+1,090 groups, exit 0 (`--bleed-skins`: 92 checks, 10 bays given, 4 under the growth). Also passing at `4397873c`:
+`--meridian-dress` and `--hub-zfight` with the city bank, the Unity compile gate (4 assemblies; `a1cd97f8` touches only the
+tests), `git diff --check` against shared and the pin scan (0 broken). Not run: an Editor capture (offline stills only), a Windows
+build.
+
+**Risks:** where a skin is sparse (the growth's blooms), the bay reads as the lot's plain wall with growth on it, which is the
+intent. For D3: the growth module could carry its own stained wall in a later bank pass.
+
 ## 2026-11-20 — Claude: intros v2 batch 1 released, with the hub z-fight fix and the floor seams (integrator)
 Owner: "Ship five now" (the dev intro and four generic intros; Slipstream follows on its Runner Action pack run). Shared `076ae3fc`; the builder at `076ae3fc`, test channel revision `639308124444299384` (build `a24d67a4`, 380.9 MiB). Earlier today: the hub z-fight fix alone, shared `5d54766c`, revision `639308000396336573`.
 - **Merged:** `claude/intro-v2` (framework `claude/intro-framework` to `de6c5207`, generic `claude/intro-generic` `1525dfc6`, dev `claude/intro-dev-architect` `8783ab51`) as `139b40e4`, then five fix merges; `claude/dress-seams` (`72ab4d28`) as `7115bad3`; `claude/hub-zfight` (`f279813f`, plus the PartyLoadingChecks re-pin for #437) as `5d54766c`.
