@@ -24,7 +24,10 @@ namespace ChipArena.UnityConversion
         // mask and query as the original camera), so Brickfall blocks and fragments push it in like any wall.
         private Vector3 ShoulderCamera(NativePilot p,Vector3 focus)
         {
-            cameraCast??=(from,direction,distance,radius)=>arena.PhysicsWorld.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:distance;
+            // (While drop pods stand in a generated hub the eye sees through them: NativePodView, A1's pod solids stop pilots only.)
+            cameraCast??=(from,direction,distance,radius)=>arena.PodRecords.Length>0&&arena.MapId==NativeExpeditionGeneratedWorld.MapId
+                ?NativePodView.Cast(arena.PhysicsWorld,V(from),radius,V(direction),distance,NativeArena.WorldMask,out float near)?near:distance
+                :arena.PhysicsWorld.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:distance;
             float height=cameraRig.Focus(focus.y,p.Seat.id,Time.unscaledDeltaTime);
             var at=cameraRig.Place(new N.Vector3(focus.x,height,focus.z),yaw,pitch,Time.unscaledTime,Time.unscaledDeltaTime,cameraCast);
             lockLift=cameraRig.PivotUp+(height-focus.y);return V(at);

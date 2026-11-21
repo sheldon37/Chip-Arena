@@ -42,7 +42,7 @@ internal static class PodDropChecks
             "the impact in its turn, the plough to its centre, sunk and leaning inside the envelope, the bolts and the door, the pilot braced in the seat, then standing and climbing out down the ramp onto the capsule at its foot by GO; the crater, "+
             "furrow, cooling hull and smoke from the record and the clock; A0's landing field (the apron, the REVIVE-O-MATIC, the fence); the directed camera (my body hidden only inside, the eye never in "+
             "the hull or the head), its shake and the still shot; GO's hold; the sounds; parked, then leaving; the look map; the LED sign; the models, safe untinted; W3's contract names; the wiring and no "+
-            "Unity object made in a field initializer)"+field);
+            "Unity object made in a field initializer)"+field+"; the climb-out's top pace on the 5 s opening "+string.Join(", ",climbPace.Select((v,i)=>"pod "+(i+1)+" "+v.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)))+" m/s");
     }
     private static float Deg(float r)=>r*180/(float)Math.PI;
     private static PodPlan P(int seat,int order,float x,float z,double end,float yaw,float opening)=>NativePodDrop.Plan(seat,order,x,z,end,yaw,opening);
@@ -190,8 +190,9 @@ internal static class PodDropChecks
         }
         Check(wrong==null,"the climb-out ("+p.Order+", "+opening+" s): "+wrong);
         Check(Math.Abs(last-NativeExpeditionHubPlan.ExitReach)<1e-3f,"the climb-out ends on the capsule at the ramp's foot ("+last+")");
-        if(opening==5&&p.Order<4)Check(fastest<(p.Order<2?3.2f:4.6f),"pod "+p.Order+"'s pilot walks out (the first two) or jogs (the next two), never faster ("+fastest+" m/s)");
+        if(opening==5&&p.Order<4){Check(fastest<(p.Order<2?3.2f:4.6f),"pod "+p.Order+"'s pilot walks out (the first two) or jogs (the next two), never faster ("+fastest+" m/s)");climbPace[p.Order]=Math.Max(climbPace[p.Order],fastest);}
     }
+    private static readonly float[] climbPace=new float[4];
     private static void Lasting()
     {
         var p=P(7,2,9,4,300.1,135,5);

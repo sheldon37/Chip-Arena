@@ -33,6 +33,34 @@ namespace ChipArena.UnityConversion
     /// PodLaunch the hook). Presentation only: no rule, timing, collision or network field reads it; the capsule never moves.
     /// Nothing allocates per frame once a pod is made.
     /// </summary>
+    /// <summary>
+    /// The cameras see through the drop pods: A1's pod solids (two crossed boxes per standing pod, NativeExpeditionPods.cs, named
+    /// "Expedition pod SEAT") stop pilots, never the eye. At GO every pilot stands 2.4 m in front of their own pod facing away from
+    /// it, so a camera pulled in by the hull would sit at the pilot's shoulder (and the directed drop's arc would pop in and out of
+    /// it); instead the eye passes through and my own pod eases into glass (ArenaPresentation.PodGhost). A sphere or ray cast
+    /// against the world that skips the pod solids, as the single casts do: the nearest hit, overlaps at its start ignored.
+    /// </summary>
+    public static class NativePodView
+    {
+        public const string SolidName="Expedition pod ";
+        private static readonly RaycastHit[] hits=new RaycastHit[32];
+        /// <summary>Whether collider `c` is a standing pod's solid (the body or its crossed box).</summary>
+        public static bool PodSolid(Collider c)
+        {
+            var t=c!=null?c.transform:null;
+            for(int i=0;i<2&&t!=null;i++,t=t.parent)if(t.name.StartsWith(SolidName,StringComparison.Ordinal))return true;
+            return false;
+        }
+        /// <summary>The nearest hit along the cast (`radius` 0: a ray) that is not a pod solid: true with its distance in `at`.</summary>
+        public static bool Cast(PhysicsScene scene,Vector3 from,float radius,Vector3 direction,float distance,int mask,out float at)
+        {
+            int n=radius>0?scene.SphereCast(from,radius,direction,hits,distance,mask,QueryTriggerInteraction.Ignore):scene.Raycast(from,direction,hits,distance,mask,QueryTriggerInteraction.Ignore);
+            at=distance;bool any=false;
+            for(int i=0;i<n&&i<hits.Length;i++){var h=hits[i];if(!(h.distance>0)||PodSolid(h.collider))continue;if(h.distance<at){at=h.distance;any=true;}}
+            return any;
+        }
+    }
+
     public sealed partial class ArenaPresentation
     {
         private sealed class PodView
@@ -486,7 +514,8 @@ namespace ChipArena.UnityConversion
             // the cabin buffeting: a turn of the view (none with camera shake off)
             if(shake&&s.Judder>0){NativePodDrop.Judder(p.Seed&0xffff,age,s.Judder,out float jp,out float jr);turn*=Quaternion.Euler(jp,0,jr);}
             // out of walls: a solid between the subject and the eye pulls the eye in (the fence, a machine), as the cutscene's
-            if(!s.Cabin&&arena.Root!=null){var ray=eye-look;float dist=ray.magnitude;if(dist>.3f&&arena.Root.scene.GetPhysicsScene().Raycast(look,ray/dist,out var hit,dist,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))eye=look+ray/dist*Mathf.Max(.3f,hit.distance-.25f);}
+            // (A1's pod solids stop pilots, not the eye: it sees through them, and my own pod eases into glass, PodGhost.)
+            if(!s.Cabin&&arena.Root!=null){var ray=eye-look;float dist=ray.magnitude;if(dist>.3f&&NativePodView.Cast(arena.Root.scene.GetPhysicsScene(),look,0,ray/dist,dist,NativeArena.WorldMask,out float near))eye=look+ray/dist*Mathf.Max(.3f,near-.25f);}
             hand=s.Directed;
             if(hand<.999f){podHandEye=eye;podHandTurn=turn;podHandFov=s.Fov;return false;}
             view.transform.SetPositionAndRotation(eye,turn);view.fieldOfView=s.Fov;
