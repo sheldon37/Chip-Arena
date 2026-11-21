@@ -174,6 +174,7 @@ Runtime/NativeSprintFxPresentation.cs                      0   0   1   0   0
 Runtime/NativeStationKindsPresentation.cs                  0   0   5   0   0
 Runtime/NativeStatusPresentation.cs                        0   0   1   0   0
 Runtime/NativeSummonPresentation.cs                        0   0   1   0   0
+Runtime/NativeTacticalViewPresentation.cs                  0   0   2   0   0   # Voxel dependency: the first-person tactical view (2026-11-21) puts the view rig's two hands on the model's weapon frame and left hand, where the muzzle flash, the rounds' origin and the kit pieces already draw; it moves with them when V-steps take first person's effects onto the model
 Runtime/NativeTechniquePresentation.cs                     0   0   1   0  24
 Runtime/NativeTopDogPresentation.cs                        0   0   2   0   0
 Runtime/NativeVentDeathPresentation.cs                     0   0   2   1   0
