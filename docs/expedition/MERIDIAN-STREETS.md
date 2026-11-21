@@ -60,7 +60,9 @@ or a fire escape; no wall dressing comes within 1.5 m of their footprints (M1 dr
 - **The camp's plaza (the precinct, 62 m round the camp):** the Civil Defence's marks at each gate and painted lanes out of all
   of them (30-50 m), the tents' pitches (most of them still there), their fires' ash, and a ring of ten flares, seven in ten
   still burning: the way in, marked for whoever comes next. Up to ten walls within 80 m that face the camp carry Civil Defence
-  floods.
+  floods, each throwing a 13 m pool out over the square (its light reaches about 21 m; 9 m until 2026-11-21). The square's
+  gullies lie where its granite bands cross, with a few manhole covers in its bays (the layout's, laid before the run's tents and
+  flares; docs/expedition/MERIDIAN-DRESS.md "The grounds").
 - **The fittings, by district** (the D1 lot styles): tenements get washing lines, wires, air conditioners; shops and the market
   get awnings (some torn), blade signs, bunting and festoons; rows and villas window boxes and wires; warehouses and sheds hazard
   paint and stencils; civic fronts flags. Downpipes on many walls.

@@ -145,7 +145,9 @@ namespace ChipArena.UnityConversion
             new Kind("upper.banner.0",Mount.Upper,V(-1.02f,-2.62f,.12f),V(1.02f,.06f,.22f)),
             new Kind("upper.banner.1",Mount.Upper,V(-1.02f,-2.62f,.12f),V(1.02f,.06f,.22f)),
             new Kind("upper.banner.2",Mount.Upper,V(-1.02f,-2.62f,.12f),V(1.02f,.06f,.22f)),
-            new Kind("upper.flood",Mount.Upper,V(-.38f,-.64f,WallIn),V(.38f,.36f,1.36f),true,Glow.Flood,Flood,V(0,-.36f,1.06f),9f),
+            // (the plaza's floods throw 13 m pools, their light reaching about 21 m out over the square: 9 m until 2026-11-21, when the
+            // open grounds read as a dark void at night; owner: "Theres very big empty areas")
+            new Kind("upper.flood",Mount.Upper,V(-.38f,-.64f,WallIn),V(.38f,.36f,1.36f),true,Glow.Flood,Flood,V(0,-.36f,1.06f),13f),
             new Kind("upper.flag",Mount.Upper,V(-.08f,-1.5f,WallIn),V(.08f,.2f,1.62f),true),
             // the traffic signal on a high arm over the road, its head both ways along the street, stuck on amber
             new Kind("upper.signal",Mount.Upper,V(-.26f,-1.36f,WallIn),V(.26f,.28f,2.62f),true,Glow.Signal,Amber,V(0,-.74f,2.36f),2.4f),

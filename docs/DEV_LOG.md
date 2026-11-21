@@ -36,6 +36,76 @@
   emergence is not seen in the Editor. **Next:** owner review; the integrator merges; Astra reviews the rules and whether boss
   summons and DEV monsters should emerge too (both need a rules delay).
 
+## 2026-11-21 — Claude: releases 10 and 11: the eleven retried intro sounds, and Meridian's textured grounds (integrator)
+**Release 10.** Owner: "Yes, retry them".
+- **Published:** shared and the builder at `89be9868`. Test channel revision `639308740698722227` (build `da7b3b65`).
+- **What it is:** `claude/intro-sound-retry` `f00f6fb0`.
+  - The compiler gets a declared retry batch: `b3`, with `RETRIES {"b3": "b2"}`. A retry batch may re-request only the retried
+    batch's keys, and its accepted takes replace the key's clips.
+  - Eleven keys at two takes each, with the minimums lowered to 0.25-0.5 s. Job `intros-b3-2026-11-21-v1a`: 22 takes.
+  - The builder imported all 22; none was rejected.
+  - `test_intro_sound_manifests` fixed: since release 7 it failed on shared, because batch 2's jobs seal its temp tree.
+
+**Release 11.** Owner: "Theres very big empty areas, Like I feel the grounds should be textured?"
+- **Published:** shared and the builder at `65c0b1c6`. Test channel revision `639308820807297771` (build `6e678d44`, 393.9 MiB).
+- **What it is:** `claude/meridian-ground` `782eb386` (M4b, finishing M4, which an interrupt stopped).
+  - Ground zones: the sanctuary plaza is a York-flag square with granite bands and a setts border, route streets are asphalt,
+    and every other open floor is setts.
+  - Detail and large-scale variation in StageLit, with puddles that take the lamps.
+  - The retaining walls weather from their visible foot.
+  - Lamps go from 3.0 to 3.6, and the plaza floods' pools from 9 m to 13 m. No discs.
+  - `MeridianGroundChecks` (27,774).
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `40b9821e`;
+  - the full suite (1,100 groups, exit 0);
+  - the Unity compile;
+  - the build.
+  - No bank change.
+- **Open:**
+  - The owner's screenshot floor is about 8x darker (linear 0.0033) than the Editor's capture of the same spot (0.028). The
+    cause is not found.
+  - The repository tracks only `InputManager`, `ProjectSettings` and `ProjectVersion` under ProjectSettings. The builder's
+    `GraphicsSettings` and `QualitySettings` are Unity's defaults, while the Editor's untracked copies differ (for example
+    `m_LightsUseLinearIntensity: 0`).
+  - Colour space is Linear in both.
+  - The owner was asked which graphics quality they play on.
+- **Also:** `claude/zombie-emerge` (Z1: zombies dig out of the ground or rise from lying; the drop-in and its ring are removed) is
+  in progress.
+
+## 2026-11-21 — Claude (M4b): Meridian's open grounds textured and readable at night (owner report; presentation only)
+
+Owner (Crown Hill's sanctuary plaza at night, build f4d8b9b5): "Theres very big empty areas, Like I feel the grounds should be textured?
+Unsure if they're intended to look like this still." **Branch:** `claude/meridian-ground` from shared `39a10e04`, shared `89be9868` merged
+(fast-forward); M4's unfinished edits finished in code `40a9928f`, docs and this entry after it. Pushed, not merged, not released. No bank change.
+- **Cause (proved in the Editor, Crown Hill's live deal, xseed 2027808452):** the plaza's floor is the street dress's generated surface (with
+  the dress off the greybox draws there). Every ground block's top was one finish, the asphalt #2E3038 with no fine surface, so the precinct
+  (8,700 m2 on Crown Hill) and every yard were one flat dark slab. The retaining walls' brick bond shimmered and faded by 42 m, and their grime
+  rose from the block's bottom, 9 m under the terrace in front.
+- **Fix:** `Core/NativeMeridianGround.cs` zones each open floor: the plans' `hub.precinct` is a York-flag square, granite bands on the camp's
+  8 m grid and a 2 m setts border; the routes' flat legs asphalt; every other open floor setts. StageLit's `Ground` (kinds 22-26, the dress's
+  generated surfaces only; M4's start, finished) gives each a fine part within the 18-42 m fade and a broad part at every distance, filtered by
+  the pixel's footprint: asphalt patches, sealed cracks and dusty fields; the square's odd flags and trodden lanes; damp sett joints and
+  repairs; on the retaining brick streaks, rising damp, salt, rebuilt panels and weep holes, weathering from the floor in front (uv1.y). Puddles
+  stand on level floors only, with the city lamps' glints in them.
+- **Light, no discs:** street lamps 3.0 -> 3.6 x sodium down; the plaza's Civil Defence floods' pools 9 -> 13 m (about 21 m reach). Street
+  life: gullies where the square's bands cross and a few manholes (flat paint, the layout's, laid before the run's tents).
+- **Measured:** Editor floor at the owner's view, High linear luminance 0.028 -> 0.144 (sRGB 42,46,55 -> 111,105,96), Low 0.036 -> 0.252; wide
+  plaza 0.030 -> 0.068; the wide street 0.029 -> 0.020 (wet asphalt, its puddles catching the lamps). Managed, the square at night: mean
+  0.032-0.062 against shared's asphalt 0.0055-0.0107, least 0.0027 against 0.0005. Worst views move under 1%, The Yards' High +6% (235,809).
+- **Checks:** full CoreTests the relgen5 way at `40a9928f`: 1,100 groups, exit 0. `MeridianGroundChecks` (`--meridian-ground`, new, 27,774
+  checks) holds the zones, finishes, retaining walls, the square's night light (least 0.002, mean 0.02; shared's asphalt fails both), drains and
+  StageLit pins. With the Editor's banks: `--meridian-dress` and `--streets` PASS. Unity compile gate: four assemblies PASS. fxc: StageLit ps 4.0
+  and 5.0 compile (9,632 static slots against shared's 7,465). `git diff --check` clean. MeridianLampChecks' StageLit pin follows `CityLampsWet`.
+- **Editor (four holds, 11:50-12:30, via the queue):** diagnosis and environment toggles on shared; AFTER stills; BEFORE/AFTER clips at High and
+  Low. No shader or script error; Editor back on `9319026b`, tool restored. Not run: player build, multiplayer, Reduced and DARKNESS live, the walk.
+- **Captures:** `F:/Chip Arena Development/scratch/meridian-ground/clips/`: `clip-owner-view-`, `clip-wide-plaza-`, `clip-wide-street-{high,low}.mp4`
+  (6.5, 6.5, 4.5 s), `sheet-high.jpg`, `sheet-low.jpg`, `owner-view-{before,after}-{high,low}.jpg`, `diagnosis-shared-high.jpg`. Raw frames deleted.
+- **Risks:** the owner's screenshot floor (sRGB 5,10,22) is about eight times darker in linear luminance than the Editor's shared capture of
+  the same place (0.0033 against 0.028); Editor frames overstate the night. `GraphicsSettings.asset`/`QualitySettings.asset` are untracked
+  (the Editor's has `m_LightsUseLinearIntensity: 0`); check one player build. The yards and back streets are now setts (about 200,000 m2 a
+  plan). Wet roads read darker on average. Shader cost not profiled on the owner's GPU. **Next:** the integrator reviews and merges.
+  Animation impact: none; no collider, rule, network or save change.
+
 ## 2026-11-21 — Claude: releases 8 and 9: batch 2's weapon-intro sounds, slices 2 and 3 (integrator)
 - **Published:** shared and the builder at `bf64a49a`, test channel revision `639308588075279543` (build `f4d8b9b5`, 393.6 MiB).
   The intermediate release 8b was `2aa83547`, revision `639308548441164362`.

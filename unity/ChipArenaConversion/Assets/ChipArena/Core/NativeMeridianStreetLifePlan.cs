@@ -572,6 +572,19 @@ namespace ChipArena.UnityConversion
                 Add(w,plan,"mark.cd.0",d*(34f+4f*Rand(ls,20,g))+right*(Rand(ls,21,g)<.5f?-7f:7f),yaw,One,Life.None,PlaceHash(d*34),'p');
                 for(float s=30f;s<=50f;s+=4f)foreach(float u in new[]{-2.6f,2.6f})Add(w,plan,"mark.cd.1",d*s+right*u,yaw,One,Life.None,0,'p');
             }
+            // the square's drainage (2026-11-21, owner: "Theres very big empty areas"): gullies where its granite bands cross (StageLit's
+            // GSquare, NativeMeridianDress.SquareBand apart on the camp's grid) and manhole covers in a few bays, outside the fence, on
+            // the square only (NativeMeridianGround): the layout's, flat paint, laid before the run's
+            // tents and flares so no run moves them
+            var ground=new NativeMeridianGround(w.In.Layout,w.In.Routes);float band=NativeMeridianDress.SquareBand;
+            for(int i=-12;i<=12;i++)for(int j=-12;j<=12;j++)
+            {
+                var cross=new V3(i*band,0,j*band);var bay=cross+new V3(band*.5f,0,band*.5f);uint h=Hash2(ls,(uint)((i+64)*977+(j+64)));
+                if(Math.Max(Math.Abs(cross.x),Math.Abs(cross.z))>27f&&Rand(h,70,0)<.3f&&ground.At(cross)==NativeMeridianGround.Square)
+                    Add(w,plan,"ground.drain",cross,(Rand(h,71,0)<.5f?0:1)*(float)(Math.PI/2),One,Life.None,PlaceHash(cross),'p');
+                if(Math.Max(Math.Abs(bay.x),Math.Abs(bay.z))>28f&&Rand(h,72,0)<.07f&&ground.At(bay)==NativeMeridianGround.Square)
+                    Add(w,plan,"ground.manhole",bay,(int)(Rand(h,73,0)*4)*(float)(Math.PI/2),One,Life.None,PlaceHash(bay),'p');
+            }
             // the tents: two pitches of rows in the precinct's corners, the run's ones still marked; their fires' ash between them
             for(int q=0;q<4;q++)
             {

@@ -17,7 +17,10 @@ Shader "ChipArena/StageLit"
     //    the Ward field, the muzzle lights), each with a GGX-like highlight on the smooth finishes;
     //  - the anime style (NativeToon.cginc) when the look turns it on: the key through the ramp, the flattened ambient, the points
     //    in stairs, a crisp highlight band; the occlusion band from the baked occlusion;
-    //  - the ground haze, the advanced lighting's scattering, then Unity's fog.
+    //  - the ground haze, the advanced lighting's scattering, then Unity's fog;
+    //  - Meridian's grounds (kinds 22-26, only on the Meridian dress's generated floors and retaining walls; owner 2026-11-21): a fine
+    //    part that fades with the others and a broad part every distance keeps, and on wet floors puddles, the sky's sheen and the
+    //    lamps' glints (Ground below).
     // Layers (owner 2026-11-11: "There is Z-Fighting on the stage remodelings ... Floors mainly"): a face that lies on another
     // (paint on a slab, boards on a deck, a sign on a wall: stagekit.layer_polys) carries its layer as layer / 32 on top of its
     // fine surface's kind (uv1.x), and a block's or a rig's model draws one layer up (_StageLift 1 on its materials). The vertex stage draws
@@ -190,11 +193,156 @@ Shader "ChipArena/StageLit"
                 s.n=normalize(s.n+(au*eu+av*ev)*0.4*k);
             }
         }
+        // ---- Meridian's grounds (Core NativeMeridianSurfaces' DRoad .. DRetain; docs/expedition/MERIDIAN-DRESS.md "The grounds";
+        // owner 2026-11-21: "Theres very big empty areas, Like I feel the grounds should be textured?") ----
+        // Only the Meridian dress's generated floors and retaining walls carry these kinds, so every stage and kit draws as before.
+        // Two scales: the fine part (joints, aggregate, the bond) within `fine` (the other fine surfaces' fade), each pattern its mean
+        // once it nears a pixel; and the broad part every distance keeps, which is what reads at night from a third-person camera
+        // (tar patches and sealed cracks, the square's granite bands, bays and odd flags, the setts' repairs, stains and dusty fields,
+        // the walls' streaks, rising damp, salt and weep holes). `f` a pixel's footprint (m) along world x and z.
+        #define DETAIL_ROAD 22
+        #define DETAIL_SQUARE 23
+        #define DETAIL_SETTS 24
+        #define DETAIL_FOOTWAY 25
+        #define DETAIL_RETAIN 26
+        // A joint `w` m wide every `period` m along x seen through a pixel `f` m wide: its coverage, its mean as it nears a pixel.
+        float GJoint(float x,float period,float w,float f)
+        {
+            float d=abs(frac(x/period+0.5)-0.5)*period;float j=1.0-smoothstep(w*0.5-f,w*0.5+f,d);
+            return lerp(j,w/period,saturate(f/w-0.5));
+        }
+        // A detail `size` m across through a pixel `f` m wide: 1 while it reads, 0 before it would alias (it then keeps its mean).
+        float GKeep(float size,float f){return saturate(1.6-2.0*f/size);}
+        // A rectangle in one cell in `share` of a grid's cells (`g` m), its size between `lo` and `hi` m: 1 inside, its sealed seam
+        // (`seam` m wide) in `edge`; `salt` keeps two grids apart.
+        float GPatch(float2 p,float2 g,float share,float2 lo,float2 hi,float salt,float fm,float seam,out float edge)
+        {
+            float2 q=p/g;q.x+=0.5*fmod(abs(floor(q.y)),2.0);float2 c=floor(q);edge=0.0;
+            if(SHash2(c+salt)>=share)return 0.0;
+            float2 sz=lo+(hi-lo)*float2(SHash2(c+salt+3.1),SHash2(c+salt+7.7));float2 ctr=c+0.5+(float2(SHash2(c+salt+11.0),SHash2(c+salt+13.0))-0.5)*(1.0-sz/g);
+            float2 d=abs(q-ctr)*g-sz*0.5;float e=max(d.x,d.y);edge=(1.0-smoothstep(seam-fm,seam+fm,abs(e)))*GKeep(seam*2.0,fm);
+            return 1.0-smoothstep(-fm,fm,e);
+        }
+        // Wet asphalt (#2E3038, the bible's navy): the aggregate's speckle (fine); broad: stains, dry dusty fields (`field`), a third of
+        // the 6 x 4 m cells relaid in newer, darker tar with a sealed seam, and tar-sealed cracks wandering over a third of the road.
+        void GRoad(inout StageSurf s,float2 p,float2 f,float fine,float blot,float field)
+        {
+            float fm=max(f.x,f.y);float edge;
+            float spk=(SHash2(floor(p*40.0))-0.5)*0.2*GKeep(0.025,fm)*fine;float dust=smoothstep(0.56,0.8,field);
+            float patch=GPatch(p,float2(6.0,4.0),0.34,float2(1.4,1.0),float2(4.8,3.4),17.0,fm,0.03,edge);
+            float cn=SNoise(float3(p.x*0.42,1.7,p.y*0.42));float cf=fm*0.6;
+            float crack=(1.0-smoothstep(0.012-cf,0.012+cf,abs(cn-0.5)))*saturate(0.024/max(cf,0.0001))*smoothstep(0.5,0.66,SNoise(float3(p.x*0.07,5.3,p.y*0.07)));
+            s.albedo*=(1.0+spk)*(1.0+0.22*blot)*(1.0+0.4*dust)*lerp(1.0,0.68,patch)*(1.0-0.45*max(edge,crack));
+            s.smooth=saturate(s.smooth+0.05*patch+0.1*crack-0.15*dust);
+        }
+        // The sanctuary's square: York flags in 0.6 m courses (each flag about 0.9 m long and its own shade, a few relaid in concrete or
+        // stained) in bays framed by bands of granite setts every `B` m (the parameter: 8, on the camp's own grid, so a band runs out of
+        // each gate), each bay a touch its own shade; broad stains, and the lanes out of the gates trodden paler and polished.
+        void GSquare(inout StageSurf s,float2 p,float B,float2 f,float fine,float blot)
+        {
+            float fm=max(f.x,f.y);B=max(B,2.0);
+            float2 bd=abs(frac(p/B+0.5)-0.5)*B;const float hw=0.34;
+            float band=max(1.0-smoothstep(hw-f.x,hw+f.x,bd.x),1.0-smoothstep(hw-f.y,hw+f.y,bd.y));
+            float row=floor(p.y/0.6);float len=0.9*(0.8+0.45*SHash2(float2(row,7.0)));float x=p.x+frac(row*0.618)*len;float2 id=float2(floor(x/len),row);
+            float joint=max(GJoint(x,len,0.012,f.x),GJoint(p.y,0.6,0.012,f.y));
+            float keep=GKeep(0.6,fm);float odd=SHash2(id*1.37+11.0);
+            float tone=lerp(1.0,(0.9+0.2*SHash2(id+3.0))*(odd<0.05?1.18:odd<0.09?0.78:1.0),keep);
+            float sj=max(GJoint(p.x,0.2,0.012,f.x),GJoint(p.y,0.1,0.012,f.y));float st=lerp(1.0,0.86+0.28*SHash2(floor(p/float2(0.2,0.1))+5.0),GKeep(0.1,fm));
+            float bt=0.93+0.14*SHash2(floor(p/B)+5.0);
+            // the lanes out of the gates (the camp's axes) trodden paler and polished, in patches
+            float lane=1.0-smoothstep(2.5,6.5,min(abs(p.x),abs(p.y)));float wear=lane*(0.25+0.75*smoothstep(0.35,0.7,SNoise(float3(p.x*0.21,4.0,p.y*0.21))));
+            s.albedo=lerp(s.albedo*tone*bt,s.albedo*float3(0.6,0.6,0.64)*st,band)*(1.0+0.22*blot)*(1.0+0.18*wear);s.smooth=saturate(s.smooth+0.14*wear);
+            float j=lerp(joint,sj,band)*fine;s.albedo=lerp(s.albedo,s.albedo*0.5,j);s.occ*=1.0-0.3*j;s.smooth*=1.0-0.4*j;
+        }
+        // Granite setts (#5A5652, `sc` the scale: 0.22) in courses: each sett its own shade, the joints dark and green where they stay
+        // damp (`field`); broad: stains and tar-filled repairs.
+        void GSetts(inout StageSurf s,float2 p,float sc,float2 f,float fine,float blot,float field)
+        {
+            float fm=max(f.x,f.y);sc=sc>0.01?sc:0.22;float bl=sc*1.15,ch=sc*0.6;float edge;
+            float row=floor(p.y/ch);float x=p.x+0.5*bl*fmod(abs(row),2.0);float2 id=float2(floor(x/bl),row);
+            float j=max(GJoint(x,bl,0.016,f.x),GJoint(p.y,ch,0.016,f.y));
+            float tone=lerp(1.0,0.84+0.3*SHash2(id+2.0),GKeep(ch,fm));float moss=smoothstep(0.58,0.8,field);
+            float rep=GPatch(p,float2(5.0,3.5),0.22,float2(1.0,0.8),float2(3.4,2.4),23.0,fm,0.03,edge);
+            s.albedo=lerp(s.albedo*tone*(1.0+0.22*blot),float3(0.022,0.023,0.028),0.62*rep);
+            float jj=j*fine*(1.0-rep);s.albedo=lerp(s.albedo,lerp(s.albedo*0.45,s.albedo*float3(0.42,0.56,0.36),moss),jj);s.occ*=1.0-0.35*jj;
+            s.smooth=saturate(lerp(s.smooth,0.5,rep));
+        }
+        // The pavements' slabs (#6E6A64, `sc` the scale: 0.62, 0.78 x 0.51 m), each its own shade, broad stains.
+        void GFootway(inout StageSurf s,float2 p,float sc,float2 f,float fine,float blot)
+        {
+            float fm=max(f.x,f.y);sc=sc>0.01?sc:0.62;float bl=1.25*sc,ch=0.82*sc;
+            float row=floor(p.y/ch);float x=p.x+0.5*bl*fmod(abs(row),2.0);float2 id=float2(floor(x/bl),row);
+            float j=max(GJoint(x,bl,0.01,f.x),GJoint(p.y,ch,0.01,f.y))*fine;
+            float tone=lerp(1.0,0.9+0.2*SHash2(id+9.0),GKeep(ch,fm));
+            s.albedo*=tone*(1.0+0.18*blot);s.albedo=lerp(s.albedo,s.albedo*0.55,j);s.occ*=1.0-0.25*j;
+        }
+        // Engineering brick retaining walls (#4E4450; the bible's weathering grammar, 4.4), `floorY` the floor in front (uv1.y), `h` and
+        // `fh` along the face, `fv` a pixel up it: the bond (225 x 75 mm), its joints' mean once a course nears a pixel and each brick's
+        // own shade only while it reads (no moire); broad: rain streaks down from the coping (lime or soot by column), the rising damp at
+        // the foot (darker, greener, its edge ragged), salt bloom just over it (`field`), rebuilt panels in a redder brick, and a weep
+        // hole every 1.8 m, 0.55 m up, with its stain under it.
+        void GRetain(inout StageSurf s,float3 world,float h,float floorY,float fh,float fv,bool top,float fine,float blot,float field)
+        {
+            float v=top?world.z:world.y;
+            float row=floor(v/0.075);float u=h+0.1125*fmod(abs(row),2.0);float2 id=float2(floor(u/0.225),row);
+            float j=max(GJoint(u,0.225,0.011,fh),GJoint(v,0.075,0.011,fv))*fine;
+            float keep=GKeep(0.075,max(fh,fv))*fine;float burnt=step(0.9,SHash2(id+float2(3.7,1.3)));
+            s.albedo*=lerp(1.0,(0.86+0.3*SHash2(id))*lerp(1.0,0.62,burnt),keep)*(1.0+0.14*blot);
+            s.albedo=lerp(s.albedo,lerp(s.albedo,float3(0.36,0.33,0.27),0.55),j);s.occ*=1.0-0.2*j;
+            if(top)return;
+            float above=world.y-floorY;
+            float streak=smoothstep(0.6,0.8,SNoise(float3(h*1.4,world.y*0.12,3.0)))*smoothstep(0.6,2.2,above);float lime=step(0.55,SHash2(float2(floor(h/0.7),9.0)));
+            float edge=0.45+0.35*SNoise(float3(h*0.8,0.0,7.0));float damp=1.0-smoothstep(edge,edge+0.25,above);
+            float salt=smoothstep(0.6,0.82,field)*smoothstep(edge,edge+0.3,above)*(1.0-smoothstep(1.3,2.2,above));
+            float2 pg=float2(h/4.5,world.y/2.4);float2 pf=abs(frac(pg)-0.5)*float2(4.5,2.4)-float2(1.6,0.8);
+            float panel=SHash2(floor(pg)+31.0)<0.16?1.0-smoothstep(-0.05,0.05,max(pf.x,pf.y)):0.0;
+            float wx=abs(frac(h/1.8)-0.5)*1.8;float weep=(1.0-smoothstep(0.045-fh,0.045+fh,wx))*(1.0-smoothstep(0.04-fv,0.04+fv,abs(above-0.55)))*GKeep(0.09,max(fh,fv));
+            float stain=(1.0-smoothstep(0.02,0.1,wx))*smoothstep(0.05,0.5,above)*(1.0-smoothstep(0.5,0.52,above));
+            s.albedo*=lerp(float3(1.0,1.0,1.0),float3(1.12,0.95,0.9),panel);
+            s.albedo=lerp(s.albedo,lime>0.5?float3(0.17,0.165,0.155):s.albedo*0.55,streak*0.45);
+            s.albedo=lerp(s.albedo,float3(0.2,0.195,0.18),salt*0.35);
+            s.albedo=lerp(s.albedo,s.albedo*float3(0.58,0.7,0.52),saturate(damp*0.85+stain*0.4));
+            s.albedo=lerp(s.albedo,float3(0.006,0.006,0.008),weep);s.occ*=1.0-0.5*weep;
+            s.smooth=saturate(s.smooth+0.15*damp-0.1*salt);
+        }
+        // Meridian's puddles: standing water in the low spots of a broad field, fewer and crisper than the blocks' (ArenaPuddle), `share`
+        // of the look's puddles by finish; on a level floor only (none on a sloped street, a few on a 1:8 one).
+        float GPuddle(float3 world,float ny,float wet,float share)
+        {
+            if(wet<=0.0||ny<0.99)return 0.0;
+            float m=WetNoise(world.xz*0.17)*0.6+WetNoise(world.xz*0.53+float2(3.7,9.1))*0.4;float t=0.665-0.12*_ArenaWet.y*share;
+            return smoothstep(t,t+0.03,m)*saturate(_ArenaWet.y*2.0)*smoothstep(0.99,0.999,ny)*saturate(wet/max(_ArenaWet.x,0.0001));
+        }
+        // A Meridian ground's finish (`kind` 22-26, `param` its parameter, `ng` the face's normal, `fw` a pixel's footprint along the
+        // world's axes, `k` the bump's share): one broad stain and one second field each kind reads its own way (the road's dusty fields,
+        // the setts' damp joints, the walls' salt) and one micro-bump within the fade, for every kind; and on a floor its wetness (the
+        // look's weather: Medium and High; 0 dry) and puddle: darker, a little glossier (asphalt keeps the bible's 0.5 at most), standing
+        // water flat at 0.88.
+        void Ground(inout StageSurf s,int kind,float param,float3 world,float3 fw,float3 ng,float fine,float k,out float wet,out float puddle)
+        {
+            wet=0.0;puddle=0.0;bool wall=kind==DETAIL_RETAIN;bool top=abs(ng.y)>0.7;bool xf=abs(ng.x)>abs(ng.z);
+            float h=top?world.x:(xf?world.z:world.x);float fh=top?fw.x:(xf?fw.z:fw.x);float2 p=world.xz;
+            float fs=kind==DETAIL_SQUARE?0.09:kind==DETAIL_SETTS?0.12:kind==DETAIL_FOOTWAY?0.15:0.11;
+            float blot=SFbm(wall&&!top?float3(h*0.11,world.y*0.11,0.0):float3(p.x*fs,0.0,p.y*fs))-0.5;
+            float field=SFbm(kind==DETAIL_ROAD?float3(p.x*0.045+3.1,1.3,p.y*0.045):kind==DETAIL_SETTS?float3(p.x*0.3,2.0,p.y*0.3):float3(h*0.7,world.y*1.1,1.0));
+            float share=1.0;
+            if(wall)GRetain(s,world,h,param,fh,top?fw.z:fw.y,top,fine,blot,field);
+            else if(kind==DETAIL_ROAD)GRoad(s,p,fw.xz,fine,blot,field);
+            else if(kind==DETAIL_SQUARE){GSquare(s,p,param,fw.xz,fine,blot);share=0.75;}
+            else if(kind==DETAIL_SETTS)GSetts(s,p,param,fw.xz,fine,blot,field);
+            else{GFootway(s,p,param,fw.xz,fine,blot);share=0.45;}
+            if(fine>0.0){float bf=wall?17.0:kind==DETAIL_SETTS?11.0:kind==DETAIL_SQUARE?7.0:9.0;float bk=wall?0.08:kind==DETAIL_SETTS?0.07:kind==DETAIL_SQUARE?0.06:0.05;s.n=SBump(s.n,world,bf,bk*k*fine);}
+            if(wall)return;
+            wet=ArenaWetAt(world);if(wet<=0.0)return;
+            puddle=GPuddle(world,ng.y,wet,share);
+            s.albedo=ArenaWetAlbedo(s.albedo,wet,puddle,ng);s.smooth=lerp(min(s.smooth,0.5),0.88,puddle);s.n=normalize(lerp(s.n,ng,puddle));s.occ=lerp(s.occ,1.0,puddle*0.5);
+        }
         // ---- light ----
         // The rim, the practical slots ((1 - (d/r)^2)^2), the flashes, the Ward field, the muzzle lights and the city's lamps
         // (NativeCityLamps.cginc): their diffuse (N.L, wrapped by `wrap`) and, for the slots and the lamps, a highlight of the given
         // sharpness (spec: the specular colour times the light). A slot carrying a city lamp (w -1) is the grid's here, never twice.
-        float3 StageLights(float3 world,float3 n,float3 v,float wrap,float sharp,inout float3 spec)
+        // `g` and `glint`: a wet floor's reflected view ray and glint sharpness (w 0: none), the city's lamps' glints in it.
+        float3 StageLights(float3 world,float3 n,float3 v,float wrap,float sharp,inout float3 spec,float4 g,inout float3 glint)
         {
             float3 sum=_ArenaRimColor.rgb*saturate((dot(n,_ArenaRimDir.xyz)+wrap)/(1.0+wrap))+WardField(world,n);
             for(int k=0;k<8;k++)
@@ -210,7 +358,7 @@ Shader "ChipArena/StageLit"
                 sum+=_ArenaFlashColor[m].rgb*(saturate(5.0*(1.0-q))/(1.0+25.0*q)*saturate(dot(n,d/len)));
             }
             sum+=MuzzleLights(world,n,wrap);
-            sum+=CityLamps(world,n,v,wrap,sharp,spec);
+            sum+=CityLampsWet(world,n,v,wrap,sharp,spec,g,glint);
             return sum;
         }
         float3 StageHaze(float3 col,float3 world,float dist)
@@ -249,6 +397,8 @@ Shader "ChipArena/StageLit"
             {
                 UNITY_SETUP_INSTANCE_ID(i);
                 float3 world=i.world;float3 v=normalize(_WorldSpaceCameraPos-world);float dist=distance(world,_WorldSpaceCameraPos);
+                // a pixel's footprint (m) along the world's axes, taken here in uniform flow (Meridian's grounds filter by it)
+                float3 fw3=fwidth(world);
                 float4 tint=UNITY_ACCESS_INSTANCED_PROP(StageProps,_StageTint);
                 if(_Glow>0.5)
                 {
@@ -264,6 +414,9 @@ Shader "ChipArena/StageLit"
                 // the fade to a plain surface far off keeps the fine detail from shimmering
                 float fineFade=1.0-smoothstep(18.0,42.0,dist);
                 if(fineFade>0.0){StageSurf f=s;SFine(f,(int)(i.mat.z+0.5),i.mat.w,world,toon?1.0:0.0);s.albedo=lerp(s.albedo,f.albedo,fineFade);s.n=normalize(lerp(s.n,f.n,fineFade));s.smooth=lerp(s.smooth,f.smooth,fineFade);s.metal=f.metal;s.occ=lerp(s.occ,f.occ,fineFade);s.sheen=f.sheen;s.wrap=f.wrap;}
+                // Meridian's grounds: the finish's fine part within the fade, its broad part at every distance, the wet floor's puddles
+                int kind=(int)(i.mat.z+0.5);float gw=0.0,gp=0.0;float3 ng=s.n;
+                if(kind>=DETAIL_ROAD&&kind<=DETAIL_RETAIN)Ground(s,kind,i.mat.w,world,fw3,ng,fineFade,toon?0.45:1.0,gw,gp);
                 // a struck block's damage: soot and scorch
                 float dmg=saturate(tint.w);if(dmg>0.0){float soot=smoothstep(0.3,0.7,SFbm(world*2.5))*dmg;s.albedo=lerp(s.albedo,float3(0.03,0.025,0.02),0.7*soot)*(1.0-0.2*dmg);s.smooth*=1.0-0.6*dmg;}
                 float3 n=s.n;
@@ -283,7 +436,9 @@ Shader "ChipArena/StageLit"
                 Unity_GlossyEnvironmentData gloss=UnityGlossyEnvironmentSetup(s.smooth,v,n,specColor);
                 float3 env=UnityGI_IndirectSpecular(d,s.occ,gloss);
                 float sharp=exp2(10.0*s.smooth+1.0);float3 pspec=float3(0.0,0.0,0.0);
-                float3 points=StageLights(world,n,v,s.wrap,sharp,pspec);
+                // a puddle's reflected view ray for the city's lamps' glints (none off the puddles)
+                float4 wg=gp>0.01?float4(reflect(-v,n),lerp(1.0,4.0,gp)):float4(0.0,0.0,0.0,0.0);float3 glint=float3(0.0,0.0,0.0);
+                float3 points=StageLights(world,n,v,s.wrap,sharp,pspec,wg,glint);
                 float3 col;
                 if(!toon)
                 {
@@ -304,6 +459,13 @@ Shader "ChipArena/StageLit"
                 }
                 // velvet and cloth: a soft sheen at grazing angles in the light about them
                 col+=s.sheen*pow(1.0-saturate(dot(n,v)),3.0)*s.albedo*(sh+points*0.5+lc*atten*0.3);
+                // a wet Meridian floor: the sky's sheen at grazing angles with the moon's and the nearest lamps' glints (as the blocks'
+                // wet floors), and in its puddles every city lamp's glint, a streak toward the eye
+                if(gw>0.0)
+                {
+                    col+=ArenaWetSheen(world,n,v,gw,gp,L,lc,atten);
+                    float fr=0.04+0.96*pow(1.0-saturate(dot(n,v)),5.0);col+=glint*((0.35+0.65*fr)*gw*gp*_ArenaWetSky.w);
+                }
                 fixed4 c=fixed4(StageHaze(col,world,dist),1.0);
                 c.rgb=ArenaScatter(c.rgb,world,_WorldSpaceCameraPos);
                 UNITY_APPLY_FOG(i.fogCoord,c);return c;

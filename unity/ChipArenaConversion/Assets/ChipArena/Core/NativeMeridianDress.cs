@@ -23,6 +23,9 @@ namespace ChipArena.UnityConversion
     {
         public const string Bank="ChipArenaCityMeridian";
         public const float ChunkSize=32f,Hug=3.1f,Paint=.06f,Short=.25f,Bay=2.5f,GroundStorey=4f,Storey=3f;
+        /// <summary>The sanctuary's square's granite bands (m apart, on the camp's own grid: a band runs out of each gate; StageLit's
+        /// GSquare reads it as the finish's parameter).</summary>
+        public const float SquareBand=8f;
         /// <summary>The theme at a point (D3's bleed, NativeCityBleed): a theme id (level0, poolrooms, wardzero, station, ironworks,
         /// final) or null for plain Meridian. Null by default. A themed module is the plain key plus "@" and the theme; the plain
         /// key draws where the bank has no such variant.</summary>
