@@ -87,10 +87,28 @@ change. Without the city bank the walk draws its greybox exactly as before.
 - **The lamp rule** (the owner): the routes home are the protected circuit (warmer glass, none dead, 1 in 10 flickering);
   the side streets 1 in 5 dead and 1 in 10 flickering. Where the lamps hang is the layout's; which are dead or flicker is the
   run's.
-- **The light:** the nearest lit lamps take the eight practical slots (three on Low) and light the art, the greybox and the
-  pilots and zombies (`ActorLights`); every lit lamp lays a pool on its floor; near the eye each lays a wet streak toward it
-  (camera-facing quads, about sixty, inside the 2,800 budget; none on Low); flickering heads draw apart with their glow; High
-  adds soft beams under the nearest bowls (`NativeVolumetricBeams`).
+- **The light** (2026-11-21, the owner: "the light doesn't seem to be on the material properly? (Like this seems to be flat, in
+  the air light)"): every working lamp lights the walls and floors round it, per pixel, through the city's lamp grid.
+  - Before, only the eight practical slots (three on Low; three fewer beside the camp, whose kit lights took the weakest) put
+    real light on a surface. Every other lamp showed a flat sodium disc laid over the floor (floating over a sloped street, whose
+    floor falls away under a flat quad) and, on High, a bright constant cone in the air. The walls round those brackets stayed dark.
+  - **The grid** (`Core/NativeCityLamps.cs`, `Resources/NativeCityLamps.cginc`, `Runtime/NativeCityLampLight.cs`): each light's
+    place, reach and colour; 8 m cells over the city, each listing the lights whose reach touches it (16 at most, the brightest
+    first). ChipArena/StageLit lights each pixel from its cell's lights exactly as from a slot (the slots' fall-off
+    (1 - (d/r)^2)^2, N.L, the same highlight, the anime steps). It is on only while the lights' own map is lit and no stage or v2
+    intro owns the light; every other map draws as before.
+  - **Each lamp's light** (`Core/NativeMeridianDressLight.cs`): a swan-neck's 0.15 m under its bowl, a pendant's under its bowl, a
+    flush lamp's 0.3 m in front of its lens (at the lens it lit only the street, never its own wall); its reach the pool's radius x
+    1.25; sodium x 1.35 (flush x 0.85), a route home's warmer. A flickering lamp steps under 3 Hz; with Reduced effects it only
+    breathes, never under 0.6.
+  - **The slots** still carry the nearest lamps (8; Low 3) to the pilots and zombies (`ActorLights`), the greybox and the air's
+    glow, marked (w -1) so StageLit takes them from the grid and never lights a surface twice.
+  - **No pools.** A wet glint toward the eye (additive, about six metres) under each lamp within 40 m, only where the floor under
+    it is level; none on Low.
+  - **Beams** on High only where the camera draws its depth (they fade into the floor and walls they meet), about a third as
+    bright, narrower, a little fainter seen side on, gone 30 m from the eye, none from a flush lamp.
+  - **DARKNESS** puts the street lamps out: their light, glints, beams and glass (the glass and windows at the mutator's glow).
+  - The street life's lit pieces, the bleed's lamps and the camp's lamps light through the same grid (their pools gone too).
 - **Toon Harbor heads and VLB** reach players only through the private zip; neither has a Meridian bridge yet (the kit bank
   is not in the Editor's Resources), so our own fixtures and beams draw.
 
@@ -142,6 +160,16 @@ planned as the live run plans it, and everything drawn in the hub (64 m square a
 dressing still draws (with their lifts), the dress's surfaces (with `CHIPARENA_MERIDIAN_BANK`, its modules) and the gates. No two
 same-facing faces may share a plane there (4 mm; floors 30 mm; two greybox faces 2 mm, their lifts' step) unless StageLit's
 layers part them. `--hub-zfight-probe` lists the hub's blocks and every pair as shared drew it and as the branch draws it.
+
+`MeridianLampChecks` (`--meridian-lamps`, in the full suite): every street plan's live deal, its lamps' light as the grid holds it
+and the shader's formula: the wall 1 m and 2 m under every swan-neck's bracket at least 0.6 and 0.35 (linear luminance before the
+surface's colour; measured 0.75 and 0.45 at the least), the wall under every flush lens at least 0.2 (shared's slot gave 0.12; now
+0.26), every pool's floor its lamp reaches at least 0.25 (0.30 at the least); the grid's cells give every light that reaches them
+(none dropped, the whole city's lights as the live run adds them: the fullest cell 14 of 16, the Arcades); every lamp within 60 m
+ahead of the owner's view up Crown Hill's west street lights its wall (17 of 17; shared's slots held 8); flicker under 3 Hz and the
+Reduced breath; the shader, drawers and upload pinned; the per-frame packing allocates nothing. `--meridian-lamps-probe PLAN X Z R`
+lists the lamps near a point with the light on their walls and floors (with `MERIDIAN_EYE=x,y,z,fx,fy,fz`, the slots' picks there);
+`--meridian-lamps-stats` the least light per kind and plan.
 
 `MeridianDressChecks` (`--meridian-dress`, in the full suite): the roles against the specs, the sheet, determinism, the theme
 hook, the hugging rule, modules on their faces' planes, every seen face drawn, the route corridors' keep-out, the lamp rule, the
