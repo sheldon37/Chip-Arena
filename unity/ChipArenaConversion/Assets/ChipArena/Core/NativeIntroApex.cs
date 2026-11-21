@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(0,V(1.9f,.55f,5.6f),V(1.25f,.62f,4.3f),V(0,2.4f,-3),V(.3f,2.95f,-3),40,36).Ease(NativeIntroEase.Linear).Handheld(.7f)
                .Crane(RevealAt,V(-1.8f,1.35f,1.0f),V(-1.05f,2.0f,-.6f),.35f,perchHead+V(0,-.1f,0),perchHead,33,27).Handheld(.35f)
                .Dolly(CoilAt-.05f,perchHead+V(-1.1f,.12f,1.9f),perchHead+V(-1.0f,.08f,1.7f),perchHead+V(0,-.2f,0),perchHead+V(0,-.24f,0),30,28).Focus(0,0,.5f)
-               .Dolly(LeapAt+.08f,V(3.75f,4.2f,-2.05f),V(3.1f,1.5f,.75f),V(0,.1f,0),V(0,0,0),42,46).Follow(NativeEntranceAnchor.Chest,.04f).Ease(NativeIntroEase.InOut)
+               .Dolly(LeapAt+.08f,V(3.75f,4.2f,-2.05f),V(3.1f,1.5f,.75f),V(0,.12f,0),V(0,.05f,0),42,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt-.02f,V(2.4f,.9f,2.0f),V(2.55f,.95f,2.2f),V(0,.55f,.35f),V(0,.62f,.3f),46,45);
             HeroFull(RiseAt+.05f,-1,4.4f,32,.35f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
