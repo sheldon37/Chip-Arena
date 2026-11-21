@@ -21,25 +21,50 @@ namespace ChipArena.UnityConversion
             bool Near(Vector3 p,float radius)=>Math.Abs(p.y-at.y)<4&&new Vector2(p.x-at.x,p.z-at.z).magnitude<e.clear+radius;
             return !Pilots.Any(p=>p.Hp>0&&p.Seat.connected&&Near(p.Body.position,p.Collider.radius))&&!Minions.Any(m=>m.Hp>0&&(Near(m.Body.position,m.Collider.radius)||NativeWardEntries.Drop(m.Pve?.Entry??e)&&m.Pve!=null&&Time<m.Pve.ActiveAt&&Near(Vec(m.Pve.Entry.@exit.Position()),m.Collider.radius)));
         }
+        // Measure from the emergence point to living players in this area's simulation.
+        private double LocalSpawnWeight(Vector3 exit,IReadOnlyList<NativePilot> players,bool surprise)
+        {
+            float nearest=float.PositiveInfinity;
+            for(int i=0;i<players.Count;i++)
+                nearest=Math.Min(nearest,(players[i].Body.position-exit).sqrMagnitude);
+            double weight=ExpeditionHubRules.SpawnWeight(nearest,0,surprise);
+            float visible=ExpeditionHubRules.VisibleSpawnMin*ExpeditionHubRules.VisibleSpawnMin;
+            if(weight==0||nearest>=visible)return weight;
+            for(int i=0;i<players.Count;i++)
+            {
+                var at=players[i].Body.position;
+                if((at-exit).sqrMagnitude<visible&&!SceneLinecast(at,exit,WorldMask))return 0;
+            }
+            return weight;
+        }
         public double HordeMs {get;private set;}public double HordeSpawnMs {get;private set;}
-        private NativeMinion SpawnPveAdd(string kind,bool force=false,int forcedEntry=-1)
+        private NativeMinion SpawnPveAdd(string kind,bool force=false,int forcedEntry=-1,bool nearPlayers=false)
         {
             long at=System.Diagnostics.Stopwatch.GetTimestamp();
-            try{return SpawnPveAddCore(kind,force,forcedEntry);}
+            try{return SpawnPveAddCore(kind,force,forcedEntry,nearPlayers);}
             finally{HordeSpawnMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
         }
-        private NativeMinion SpawnPveAddCore(string kind,bool force,int forcedEntry)
+        private NativeMinion SpawnPveAddCore(string kind,bool force,int forcedEntry,bool nearPlayers)
         {
             var v=Pve??wardSandboxState;if(v==null||kind==null)return null;
             kind=NativeBackroomsKinds.SpawnKind(MapId,NativeExpeditionMutators.Kind(ActiveMutators,kind));if(!ZoneKindRoom(kind))return null;
             if(Minions.Count(m=>m.Pve!=null&&!m.DevMonster)>=v.Cap&&v.Cap>0)return null;
             if(kind=="spitter"&&Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")>=NativeSpitterRules.Cap)return null;
             if(kind=="hulk"&&Minions.Count(m=>m.Pve?.Stats.id=="hulk")>=(Mutator("hulkamania")?6:Math.Max(1,Math.Min(2,v.Cap/2))))return null;
-            var members=(Pve==null?Pilots.Where(p=>!p.Seat.AuthorityBoss):Members()).Where(p=>p.Hp>0).ToArray();
+            var members=(Pve==null?Pilots.Where(p=>!p.Seat.AuthorityBoss):Members()).Where(p=>p.Hp>0&&(!nearPlayers||p.Seat.connected&&!p.Seat.bot&&!p.ExpeditionTransferHeld)).ToArray();
+            if(nearPlayers&&members.Length==0)return null;
+            bool surprise=nearPlayers&&forcedEntry<0&&v.SpawnRandom.Next()<ExpeditionHubRules.SurpriseChance;
+            double EntryWeight(PveEntry entry)
+            {
+                var exit=Vec(entry.@exit.Position(.9f));
+                if(nearPlayers)return LocalSpawnWeight(exit,members,surprise);
+                float distance=force?float.PositiveInfinity:members.Select(p=>(p.Body.position-exit).magnitude).DefaultIfEmpty(float.PositiveInfinity).Min();
+                return NativeEntryRules.Weight(distance,entry.kind,v.Stage=="wave",v.Hidden);
+            }
             var candidates=v.Content.entries.Where(e=>ZoneEntryAllowed(e,kind)&&EntryQueue(e.e)<3&&
                 (e.kind!="vent"||!VentHazard(e.e))&&(e.kind!="breach"||BreachAvailable(e))&&WardLandingClear(e)&&
                 !UnsafeStagePath(Vec(e.@exit.Position(.9f)),Vec(e.@exit.Position(.9f)))&&(forcedEntry<0||e.e==forcedEntry))
-                .Select(e=>new{entry=e,weight=NativeEntryRules.Weight(force?float.PositiveInfinity:members.Select(p=>(p.Body.position-Vec(e.@exit.Position(.9f))).magnitude).DefaultIfEmpty(float.PositiveInfinity).Min(),e.kind,v.Stage=="wave",v.Hidden)*
+                .Select(e=>new{entry=e,weight=(float)EntryWeight(e)*
                     (members.Any(p=>Math.Abs(p.Body.position.y-e.@exit.y)<2)?2:1)/
                     (1+Minions.Count(m=>m.Pve!=null&&m.Pve.Entry.level==e.level))}).Where(e=>e.weight>0).ToArray();
             if(NativeBackroomsKinds.Level0(MapId)&&EntityDarkLayout!=null&&forcedEntry<0)
@@ -51,7 +76,7 @@ namespace ChipArena.UnityConversion
                     candidates=candidates.Where(e=>members.All(p=>Vector3.Distance(p.Body.position,Vec(e.entry.@exit.Position(.9f)))>=8)&&!float.IsInfinity(NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position()))).ToArray();
                     var hidden=candidates.Where(e=>!EntityObserved(Vec(e.entry.@exit.Position(.9f)))).ToArray();if(hidden.Length>0)candidates=hidden;
                     else candidates=candidates.Where(e=>members.All(p=>Vector3.Distance(p.Body.position,Vec(e.entry.@exit.Position(.9f)))>=16)).ToArray();
-                    if(candidates.Length>0){float nearest=candidates.Min(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position()));candidates=candidates.Where(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position())<=nearest+BackroomsLayout.Cell*2).ToArray();}
+                    if(candidates.Length>0){float nearest=candidates.Min(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position()));candidates=candidates.Where(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position())<=Math.Min(nearPlayers?ExpeditionHubRules.SpawnMax:float.PositiveInfinity,nearest+BackroomsLayout.Cell*2)).ToArray();}
                 }
             }
             float total=candidates.Sum(e=>e.weight);if(total<=0)return null;

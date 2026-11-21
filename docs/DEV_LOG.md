@@ -1,3 +1,9 @@
+## 2026-11-21 — Astra: keep Expedition zombie arrivals near active players
+
+Branch `codex/local-zombie-spawns` from shared `8ffefafd`. Applies to Meridian street population and normal instance quota spawns, including their pack followers. The host chooses a legal authored emergence point within 52 m of a living local player. The ordinary minimum is 12 m. A 3% roll per new arrival attempt permits concealed entries down to 6 m. Any player with a clear sightline inside 18 m blocks that entry. If no eligible entrance exists, the normal spawn clock retries. Level 0 additionally limits corridor distance. Scripted boss reinforcements retain their encounter placement. No generated layout, art, network field, attack timing or damage changes.
+
+Checked the 24 authored instance arrival slots: Ward Zero has 28–32 entries between 18 and 52 m per slot, Central Station 18–19 and Ironworks 20–22, before hazard, queue and enemy-specific filters. Added managed boundary checks and a native instance combat assertion for the actual selected emergence point. A player-build co-op playtest is still needed to tune the feel.
+
 ## 2026-11-21 — Claude: release 12: zombies emerge from the floor; the drop-in removed (integrator)
 Owner: "Can we animate them digging out of the ground? Or have them laying there, and just rising? ... I want to remove that
 drop in animation entirely".
