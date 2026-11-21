@@ -8,8 +8,8 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// Intros v2's pack clips (docs/INTROS-V2.md 9d). An animation pack's humanoid clips are baked by the local tool
-    /// (bozo-intromotion.request) on the baked body, as bone rotations, into the intros' own bank (Resources/ChipArenaIntroMotion.bytes:
-    /// local, never committed, never the match's motion bank). Here they become keyed poses, so an intro keys a pack clip
+    /// (bozo-intromotion.request) on the baked body, as bone rotations, into the intros' own banks (Resources/ChipArenaIntroMotion.bytes
+    /// and one per batch-2 author, Banks: local, never committed, never the match's motion bank). Here they become keyed poses, so an intro keys a pack clip
     /// (NativeEntranceKeys.FromPack) without the match's animation system: no Clip(), no aim, turn or foot-lock layer.
     /// Each frame is the model binding (NativeVisualRig.Pose) run backwards on the bank's own skeleton: a keyed joint's turn is its chain's
     /// last bone's world turn off the aligned rest, less the chain's start (the arms' spread and the wrist's eased bend undone), so the keyed
@@ -18,10 +18,17 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeIntroPack
     {
-        public const int Version=1;
-        /// <summary>The bank's resource name (Resources/ChipArenaIntroMotion.bytes in the git-ignored local assets).</summary>
+        /// <summary>The bank format Write writes ("CAIM" 1); Read also reads Sourced (2: each clip with its bake source, I0e's bake).</summary>
+        public const int Version=1,Sourced=2;
+        /// <summary>The first bank's resource name (Resources/ChipArenaIntroMotion.bytes in the git-ignored local assets: Slipstream's).</summary>
         public const string Resource="ChipArenaIntroMotion";
-        /// <summary>The bank the presentation read (Runtime sets it; null without one: pack segments then leave the keys as they are).</summary>
+        /// <summary>
+        /// Every intro motion bank, in the order read (docs/INTROS-V2.md 9d): the first (Slipstream's and the generic intros') and one per
+        /// batch-2 author (I3 melee, I4 ranged, I5 elemental), so nobody rebakes another's. Each is optional; a clip name is unique across
+        /// them all (Merge lists a duplicate, and the first bank's clip plays).
+        /// </summary>
+        public static readonly string[] Banks={Resource,Resource+"Melee",Resource+"Ranged",Resource+"Elemental"};
+        /// <summary>The banks the presentation read, merged (Runtime sets it; null without one: pack segments then leave the keys as they are).</summary>
         public static Bank Local;
 
         // ---- joint masks (bits of keyed rig joints) ----
@@ -44,6 +51,10 @@ namespace ChipArena.UnityConversion
         public sealed class Clip
         {
             public string Name;public float Length,Rate;public int Frames;public bool Loop;
+            /// <summary>Where the bake took it: "asset path|take|first-last frame" (a Sourced bank); a version 1 bank's is its Name.</summary>
+            public string Source;
+            /// <summary>The bank it was read from (its skeleton and converter), also inside a merged bank.</summary>
+            public Bank Owner;
             /// <summary>The clip's own travel as baked (m/s, the model's, rig frame x and z): its pelvis's drift over the clip (an in-place
             /// clip's is about zero). The bank takes it out, so the clip samples in place.</summary>
             public Vector2 Travel;
@@ -100,16 +111,38 @@ namespace ChipArena.UnityConversion
         public sealed class Bank
         {
             public readonly Dictionary<string,Clip> Clips=new Dictionary<string,Clip>(StringComparer.Ordinal);
-            /// <summary>The bank's skeleton as the model binding reads it (NativeVisualRigBinding).</summary>
+            /// <summary>The bank's skeleton as the model binding reads it (NativeVisualRigBinding); a merged bank's is its first bank's.</summary>
             public NativeVisualRig.Rig Skeleton;
+            /// <summary>Its resource name or file, as its loader names it (for messages).</summary>
+            public string Name;
             internal Converter Conv;
             public bool TryGet(string name,out Clip clip){clip=null;return name!=null&&Clips.TryGetValue(name,out clip);}
             /// <summary>Frame `frame` of `clip` as baked on the model: every bone's world turn and place (rig frame, the model's metres;
-            /// arrays of Skeleton.Count), in place (the drift taken out). For checks and for planning feet on the model; main thread.</summary>
+            /// arrays of the clip's own bank's Skeleton.Count), in place (the drift taken out). For checks and for planning feet on the model;
+            /// main thread.</summary>
             public void Model(Clip clip,int frame,Quaternion[] world,Vector3[] at)
             {
-                frame=Math.Max(0,Math.Min(clip.Frames-1,frame));Conv.Pose(clip.Raw,frame*clip.RawStride);Conv.Copy(world,at);
+                var conv=(clip.Owner??this).Conv;frame=Math.Max(0,Math.Min(clip.Frames-1,frame));conv.Pose(clip.Raw,frame*clip.RawStride);conv.Copy(world,at);
             }
+        }
+        /// <summary>
+        /// The banks read, as one (Local): null without any, the bank itself when there is one, else a bank holding every clip, each clip
+        /// keeping its own bank (Owner: its skeleton for its feet and its frames). A clip name already taken by an earlier bank is left out
+        /// and listed in `duplicates` ("clip in A and B"): clip names must be unique across the banks (IntroPackChecks fails on one).
+        /// </summary>
+        public static Bank Merge(IReadOnlyList<Bank> banks,List<string> duplicates=null)
+        {
+            if(banks==null||banks.Count==0)return null;
+            var all=banks.Count==1?banks[0]:new Bank{Skeleton=banks[0].Skeleton,Conv=banks[0].Conv,Name=string.Join("+",System.Linq.Enumerable.Select(banks,b=>b.Name))};
+            for(int i=0;i<banks.Count;i++)
+                foreach(var c in banks[i].Clips.Values)
+                {
+                    if(ReferenceEquals(all,banks[i]))continue;
+                    if(all.Clips.TryGetValue(c.Name,out var had)){duplicates?.Add(c.Name+" in "+(had.Owner?.Name??"?")+" and "+banks[i].Name);continue;}
+                    all.Clips[c.Name]=c;
+                }
+            // (a single bank's own clips cannot repeat a name; a duplicate needs two banks)
+            return all;
         }
 
         /// <summary>A segment of keys played from a pack clip (NativeEntranceKeys.FromPack).</summary>
@@ -197,20 +230,20 @@ namespace ChipArena.UnityConversion
                 float ease=w*NativeEntranceMath.Smooth(until/.03f);if(slip.LengthSquared()*ease*ease<1e-6f)continue;
                 if(!posed){pose.World();posed=true;}
                 int hip=left?CapturedRig.LHip:CapturedRig.RHip,knee=hip+1,foot=hip+2;var keep=pose.WorldRotation[foot];
-                var target=pose.WorldPosition[foot]+Vector3.Transform(slip*ease,inv)/Local.Skeleton.LegRatio;
+                var target=pose.WorldPosition[foot]+Vector3.Transform(slip*ease,inv)/(c.Owner??Local).Skeleton.LegRatio;
                 var f=Vector3.Transform(Vector3.UnitZ,keep);NativeEntrancePose.HingedLeg(pose,left,target,(float)Math.Atan2(f.X,f.Z));
                 pose.World();pose.Rotation[foot]=Quaternion.Normalize(Quaternion.Inverse(pose.WorldRotation[knee])*keep);pose.World();
             }
         }
 
         // ---- the bank ----
-        /// <summary>Reads a bank ("CAIM" version 1, written by the local tool's bozo-intromotion.request; see Write) and converts every
-        /// frame to keyed joints on the bank's skeleton.</summary>
-        public static Bank Read(byte[] bytes)
+        /// <summary>Reads a bank ("CAIM" version 1 or Sourced, written by the local tool's bozo-intromotion.request; see Write) and converts
+        /// every frame to keyed joints on the bank's skeleton. `name` names it in messages (Bank.Name).</summary>
+        public static Bank Read(byte[] bytes,string name=null)
         {
             using var r=new BinaryReader(new MemoryStream(bytes),Encoding.UTF8);
             if(r.ReadByte()!='C'||r.ReadByte()!='A'||r.ReadByte()!='I'||r.ReadByte()!='M')throw new InvalidDataException("not an intro motion bank");
-            if(r.ReadInt32()!=Version)throw new InvalidDataException("intro motion bank version");
+            int version=r.ReadInt32();if(version!=Version&&version!=Sourced)throw new InvalidDataException("intro motion bank version");
             int n=r.ReadInt32();if(n<2||n>1024)throw new InvalidDataException("intro motion bank skeleton");
             var names=new string[n];var parents=new int[n];var positions=new Vector3[n];var rotations=new Quaternion[n];
             for(int v=0;v<n;v++)
@@ -223,13 +256,14 @@ namespace ChipArena.UnityConversion
             }
             int tracks=r.ReadInt32();if(tracks<1||tracks>n)throw new InvalidDataException("intro motion bank tracks");
             var track=new int[tracks];for(int i=0;i<tracks;i++){track[i]=r.ReadInt32();if(track[i]<0||track[i]>=n)throw new InvalidDataException("intro motion bank track");}
-            var bank=new Bank{Skeleton=new NativeVisualRig.Rig(NativeVisualRig.Mannequin(names,parents,positions,rotations))};
+            var bank=new Bank{Skeleton=new NativeVisualRig.Rig(NativeVisualRig.Mannequin(names,parents,positions,rotations)),Name=name};
             var conv=bank.Conv=new Converter(bank.Skeleton,positions,rotations,track);
             int count=r.ReadInt32();if(count<0||count>4096)throw new InvalidDataException("intro motion bank clips");
             int raw=3+4*tracks;
             for(int k=0;k<count;k++)
             {
-                var c=new Clip{Name=Name(r),Length=r.ReadSingle(),Rate=r.ReadSingle()};c.Travel=new Vector2(-r.ReadSingle(),r.ReadSingle());c.Average=new Vector2(-r.ReadSingle(),r.ReadSingle());
+                var c=new Clip{Name=Name(r),Owner=bank};c.Source=version>=Sourced?Name(r):c.Name;c.Length=r.ReadSingle();c.Rate=r.ReadSingle();
+                c.Travel=new Vector2(-r.ReadSingle(),r.ReadSingle());c.Average=new Vector2(-r.ReadSingle(),r.ReadSingle());
                 c.Loop=r.ReadByte()!=0;c.Frames=r.ReadInt32();
                 if(c.Frames<2||c.Frames>100000||!(c.Rate>0)||!(c.Length>=0))throw new InvalidDataException("intro motion bank clip "+c.Name);
                 c.Data=new float[c.Frames*Stride];c.Down=new byte[c.Frames];c.RawStride=raw;c.Raw=new float[c.Frames*raw];
@@ -246,17 +280,18 @@ namespace ChipArena.UnityConversion
         /// (count; per bone its name, parent, rest position xyz and rotation xyzw in Unity's frame as NativeVisualRigBinding reads them: the
         /// skeleton root's against the body's root, the rest local); the tracks (count; bone indices, the pelvis first); the clips (count; per
         /// clip its name, length, rate, travel x and z, average speed x and z (m/s, Unity's frame), loop byte, frame count, then per frame the
-        /// pelvis's local position xyz and every track's local rotation xyzw, Unity's frame).
+        /// pelvis's local position xyz and every track's local rotation xyzw, Unity's frame). With `sources` (one per clip) it is version
+        /// Sourced, each clip's source string ("asset path|take|first-last") right after its name, as the I0e bake writes it.
         /// </summary>
-        public static byte[] Write(string[] names,int[] parents,Vector3[] positions,Quaternion[] rotations,int[] tracks,IEnumerable<(string name,float length,float rate,Vector2 travel,Vector2 average,bool loop,int frames,float[] data)> clips)
+        public static byte[] Write(string[] names,int[] parents,Vector3[] positions,Quaternion[] rotations,int[] tracks,IEnumerable<(string name,float length,float rate,Vector2 travel,Vector2 average,bool loop,int frames,float[] data)> clips,IReadOnlyList<string> sources=null)
         {
             using var m=new MemoryStream();using var w=new BinaryWriter(m,new UTF8Encoding(false));
             void N(string s){var b=Encoding.UTF8.GetBytes(s);w.Write(b.Length);w.Write(b);}
-            w.Write((byte)'C');w.Write((byte)'A');w.Write((byte)'I');w.Write((byte)'M');w.Write(Version);w.Write(names.Length);
+            w.Write((byte)'C');w.Write((byte)'A');w.Write((byte)'I');w.Write((byte)'M');w.Write(sources!=null?Sourced:Version);w.Write(names.Length);
             for(int v=0;v<names.Length;v++){N(names[v]);w.Write(parents[v]);w.Write(positions[v].X);w.Write(positions[v].Y);w.Write(positions[v].Z);w.Write(rotations[v].X);w.Write(rotations[v].Y);w.Write(rotations[v].Z);w.Write(rotations[v].W);}
             w.Write(tracks.Length);foreach(int t in tracks)w.Write(t);
             var list=new List<(string name,float length,float rate,Vector2 travel,Vector2 average,bool loop,int frames,float[] data)>(clips);w.Write(list.Count);
-            foreach(var c in list){N(c.name);w.Write(c.length);w.Write(c.rate);w.Write(c.travel.X);w.Write(c.travel.Y);w.Write(c.average.X);w.Write(c.average.Y);w.Write((byte)(c.loop?1:0));w.Write(c.frames);foreach(float x in c.data)w.Write(x);}
+            for(int i=0;i<list.Count;i++){var c=list[i];N(c.name);if(sources!=null)N(sources[i]??c.name);w.Write(c.length);w.Write(c.rate);w.Write(c.travel.X);w.Write(c.travel.Y);w.Write(c.average.X);w.Write(c.average.Y);w.Write((byte)(c.loop?1:0));w.Write(c.frames);foreach(float x in c.data)w.Write(x);}
             w.Flush();return m.ToArray();
         }
 
