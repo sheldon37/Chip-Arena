@@ -28,10 +28,12 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<o.Props.Count;i++)
             {
                 var b=o.Props[i];var st=NativeMeridianStreetProps.StemOf(b.Stem);
-                b.Filled=Rand(w.RSeed,301,i)<st.Fill;b.Slot=i;b.Id=NativeMeridianStreetProps.IdPrefix+b.Stem+"-"+i;o.Props[i]=b;
+                b.Filled=FillProp(w.RSeed,i,st.Fill);b.Slot=i;b.Id=NativeMeridianStreetProps.IdPrefix+b.Stem+"-"+i;o.Props[i]=b;
             }
             return o.Props;
         }
+        internal static bool FillProp(uint seed, int slot, float fill) => Rand(seed, 301, slot) < fill;
+
         /// <summary>The horde's lattice (Core NativeMeridianNavigation: the Hulk's radius and height on every street) built with the
         /// candidates must keep every node it reached without them but those under them: a candidate that closes a pocket (a nook
         /// between parked cars and a wall, a hydrant and a bin) is dropped, the one nearest each cut node, until none is cut (four
@@ -43,7 +45,7 @@ namespace ChipArena.UnityConversion
             for(int pass=0;pass<5&&o.Props.Count>0;pass++)
             {
                 var blocks=new ContentBlock[map.blocks.Length+o.Props.Count];Array.Copy(map.blocks,blocks,map.blocks.Length);
-                for(int i=0;i<o.Props.Count;i++){var c=NativeMeridianStreetProps.ToBlock(o.Props[i]);c.id="fire-escape-"+NativeMeridianStreetProps.IdPrefix+i;blocks[map.blocks.Length+i]=c;}
+                for(int i=0;i<o.Props.Count;i++){var c=NativeMeridianStreetProps.ToBlock(o.Props[i]);c.id=NativeMeridianStreetProps.IdPrefix+i;blocks[map.blocks.Length+i]=c;}
                 var after=NativeMeridianNavigation.Build(new ContentMap{id=map.id,bounds=map.bounds,ramps=map.ramps,blocks=blocks});
                 var cut=Cut(before,after,o.Props);if(cut.Count==0)return;
                 var drop=new HashSet<int>();
