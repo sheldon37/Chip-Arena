@@ -52,7 +52,11 @@ namespace ChipArena.UnityConversion
                 NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax,Exact=Packed(s,t,NativeIntroPack.Arms)},false,false);
                 for(int k=0;k<Bones.Length;k++)
                 {
-                    var b=Bones[k];int v=rig.Of[b.joint];if(v<0)continue;var drawn=Quaternion.Normalize(st.World[v]*Quaternion.Inverse(rig.AlignedWorld[v]));var keyed=pose.WorldRotation[b.joint];
+                    var b=Bones[k];int v=rig.Of[b.joint];if(v<0)continue;
+                    // (a joint a pack clip plays in full is the model's own motion, held to the clip on the model by IntroPackChecks, as
+                    // Limits skips it: the keyed wrist is the weapon's frame, so a mocap hand bent flat drew 116 deg off its keyed turn)
+                    if(Packed(s,t,1<<b.joint)>.99f)continue;
+                    var drawn=Quaternion.Normalize(st.World[v]*Quaternion.Inverse(rig.AlignedWorld[v]));var keyed=pose.WorldRotation[b.joint];
                     float worst,twist=0;
                     if(b.limb)
                     {

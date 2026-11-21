@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         public static Bank Local;
 
         // ---- joint masks (bits of keyed rig joints) ----
-        private const int Body=CapturedRig.Body,Pelvis=CapturedRig.Pelvis;
+        private const int Body=CapturedRig.Body,Pelvis=CapturedRig.Pelvis,LeftHip=CapturedRig.LHip,RightHip=CapturedRig.RHip;
         public const int Torso=1<<CapturedRig.Spine|1<<CapturedRig.Chest|1<<CapturedRig.Neck|1<<CapturedRig.Head;
         public const int LeftArm=1<<CapturedRig.LClav|1<<CapturedRig.LArm|1<<CapturedRig.LElbow|1<<CapturedRig.LHand;
         public const int RightArm=1<<CapturedRig.RClav|1<<CapturedRig.RArm|1<<CapturedRig.RElbow|1<<CapturedRig.RHand;
@@ -45,6 +45,14 @@ namespace ChipArena.UnityConversion
         /// drawn feet to hold) or Kept (the clip's own travel: from the root at the segment's start, along the root's facing, at Speed by
         /// the segment's weight; the root stays where it took it after the segment ends).</summary>
         public enum RootMode:byte{Path,Kept}
+        /// <summary>
+        /// What a segment that plays the pelvis (its mask has it: All, Legs) does with the keys' body turn under it (joint 0, the motion
+        /// root's turn: a keyed lean): Keyed (the default, as before: it turns the whole clip, its legs and feet too), Clip (it eases out by
+        /// the segment's weight, so the clip stands as baked: the clip's own lean is in its pelvis and spine), or Pelvis (it rides the
+        /// pelvis: the clip's hips and everything above them lean by it, and the legs keep the clip's turns, so the feet stay where the clip
+        /// puts them). I2b's note on Slipstream: a keyed 20 degree lean tilted the whole clip.
+        /// </summary>
+        public enum BodyTurn:byte{Keyed,Clip,Pelvis}
 
         private const int Joints=22,Points=4,Stride=Joints*4+3+Points*3; // per frame: the joints' turns, the keyed body's offset, the drawn ankles and balls
 
@@ -152,9 +160,11 @@ namespace ChipArena.UnityConversion
             private Bank resolvedIn;private Clip clip;
             /// <summary>Whether a foot the clip has on the floor is held where it came down against the intro's root (the legs' mask only).</summary>
             public readonly bool Hold;
-            public Segment(string clip,float from,float to,float start,float speed,bool loop,RootMode root,int mask,float blendIn,float blendOut,bool hold=true)
+            /// <summary>What it does with the keys' body turn (BodyTurn; with the pelvis in its mask).</summary>
+            public readonly BodyTurn Body;
+            public Segment(string clip,float from,float to,float start,float speed,bool loop,RootMode root,int mask,float blendIn,float blendOut,bool hold=true,BodyTurn body=BodyTurn.Keyed)
             {
-                Clip=clip;From=from;To=to;Start=start;Speed=speed;Loop=loop;Root=root;Mask=mask;BlendIn=Math.Max(0,blendIn);BlendOut=Math.Max(0,blendOut);Hold=hold&&(mask&Legs)==Legs;
+                Clip=clip;From=from;To=to;Start=start;Speed=speed;Loop=loop;Root=root;Mask=mask;BlendIn=Math.Max(0,blendIn);BlendOut=Math.Max(0,blendOut);Hold=hold&&(mask&Legs)==Legs;Body=body;
             }
             /// <summary>The clip in the local bank (null without it).</summary>
             public Clip Resolve(){var bank=Local;if(bank!=resolvedIn){resolvedIn=bank;clip=null;bank?.TryGet(Clip,out clip);}return clip;}
@@ -203,6 +213,17 @@ namespace ChipArena.UnityConversion
                     pose.Rotation[j]=w>=.9999f?joints[j]:Quaternion.Normalize(Quaternion.Slerp(pose.Rotation[j],joints[j],w));
                 }
                 if((s.Mask&1<<Pelvis)!=0)pose.Position[Body]=Vector3.Lerp(pose.Position[Body],CapturedRig.Bones[Body].Position+body,w);
+                if(s.Body!=BodyTurn.Keyed&&(s.Mask&1<<Pelvis)!=0)
+                {
+                    // (the keys' body turn eased out by the weight; with Pelvis what was taken off rides the pelvis, and the hips give it back)
+                    var keyed=pose.Rotation[Body];var kept=w>=.9999f?Quaternion.Identity:Quaternion.Normalize(Quaternion.Slerp(keyed,Quaternion.Identity,w));pose.Rotation[Body]=kept;
+                    if(s.Body==BodyTurn.Pelvis)
+                    {
+                        var was=pose.Rotation[Pelvis];pose.Rotation[Pelvis]=Quaternion.Normalize(Quaternion.Inverse(kept)*keyed*was);
+                        var back=Quaternion.Normalize(Quaternion.Inverse(pose.Rotation[Pelvis])*was);
+                        pose.Rotation[LeftHip]=Quaternion.Normalize(back*pose.Rotation[LeftHip]);pose.Rotation[RightHip]=Quaternion.Normalize(back*pose.Rotation[RightHip]);
+                    }
+                }
                 if(s.Hold)HoldFeet(k,s,c,t,pose,root,rotation,rootAt,w);
             }
         }
