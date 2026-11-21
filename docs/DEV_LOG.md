@@ -1,3 +1,48 @@
+## 2026-11-21 — Claude (I4, batch 2 review): the arms the owner flagged on the machine gun and the bow (presentation only)
+Owner on the batch-2 clips: "Arm doing weird things on machine gun intro again, and check that bow one again as well." Brass Storm's
+trigger elbow was chicken-winged up beside the helmet through the burst. Lightfall's raised arm crossed the face in the low full-draw
+shot, and the head and arms read oddly at 3.7-4.1 s of the clip (the slowed release, seen from low behind).
+- **Branch/base:** `claude/intro-ranged`, code at `d10ba85e` (fix `712f74a7`, cameras `de9a52c7`, `84a8d231`, `d10ba85e`; on `4bfd14b3`).
+  Pushed, not merged, not released.
+- **Why the limits missed it:** the canonical long-gun hold (`NativeIntroPoses.AimRifle`) keys a straight trigger arm on the keyed
+  rig's wide shoulders. With the stock in the drawn shoulder, the drawn elbow had no side to keep and landed level with the shoulder
+  (the canonical machine-gun pose does the same on the model: 92°). One Breath had it too (+0.07 m over the shoulder). The canonical
+  bow pole (back and up) took the drawn string elbow 0.25 m over the shoulder at the 50° sky shot, and the forearm through the helmet.
+- **Long guns:** `NativeRangedIntro.ShoulderGun` (Brass Storm and One Breath) keeps the match's hold but brings the keyed trigger wrist
+  back, down and out, with the elbow pole down and out. The drawn trigger elbow sits .13-.18 m under the shoulder (the upper arm 50-60°
+  off hanging), with the stock in the shoulder pocket and the forearms along the gun. Brass Storm's sweep is on the hips and the chest
+  (the arms keep the hold), and the rack slides .2 m (.3 put the off elbow in the chest).
+- **Bow:** `DrawElbow` points back along the arrow and a little down, in the leaned side-on chest's frame. The drawn string elbow sits
+  on the arrow's line at the shoulder's height (at most +0.04 m), with the forearm beside the head to the jaw. The grip takes the string
+  hand over the hook's last 30% (no flip).
+- **Bow cameras:** the slowed release is in profile from the chest's side at the head's height, held through the bloom. Hold 7's bloom
+  shot, and a first rework of it, looked up through the canopy and showed only leaves.
+- **One Breath:** a cut into the name's shot (the 0.5 s blend took the eye under the parapet's coping for a frame, in hold 7 too).
+- **New checks** (`Tests/IntroRangedChecks`, in the suite; `--intro-ranged-arms ID` prints the measures per frame). They run every
+  1/30 s of all four intros through their own shot cameras:
+  - no arm through the drawn head (+3 cm);
+  - no arm over 15% of the face's disc on screen;
+  - a long gun's trigger elbow at least 8 cm under its shoulder while shouldered;
+  - the pistol's arm straight on its line through the aim;
+  - the bow's string elbow under 10 cm over its shoulder through the draw.
+  They fail on hold 7's poses and pass on these.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; durations,
+  shots and name beats unchanged).
+- **Checks:**
+  - full CoreTests the relgen5 way at `712f74a7`: exit 0 (1,095 PASS); at `d10ba85e`: exit 0 (1,095 PASS);
+  - at `d10ba85e`: `--intro-ranged` 4,714 checks; `--intros-v2` 6,819; `--intro-limits` exit 0 (none for the four);
+    `--intro-pack` 127 (at `712f74a7`); Unity compile 4/4; `git diff --check` clean.
+- **Editor holds** (by the integrator's queue): 8 (01:02-01:08, on `712f74a7`: the three intros at High, proofs, Low); 9 (01:14-01:18,
+  on `84a8d231`: bow and rifle High and Low); 10 (01:19-01:22, on `d10ba85e`: bow High and Low). Each play took 25-41 s. The Editor is
+  back on `9319026b`, banks unchanged. Every frame of the three High captures was looked at through the shot cameras.
+- **Clips:** `F:/Chip Arena Development/scratch/intro-ranged/clips/b2/`:
+  - `machinegun-`, `rifle-`, `bow-fix-before-after.mp4`: hold 7 as reviewed beside the fix;
+  - High, before beside after (the first v2), proof and Low strips, beat and stick sheets;
+  - the pistol is unchanged from hold 7.
+- **Not run:** a Windows build; sound in a capture; generated sounds.
+- **Risks / next:** the sets show only with `ChipArenaIntroRanged.bytes` installed (7,212,499 bytes). The bloom itself is still not
+  framed (the canopy hides that part of the sky). Next: the owner's review of the three re-captured intros.
+
 ## 2026-11-20 — Claude (I4, batch 2): the ranged intros' bodies on the model, a trained shooter's holds (owner: "arms looked really odd"; presentation only)
 Owner on One Breath: "almost all have weird orientations lol ... Like the rifle one you did, arms looked really odd?" (a limp front hand under the barrel, tangled arms on the aim, arms crossed at the end). Batch 2 of the intros revamp.
 - **Branch/base:** `claude/intro-ranged` at `f79564a6`, with shared `57110fe9` and `claude/intro-framework` `510cbd09` merged in. Pushed, not merged, not released.
