@@ -293,10 +293,11 @@ that exists:
 So an intro sounds right before any generation: write `alt` and `clip` to fit, and check the sync in your capture.
 
 **Requesting generated sounds:** follow `docs/audio/intros/README.md`.
-- Put your rows in your own `docs/audio/intros/<author>.json`, in the manifest's sound schema.
+- Put your rows in your own `docs/audio/intros-b2/<author>.json` (batch 2), in the manifest's sound schema. Batch 1's folder
+  `docs/audio/intros/` and its manifest are sealed by their approved jobs: never add rows there.
 - Add one contract line per key to `Core/NativeIntroSoundKeys.cs`, on your slot.
-- `tools/intros/compile_sound_requests.py` merges every author's rows into `docs/audio/sound-requests-intros.json` and
-  prints the approved builder job.
+- `tools/intros/compile_sound_requests.py --batch b2` merges the batch's rows into `docs/audio/sound-requests-intros-b2.json` (and its
+  bundle copy) and prints the approved builder job (README section 2a).
 - Never put a key or token anywhere in the repo or in logs.
 
 ### 6a. Generation status
