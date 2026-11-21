@@ -715,12 +715,13 @@ namespace ChipArena.UnityConversion
             Hold(SpireFire,new Vector3(.44f,-.46f,.32f),new Vector3(.02f,1,.04f),back);Hold(SpireFire+.25f,new Vector3(.46f,-.38f,.28f),up,back);
             Hold(CardAt-.2f,new Vector3(.5f,-.1f,.2f),up,back);Hold(Total,new Vector3(.5f,-.1f,.2f),up,back);
             // The camera: low and wide on the summit, tilting to the sky; straight up into the vortex, turning; down from the cloud;
-            // the smash to the strike; a fast orbit; rising with it; wide with the spires firing; the hero frame.
+            // the smash to the strike; a fast orbit round its right side to just behind it (not past -190: further round, the free arm
+            // pushing off the stone comes between the lens and the face, --intro-arms); rising with it; wide with the spires firing; the hero frame.
             Rig.Dolly(0,L(4.6f,.42f,7.2f),L(4.1f,.46f,6.5f),L(0,1.8f,0),L(0,3.4f,-1.6f),52,54)
                .Hold(ChargeFrom,L(0,.55f,.9f),L(0,18f,-5f),72).Roll(0,24).Ease(NativeIntroEase.Linear)
                .Dolly(GatherAt,L(.4f,19f,6.5f),L(.3f,15f,5f),new Vector3(0,0,0),new Vector3(0,.5f,0),40,44)
                .Dolly(StrikeAt,L(3.2f,.25f,3.8f),L(3.0f,.3f,3.5f),L(0,1.0f,0),L(0,.8f,0),62,56)
-               .Orbit(StrikeAt+.3f,Vector3.Zero,-40,-205,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
+               .Orbit(StrikeAt+.3f,Vector3.Zero,-40,-190,3.4f,3.0f,.35f,.6f,new Vector3(0,.75f,0),new Vector3(0,.8f,0),48,44)
                .Crane(RiseFrom,L(-1.1f,.55f,2.3f),L(-.95f,.55f,2.05f),.9f,new Vector3(0,-.1f,0),Vector3.Zero,38,36).Follow(NativeEntranceAnchor.Head,.04f)
                .Dolly(CallAt-.05f,L(.35f,.5f,6.4f),L(.3f,.55f,5.8f),L(0,2.3f,0),L(0,2.1f,0),58,56)
                .Orbit(CardAt-.55f,OnLine(.3f),-34,-22,4.3f,4.1f,.8f,.85f,L(.15f,.85f,.3f),L(.12f,.86f,.3f),46,44).Roll(9,7).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.4f)
