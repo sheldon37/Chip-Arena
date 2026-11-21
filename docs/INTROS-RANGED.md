@@ -25,7 +25,10 @@ per frame, and passes `Tests/IntroV2Checks.cs` (determinism, allocation, budgets
   `NativeIntroBrassStorm.cs`, `NativeIntroLightfall.cs`. One registry line each in `NativeIntroCatalog.cs`.
 - The sets: `tools/intros/ranged_set.py` (driver), `ranged_kit.py` (shared modelling on `tools/stages/stagekit.py`), and one module
   per set: `ranged_sundown.py`, `ranged_onebreath.py`, `ranged_brass.py`, `ranged_lightfall.py`.
-- Sounds: `docs/audio/intros/I4.json` (55 keys, 2 takes each) and the I4 slot in `Core/NativeIntroSoundKeys.cs`.
+- Sounds: `docs/audio/intros-b2/I4.json` (batch 2's rows: 55 keys, 72 takes) and the I4 slot in `Core/NativeIntroSoundKeys.cs`.
+- Checks: `Tests/IntroRangedChecks.cs` (`--intro-ranged`), with authoring probes: `--intro-ranged-dump ID OUT` (the drawn body, its
+  weapon and the camera every 1/30 s, for stick-figure previews), `--intro-ranged-limits`, `--intro-ranged-fit KIND` and
+  `--intro-ranged-twist ID`.
 
 ## The set bank
 
@@ -61,14 +64,17 @@ palette.
 | 4.5–5.2 | The barrel up by the face; the smoke blown away |
 | 6.0 | The name (Wipe), the bell rocking at the boots; its last ring |
 
-Motion: bespoke keyed animation only, no match clips (owner, 2026-11-20 morning: "we dont need the matches own annimation system",
-as the Top Dog's and the Bombardier's intros): a gunslinger's slow walk keyed on every contact and passing pose (the gun hand
-hovering by the holster, the off arm swinging, the chest countering the hips, a bob dropping on each contact), the stillness, a fast
-draw whose flourish is the high ready (the gun whipped up past the shoulder, barrel to the sky, a heartbeat, then snapped down onto
-the bell with a small overshoot), a settled breath on the aim, the shot's kick and follow-through, the head following the bell in,
-the smoke blow and the rest. No gun spin: the framework has no held-weapon turn (I0, 2026-11-20). The blow
-reaches the gun hand so the muzzle stands just in front of the mouth, beside the visor: the head joint is the skull's pivot, so the
-mouth is placed from it lifted by `NativeRangedIntro.ModelHeadLift` (0.16 m to the eyes, as I5 measured).
+Motion (batch 2): bespoke keyed animation on the model (owner, 2026-11-20: "we dont need the matches own annimation system"),
+`ModelFeet` on. The walk is the framework's on the model (`NativeIntroPoses.Walk` along a `NativeIntroFeet.Track`: a stride of about
+0.56 m every 0.56 s, each contact and passing keyed, the hips turning with the leading leg, the chest countering, the off arm
+swinging), already under way at the first frame and stopping with the feet together; the head lifts to the belfry at the first
+toll. The gun hand is keyed in `Arms` in the chest's frame (`NativeIntroGrip.Hold`): low by the right thigh, muzzle down, swinging a
+little with the walk; whipped up to the high ready by the shoulder (barrel to the sky) as the knees give and the hips blade 24°
+off the bell's line; snapped down onto the falling bell along a straight arm, the muzzle tracking it down to the strike; the shot's
+flip through the wrist. The aim's line runs from the drawn muzzle (`ShotFrom`) to the strike, so the drawn bore lies on the bullet's
+path. The Standard pistol is long (0.5 m to its crown), so the blow holds the barrel up beside the right cheek with the muzzle over
+the brow (searched with `--intro-ranged-fit blow`: the wrist inside its range, the hand out of the torso). One-handed throughout:
+a western duelist's shot, so no support grip.
 
 ## One Breath (rifle)
 
@@ -85,8 +91,15 @@ mouth is placed from it lifted by `NativeRangedIntro.ModelHeadLift` (0.16 m to t
 | 5.35–6.05 | The pilot rises, the rifle at the low carry (the owner's rest-low rule) |
 | 6.4 | The name (Type) from outside the parapet, the beacon blinking behind |
 
-Motion: the keyed rig with arm IK (`NativeEntrancePose.Reach`): the kneel, the right hand's bore on the drone, the left hand on the
-fore-end, then the low carry. The model follows the keyed rig, so the drawn rifle points where the keys aim it.
+Motion (batch 2; owner on the first version: "arms looked really odd": a limp front hand, tangled arms, crossed arms at the end):
+a high kneel on the model (`ModelKneel`: the right knee on the floor, the left foot planted ahead), square to the drone, the torso
+bladed as the match aims a long gun (`NativeIntroPoses.RifleAim`), the neck bowed and the head tilted back level and rolled onto the
+stock, so the visor sits at the scope's eyepiece (searched with `--intro-ranged-fit kneel`). The main hand is the match's long-gun
+hold (`NativeIntroPoses.AimRifle`), the off fist on the handguard by the grip IK (`GripAt`), the stock in the drawn shoulder
+(`Shoulder` 1). The fore-end lies over the coping. One breath (the chest filling, the clavicle settling), the shot's kick rocking the
+body back. The rise: the weight over the front foot, the knee lifting, the back foot stepping up beside it as the hips rise, the
+rifle down from the shoulder to the low carry (the owner's rest-low rule), the off hand still on the handguard. The camera's lens,
+scope and shot frames and the spent case's port are on the drawn rifle (`AimWrist`, the scope .175 over the bore).
 
 ## Brass Storm (machine gun)
 
@@ -95,22 +108,27 @@ fore-end, then the low carry. The model follows the keyed rig, so the drawn rifl
 | 0 | Black; the belt clanks home |
 | 0.45, 0.8, 1.15 | Three sodium floods bang on one after another, showing the yard (high wide crane) |
 | 1.45 | The pilot steps up to the sandbags; 1.72 racks the handle (low front) |
-| 1.95–4.35 | A 38-round burst traversing the shutter: tracers every third round, sparks, a drum knocked over (3.05), a crate burst (3.62); the brass pours out (slowed side dolly) and heaps round the boots (floor level); wide from the yard |
+| 1.95–4.35 | A 38-round burst walked in one sweep: right across the shutter to the drum (knocked over, 2.66, seen from behind it), back across the shutter and the wall to the crate (burst, 3.92, in the foreground of a wide from the yard); tracers every third round, sparks; the brass pours out (slowed side dolly) and heaps round the boots (floor level) |
 | 4.38 | Dry click; the barrel glows |
 | 4.4–5.3 | The camera pushes back from the shutter through the drifting smoke and the rays of the work light shining through the holes |
 | 6.0 | The name (Slam), the gun lowered, rays streaming past |
 
-Motion: the keyed rig with arm IK: the low carry, the raise, the traverse (the bore follows each round's strike), a small kick per
-round (a steady lean in Reduced effects), the rack, the lowering. Reduced effects: the muzzle burns steady instead of strobing, the
-floods rise smoothly, no glints.
+Motion (batch 2): `ModelFeet` on. In the dark the gun at the low carry, the head snapping to each flood as it bangs on (left, right,
+then up the yard). The step in to the bags (the left foot forward, the stance of the canonical machine-gun aim), the gun up into the
+shoulder as the off hand racks the handle (the grip IK's `Along` slides it back along the gun and home). The burst: RifleAim's blade
+with the cheek on the stock (`--intro-ranged-fit stand-mg`), the knees soft and the weight in the gun; the hips take three quarters of
+the sweep (keyed on its turns), the arms the rest; each round's aim is from the drawn grip as the hips swing it, so every round leaves
+the drawn bore onto its strike (`Tests/IntroRangedChecks`: within 2.4°); a small kick per round (a steady lean in Reduced effects).
+Dry: a beat on the stock, then the head up and the gun down to the carry. Reduced effects: the muzzle burns steady instead of
+strobing, the floods rise smoothly, no glints.
 
 ## Lightfall (bow)
 
 | t (s) | Beat |
 | --- | --- |
 | 0 | A crane down through the canopy with the falling leaves onto the shrine; fireflies, mist |
-| 1.15 | The nock from the quiver (over the shoulder) |
-| 1.95 | The raise and draw toward the sky (a low orbit); the fireflies spiral into the arrowhead, the gate's glyphs wake |
+| 1.15 | The bow comes up before the body, the arrow already on the string; the string hand meets the string at the set (1.71-1.85) |
+| 1.95 | Side-on to the shot, the draw toward the sky (a low orbit); the fireflies spiral into the arrowhead, the gate's glyphs wake |
 | 2.75 | Full draw: the arrowhead's star (close); the leaves stop in the air |
 | 3.25 | The release, slowed: a bolt of light climbs (low under the bow) |
 | 3.72 | It blooms high above and splits (from the terrace's edge, looking up) |
@@ -118,8 +136,15 @@ floods rise smoothly, no glints.
 | 4.9–5.45 | The bow comes down |
 | 6.2 | The name (Assemble), the moon behind, the arrows standing in the moss |
 
-Motion: the Bow's own arms (`NativeBowPose`) on the keyed rig, as Arrowfall's were; the bow, string, arrow and quiver are the match's,
-drawn by the runtime from the intro's view (`INativeIntroBow`).
+Motion (batch 2): `ModelFeet` on. The draw is the canonical bow draw (`NativeIntroPoses.BowDraw`: the root a quarter turn right of
+the shot, the feet across the line), the Bow's own arms (`NativeBowPose`, procedural) with the string hand on the nock by the grip IK
+(`GripAt`, its `Pull` the bow view's). On the model the bow arm is kept straight (the bow's full extension) and the string drawn to
+0.6, which puts the string hand at the drawn jaw (`Tests/IntroRangedChecks`: under 0.25 m from the eyes, the bow elbow under 25°); the
+canonical 0.55 with its matching extension bent the drawn bow arm 120°. The arrow is on the string from the start (the bow hand's
+finger keeps it on the shelf, as the match's carry): the reach to the back quiver kept twisting the keyed arm past its limits, and a
+v2 bow intro draws no arrow in the hand. The string hand hooks the string on an arc outside the body as the bow comes up, and after the
+release it flies back straight on its forearm. The bow, string, arrow and quiver are the match's, drawn by the runtime from the
+intro's view (`INativeIntroBow`).
 
 ## Sound
 
@@ -128,12 +153,20 @@ built-in clip, so it plays synced before generation. Cues sit on the presentatio
 round, the bullet's strike) slow with the picture. Until the batch is generated the existing sounds carry every cue; the quiet
 ones use the nearest fits (the smoke blow `structure.whoosh`, the held breath `pve.ironworks.stoker.breath`, the case's steam
 `chip.bomb.fuse-hiss`, the floods' warm-up `boss.hum.row.buzz`). Only the grove's night air is generated-key only (nothing existing
-fits a quiet forest): silent until generated. The requests (55 keys, 110 takes, about 200 s) are batched by the framework's
-`tools/intros/compile_sound_requests.py`.
+fits a quiet forest): silent until generated. The requests are batch 2's (`docs/audio/intros-b2/I4.json`: 55 keys, 72 takes, 131.7 s;
+two takes for the hero sounds and anything heard many times, one for the small cues and the beds), compiled into
+`docs/audio/sound-requests-intros-b2.json` by `tools/intros/compile_sound_requests.py --batch b2`; the integrator writes the job.
+
+## Pack clips (not used yet)
+
+Every beat is keyed. Candidates if a beat reads cartoonish, from `intro-pack-clips-index.md` (none of them a clip the match plays):
+Sundown's walk `Frank_RPG_Gunslinger_Walk` (legs and torso, the gun hand keyed over it), One Breath's rise `2Hand-Shooting-Getup1`
+or the kneel's `2Hand-Shooting-Crouch-Idle`. They would go in `ChipArenaIntroMotionRanged.bytes` through the framework's bake.
 
 ## Rules kept
 
-- Guns aim in the aim pose and rest low (the rifle and the machine gun end at the low carry).
+- Guns aim in the aim pose and rest low (the rifle and the machine gun end at the low carry, off the shoulder).
+- Every intro inside the anatomical limits, its drawn feet on the floor and its grips on (`--intro-limits`: 0 findings).
 - Streaks over a metre lie on their head's camera plane (`NativeRangedIntro.Line`, `NativeCacheOpenFx.OntoHeadPlane`): the bullet,
   the tracers, the light rays, the bolt of light, the volley.
 - No ring outlines; no shake in Reduced effects (only the rig's handheld, dropped there); nothing flashes faster than 3 Hz there.
