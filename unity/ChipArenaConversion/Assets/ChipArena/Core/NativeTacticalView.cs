@@ -114,6 +114,9 @@ namespace ChipArena.UnityConversion
         // hand: on the right hand as the pack's (a pistol's support), or under the model's own handguard (its Support) as the
         // pack's under its own (PackSupport below the gun bone); then LeftOffset (the pack's leftHandOffset).
         public float SightHeight,PackSupport=-.03f;public bool LeftOnRight;
+        // The Standard model's rear sight (weapon frame) where its bake entry names none (the Army pistol: its slide's rear, on the
+        // kit's bore .058 above the fist; zero: the Standard gun's sight through the model's fit).
+        public Vector3 ModelSight;
         public Vector3 ModelOffset,LeftOffset;
         // Procedural recoil per shot: metres back, degrees up, yaw and roll ranges; the springs' rate and damping; the pivot
         // (gun frame) the kick turns about.
@@ -125,7 +128,7 @@ namespace ChipArena.UnityConversion
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.015f,.03f,0),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,
+            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,ModelSight=new Vector3(0,.078f,-.02f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",

@@ -178,11 +178,13 @@ namespace ChipArena.UnityConversion
             tacticalCamera=CapturedAnimation.Quat(s.Camera);tacticalFrame=Time.frameCount;
             return true;
         }
-        // The model's rear sight in its weapon frame at true size: the bake's Sight, else the Standard gun's through the fit.
+        // The model's rear sight in its weapon frame at true size: the bake's Sight, else the gun's ModelSight, else the Standard
+        // gun's through the fit.
         private static Vector3 TacticalSight(Actor a,VisualWeapon w)
         {
             float y=a.Weapon==WeaponId.Pistol?.105f:a.Weapon==WeaponId.Rifle?.175f:.25f,z=a.Weapon==WeaponId.Pistol?-.03f:a.Weapon==WeaponId.Rifle?-.075f:-.02f;
             var rear=new Vector3(0,y,z);if(w==null)return rear;if(w.Sighted)return w.Sight;
+            var own=NativeTacticalGun.For(a.Weapon)?.ModelSight??System.Numerics.Vector3.Zero;if(own!=System.Numerics.Vector3.Zero)return CapturedAnimation.Vec(own);
             return w.Scale!=1?w.Centre+w.Scale*(rear-w.Centre):rear;
         }
         /// <summary>The clips' own camera motion (a reload's look down at the magazine, the bolt's nod), first person with camera shake
