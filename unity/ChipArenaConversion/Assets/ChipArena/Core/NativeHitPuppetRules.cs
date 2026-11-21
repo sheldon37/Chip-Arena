@@ -56,11 +56,11 @@ namespace ChipArena.UnityConversion
         }
 
         /// <summary>The impulse (N·s) of a lone hit of each weight, before its strength and heft.</summary>
-        public static float Base(StaggerWeight w)=>w==StaggerWeight.Heavy?34f:w==StaggerWeight.Step?17f:w==StaggerWeight.Flinch?8f:0f;
+        public static float Base(StaggerWeight w)=>w==StaggerWeight.Heavy?42f:w==StaggerWeight.Step?24f:w==StaggerWeight.Flinch?11f:0f;
         /// <summary>A blade's push over a round's of the same weight (a blow carries its swing through the body).</summary>
         public const float MeleeGain=1.35f;
         /// <summary>The largest push (N·s) and a head's share of it (the head is light: a headshot snaps it, it never flies).</summary>
-        public const float MaxImpulse=70f,HeadShare=.45f;
+        public const float MaxImpulse=80f,HeadShare=.45f;
 
         /// <summary>
         /// The push of a hit of weight `w` (its strength `scale`, Core NativeStaggerRules.Scale, .7..1.25), a blade's (`melee`)

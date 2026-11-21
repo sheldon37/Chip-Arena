@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         {
             Debug.Log(Registered
                 ? "Hit puppets: bridge registered (attach/hit/step/fade/sleep/release). Verify the hit reactions in play."
-                : "Hit puppets: bridge unavailable or incomplete; posed-body fallback. Repack licensed assets with --with-puppets.");
+                : "Hit puppets: bridge unavailable or incomplete; posed-body fallback. Repack licensed assets with the add-on allowlist (docs/HIT-PUPPETS.md).");
         }
     }
 }

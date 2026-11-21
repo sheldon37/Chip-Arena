@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
             if(hitPuppetHitCount==HitPuppetQueue){Array.Copy(hitPuppetHits,1,hitPuppetHits,0,HitPuppetQueue-1);hitPuppetHitCount--;}
             hitPuppetHits[hitPuppetHitCount++]=h;
         }
+        private bool HitPuppetMakeLeft=>hitPuppetMakeFrame!=Time.frameCount||hitPuppetMakes<NativeHitPuppetRules.MakesPerFrame;
         private void HitPuppetDequeue(int i){Array.Copy(hitPuppetHits,i+1,hitPuppetHits,i,hitPuppetHitCount-i-1);hitPuppetHitCount--;}
         private static Actor HitPuppetActor(Actor[] actors,int id){if(actors==null||id<=0)return null;foreach(var a in actors)if(a!=null&&a.Id==id)return a;return null;}
 
@@ -114,6 +115,8 @@ namespace ChipArena.UnityConversion
                 if(h.Zombie!=zombie||h.Id!=id){i++;continue;}
                 // It waits for its moment on the body's clock (a clock far behind it: it lands now).
                 if(h.At>time+1f/60&&h.At<time+NativeHitPuppetRules.Ahead){i++;continue;}
+                // A body that needs a puppet made waits for the next frame's making (a volley on a crowd lands body by body).
+                if(slot?.Handle==null&&!HitPuppetMakeLeft&&!dying&&time-h.At<=NativeHitPuppetRules.Stale){i++;continue;}
                 HitPuppetDequeue(i);
                 if(dying||time-h.At>NativeHitPuppetRules.Stale)continue;
                 HitPuppetLand(body,ref slot,owner,anchor,h);
