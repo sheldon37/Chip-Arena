@@ -11,21 +11,25 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeMeridianSurfaces
     {
-        // stagekit's DETAIL_* (Resources/NativeStageLit.shader)
-        public const int DNone=0,DFlag=2,DWood=5,DIron=6,DPlaster=10,DBrick=21;
-        public struct Fin{public int Rgb,Detail;public float Param,Smooth,Metal,Dirt;}
+        // stagekit's DETAIL_* (Resources/NativeStageLit.shader), and Meridian's grounds' own (2026-11-21, owner: "Theres very big empty
+        // areas, Like I feel the grounds should be textured?"): the road's asphalt, the sanctuary's square, the setts, the pavements and
+        // the retaining walls' engineering brick, each with a fine part and a broad part every distance keeps (StageLit's Ground)
+        public const int DNone=0,DFlag=2,DWood=5,DIron=6,DPlaster=10,DBrick=21,DRoad=22,DSquare=23,DSetts=24,DFootway=25,DRetain=26;
+        /// <summary>A finish: its sRGB albedo, fine surface and parameter, smoothness, metallic and dirt; `FloorParam`: uv1.y carries the
+        /// floor under the surface instead of the parameter (a retaining wall's weathering rises from the floor in front of it).</summary>
+        public struct Fin{public int Rgb,Detail;public float Param,Smooth,Metal,Dirt;public bool FloorParam;}
         public const int Asphalt=0,Paving=1,Setts=2,Granite=3,Kerb=4,Stone=5,StoneCivic=6,Coping=7,BrickBlue=8,BrickStock=9,BrickBuff=10,Render=11,TarFelt=12,Lead=13,
-            IronBlack=14,IronGreen=15,IronGrate=16,Planks=17,Ballast=18,Soffit=19,GlassRoof=20,WagonRed=21,Concrete=22,ConcreteDark=23,Count=24;
+            IronBlack=14,IronGreen=15,IronGrate=16,Planks=17,Ballast=18,Soffit=19,GlassRoof=20,WagonRed=21,Concrete=22,ConcreteDark=23,Square=24,Count=25;
         public static readonly Fin[] Fins={
-            new Fin{Rgb=0x2E3038,Detail=DNone,Smooth=.5f,Dirt=.5f},        // asphalt (wet)
-            new Fin{Rgb=0x6E6A64,Detail=DFlag,Param=.62f,Smooth=.4f,Dirt=.9f},  // paving slabs
-            new Fin{Rgb=0x5A5652,Detail=DFlag,Param=.22f,Smooth=.45f,Dirt=.9f}, // setts
+            new Fin{Rgb=0x2E3038,Detail=DRoad,Smooth=.5f,Dirt=.5f},         // asphalt (wet): patches, sealed cracks, stains, puddles
+            new Fin{Rgb=0x6E6A64,Detail=DFootway,Param=.62f,Smooth=.4f,Dirt=.9f}, // paving slabs (the pavements)
+            new Fin{Rgb=0x5A5652,Detail=DSetts,Param=.22f,Smooth=.45f,Dirt=.9f}, // setts (sloped streets, yards, the square's border)
             new Fin{Rgb=0x7A7670,Detail=DFlag,Param=.5f,Smooth=.35f,Dirt=.8f},  // granite steps
             new Fin{Rgb=0x8A857C,Detail=DFlag,Param=.5f,Smooth=.35f,Dirt=.6f},  // the kerb's lit top edge
             new Fin{Rgb=0xCFC5AF,Detail=DFlag,Param=.6f,Smooth=.2f,Dirt=1f},    // stone-dress
             new Fin{Rgb=0xD6CDB8,Detail=DFlag,Param=1f,Smooth=.22f,Dirt=.8f},   // civic ashlar
             new Fin{Rgb=0xBDB39C,Detail=DFlag,Param=.6f,Smooth=.25f,Dirt=1f},   // copings
-            new Fin{Rgb=0x4E4450,Detail=DBrick,Param=1f,Smooth=.32f,Dirt=.8f},  // engineering brick
+            new Fin{Rgb=0x4E4450,Detail=DRetain,Param=1f,Smooth=.32f,Dirt=.8f,FloorParam=true}, // engineering brick (retaining walls, viaducts, piers)
             new Fin{Rgb=0x8C4B36,Detail=DBrick,Param=0f,Smooth=.18f,Dirt=1f},   // stock brick
             new Fin{Rgb=0xB48A5E,Detail=DBrick,Param=1.05f,Smooth=.15f,Dirt=1.3f}, // buff brick
             new Fin{Rgb=0xD8CAA8,Detail=DPlaster,Smooth=.12f,Dirt=1.1f},        // cream render
@@ -41,7 +45,12 @@ namespace ChipArena.UnityConversion
             new Fin{Rgb=0x6A2626,Detail=DWood,Param=1f,Smooth=.45f,Dirt=.8f},   // a wagon's oxide red boards
             new Fin{Rgb=0x8A8882,Detail=DPlaster,Smooth=.1f,Dirt=1.4f},         // concrete
             new Fin{Rgb=0x6E6D69,Detail=DPlaster,Smooth=.1f,Dirt=1.2f},         // dark concrete
+            new Fin{Rgb=0x7E776C,Detail=DSquare,Param=NativeMeridianDress.SquareBand,Smooth=.38f,Dirt=.9f}, // the sanctuary's square: York flags in granite-banded bays
         };
+        /// <summary>A surface's uv1.y: the finish's parameter, or the floor under it where the finish reads the floor.</summary>
+        public static float ParamOf(in Fin f,float floor)=>f.FloorParam?floor:f.Param;
+        /// <summary>Whether a fine surface is one of Meridian's grounds (StageLit's Ground: broad variation at every distance).</summary>
+        public static bool Ground(int detail)=>detail>=DRoad&&detail<=DRetain;
         /// <summary>The cell size (m) of a generated surface at a tier (0 LOD0, 2 LOD1).</summary>
         public static float Cell(int tier,bool flat)=>tier==0?(flat?2.5f:1.5f):(flat?8f:6f);
 
@@ -200,7 +209,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=QuadAt(q,(float)i/nu,(float)j/nv);int v=at+i+j*(nu+1);
                 into.P[v*3]=p.x;into.P[v*3+1]=p.y;into.P[v*3+2]=p.z;into.Bound(p.x,p.y,p.z);into.N[v*3]=q.N.x;into.N[v*3+1]=q.N.y;into.N[v*3+2]=q.N.z;
-                into.Uv0[v*2]=f.Smooth;into.Uv0[v*2+1]=f.Metal;into.Uv1[v*2]=kind;into.Uv1[v*2+1]=f.Param;NativeMeridianSurfaces.Colour(f,p,q.N,q.Floor,into.C,v*4);
+                into.Uv0[v*2]=f.Smooth;into.Uv0[v*2+1]=f.Metal;into.Uv1[v*2]=kind;into.Uv1[v*2+1]=NativeMeridianSurfaces.ParamOf(f,q.Floor);NativeMeridianSurfaces.Colour(f,p,q.N,q.Floor,into.C,v*4);
             }
             // the bank's winding: (p1 - p0) x (p2 - p0) out of the face, as u x v is
             for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
@@ -573,7 +582,7 @@ namespace ChipArena.UnityConversion
             }
             float kind=f.Detail+q.Layer/32f;
             int Vertex(V3 p){int v=into.Reserve(1);into.P[v*3]=p.x;into.P[v*3+1]=p.y;into.P[v*3+2]=p.z;into.Bound(p.x,p.y,p.z);into.N[v*3]=q.N.x;into.N[v*3+1]=q.N.y;into.N[v*3+2]=q.N.z;
-                into.Uv0[v*2]=f.Smooth;into.Uv0[v*2+1]=f.Metal;into.Uv1[v*2]=kind;into.Uv1[v*2+1]=f.Param;NativeMeridianSurfaces.Colour(f,p,q.N,q.Floor,into.C,v*4);return v;}
+                into.Uv0[v*2]=f.Smooth;into.Uv0[v*2+1]=f.Metal;into.Uv1[v*2]=kind;into.Uv1[v*2+1]=NativeMeridianSurfaces.ParamOf(f,q.Floor);NativeMeridianSurfaces.Colour(f,p,q.N,q.Floor,into.C,v*4);return v;}
             // the grid: its boundary vertices where a seamed edge puts them (canonical), the rest as cut
             V3 Grid(int i,int j)
             {

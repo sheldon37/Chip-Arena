@@ -25,6 +25,8 @@ namespace ChipArena.UnityConversion
             public uint Seed;public readonly List<Mount> Mounts=new List<Mount>();
             /// <summary>Per block: a sloped street's tread, a fire escape's tread; and each tread's block by its id (NativeMeridianDressStairs).</summary>
             public bool[] RampTread,EscapeTread;public readonly Dictionary<string,int> TreadIndex=new Dictionary<string,int>(StringComparer.Ordinal);
+            /// <summary>The open grounds' zones (NativeMeridianGround) and a ground top's zone lines (reused).</summary>
+            public NativeMeridianGround Ground;public readonly List<float> CutX=new List<float>(),CutZ=new List<float>();
             public bool IsRampTread(int i)=>RampTread[i];
             public bool IsDressed(int i)=>Dressed(Roles[i])&&Roles[i]!=RLot;
             // (a lot's roof is a generated surface too: a top two blocks share is drawn by the first, lot or not)
@@ -74,7 +76,8 @@ namespace ChipArena.UnityConversion
             var map=input.Map;var bounds=map.bounds;
             var P=new Plan{Layout=input.Layout,Run=input.Run,MinX=(float)Math.Floor(bounds.minX)-ChunkSize,MinZ=(float)Math.Floor(bounds.minZ)-ChunkSize};
             P.Nx=(int)Math.Ceiling((bounds.maxX+ChunkSize-P.MinX)/ChunkSize);P.Nz=(int)Math.Ceiling((bounds.maxZ+ChunkSize-P.MinZ)/ChunkSize);
-            var b=new Builder{In=input,P=P,Blocks=map.blocks,S=new Solids(map.blocks),Has=has,Lots=Lots(input.Layout),Seed=Mix(input.Layout,0x6a09e667u)};
+            var b=new Builder{In=input,P=P,Blocks=map.blocks,S=new Solids(map.blocks),Has=has,Lots=Lots(input.Layout),Seed=Mix(input.Layout,0x6a09e667u),
+                Ground=new NativeMeridianGround(input.Layout,input.Routes)};
             foreach(var r in map.ramps??Array.Empty<MapRamp>())foreach(var id in r.blocks)b.TreadRamp[id]=r;
             b.Roles=new string[map.blocks.Length];
             // the blocks the landmarks always draw in place of (the exits' host lots, the court, the halls) are theirs: no module,
@@ -111,7 +114,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The face's grid lines along its two edges (0..1): every neighbouring box's edges that cross it, then cuts so no cell
         /// is wider than `cell` m. A cell between them lies wholly in or wholly out of each axis-aligned neighbour, so its centre decides
         /// it exactly: no part of a face is drawn twice (a coplanar neighbour's) or left bare (a hiding neighbour's).</summary>
-        private static void Lines(Builder b,int bi,int f,float cell,out float[] us,out float[] vs,out V3 o,out V3 u,out V3 v)
+        private static void Lines(Builder b,int bi,int f,float cell,out float[] us,out float[] vs,out V3 o,out V3 u,out V3 v,IReadOnlyList<float> cutX=null,IReadOnlyList<float> cutZ=null)
         {
             FaceFrame(b.S.B,bi*6,f,out o,out u,out v);float lu=u.Length,lv=v.Length;var n=NormalOf(f);var B=b.S.B;
             var lu0=new List<float>{0,1};var lv0=new List<float>{0,1};
@@ -127,6 +130,13 @@ namespace ChipArena.UnityConversion
                     var d=axis/len;int ax=Math.Abs(d.x)>.5f?0:Math.Abs(d.y)>.5f?1:2;float sgn=ax==0?d.x:ax==1?d.y:d.z;float org=ax==0?origin.x:ax==1?origin.y:origin.z;
                     foreach(float edge in new[]{B[q+ax*2],B[q+ax*2+1]}){float t=(edge-org)*sgn/len;if(t>.0005f&&t<.9995f)list.Add(t);}
                 }
+            }
+            // more lines where asked (the ground's zones' edges, world x and z: NativeMeridianGround), so no cell straddles one
+            if(cutX!=null||cutZ!=null)foreach(var (axis,list,len,origin) in new[]{(u,lu0,lu,o),(v,lv0,lv,o)})
+            {
+                var d=axis/len;int ax=Math.Abs(d.x)>.5f?0:Math.Abs(d.y)>.5f?1:2;var cuts=ax==0?cutX:ax==2?cutZ:null;if(cuts==null)continue;
+                float sgn=ax==0?d.x:d.z,org=ax==0?origin.x:origin.z;
+                foreach(float edge in cuts){float t=(edge-org)*sgn/len;if(t>.0005f&&t<.9995f)list.Add(t);}
             }
             us=Cut(lu0,lu,cell);vs=Cut(lv0,lv,cell);
         }
@@ -178,11 +188,14 @@ namespace ChipArena.UnityConversion
             // a face on the map's bounds turned out of it is never seen (beyond the Cordon): it is left out
             if(OutOfBounds(b,bi,f))return;
             Lines(b,bi,f,cell,out var us,out var vs,out var o,out var u,out var v);int nu=us.Length-1,nv=vs.Length-1;
-            var e=Exposed(b,bi,f,us,vs,o,u,v);float floor=b.S.B[bi*6+2];
+            var e=Exposed(b,bi,f,us,vs,o,u,v);float bottom=b.S.B[bi*6+2],floor=bottom;
             if(f==2||f==3)floor=b.S.B[bi*6+(f==2?3:2)];
             foreach(var (i0,j0,i1,j1) in Rects(e,nu,nv))
             {
                 var ro=o+u*us[i0]+v*vs[j0];var ru=u*(us[i1]-us[i0]);var rv=v*(vs[j1]-vs[j0]);
+                // a side's grime and contact shade rise from the floor in front of it, not from its block's bottom (a retaining wall's
+                // bottom lies under the terrace in front: its weathering was buried under the floor; 2026-11-21)
+                if(f!=2&&f!=3)floor=FloorInFront(b,ro+ru*.5f,NormalOf(f),bottom);
                 if(bandFin>=0&&f!=2&&f!=3&&band>0)
                 {
                     float top=vs[j1]*lv,bot=vs[j0]*lv,cut=lv-band;
@@ -190,6 +203,28 @@ namespace ChipArena.UnityConversion
                     if(bot>=cut-.01f){b.Quad(ro,ru,rv,bandFin,layer,bi,floor);continue;}
                 }
                 b.Quad(ro,ru,rv,fin,layer,bi,floor);
+            }
+        }
+        /// <summary>The floor in front of a side face at a point on it (the highest top within 0.3 m out of it, at or under the point), or
+        /// the block's bottom where there is none.</summary>
+        private static float FloorInFront(Builder b,V3 p,V3 n,float bottom)
+        {
+            float f=b.S.Floor(p.x+n.x*.3f,p.z+n.z*.3f,p.y+.05f);return f==float.MinValue||f<bottom?bottom:f;
+        }
+        /// <summary>A ground block's top by zone (NativeMeridianGround: the square, its border, the roads, the yards): its grid takes the
+        /// zones' lines, so each cell lies in one zone, then each zone's seen cells are drawn in its finish.</summary>
+        private static void GroundTop(Builder b,int bi)
+        {
+            const int f=2;FaceFrame(b.S.B,bi*6,f,out _,out var u0,out var v0);if(u0.Length<.01f||v0.Length<.01f||OutOfBounds(b,bi,f))return;
+            float top=b.S.B[bi*6+3];b.Ground.Cuts(top,b.CutX,b.CutZ);
+            Lines(b,bi,f,4f,out var us,out var vs,out var o,out var u,out var v,b.CutX,b.CutZ);int nu=us.Length-1,nv=vs.Length-1;
+            var e=Exposed(b,bi,f,us,vs,o,u,v);var zone=new int[e.Length];
+            for(int j=0;j<nv;j++)for(int i=0;i<nu;i++){int k=i+j*nu;zone[k]=e[k]?b.Ground.At(o+u*((us[i]+us[i+1])*.5f)+v*((vs[j]+vs[j+1])*.5f)):-1;}
+            var mask=new bool[e.Length];
+            for(int z=0;z<NativeMeridianGround.Zones;z++)
+            {
+                bool any=false;for(int k=0;k<mask.Length;k++){mask[k]=zone[k]==z;any|=mask[k];}if(!any)continue;
+                foreach(var (i0,j0,i1,j1) in Rects(mask,nu,nv))b.Quad(o+u*us[i0]+v*vs[j0],u*(us[i1]-us[i0]),v*(vs[j1]-vs[j0]),NativeMeridianGround.FinOf(z),0,bi,top);
             }
         }
 
@@ -205,7 +240,8 @@ namespace ChipArena.UnityConversion
             switch(role)
             {
                 case RGround:
-                    Surface(b,bi,2,NativeMeridianSurfaces.Asphalt,0,4f);
+                    // the ground's top by zone (the sanctuary's square, its border, the yards, the roads: NativeMeridianGround)
+                    GroundTop(b,bi);
                     for(int f=0;f<6;f++)if(f!=2&&f!=3)Surface(b,bi,f,NativeMeridianSurfaces.BrickBlue,0,1.5f,NativeMeridianSurfaces.Coping,.45f);
                     break;
                 case RTread:

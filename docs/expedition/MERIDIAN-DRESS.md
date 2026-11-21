@@ -64,7 +64,7 @@ change. Without the city bank the walk draws its greybox exactly as before.
 | Role (ids) | Dressed as |
 | --- | --- |
 | `lot` (the sheet's lots) | Facades bay by bay (2.5 m, stretched to the face) and storey by storey (4 m ground, 3 m upper) by style: rows and villas (doors and parlour windows, sashes, oriels), shops and the market (their own trades' goods, shutters), tenements (barred flats, the lit entry and stair column, polychrome bays), warehouses and sheds (loading doors, iron windows), civic (rusticated arches). Blind faces get blind windows and a ghost sign. Partly hidden storeys get plain wall, and so does a bay given to the bleed's skins (they hang on it). A cornice under every roof line that hangs over a street; flat tar roofs with a coping and their hatches; pavements and kerbs (flat paint) along every street frontage. |
-| `terrace-*` | Asphalt tops; engineering-brick retaining walls with a stone coping |
+| `terrace-*` | Tops by zone (the grounds, below): the square, its setts border, asphalt roads, setts yards; engineering-brick retaining walls with a stone coping, weathering from the floor in front |
 | Stairs (MapRamp `stair`) | Granite treads and risers on the built treads; the sides a stone cheek under a 0.3 m sloped coping along the nosings, never stepped (the flights, below) |
 | Fire escapes | Iron: grating treads, risers and landings; a 0.3 m black stringer along the nosings; under it the flight's wedge, solid to a pilot, caged by flat bars 0.3 m apart, a grating under it and the stair's own soffit behind them; the floor runs on under the cage (the flights, below) |
 | Sloped streets (MapRamp `ramp`) | A setts surface on the wedge the pilots walk; the sides a straight engineering-brick retaining wall under a sloped stone coping whose top is the street's edge; the walls beside it run down under the street (the flights, below) |
@@ -75,6 +75,44 @@ change. Without the city bank the walk draws its greybox exactly as before.
 | Wagons | Goods vans |
 | Sheds, the goods shed's walls | Buff brick with copings |
 | The Cordon and its towers | Concrete with a dark band |
+
+## The grounds
+
+2026-11-21, the owner on Crown Hill's sanctuary plaza at night: "Theres very big empty areas, Like I feel the grounds should be
+textured? Unsure if they're intended to look like this still."
+
+- **Cause:** every ground block's top was one finish, the asphalt (#2E3038, no fine surface), so the hub's plaza (8,000-12,000 m2 a
+  plan) and every yard read as one flat dark slab at night. The retaining walls' brick bond faded out by 42 m, and their grime and
+  contact shade rose from the block's bottom, buried 9 m under the terrace in front.
+- **Zones** (`Core/NativeMeridianGround.cs`): each open floor of a ground block is cut on the zones' lines and drawn in its zone's
+  finish:
+  - the square: the plan's `hub.precinct` at y 0;
+  - its border: 2 m of granite setts round the square's outer edge;
+  - the roads: the routes' flat legs at their level, asphalt;
+  - the yards: every other open floor (back streets, courts, quays), granite setts.
+- **The finishes** (`NativeMeridianSurfaces`; StageLit's `Ground`, kinds 22-26, on the dress's generated surfaces only). Each has a
+  fine part that fades with the other fine surfaces (18-42 m), and a broad part kept at every distance, which is what reads from a
+  third-person camera at night. Every pattern is filtered by the pixel's footprint: a joint eases into its mean, and a detail fades
+  before it would alias.
+  - The square (#7E776C, about seven times the asphalt's albedo): York flags in 0.6 m courses, each with its own shade, some odd or
+    relaid. Bays are framed by granite-sett bands on the camp's 8 m grid (`SquareBand`: a band runs out of each gate). The lanes out
+    of the gates are trodden paler and polished.
+  - The asphalt: patches relaid in darker tar with sealed seams, tar-sealed cracks, stains, dry dusty fields.
+  - The setts: each sett with its own shade, the joints dark and green where they stay damp, tar-filled repairs.
+  - The pavements' slabs.
+  - The retaining brick (#4E4450; the bible's 4.4): the bond, rain streaks from the coping (lime or soot), rising damp with a ragged
+    edge, salt bloom over it, rebuilt panels, and weep holes every 1.8 m with their stains. Its uv1.y carries the floor in front, so
+    the weathering starts at the visible foot.
+  - On a wet night (the look's weather) the floors darken and gloss, and puddles stand on level floors only, with the sky's sheen
+    and every city lamp's glint in them as a streak toward the eye.
+- **Light:** the street lamps throw 3.6 x sodium down (3.0 before). The plaza's Civil Defence floods (street life) throw 13 m pools,
+  their light reaching about 21 m out over the square (9 m before). The square's gullies and manholes are flat paint.
+- **Measured** (`MeridianGroundChecks`, the five live deals): squares of 7,200-12,200 m2 a plan. At night, the square's floor
+  sends back 0.032-0.062 linear luminance on average; shared's asphalt under the same light sent back 0.0055-0.0107. Its darkest
+  cells sit in the moon's shadow by the walls to the north, lit only by the rim fill: 0.0027, against shared's 0.0005. Worst views'
+  triangles move by under 1%, except The Yards' High view at +6% (235,809).
+- **The Editor and the owner's build:** the owner's screenshot floor reads about eight times darker (linear luminance 0.0033
+  against 0.028) than the Editor's capture of the same commit and place. Judge brightness on a player build (the DEV_LOG's M4b entry).
 
 ## The night and the lamps
 
@@ -99,7 +137,7 @@ change. Without the city bank the walk draws its greybox exactly as before.
     intro owns the light; every other map draws as before.
   - **Each lamp's light** (`Core/NativeMeridianDressLight.cs`): a swan-neck's 0.15 m under its bowl and a pendant's under its bowl,
     thrown down by its reflector (`NativeCityLamps.Overhead`: a lobe of power 1.2 straight down, keeping 0.45 sideways): sodium x 3.0
-    down and 1.35 sideways (the slots' old light all round), so the setts under a lamp take about twice and the wall under its
+    (3.6 since 2026-11-21: the grounds) down and 1.35 sideways (the slots' old light all round), so the setts under a lamp take about twice and the wall under its
     bracket about 1.4 times what a slot gave (on the dark setts, #5A5652 with its grime, and the asphalt, #2E3038, the slot's light
     all round read as almost no pool once the flat disc was gone: the first captures); a flush lamp's 0.3 m in front of its lens,
     all round, x 1.6 (at the lens it lit only the street, never its own wall); the reach the pool's radius x 1.35; a route home's
@@ -177,6 +215,13 @@ the left wall among them, whose beam still drew over its dark wall); flicker und
 upload pinned; the per-frame packing allocates nothing. `--meridian-lamps-probe PLAN X Z R`
 lists the lamps near a point with the light on their walls and floors (with `MERIDIAN_EYE=x,y,z,fx,fy,fz`, the slots' picks there);
 `--meridian-lamps-stats` the least light per kind and plan.
+
+`MeridianGroundChecks` (`--meridian-ground`, in the full suite; `--meridian-ground-probe` prints the numbers without failing): every
+street plan's live deal. The precinct table is the plans' own. Every open floor of a ground block, and every sloped street, wears a
+ground finish (the zone's), never a plain one. Every retaining wall face is engineering brick weathering from a floor between its
+bottom and its foot. The square at night (the look's moon shadowed by the blocks, its rim fill, every city light as the drawers add
+them) is never under 0.002 linear luminance and averages at least 0.02; shared's asphalt under the same light fails both. The
+square's drains are flat paint, the floods reach 20 m, and StageLit's grounds are pinned.
 
 `MeridianDressChecks` (`--meridian-dress`, in the full suite): the roles against the specs, the sheet, determinism, the theme
 hook, the hugging rule, modules on their faces' planes, every seen face drawn, the route corridors' keep-out, the lamp rule, the

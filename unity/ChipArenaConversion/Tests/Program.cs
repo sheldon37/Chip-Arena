@@ -94,6 +94,10 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--meridian-lamps")MeridianLampChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--meridian-lamps")return 0;
             if(args.Length==1&&args[0]=="--meridian-lamps-stats"){MeridianLampStats.Run(ProjectRoot());return 0;}
+            // Meridian's open grounds at night (owner 2026-11-21: "Theres very big empty areas, Like I feel the grounds should be textured?"): zones, finishes, the square's light.
+            if(args.Length==0||args.Length==1&&args[0]=="--meridian-ground")MeridianGroundChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--meridian-ground")return 0;
+            if(args.Length==1&&args[0]=="--meridian-ground-probe"){MeridianGroundChecks.Run(ProjectRoot(),true);return 0;}
             if(args.Length==5&&args[0]=="--meridian-lamps-probe"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianLampChecks.Probe(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv));return 0;}
             if((args.Length==6||args.Length==7)&&args[0]=="--meridian-stairs-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianStairsChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv),args[5],args.Length==7&&args[6]=="roles");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
