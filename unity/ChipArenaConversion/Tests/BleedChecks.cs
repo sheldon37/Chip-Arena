@@ -31,7 +31,7 @@ internal static class BleedChecks
 
     public static void Run(string root)
     {
-        Curve();
+        Curve();Flicker(root);
         int walks=0,pieces=0,maxPieces=0,maxView=0,maxDraws=0,lamps=0,dead=0,flicker=0;float worstSeam=0;
         var perTheme=new Dictionary<string,int[]>();
         for(int layout=0;layout<NativeCityLayout.Plans.Count;layout++)
@@ -191,6 +191,45 @@ internal static class BleedChecks
         var dp=p-q.O;float nl=q.N.Length;if(nl<1e-4f||Math.Abs(V3.Dot(dp,q.N)/nl)>.06f)return false;float lu=V3.Dot(q.U,q.U);if(lu<1e-6f)return false;
         float s=V3.Dot(dp,q.U)/lu;if(s<-.01f||s>1.01f)return false;var v=q.V+(q.Vb-q.V)*Math.Max(0,Math.Min(1,s));float lv=V3.Dot(v,v);if(lv<1e-6f)return false;
         float t=V3.Dot(dp-q.U*s,v)/lv;return t>=-.01f&&t<=1.01f;
+    }
+
+    // The bleed's lamps never strobe (they flickered at 11 Hz before): sampled at 240 Hz over 30 s for 256 seeds, a flickering
+    // lamp changes brightness at most 6 times in any one second (three flashes) and, with Reduced effects, at most twice and never
+    // under .6; it still flickers; a turning beacon sweeps under 1 Hz; a steady lamp holds; and the live drawer takes its
+    // brightness from this rule with the Reduced setting.
+    private static void Flicker(string root)
+    {
+        const int Rate=240;const int Samples=30*Rate;int worst=0,worstReduced=0,flickers=0;float lowestReduced=1;
+        var at=new List<int>();
+        for(uint s=0;s<256;s++)
+        {
+            uint seed=NativeCityBleed.Hash(s*2654435761u+17u);
+            foreach(bool reduced in new[]{false,true})
+            {
+                at.Clear();float last=NativeCityBleedDress.LampIntensity(NativeCityBleedDress.LampState.Flicker,seed,0,reduced);
+                for(int i=1;i<=Samples;i++)
+                {
+                    float v=NativeCityBleedDress.LampIntensity(NativeCityBleedDress.LampState.Flicker,seed,i/(float)Rate,reduced);
+                    if(reduced)lowestReduced=Math.Min(lowestReduced,v);
+                    if(Math.Abs(v-last)>.05f)at.Add(i);
+                    last=v;
+                }
+                int most=0;for(int a=0,b=0;a<at.Count;a++){while(b<at.Count&&at[b]<at[a]+Rate)b++;most=Math.Max(most,b-a);}
+                if(reduced)worstReduced=Math.Max(worstReduced,most);else{worst=Math.Max(worst,most);if(at.Count>0)flickers++;}
+                float steady=NativeCityBleedDress.LampIntensity(NativeCityBleedDress.LampState.Steady,seed,(s%97)*.37f,reduced);
+                if(steady!=1)throw new Exception("A steady bleed lamp changes brightness ("+steady+")");
+            }
+            int peaks=0;float p0=0,p1=NativeCityBleedDress.LampIntensity(NativeCityBleedDress.LampState.Turning,seed,0,false);
+            for(int i=1;i<=Samples;i++){float p2=NativeCityBleedDress.LampIntensity(NativeCityBleedDress.LampState.Turning,seed,i/(float)Rate,false);if(p1>.9f&&p1>=p0&&p1>p2)peaks++;p0=p1;p1=p2;}
+            if(peaks>26)throw new Exception("A turning bleed beacon sweeps "+peaks+" times in 30 s, over once a second");
+        }
+        if(worst>6)throw new Exception("A flickering bleed lamp changes brightness "+worst+" times in one second (strobing; at most 6, three flashes)");
+        if(worstReduced>2||lowestReduced<.6f)throw new Exception("With Reduced effects a flickering bleed lamp changes "+worstReduced+" times in one second, down to "+lowestReduced);
+        if(flickers<250)throw new Exception("Only "+flickers+" of 256 flickering bleed lamps flicker in 30 s");
+        string draw=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeCityBleedDraw.cs"));
+        if(!draw.Contains("NativeCityBleedDress.LampIntensity(p.Lamp,p.Seed,time,NativeAdvancedLighting.Reduced)")||draw.Contains("time*11"))
+            throw new Exception("The bleed drawer does not take its lamps' brightness from NativeCityBleedDress.LampIntensity with the Reduced setting");
+        Console.WriteLine("PASS bleed lamp flicker: at most "+worst+" changes a second ("+NativeCityBleedDress.FlickerHz.ToString(CultureInfo.InvariantCulture)+" Hz steps), "+worstReduced+" with Reduced effects (never under "+lowestReduced.ToString("0.00",CultureInfo.InvariantCulture)+"); "+flickers+"/256 flicker; beacons under 1 Hz");
     }
 
     private static void Curve()
