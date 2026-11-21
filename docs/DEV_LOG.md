@@ -27,6 +27,7 @@ player build, multiplayer, the Low tier in the Editor.
 
 **Risks:** the cage is honest but still a cage; far bars may shimmer; two route lamps hang on cages.
 **For Astra:** thin, open fire-escape flights with rails (the notes' `meridian-staircasing-astra.md`).
+
 ## 2026-11-20 — Claude (M1): no hole where the street dress gives a bay to the bleed: the lot's wall under Ward Zero's growth (owner report; presentation only)
 
 **Branch and status:** `claude/bleed-growth-wall` from shared `d4ee788c`: the fix `3b2db7e4`, shared `3f788a3d` merged in
