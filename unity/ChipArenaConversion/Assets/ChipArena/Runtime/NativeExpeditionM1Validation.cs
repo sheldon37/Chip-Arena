@@ -104,7 +104,11 @@ namespace ChipArena.UnityConversion
                 Check(!director.CompleteAreaLoad((_,__)=>false)&&run.Snapshot().loading&&!run.Snapshot().members[0].safe,"failed placement stays frozen and unsafe");
                 Check(director.CompleteAreaLoad((_,points)=>{Local.Body.position=Vec(points["native-host"].Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);return true;}),"placement completes");
                 var entryFeet=Vec(Local.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);
-                var add=SpawnPveAdd("shambler",true);Check(add!=null,"real encounter entity created");
+                var add=SpawnPveAdd("shambler",true,nearPlayers:true);Check(add!=null,"local encounter entity created");
+                var exit=Vec(add.Pve.Entry.@exit.Position(.9f));
+                float distance=Vector3.Distance(Local.Body.position,exit);
+                Check(distance>=ExpeditionHubRules.SurpriseSpawnMin&&distance<=ExpeditionHubRules.SpawnMax,"instance wave uses a local emergence point");
+                Check(distance>=ExpeditionHubRules.VisibleSpawnMin||SceneLinecast(Local.Body.position,exit,WorldMask),"close emergence is concealed");
                 add.Pve.SpawnAt=add.Pve.ActiveAt=add.Pve.ExposedAt=Time-1;add.Pve.Struck=true;add.Collider.enabled=true;add.Body.isKinematic=false;
                 HitPveAdd(add,Local,1000000,Vector3.zero,0,null,"projectile",0,false);
                 Check(run.Snapshot().instances.Single(x=>x.id==area.id).progress==1,"confirmed combat death advances quota once");

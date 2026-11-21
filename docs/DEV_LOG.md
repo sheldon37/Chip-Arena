@@ -1,3 +1,65 @@
+## 2026-11-21 — Claude: release 13: the shipped game is lit as the approved Editor looks were (integrator)
+The owner plays on High: the live build read 2-7 times darker than the Editor clips the owner approved.
+- **Published:** shared and the builder at `a7bda65f`. Test channel revision `639308945926123514` (build `d41b3f08`, 394.0 MiB).
+- **Merged:**
+  - `claude/render-parity` `b11c7288` (R1). Its entry below has the cause, the proof and the impact: presentation only, with no
+    rules, timing, hitbox or network change.
+  - Astra's PR #440 (`6acce2ca`: Expedition wave zombies placed near living players) landed on shared during the suite and went
+    out in the same build. Its own checks are in its PR.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `b11c7288`;
+  - the full suite at `b11c7288` (1,102 groups, exit 0);
+  - the Unity compile after the merge with shared;
+  - the build.
+  - Not run: the suite on the merge with #440, two clients, GPU profiling of the second shadowed directional light.
+- **Editor:** the shared Editor now plays `Prototype.unity` (BoZo tool) and rests on `a7bda65f`. A branch without this release
+  captures as dark as the old player: merge shared in before filming.
+- **Packs (local only, not in git):**
+  - 10 Asset Store packs from the owner's bundles are parked in `F:/Chip Arena Development/AssetStoreCache`, with a README that
+    says what each is usable for in the Built-in pipeline.
+  - Bunker Builder was skipped (C: filled during its unpack).
+
+## 2026-11-21 — Claude (R1): the shipped player draws what the Editor showed (render parity; presentation only)
+Owner: the live test build reads much darker than the clips the owner approved (Crown Hill's plaza at night, build `f4d8b9b5`).
+**Branch:** `claude/render-parity` from shared `8ffefafd`; code `7afe5721`, check `cd617e04`, docs follow. Pushed, not merged, not released.
+- **Cause (proved with local player builds next to the Editor, same poses, Crown Hill's live deal xseed 2027808452, High):**
+  - Editor Play ran in the open **Untitled** scene, not `Prototype.unity`. That scene's default **Directional Light** (FFF4D6,
+    1.0, 50/-30/0, soft shadows) keyed every look and every capture. The BoZo tool only sets `isPlaying`, and the game boots in any scene.
+  - The player loads `Prototype.unity`, which has no light. Only the moon is left (0.32, gamma intensity): turning it off changes the
+    plaza floor by under 2% in either. Shadows, shading and the far haze's lift all came from the scene's light.
+  - The scenes have no baked lighting. So the Editor reflects Unity's **Default-Skybox-Cubemap** (128 px) and a player **UnityBlackCube**.
+  - Floor linear luminance, Editor / shipped player: owner's view 0.144 / 0.064, along the wall 0.159 / 0.073, wide plaza
+    0.068 / 0.012, the Lower Promenade 0.024 / 0.0033 (the owner's screenshot: 0.0033).
+  - **Not the cause:** stripping (every fog, instancing, light-probe and shadow variant of StageLit, NativeBlockLit and SourceLit is
+    in the build; only shadowmask variants are stripped, and `PrototypeBuild.ConfigureRendering` has kept fog Custom since 2026-10-08).
+    The builder's generated settings equal the Editor's (Graphics, Quality, Tag, Time, Dynamics, Editor settings; only the BoZo
+    always-included shaders and productGUID differ). Also ruled out: light modes, culling, baking output, the ambient probe, D3D12 (both).
+- **Fix (owner's look kept, coordinator's call "A"):** `NativeLighting.Create` adds "Key light (Editor parity)": Unity's default sun
+  exactly, skipped when a scene brings its own directional light, never touched by looks, stages or intros (as the scene's never was).
+  The quality level still sets its shadows (none on Performance). The rig also sets the default reflection to Custom with
+  `Resources/NativeDefaultReflection.mat`'s `_Tex` (the built-in cubemap). v2 intros' IntroOwn/IntroRelease still give it back.
+  The local BoZo tool (git-ignored, v3648+) now sets `EditorSceneManager.playModeStartScene` to `Prototype.unity`, so it cannot drift.
+- **Proved after:** player and Editor (now playing Prototype.unity) on `7afe5721` equal the approved Editor frames: 0.144, 0.159,
+  0.068 and 0.024 (the Editor's street 0.022, the rain's frame). The menu and the station barely change (their own light).
+- **Checks:** `RenderParityChecks` (`--render-parity`, pins the key, the reflection, no light in Prototype.unity; fails without the
+  key); the full suite the relgen5 way at `cd617e04` (1,102 groups, exit 0); `tools/check_unity_compile.py` (both assemblies
+  pass); `git diff --check`. Not run: PrototypeBuild.Validate in the Editor, two clients, GPU profiling, the Low tier's look.
+- **Side effects:** build textures +0.5 MB (the cubemap), Skybox/Cubemap adds 1 variant, game shader variants unchanged (StageLit 32
+  per pass, as the builder's). A second shadow-casting directional light costs a shadow pass, as it always did in the Editor.
+- **History:** at least since the Editor's 2026-11-20 relaunch (its 23:42 scene backup already holds the default light). Likely
+  much earlier: every shipped Unity build has lacked that key. The dark plaza ("big empty areas") and the lamps reading "flat, in the
+  air light" were partly this: with surfaces unlit, only beams and discs showed.
+- **Note for Astra (shared build settings):** no ProjectSettings change is needed or made. The builder's generated `GraphicsSettings`
+  is already right. Editor captures of branches without this commit now read as dark as the shipped player. Merge shared into
+  in-flight visual branches after release. A scene with its own directional light keeps it instead of the parity key.
+- **Clips:** `F:/Chip Arena Development/scratch/render-parity/clips/render-parity-player-vs-editor.mp4` and `render-parity-sheet.jpg`.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. No rule, wire, save or bank change.
+
+## 2026-11-21 — Astra: keep Expedition zombie arrivals near active players
+
+Branch `codex/local-zombie-spawns` from shared `8ffefafd`. Applies to Meridian street population and normal instance quota spawns, including their pack followers. The host chooses a legal authored emergence point within 52 m of a living local player. The ordinary minimum is 12 m. A 3% roll per new arrival attempt permits concealed entries down to 6 m. Any player with a clear sightline inside 18 m blocks that entry. If no eligible entrance exists, the normal spawn clock retries. Level 0 additionally limits corridor distance. Scripted boss reinforcements retain their encounter placement. No generated layout, art, network field, attack timing or damage changes.
+
+Checked the 24 authored instance arrival slots: Ward Zero has 28–32 entries between 18 and 52 m per slot, Central Station 18–19 and Ironworks 20–22, before hazard, queue and enemy-specific filters. Added managed boundary checks and a native instance combat assertion for the actual selected emergence point. A player-build co-op playtest is still needed to tune the feel.
 ## 2026-11-21 — Astra: Belvedere camp A1 (draft integration)
 
 Branch `codex/belvedere-camp-a1`, based on shared `8ffefafd`. The generated hub builds its collision, machines and pod reservations from the camp table. The kiosk is 3.2 m tall. The camp-connected lattice starts on the north lane, excludes the structures and machine bodies, and supplies the actual street elevation beyond each gate. PvP rows clear the ring. The v6 world receipt includes both machine records. F uses the existing run-wide chip ladder and med service. E still uses the revive machine. The two crossed pod colliders follow the authoritative records on both peers, and extraction uses the door relative to the ramp foot.
