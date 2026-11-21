@@ -14,13 +14,19 @@ namespace ChipArena.UnityConversion
     /// The model plays the great sword set's clips (NativeBladeIntro); its first frames are the set's idle, the keyed rig the game's own
     /// capture of it, so the great sword sits in the hands as the match holds it. Presentation only.
     /// </summary>
-    public sealed class NativeIntroFaultline:NativeIntroMeleeBlade
+    public sealed class NativeIntroFaultline:NativeIntroMeleeBlade,INativeIntroGrip
     {
         public const string Title="Faultline";
         public const float Total=8.0f,CardAt=6.4f;
-        /// <summary>The beats (presentation s): the leap, the blow, the cracks reaching the walls, the rise, the stance.</summary>
-        public const float LeapAt=2.2f,SlamAt=LeapAt+PlungeHit,SpreadAt=SlamAt+.5f,RiseAt=LeapAt+PlungeEnd,StandAt=RiseAt+.25f;
-        private const float PlungeHit=.63f,PlungeEnd=1.833f;
+        /// <summary>The beats (presentation s): the leap, the point biting the floor ahead, the blow (the feet down, the blade driven in), the
+        /// cracks reaching the walls, the head up, the rise wrenching it out, the point grounded at the right side, the stance.</summary>
+        public const float LeapAt=2.2f,ContactAt=2.79f,SlamAt=LeapAt+PlungeHit,SpreadAt=SlamAt+.5f,HeadUpAt=3.55f,RiseAt=3.85f,GroundAt=4.92f,StandAt=5.1f;
+        private const float PlungeHit=.63f,Blade=1.69f;
+        /// <summary>Where the blow's point goes into the floor (source frame: ahead of the pilot), how deep, and the blade's slope below level
+        /// (a great sword strikes the floor far out: its grip then sits low before the knees in the squash).</summary>
+        public static readonly Vector3 Bite=Local(0,0,1.75f);private const float Depth=.22f,Slope=.54f;
+        /// <summary>Where its point rests on the floor at the end, out at the pilot's right front, and where the drawn grip holds it (the hip).</summary>
+        public static readonly Vector3 Rest=Local(-.55f,0,1.55f),RestGrip=Local(-.27f,.86f,.12f);
         private static readonly Vector3 Ember=NativeEntranceFx.Hex(0xff8a3c),Molten=NativeEntranceFx.Hex(0xff5a14),Gold=NativeEntranceFx.Hex(0xffcb87),Night=NativeEntranceFx.Hex(0x0a0806),
             Dust=NativeEntranceFx.Hex(0x6e655c),Stone=NativeEntranceFx.Hex(0x3a3d42),Moon=NativeEntranceFx.Hex(0x9aaccc);
         public override string Spec=>"greatsword";
@@ -43,69 +49,58 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroFaultline():base(NativeIntroCatalog.WeaponPrefix+"greatsword",Total,CardAt,SlamAt,0xffcb87)
         {
-            // ---- the body (bespoke keys, owner 2026-11-20: no match clips) ----
-            // Feet: a guard stance (left foot ahead), a wider landing stance after the leap.
-            Start=Stance(.17f,.12f,.12f,-.19f,-.14f,-.45f);
-            Steps=new[]{Step(true,LeapAt,SlamAt-.02f,.22f,.32f,.15f,.12f),Step(false,LeapAt+.02f,SlamAt,-.25f,-.26f,-.5f,.12f)};
+            // ---- the body (bespoke keys, owner 2026-11-20: no match clips; the feet and drops on the model, ModelFeet) ----
+            // Feet (the model's ankles): a guard stance, left foot ahead; both leave the floor in the leap and come down a little wider; the
+            // right foot squares up as it stands.
+            Start=Stance(.14f,.12f,.12f,-.16f,-.14f,-.45f);
+            Steps=new[]{Step(true,LeapAt,ContactAt-.06f,.18f,.2f,.14f,.16f),Step(false,LeapAt+.02f,ContactAt-.05f,-.2f,-.18f,-.48f,.16f),Step(false,GroundAt-.25f,GroundAt+.05f,-.17f,-.06f,-.4f,.07f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            // On guard: the great sword upright before the right shoulder, the chest turned to it, weight settled.
-            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.06f).J(B,.06f).J(C,0,-.14f,0).J(Hd,.02f,.1f,0).J(LL,-.12f,0,.12f).J(LK,.2f).J(RL,.12f,0,-.12f).J(RK,.18f)
-             .J(RA,-.5f,0,-.3f).J(RE,-1.3f).J(LA,-.5f,0,.3f).J(LE,-1.3f);
-            k.Key(1.45f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.075f).J(B,.07f).J(C,.02f,-.12f,0).J(Hd,.04f,.06f,0).J(LL,-.14f,0,.12f).J(LK,.24f).J(RL,.12f,0,-.12f).J(RK,.2f)
-             .J(RA,-.5f,0,-.3f).J(RE,-1.3f).J(LA,-.5f,0,.3f).J(LE,-1.3f);
-            // Anticipation: it sinks as the blade rises and tips back over the head, the chest opening.
-            k.Key(1.9f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.18f).J(B,.1f).J(C,-.08f,-.05f,0).J(Hd,-.05f,0,0).J(LL,-.35f,0,.12f).J(LK,.55f).J(RL,-.15f,0,-.12f).J(RK,.5f)
-             .J(RA,-2.2f,0,-.25f).J(RE,-1.0f).J(LA,-2.2f,0,.25f).J(LE,-1.0f);
-            k.Key(2.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.27f).J(B,.2f).J(C,-.16f,0,0).J(Hd,-.12f,0,0).J(LL,-.55f,0,.12f).J(LK,.85f).J(RL,-.32f,0,-.12f).J(RK,.8f)
-             .J(RA,-2.7f,0,-.2f).J(RE,-.8f).J(LA,-2.7f,0,.2f).J(LE,-.8f);
-            // Off the floor: legs driving straight, the body long, the blade high behind.
-            k.Key(LeapAt,stand).Root(0,.95f,0,Facing).Planted(.3f).Drop(0).J(B,.02f).J(C,-.2f,0,0).J(Hd,-.1f,0,0).J(LL,-.05f,0,.1f).J(LK,.1f).J(RL,.1f,0,-.1f).J(RK,.12f)
-             .J(RA,-2.9f,0,-.15f).J(RE,-.6f).J(LA,-2.9f,0,.15f).J(LE,-.6f).PassKey();
-            // The top: knees tucked, the great sword at the top of its swing.
-            k.Key(LeapAt+.27f,stand).Root(0,1.4f,.06f,Facing).Planted(0).Drop(.02f).J(B,.12f).J(C,-.1f,0,0).J(Hd,-.05f,0,0).J(LL,-.95f,0,.15f).J(LK,1.25f).J(RL,-.55f,0,-.15f).J(RK,1.35f)
-             .J(RA,-2.9f,0,-.15f).J(RE,-.5f).J(LA,-2.9f,0,.15f).J(LE,-.5f).PassKey();
-            // Falling into the blow, the blade coming over.
-            k.Key(SlamAt-.09f,stand).Root(0,1.02f,.08f,Facing).Planted(0).J(B,.25f).J(C,.15f,0,0).J(Hd,.08f,0,0).J(LL,-.6f,0,.12f).J(LK,.5f).J(RL,-.2f,0,-.12f).J(RK,.45f)
-             .J(RA,-1.6f,0,-.2f).J(RE,-.4f).J(LA,-1.6f,0,.2f).J(LE,-.4f);
-            // The blow: a deep squash over the hilt, head down, the blade driven into the floor ahead.
-            k.Key(SlamAt,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.4f).J(B,.42f).J(Sp,.1f).J(C,.12f,0,0).J(Hd,.22f,0,0).J(LL,-1.25f,0,.14f).J(LK,1.75f).J(RL,-.5f,0,-.14f).J(RK,1.5f)
-             .J(RA,-.9f,0,-.25f).J(RE,-.6f).J(LA,-.9f,0,.25f).J(LE,-.6f).ImpactKey();
-            k.Key(SlamAt+.5f,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.43f).J(B,.46f).J(Sp,.1f).J(C,.12f,0,0).J(Hd,.32f,0,0).J(LL,-1.3f,0,.14f).J(LK,1.8f).J(RL,-.52f,0,-.14f).J(RK,1.55f)
-             .J(RA,-.9f,0,-.25f).J(RE,-.6f).J(LA,-.9f,0,.25f).J(LE,-.6f);
-            // The head comes up first; then it rises, wrenching the blade out of the floor and up onto the shoulder.
-            k.Key(RiseAt-.28f,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.42f).J(B,.4f).J(Sp,.08f).J(C,.05f,0,0).J(Hd,-.08f,0,0).J(LL,-1.28f,0,.14f).J(LK,1.78f).J(RL,-.52f,0,-.14f).J(RK,1.55f)
-             .J(RA,-.9f,0,-.25f).J(RE,-.6f).J(LA,-.9f,0,.25f).J(LE,-.6f);
-            k.Key(RiseAt,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.26f).J(B,.25f).J(C,0,-.05f,0).J(Hd,-.08f,0,0).J(LL,-.8f,0,.14f).J(LK,1.05f).J(RL,-.32f,0,-.14f).J(RK,.95f)
-             .J(RA,-1.1f,0,-.25f).J(RE,-.9f).J(LA,-1.1f,0,.25f).J(LE,-.9f);
-            k.Key(RiseAt+.42f,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.06f).J(B,.02f).J(C,-.05f,-.18f,0).J(Hd,-.06f,.1f,0).J(LL,-.16f,0,.12f).J(LK,.22f).J(RL,.1f,0,-.12f).J(RK,.24f)
-             .J(RA,-1.6f,0,-.3f).J(RE,-1.6f).J(LA,-1.2f,0,.2f).J(LE,-1.4f).PassKey();
-            // The hero: the great sword across the right shoulder, the chest proud, weight on the back leg.
-            k.Key(5.0f,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.04f).J(B,-.02f).J(C,-.08f,-.2f,0).J(Hd,-.08f,.14f,0).J(LL,-.1f,0,.14f).J(LK,.12f).J(RL,.08f,0,-.14f).J(RK,.26f)
-             .J(RA,-1.5f,0,-.35f).J(RE,-1.7f).J(LA,-1.0f,0,.15f).J(LE,-1.4f);
-            k.Key(Total,stand).Root(0,.88f,.08f,Facing).Planted(1).Drop(-.04f).J(B,-.02f).J(C,-.08f,-.2f,0).J(Hd,-.08f,.14f,0).J(LL,-.1f,0,.14f).J(LK,.12f).J(RL,.08f,0,-.14f).J(RK,.26f)
-             .J(RA,-1.5f,0,-.35f).J(RE,-1.7f).J(LA,-1.0f,0,.15f).J(LE,-1.4f);Keys=k;
-            // ---- the great sword's way (the right hand's grip and the blade, in the pilot's frame; both hands on the hilt) ----
-            Sword.Key(0,V(-.17f,1.0f,.27f),V(.05f,.96f,-.28f))
-                 .Key(1.45f,V(-.16f,.99f,.26f),V(.05f,.97f,-.25f))
-                 .Key(1.9f,V(-.1f,1.36f,.14f),V(.02f,.6f,-.8f))
-                 .Key(2.12f,V(-.06f,1.55f,0),V(0,.08f,-1))
-                 .Key(LeapAt,V(-.04f,1.83f,-.04f),V(0,-.3f,-.95f)).Pass()
-                 .Key(LeapAt+.27f,V(0,1.92f,.02f),V(0,-.2f,-.98f)).Pass()
-                 .Key(SlamAt-.09f,V(0,1.48f,.5f),V(0,.6f,.8f)).Pass()
-                 .Key(SlamAt,V(0,.82f,.5f),V(0,-.85f,.52f)).Impact()
-                 .Key(SlamAt+.5f,V(0,.78f,.48f),V(0,-.86f,.5f))
-                 .Key(RiseAt-.28f,V(0,.8f,.47f),V(0,-.86f,.51f))
-                 .Key(RiseAt+.12f,V(-.06f,1.0f,.42f),V(0,.2f,.98f)).Pass()
-                 .Key(RiseAt+.42f,V(-.18f,1.28f,.22f),V(-.1f,.75f,-.65f)).Pass()
-                 .Key(5.0f,V(-.24f,1.18f,.2f),V(-.15f,.42f,-.9f))
-                 .Key(Total,V(-.24f,1.18f,.2f),V(-.15f,.42f,-.9f));
+            // On guard: the great sword low before the body in both hands, its point toward the floor ahead, the weight settled.
+            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(B,.08f).J(C,.02f,-.1f,0).J(Hd,.04f,.08f,0);
+            k.Key(1.45f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.06f).J(B,.09f).J(C,.03f,-.08f,0).J(Hd,.06f,.05f,0);
+            // Anticipation: it sinks as the blade rises and tips back over the head, the chest opening, the eyes up.
+            k.Key(1.9f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.14f).J(B,.06f).J(C,-.08f,-.04f,0).J(Hd,-.06f,0,0);
+            k.Key(2.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.2f).J(B,.18f).J(Sp,.04f).J(C,-.14f,0,0).J(N,-.06f).J(Hd,-.1f,0,0);
+            // Off the floor: the legs drive it up, long, the blade high behind.
+            k.Key(LeapAt,stand).Root(0,.95f,.02f,Facing).Planted(.3f).Drop(0).J(B,-.02f).J(C,-.2f,0,0).J(Hd,-.1f,0,0).J(LL,-.1f,0,.1f).J(LK,.12f).J(RL,.12f,0,-.1f).J(RK,.15f).PassKey();
+            // The top: the knees tucked, the body arched back under the blade.
+            k.Key(LeapAt+.27f,stand).Root(0,1.28f,.04f,Facing).Planted(0).Drop(.02f).J(B,-.04f).J(C,-.14f,0,0).J(Hd,-.04f,0,0).J(LL,-1.0f,0,.14f).J(LK,1.3f).J(RL,-.7f,0,-.14f).J(RK,1.4f).PassKey();
+            // Coming down with the blow: the body folds forward over the blade as it comes over, the legs reaching for the floor.
+            k.Key(ContactAt-.04f,stand).Root(0,.98f,.05f,Facing).Planted(1).Drop(0).J(B,.24f).J(Sp,.06f).J(C,.1f,0,0).J(Hd,.06f,0,0).J(LA,-.7f,.05f,.75f).J(LE,-.55f).J(LL,-.4f,0,.12f).J(LK,.4f).J(RL,-.15f,0,-.12f).J(RK,.3f);
+            // The blow: the feet down, a deep squash over the hilt, the head bowed.
+            k.Key(SlamAt,stand).Root(0,.88f,.05f,Facing).Planted(1).Drop(-.3f).J(B,.36f).J(Sp,.08f).J(C,.1f,0,0).J(Hd,.2f,0,0).J(LA,-.35f,.05f,1.15f).J(LE,-.3f).ImpactKey();
+            k.Key(SlamAt+.14f,stand).Root(0,.88f,.05f,Facing).Planted(1).Drop(-.4f).J(B,.42f).J(Sp,.1f).J(C,.12f,0,0).J(Hd,.3f,0,0).J(LA,-.3f,.05f,1.2f).J(LE,-.28f);
+            k.Key(HeadUpAt-.15f,stand).Root(0,.88f,.05f,Facing).Planted(1).Drop(-.39f).J(B,.41f).J(Sp,.1f).J(C,.12f,0,0).J(Hd,.32f,0,0).J(LA,-.28f,.05f,1.0f).J(LE,-.35f);
+            // The head comes up first; then it rises, wrenching the blade out, and swings it down to its right side.
+            k.Key(HeadUpAt+.2f,stand).Root(0,.88f,.05f,Facing).Planted(1).Drop(-.38f).J(B,.36f).J(Sp,.08f).J(C,.02f,0,0).J(N,-.1f).J(Hd,-.24f,0,0).J(LA,-.25f,.05f,.85f).J(LE,-.4f);
+            k.Key(RiseAt+.3f,stand).Root(0,.88f,.03f,Facing).Planted(1).Drop(-.2f).J(B,.12f).J(C,-.04f,-.14f,0).J(N,-.04f).J(Hd,-.12f,.06f,0).J(LA,-.15f,.06f,.4f).J(LE,-.5f).PassKey();
+            k.Key(GroundAt,stand).Root(0,.88f,.02f,Facing).Planted(1).Drop(-.08f).J(B,.06f).J(C,-.04f,-.12f,0).J(Hd,-.04f,.1f,0).J(LA,-.1f,.06f,.22f).J(LE,-.5f).ImpactKey();
+            // The stance: tall beside the great sword resting on its point, the left fist low, the chest proud.
+            k.Key(StandAt+.4f,stand).Root(0,.88f,.02f,Facing).Planted(1).Drop(-.04f).J(B,.02f).J(C,-.08f,-.06f,0).J(Hd,-.06f,.06f,0).J(LA,-.08f,.06f,.2f).J(LE,-.42f);
+            k.Key(Total,stand).Root(0,.88f,.02f,Facing).Planted(1).Drop(-.04f).J(B,.02f).J(C,-.09f,-.06f,0).J(Hd,-.08f,.07f,0).J(LA,-.08f,.06f,.2f).J(LE,-.42f);Keys=k;
+            // ---- the great sword's way (the right hand's grip and the blade, in the keyed chest's frame; the left on the hilt by the grip) ----
+            Sword.InChest().Key(0,V(-.02f,-.13f,.3f),V(.08f,.64f,.76f))
+                 .Key(1.45f,V(-.02f,-.12f,.3f),V(.08f,.66f,.75f))
+                 .Key(1.9f,V(-.18f,.1f,.25f),V(.05f,.9f,-.4f))
+                 .Key(2.02f,V(-.26f,.25f,.15f),V(-.5f,.75f,-.4f)).Pass()
+                 .Key(2.12f,V(-.18f,.34f,.15f),V(-.55f,-.35f,-.76f))
+                 .Key(LeapAt,V(-.18f,.38f,.14f),V(-.45f,-.3f,-.84f)).Pass()
+                 .Key(LeapAt+.27f,V(-.14f,.46f,.2f),V(-.35f,-.2f,-.92f))
+                 // (the chop comes over with the blade square to the forearms, and the wrists snap it down onto the floor only at the bite)
+                 .Key(LeapAt+.38f,V(-.1f,.5f,.24f),V(0,.98f,-.2f)).Pass()
+                 .Key(LeapAt+.46f,V(-.12f,.42f,.32f),V(0,.9f,-.42f)).Pass()
+                 .Key(LeapAt+.51f,V(-.12f,.25f,.38f),V(0,.98f,.15f)).Pass()
+                 .Key(ContactAt-.04f,V(-.12f,.05f,.42f),V(0,.75f,.66f))
+                 .Key(RiseAt+.3f,V(-.15f,-.1f,.32f),V(.05f,.1f,.99f)).Pass()
+                 .Key(4.55f,V(-.36f,-.22f,.16f),V(-.3f,-.5f,.81f))
+                 .Key(Total,V(-.36f,-.24f,.15f),V(-.3f,-.52f,.8f));
             // The camera: low over the floor to the pilot; wide and low as it leaps; the blow, craning up over the breaking ring; high over the
             // cracks racing to the walls; the hero.
             Rig.Dolly(0,V(-2.6f,.42f,5.4f),V(-1.55f,.55f,3.55f),V(0,.85f,0),V(0,1.12f,0),44,40).Ease(NativeIntroEase.Out).Handheld(.3f)
                .Dolly(LeapAt-.15f,V(3.4f,.38f,1.7f),V(3.55f,.42f,1.95f),V(0,1.6f,0),V(0,1.2f,.1f),52,52)
-               .Crane(SlamAt-.06f,V(-2.4f,1.0f,3.1f),V(-1.5f,1.5f,3.4f),5.2f,V(0,.35f,0),V(0,.1f,-.2f),50,60).Ease(NativeIntroEase.InOut)
+               .Crane(SlamAt-.06f,V(-2.4f,1.0f,3.1f),V(-1.5f,1.5f,3.4f),5.2f,V(0,.4f,.6f),V(0,.2f,.4f),50,60).Ease(NativeIntroEase.InOut)
                .Dolly(SlamAt+1.15f,V(.9f,9.6f,3.4f),V(.4f,9.1f,1.9f),V(0,0,-.8f),V(0,0,-.4f),58,54);// (on the blow's clock: the cracks' later start must not crowd it into the hero)
-            HeroFull(RiseAt+.3f,1,5.6f,33,.4f,0,.22f);// (back and up: the great sword held high stays in frame)// (a cut: from high over the ring a blend would plunge 8 m)
+            HeroFull(RiseAt+.3f,1,5.6f,33,.4f,0);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(SlamAt-.2f,.25f,.3f,.9f);
         }
@@ -113,12 +108,32 @@ namespace ChipArena.UnityConversion
 
         // ---- the body: keyed (no match clips), the arms solved onto the great sword's way ----
         private readonly NativeIntroWield Sword=new NativeIntroWield();
-        protected override float TipLength(bool left)=>left?.15f:1.69f;
+        protected override float TipLength(bool left)=>left?.15f:Blade;
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            // Both hands on the hilt all through: the right at the guard, the left a hand lower toward the pommel.
-            Wield(Sword,t,pose,root,rotation,false);Wield(Sword,t,pose,root,rotation,true,-.2f);
+            // The right hand on its way (both hands on the hilt until it is wrenched out); from the moment the point bites, on the grip of the
+            // blade driven into the floor ahead (the drawn grip where the blade's depth puts it); at the end, on the grip of the blade resting
+            // on its point at the right side.
+            TwoHands=Hands(t)*.9f;Wield(Sword,t,pose,root,rotation,false);
+            float bite=NativeEntranceMath.Smooth((t-(ContactAt-.05f))/.05f)*(1-NativeEntranceMath.Smooth((t-RiseAt-.05f)/.3f));
+            if(bite>.001f){HiltAt(t,out var grip,out var blade);HoldDrawn(pose,root,rotation,false,grip,blade,bite);}
+            float rest=NativeEntranceMath.Smooth((t-(GroundAt-.22f))/.22f);
+            if(rest>.001f)HoldDrawn(pose,root,rotation,false,RestGrip+new Vector3(0,NativeEntranceStage.FloorY,0),Vector3.Normalize(Rest-RestGrip),rest);
         }
+        /// <summary>The hilt in both hands until the point bites; the blow's shock throws the left hand off it, out for balance.</summary>
+        private static float Hands(float t)=>1-NativeEntranceMath.Smooth((t-(ContactAt-.03f))/.06f);
+        /// <summary>Where the drawn grip is and which way the blade points once its point bites the floor ahead: driven in along its own line
+        /// from the contact to its depth at the blow.</summary>
+        public static void HiltAt(float t,out Vector3 grip,out Vector3 blade)
+        {
+            float d=Depth*NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-ContactAt)/(SlamAt+.07f-ContactAt)));
+            var fwd=Local(0,0,1);blade=Vector3.Normalize(fwd*(float)Math.Cos(Slope)-Vector3.UnitY*(float)Math.Sin(Slope));
+            var tip=new Vector3(Bite.X,NativeEntranceStage.FloorY,Bite.Z)+blade*(d/(float)Math.Sin(Slope));grip=tip-blade*Blade;
+        }
+        /// <summary>Both hands on the hilt until the bite (Core NativeIntroGrip: the left at the two-hander's lower grip).</summary>
+        public bool GripAt(float t,out NativeIntroGripAt grip){float w=Hands(t);grip=new NativeIntroGripAt(w);return w>.001f;}
+        /// <summary>The feet come down in the blow's landing (their planting blends in as they arrive).</summary>
+        public override bool FeetSliding(float t)=>t>=SlamAt-.2f&&t<SlamAt+.02f||t>=LeapAt-.1f&&t<LeapAt+.1f;
 
         // ---- the fracture: each slab heaves on the wave from the blow and settles tilted outward ----
         /// <summary>Slab `k`'s pose at `t` (source frame): its rest, lifted and tilted after the wave reaches it.</summary>
@@ -135,7 +150,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>How hot the quarry's cracks and seam run at `t` (the glow sub-mesh's level: the seam, the faults and the light under the disc).</summary>
         private float Heat(float t)=>(.55f+.15f*(float)Math.Sin(t*1.7f)*(Context.Reduced?0:1)+2.6f*NativeEntranceMath.Pulse(t,SlamAt,.06f,.9f)+.9f*NativeEntranceMath.Ramp(t,SlamAt,SlamAt+.6f))
-            *(1-.72f*NativeEntranceMath.Ramp(t,RiseAt+.2f,CardAt));// (cooling under the name: the seam ran as a bright bar through its band)
+            *(1-.72f*NativeEntranceMath.Ramp(t,StandAt,CardAt));// (cooling under the name: the seam ran as a bright bar through its band)
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)
@@ -178,7 +193,7 @@ namespace ChipArena.UnityConversion
             NativeEntranceFx.GroundDust(fx,t,LeapAt+.12f,new Vector3(0,floor,0),low?5:10,.3f,1.6f,.8f,Dust,.35f,.45f,36400,q,floor);
             if(after<0)return;
             // The blow: a white-gold flash at the blade, sparks thrown wide and molten drops spraying out, a ring of dust running out.
-            var hit=new Vector3(0,floor+.05f,.7f);
+            var hit=new Vector3(Bite.X,floor+.05f,Bite.Z);
             if(after<.22f)fx.Glow(hit+new Vector3(0,.25f,0),(White*2+Gold)*(2.6f*(1-after/.22f)),0,.4f+1.4f*after,1,after/.22f,36500);
             NativeEntranceFx.Sparks(fx,t,SlamAt,hit,Vector3.UnitY,1.6f,low?14:36,8.5f,1.0f,8,.8f,(White+Gold)*1.8f,Molten*2,.016f,36510,q,floor);
             if(after<1.4f)

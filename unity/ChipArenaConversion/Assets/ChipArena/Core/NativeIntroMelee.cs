@@ -74,6 +74,11 @@ namespace ChipArena.UnityConversion
     {
         private const int Stride=7;// grip xyz, blade xyz, weight
         private float[] times=Array.Empty<float>(),values=Array.Empty<float>();private uint pass,impact;private int count;
+        /// <summary>Keyed in the keyed chest's frame (x its left, y up it, z ahead of it, from the chest joint; the keyed rig's proportions:
+        /// shoulders at (±.345, .18, 0), the arm .52 long), so the hold rides the body's lean, drop and turn as a body carries a weapon;
+        /// false: the pilot's frame over its floor spot (for a contact with the world: a blade in the floor).</summary>
+        public bool Chest;
+        public NativeIntroWield InChest(){Chest=true;return this;}
         public NativeIntroWield Key(float t,Vector3 grip,Vector3 blade,float weight=1)
         {
             Array.Resize(ref times,count+1);Array.Resize(ref values,(count+1)*Stride);times[count]=t;blade=Vector3.Normalize(blade);int o=count*Stride;
@@ -110,6 +115,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The living hold (breath, weight shift, a drifting head: NativeEntrancePose.Idle) from the first moments, under every key:
         /// the keyed holds before the action breathe too.</summary>
         protected override float HeroAt=>.25f;
+        protected const int N=CapturedRig.Neck,LC=CapturedRig.LClav,RC=CapturedRig.RClav,LF=CapturedRig.LFoot,RF=CapturedRig.RFoot;
+        /// <summary>Planted legs as true hinges (the v2 intros': no sideways knees).</summary>
+        protected override bool HingedLegs=>true;
+        /// <summary>The feet keyed on the model (docs/INTROS-V2.md 9c): Start and Steps are where the drawn ankles go, a Drop is the drawn
+        /// hips' own metres; the model's legs are 1.7 times the keyed rig's, so keyed feet slid and keyed drops sank through the floor.</summary>
+        protected override bool ModelFeet=>true;
         public override float Clock(float age){if(!(age>0))return 0;return Ramps.Any?Ramps.Map(Math.Min(age,IntroTotal+1),IntroTotal+1):Math.Min(age,IntroTotal+1);}
         public override void Camera(float age,out NativeEntranceView view)
         {
@@ -154,22 +165,6 @@ namespace ChipArena.UnityConversion
         // ---- the hands as drawn (handed in before Props, Set and Effects; a checker never hands them in) ----
         private NativeIntroHand handR,handL;private float handsAt=-100;
         public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;Record(t,0,right);Record(t,1,left);}
-        // ---- the blade's axis in the keyed hand's frame ----
-        /// <summary>
-        /// Which way the weapon lies in the hand's frame. The Standard weapons are drawn along the keyed wrist's +z. A clip-free Katana
-        /// is drawn along its +y (the keyed captures: Still Rain's cut stood straight up when its +z was laid along the cut), and the
-        /// runtime's blade line and the framework's tip anchor still take +z for it; an intro whose weapon lies otherwise says so here,
-        /// and the wield aims that axis and the drawn sweeps take it.
-        /// </summary>
-        protected virtual Vector3 BladeAxis(bool left)=>Vector3.UnitZ;
-        /// <summary>The wrist's turn that lays the blade (its axis in the hand's frame) along `z`, the hand's +y as near `y` as it allows.</summary>
-        private Quaternion Aim(Vector3 x,Vector3 y,Vector3 z,bool left)
-        {
-            var turn=CapturedRig.Basis(x,y,z);var a=Vector3.Normalize(BladeAxis(left));if(a.Z>.9999f)return turn;
-            // (the turn taking +z onto the blade's axis, undone under the aimed frame)
-            var axis=Vector3.Cross(Vector3.UnitZ,a);float s=axis.Length();var q=s<1e-5f?Quaternion.CreateFromAxisAngle(Vector3.UnitX,(float)Math.PI):Quaternion.CreateFromAxisAngle(axis/s,(float)Math.Atan2(s,a.Z));
-            return Quaternion.Normalize(turn*Quaternion.Inverse(q));
-        }
         /// <summary>The drawn wrist (0 the right, 1 the left) this frame: false when none was handed in for `t` (then the keyed anchor).</summary>
         protected bool Hand(float t,int hand,out Vector3 at)
         {
@@ -193,9 +188,8 @@ namespace ChipArena.UnityConversion
             if(!h.Model||!float.IsFinite(h.At.X)||!float.IsFinite(h.Turn.W)){drawnCount[hand]=0;return;}
             // (the weapon anchors as drawn, the framework's: the weapon frame's origin and its tip socket; else along the learnt axis)
             float len=TipLength(hand==1);Vector3 root,tip;var gripAt=hand==1?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip;var tipAt=hand==1?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip;
-            var along=BladeAxis(hand==1);
-            if(along.Z>.9999f&&IsDrawn(gripAt)&&IsDrawn(tipAt)){var g=Anchor(gripAt,t);tip=Anchor(tipAt,t);var d=tip-g;float l=d.Length();root=l>1e-4f?g+d*(Math.Min(.18f,l*.2f)/l):g;}
-            else{var axis=Vector3.Transform(Vector3.Normalize(along),h.Turn);root=h.At+axis*Math.Min(.18f,len*.2f);tip=h.At+axis*len;}
+            if(IsDrawn(gripAt)&&IsDrawn(tipAt)){var g=Anchor(gripAt,t);tip=Anchor(tipAt,t);var d=tip-g;float l=d.Length();root=l>1e-4f?g+d*(Math.Min(.18f,l*.2f)/l):g;}
+            else{var axis=Vector3.Transform(Vector3.UnitZ,h.Turn);root=h.At+axis*Math.Min(.18f,len*.2f);tip=h.At+axis*len;}
             int c=drawnCount[hand],k=drawnHead[hand],o=hand*DrawnMax;
             if(c>0&&t-drawnAt[o+k]<1/240f){drawnRoot[o+k]=root;drawnTip[o+k]=tip;return;}
             k=(k+1)%DrawnMax;drawnRoot[o+k]=root;drawnTip[o+k]=tip;drawnAt[o+k]=t;drawnHead[hand]=k;drawnCount[hand]=Math.Min(DrawnMax,c+1);
@@ -271,33 +265,172 @@ namespace ChipArena.UnityConversion
         public override bool Clip(float t,out string clip,out float time){clip=null;time=0;return false;}
         /// <summary>
         /// Solves arm `left` onto `path` at `t`: the wrist at its grip (the pilot's frame from the keyed root: its floor spot, its yaw and its
-        /// lift off the floor), the blade along the hand's +z, the hand rolled toward the shoulder (the forearm's way) so the wrist stays
-        /// natural. `offset` slides the hand along the blade (a second hand lower on a two-handed grip).
+        /// lift off the floor) and the weapon's axis (a blade's line, the shield's face) along its key (HoldAt). `offset` slides the hand along
+        /// the blade.
         /// </summary>
-        protected void Wield(NativeIntroWield path,float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float offset=0,float hang=0)
+        protected void Wield(NativeIntroWield path,float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float offset=0)
         {
-            // (`hang`: how far the hand's +y leans down instead of toward the shoulder: a shield's face hangs below the fist at rest)
-            path.At(t,out var grip,out var blade,out float weight);if(weight<=.001f)return;
+            if(WieldTarget(path,t,pose,root,rotation,out var at,out var axis,out float weight,offset))HoldAt(pose,root,rotation,left,at,axis,weight);
+        }
+        /// <summary>Where `path` puts the wrist at `t` and which way the weapon's axis points (world, source frame), without solving the arm:
+        /// to blend two holds by their targets, so one solve makes the arm between them (a blend of two solved arms can swing the elbow round).</summary>
+        protected bool WieldTarget(NativeIntroWield path,float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,out Vector3 at,out Vector3 axis,out float weight,float offset=0)
+        {
+            path.At(t,out var grip,out var blade,out weight);at=axis=default;if(weight<=.001f)return false;
+            if(path.Chest)
+            {
+                pose.World();var turn=pose.WorldRotation[CapturedRig.Chest];var c=pose.WorldPosition[CapturedRig.Chest];axis=Vector3.Transform(Vector3.Transform(blade,turn),rotation);
+                at=root+Vector3.Transform(c+Vector3.Transform(grip,turn),rotation)+axis*offset;return true;
+            }
             var f=Vector3.Transform(Vector3.UnitZ,rotation);float yaw=(float)Math.Atan2(f.X,f.Z);
             var origin=new Vector3(root.X,root.Y-.88f+NativeEntranceStage.FloorY,root.Z);
-            var z=NativeEntranceMath.RotateY(blade,yaw);var at=origin+NativeEntranceMath.RotateY(grip,yaw)+z*offset;
-            pose.World();var shoulder=NativeEntrancePose.Point(pose,root,rotation,left?CapturedRig.LArm:CapturedRig.RArm,Vector3.Zero);
-            var y=shoulder-at;if(hang>0)y=Vector3.Lerp(y.LengthSquared()>1e-8f?Vector3.Normalize(y):Vector3.UnitY,-Vector3.UnitY,hang);y-=z*Vector3.Dot(y,z);
-            if(y.LengthSquared()<1e-4f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-4f)y=Vector3.UnitZ;}
-            y=Vector3.Normalize(y);var x=Vector3.Cross(y,z);
-            NativeEntrancePose.Reach(pose,root,rotation,left,at,Aim(x,y,z,left),weight);
+            axis=NativeEntranceMath.RotateY(blade,yaw);at=origin+NativeEntranceMath.RotateY(grip,yaw)+axis*offset;return true;
         }
-
-        /// <summary>Solves arm `left` so its wrist is at `at` (world, source frame) with the blade along `blade`, rolled toward the shoulder.</summary>
-        protected void WieldAt(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 blade,float weight)
+        /// <summary>The weapon's convention in the hand that holds it (Core NativeIntroGrip.Natural): a blade runs through the fist along the
+        /// hand's +z (none), the shield's face lies along the hand's length (a quarter turn about x).</summary>
+        protected virtual Quaternion HandNatural=>NativeIntroGrip.Natural(NativeIntroGrip.Of(Spec),false);
+        private bool FaceAlongHand=>NativeIntroGrip.Of(Spec)==NativeIntroGrip.Kind.Shield;
+        /// <summary>
+        /// The hold (intros v2 pose craft, docs/INTROS-V2.md 9a-9b): arm `left`'s wrist at `at` (world, source frame) with the weapon's axis
+        /// along `axis` (a blade's line; the shield's face), blended in by `weight`, solved as a body holds it rather than by turning the
+        /// wrist. The elbow goes to the side away from the axis (the arm's bend then carries a blade's line: a raised guard's elbow drops
+        /// under it, a low point's goes back), never in toward the body and up only when the hand is over the shoulder; the hand points along
+        /// the forearm (a straight wrist), its roll the weapon's; the roll the elbow could not give is carried by the forearm (Core
+        /// NativeIntroGrip.Forearm), never the wrist or the upper arm. Two passes: the elbow, then the hand on its forearm. Allocation-free.
+        /// </summary>
+        protected void HoldAt(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 axis,float weight)
         {
-            if(weight<=.001f)return;var z=Vector3.Normalize(blade);
-            pose.World();var shoulder=NativeEntrancePose.Point(pose,root,rotation,left?CapturedRig.LArm:CapturedRig.RArm,Vector3.Zero);
-            var y=shoulder-at;y-=z*Vector3.Dot(y,z);
-            if(y.LengthSquared()<1e-4f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-4f)y=Vector3.UnitZ;}
-            y=Vector3.Normalize(y);var x=Vector3.Cross(y,z);
-            NativeEntrancePose.Reach(pose,root,rotation,left,at,Aim(x,y,z,left),weight);
+            if(weight<=.001f||axis.LengthSquared()<1e-10f)return;pose.World();
+            int arm=left?CapturedRig.LArm:CapturedRig.RArm;var a0=pose.Rotation[arm];var e0=pose.Rotation[arm+1];var h0=pose.Rotation[arm+2];
+            // (the chest's frame: +x its left, +y up it, +z ahead of it, as CapturedRig.Arm takes its target, turn and pole)
+            var inv=Quaternion.Inverse(rotation);var chestInv=Quaternion.Inverse(pose.WorldRotation[CapturedRig.Chest]);var chestAt=pose.WorldPosition[CapturedRig.Chest];
+            var w=Vector3.Transform(Vector3.Transform(at-root,inv)-chestAt,chestInv);var z=Vector3.Normalize(Vector3.Transform(Vector3.Transform(axis,inv),chestInv));
+            var s=Vector3.Transform(pose.WorldPosition[arm]-chestAt,chestInv);var line=w-s;float reach=line.Length();line=reach>1e-5f?line/reach:-Vector3.UnitY;
+            // The elbow goes round the shoulder-wrist line to where the body holds this best (a soft minimum over the circle, so it moves
+            // smoothly): the roll the forearm must carry, the upper arm's twist and the wrist's bend each kept in their ranges, the elbow out
+            // of the torso, and near the arm's own rest (down and out) where nothing else decides it.
+            var u=Vector3.Cross(line,Vector3.UnitY);if(u.LengthSquared()<1e-4f)u=Vector3.Cross(line,Vector3.UnitZ);u=Vector3.Normalize(u);var v=Vector3.Cross(u,line);
+            var rest=left?new Vector3(.78f,-.6f,-.18f):new Vector3(-.78f,-.6f,-.18f);float best=float.MaxValue;
+            for(int k=0;k<PoleSamples;k++)
+            {
+                float ang=k*(float)(2*Math.PI/PoleSamples);var pole=u*(float)Math.Cos(ang)+v*(float)Math.Sin(ang);poleTry[k]=pole;
+                Solve(pose,left,w,z,pole,chestAt,chestInv);float cost=HoldCost(pose,left,pole,rest);poleCost[k]=cost;if(cost<best)best=cost;
+            }
+            var chosen=Vector3.Zero;for(int k=0;k<PoleSamples;k++)chosen+=poleTry[k]*(float)Math.Exp(-(poleCost[k]-best)/PoleSoft);
+            if(chosen.LengthSquared()<1e-8f)chosen=rest;
+            Solve(pose,left,w,z,chosen,chestAt,chestInv);
+            if(weight<.999f){pose.Rotation[arm]=Quaternion.Slerp(a0,pose.Rotation[arm],weight);pose.Rotation[arm+1]=Quaternion.Slerp(e0,pose.Rotation[arm+1],weight);pose.Rotation[arm+2]=Quaternion.Slerp(h0,pose.Rotation[arm+2],weight);}
+            pose.World();
         }
+        /// <summary>How much the hilt is held in both hands this frame (0..1; set in Arms before the hold, from the grip): the main hand then
+        /// points between its own forearm and the other arm's line to the hilt.</summary>
+        protected float TwoHands;
+        /// <summary>
+        /// The pose, then (a two-hander with its grip on) the keyed off arm held as a body holds a hilt: the framework's grip IK (Core
+        /// NativeIntroGrip.Solve) puts the off fist at the lower grip turned exactly as the main hand, but a hand closes round a hilt at any
+        /// roll; so the off arm is solved again at the same point on the same line (HoldAt: its elbow and its roll free), the wrist then as
+        /// straight as the main hand's. The drawn model's off fist is the runtime's grasp on the drawn hilt either way.
+        /// </summary>
+        public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
+        {
+            base.Pose(t,pose,out root,out rotation);
+            if(!(this is INativeIntroGrip g)||NativeIntroGrip.Of(Spec)!=NativeIntroGrip.Kind.TwoHand||!g.GripAt(t,out var at)||!(at.Weight>.001f))return;
+            pose.World();var rm=pose.WorldRotation[CapturedRig.RHand];var support=pose.WorldPosition[CapturedRig.RHand]+Vector3.Transform(new Vector3(0,0,-.11f+at.Along),rm);
+            float both=TwoHands;TwoHands=0;
+            HoldAt(pose,root,rotation,true,root+Vector3.Transform(support,rotation),Vector3.Transform(Vector3.Transform(Vector3.UnitZ,rm),rotation),Math.Min(1,at.Weight));
+            TwoHands=both;
+        }
+        private const int PoleSamples=24;private const float PoleSoft=.35f;
+        private readonly Vector3[] poleTry=new Vector3[PoleSamples];private readonly float[] poleCost=new float[PoleSamples];
+        /// <summary>One solve of the hold for elbow pole `pole` (chest frame): the elbow, then the hand straight along its forearm with the
+        /// weapon's axis `z` and its roll, then the roll the elbow left carried by the forearm.</summary>
+        private void Solve(CapturedRig.Pose pose,bool left,Vector3 w,Vector3 z,Vector3 pole,Vector3 chestAt,Quaternion chestInv)
+        {
+            int arm=left?CapturedRig.LArm:CapturedRig.RArm;
+            CapturedRig.Arm(pose,left,w,Quaternion.Identity,pole);pose.World();
+            var elbow=Vector3.Transform(pose.WorldPosition[arm+1]-chestAt,chestInv);var fore=w-elbow;fore=fore.LengthSquared()>1e-8f?Vector3.Normalize(fore):-Vector3.UnitY;
+            Quaternion hand;
+            if(FaceAlongHand)
+            {
+                // (the shield: its face along the hand's length, the fist's axis (its bar) on the forearm's own bend side)
+                var y=-z;var fz=Vector3.Transform(Vector3.UnitZ,Quaternion.Normalize(chestInv*pose.WorldRotation[arm+1]));var thumb=fz-y*Vector3.Dot(fz,y);
+                if(thumb.LengthSquared()<1e-6f){thumb=Vector3.UnitY-y*y.Y;if(thumb.LengthSquared()<1e-6f)thumb=Vector3.UnitZ;}
+                thumb=Vector3.Normalize(thumb);hand=Quaternion.Normalize(CapturedRig.Basis(Vector3.Cross(y,thumb),y,thumb)*HandNatural);
+            }
+            else
+            {
+                // (both hands on one hilt: the hand points between this forearm and the other arm's line to the hilt, so both wrists share the
+                // turn the hands make round it instead of one wrist taking all of it)
+                if(TwoHands>.001f)
+                {
+                    // (the other forearm, estimated: its elbow half way from its shoulder to the hilt, out to its side and down a little)
+                    int other=left?CapturedRig.RArm:CapturedRig.LArm;var so=Vector3.Transform(pose.WorldPosition[other]-chestAt,chestInv);
+                    var eo=(so+w)*.5f+new Vector3(left?-.12f:.12f,-.08f,0);var o=w-eo;if(o.LengthSquared()>1e-6f)fore=Vector3.Normalize(fore+Vector3.Normalize(o)*TwoHands);
+                }
+                var y=-(fore-z*Vector3.Dot(fore,z));if(y.LengthSquared()<1e-6f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-6f)y=Vector3.UnitZ;}
+                y=Vector3.Normalize(y);hand=Quaternion.Normalize(CapturedRig.Basis(Vector3.Cross(y,z),y,z)*HandNatural);
+            }
+            CapturedRig.Arm(pose,left,w,hand,pole);NativeIntroGrip.Forearm(pose,left,HandNatural);pose.World();
+        }
+        /// <summary>What a solved hold costs the body (the pose-craft limits as soft walls, in their own degrees): the forearm's whole roll past
+        /// 70, the upper arm's twist past 80, the wrist's bend past 55, the elbow inside the torso, and the elbow's way off the rest pole.</summary>
+        private float HoldCost(CapturedRig.Pose pose,bool left,Vector3 pole,Vector3 rest)
+        {
+            int arm=left?CapturedRig.LArm:CapturedRig.RArm;const float Deg=57.29578f;
+            float et=Twist(pose.Rotation[arm+1],out _),wt=Twist(Quaternion.Normalize(pose.Rotation[arm+2]*Quaternion.Inverse(HandNatural)),out var hand);
+            float bend=(float)Math.Acos(Math.Clamp(-hand.Y,-1,1))*Deg;
+            float st=Twist(Quaternion.Normalize(Quaternion.Inverse(pose.WorldRotation[CapturedRig.Chest])*pose.WorldRotation[arm]),out var upper);
+            float roll=Math.Abs(et+wt),c=Wall(roll,70)+4*Wall(roll,88)+Wall(Math.Abs(wt),40)+Wall(Math.Abs(st),80)+4*Wall(Math.Abs(st),100)+Wall(bend,55)+4*Wall(bend,74);
+            // (the upper arm behind the body or across it: the pose-craft's shoulder ranges)
+            float back=(float)Math.Atan2(-upper.Z,Math.Sqrt(upper.X*upper.X+upper.Y*upper.Y))*Deg,across=(float)Math.Asin(Math.Clamp(-upper.X*(left?1:-1),-1,1))*Deg;
+            c+=Wall(back,60)+4*Wall(back,66)+(upper.Z<.35f?Wall(across,45)+4*Wall(across,51):0);
+            // (the elbow inside the torso's boxes, by how deep)
+            var e=pose.WorldPosition[arm+1];
+            foreach(var box in TorsoBoxes)
+            {
+                var cBox=pose.WorldPosition[box.Bone]+Vector3.Transform(box.Position,pose.WorldRotation[box.Bone]);var l=Vector3.Transform(e-cBox,Quaternion.Inverse(pose.WorldRotation[box.Bone]));
+                float dx=box.Size.X*.5f-Math.Abs(l.X),dy=box.Size.Y*.5f-Math.Abs(l.Y),dz=box.Size.Z*.5f-Math.Abs(l.Z);if(dx>-.02f&&dy>-.02f&&dz>-.02f)c+=100*(Math.Min(dx,Math.Min(dy,dz))+.02f)*10;
+            }
+            float off=(float)Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(pole),Vector3.Normalize(rest)),-1,1))*Deg;return c+off*off/3600*.6f;
+        }
+        private static float Wall(float value,float from){float x=(value-from)/10;return x>0?x*x:0;}
+        /// <summary>A joint's swing direction (its limb's -y in the parent's frame) and its twist about its own length (degrees).</summary>
+        private static float Twist(Quaternion local,out Vector3 down)
+        {
+            down=Vector3.Transform(-Vector3.UnitY,local);var swing=CapturedRig.FromTo(-Vector3.UnitY,down);var q=Quaternion.Normalize(Quaternion.Inverse(swing)*local);
+            float a=2*(float)Math.Atan2(-q.Y,q.W)*57.29578f;while(a>180)a-=360;while(a<-180)a+=360;return a;
+        }
+        private static readonly CapturedRig.Box[] TorsoBoxes=Torso();
+        private static CapturedRig.Box[] Torso()
+        {
+            int n=0;foreach(var b in CapturedRig.Boxes)if((b.Bone==CapturedRig.Chest||b.Bone==CapturedRig.Spine||b.Bone==CapturedRig.Pelvis)&&b.Size.X>.3f)n++;
+            var r=new CapturedRig.Box[n];n=0;foreach(var b in CapturedRig.Boxes)if((b.Bone==CapturedRig.Chest||b.Bone==CapturedRig.Spine||b.Bone==CapturedRig.Pelvis)&&b.Size.X>.3f)r[n++]=b;return r;
+        }
+        /// <summary>
+        /// HoldAt for a contact with the world on the drawn model (a blade driven into the floor, a hand on a hilt that stands in it): `at` is
+        /// where the DRAWN grip goes. The model copies the keyed arm's turns from its own shoulder, which stands .21 m further in and .32 m
+        /// higher than the keyed rig's on hips that move 1.7 times as far (ModelFeet), its arm .94 as long; so the keyed wrist is put where
+        /// that arm, hung from the keyed shoulder, reaches the same way. Measured on the model by the stick dumps (the drawn grip within a few
+        /// centimetres where the arm can reach).
+        /// </summary>
+        protected void HoldDrawn(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 axis,float weight)
+        {
+            if(weight<=.001f)return;HoldAt(pose,root,rotation,left,DrawnTarget(pose,root,rotation,left,at),axis,weight);
+        }
+        /// <summary>The keyed wrist (world) that puts the drawn grip of arm `left` at `at` (HoldDrawn's mapping, without the solve).</summary>
+        protected Vector3 DrawnTarget(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at)
+        {
+            pose.World();var inv=Quaternion.Inverse(rotation);
+            var pelvis=NativeIntroFeet.ModelPelvis+(pose.WorldPosition[CapturedRig.Pelvis]-GamePelvis)*NativeIntroFeet.LegScale;
+            var shoulder=pelvis+Vector3.Transform(new Vector3(left?ModelShoulder.X:-ModelShoulder.X,ModelShoulder.Y,ModelShoulder.Z),pose.WorldRotation[CapturedRig.Chest]);
+            var keyed=pose.WorldPosition[left?CapturedRig.LArm:CapturedRig.RArm]+(Vector3.Transform(at-root,inv)-shoulder)/ModelArm;
+            return root+Vector3.Transform(keyed,rotation);
+        }
+        /// <summary>The measured model's left shoulder from its pelvis at rest (rig frame) and its arm's length over the keyed rig's.</summary>
+        private static readonly Vector3 ModelShoulder=new Vector3(.133f,.438f,-.01f);private const float ModelArm=.94f;
+        private static readonly Vector3 GamePelvis=CapturedRig.Bones[CapturedRig.Body].Position+CapturedRig.Bones[CapturedRig.Pelvis].Position;
+        /// <summary>Solves arm `left` so its wrist is at `at` (world, source frame) with the weapon's axis along `blade` (HoldAt).</summary>
+        protected void WieldAt(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 blade,float weight)=>HoldAt(pose,root,rotation,left,at,blade,weight);
 
         // ---- this frame's camera (the rig at `t`, as Camera draws it), for streaks laid onto their head's camera plane ----
         protected NativeEntranceView View;protected bool ViewSet;
