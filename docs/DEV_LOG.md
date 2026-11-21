@@ -59,6 +59,43 @@ and `8181bc56` (`ddeb4ce8`: the camp's walk hooks and checks beside ours, both k
   `fire-escape-`); the Stride's live exits would shift for 3 of 110, the rest 0. **Next (Claude):** the live dresser keyed to
   `prop-` blocks with the props bank, landing with or before the blocks; the integrator packs the two banks.
 
+## 2026-11-20 — Claude (I0e): intros v2 framework for batch 2: its own sound manifest, a motion bank per author, the bake request, I2b's two pack notes, the pack index (presentation only)
+
+**Branch and status:** `claude/intro-framework` on shared `3f788a3d`, with shared `3accbc3c` (release 4) merged in (`0e48f980`).
+Commits `802e79ca` (sound), `f3dfea64` (banks), `7385d6de` (I2b's notes), `9c58c0f5` (a test pin), then this docs commit. Pushed,
+not merged, nothing released. The integrator forwarded each commit to I3, I4 and I5.
+
+**What it gives batch 2:**
+- **Sound** (`docs/audio/intros/README.md` 2a): `tools/intros/compile_sound_requests.py --batch b2` turns `docs/audio/intros-b2/*.json`
+  into `docs/audio/sound-requests-intros-b2.json` and its bundle copy. Batch 1's manifest (`68c49c12`) is sealed by its approved jobs:
+  the compiler refuses to change it or to repeat a key across batches. `Tests/test_intro_sound_manifests.py` pins it.
+- **Banks** (guide 9d): `NativeIntroPack.Banks` = `ChipArenaIntroMotion` (Slipstream's) + `...Melee`, `...Ranged`, `...Elemental`,
+  each optional, merged at runtime. `IntroPackChecks` fails on a name in two banks or a clip the match plays (by name, take or file).
+  The checks find banks at `CHIPARENA_INTRO_MOTION[_MELEE|_RANGED|_ELEMENTAL]`. Format "CAIM" 2 adds each clip's bake source.
+- **Bake** (guide 9d): scratch patch `i0e/motion/intromotion2_patch.py` (over I0d's): `bank=` plus `clip=<FBX>|<take>|<range>|<label>`
+  lines; it refuses the match's clips and repeated names and never writes Resources. One hold (229 s, the Editor on `9319026b`
+  throughout, Resources untouched; tool v3487) baked a 2-clip test bank, refused a match clip and listed a wrong take. The bank
+  loaded beside Slipstream's (`--intro-pack`, 135 checks) and was deleted.
+- **I2b's notes:** opt-in `FromPack(..., body: BodyTurn.Pelvis|Clip)` (a keyed lean rides the clip's pelvis, or the clip stands as
+  baked; the default is unchanged), and `IntroPoseChecks.Mapping` skips joints a clip plays in full. Slipstream is unchanged.
+- **Index:** notes folder `intro-pack-clips-index.md`, the owner's packs by weapon and body mechanic without the match's 497 clips,
+  with licences (the Unreal Archer and Dual Sword packs are not usable).
+
+**Checks (actual, at `9c58c0f5`; the docs commit changes no code):**
+- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, banks-next; the local intro and match banks
+  found): 1,091 PASS lines, exit 0, 1,190 s.
+- `--intro-pack` 127, `--intros-v2` 4,649, `--intro-generic` 29,960, `--intro-limits` 485 (0 findings). Slipstream's model dumps
+  are byte-identical to `802e79ca`'s. Unity compile (no download): all four assemblies pass. `git diff --check`: clean.
+- Python (`PYTHONUTF8=1`): `test_intro_sound_manifests` 7 OK, `test_generate_sound_requests` 9 OK; `test_sound_queue` (2 F, 1 E) and
+  `test_import_sound_requests` (5 F) fail as on shared before this work.
+
+**Not verified:** a new-form bank drawn in the Editor (needs this Core there); batch 2's real manifest, job and import (no rows yet).
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. **Voxel dependency:** none added.
+
+**Risks and next step:** the bake patch lives in scratch (re-apply if the tool is regenerated); authors' banks must ship in the Drive
+zip. `test_effects_audio`, `test_import_sound_requests` and `test_intro_music` write this PC's live `Latest-Sound-Status.json` and
+its mirror (mine did at 19:58; restored from the builder's own copy): for Astra. Next: I3-I5 merge this branch and bake their banks.
+
 ## 2026-11-20 — Claude: releases 3 and 4: Slipstream on the Runner Action pack, Belvedere Camp's part 1, Meridian's stairs and the Ward Zero wall (integrator)
 **Release 3**
 - **Published:** shared `3f788a3d`, then `8181bc56` (release 3b), to the builder. Test channel revision `639308176599373533` (build `65eed03d`, 383.3 MiB).
