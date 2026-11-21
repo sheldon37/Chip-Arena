@@ -14,10 +14,14 @@ namespace ChipArena.UnityConversion
     ///    past it; a 32 m cell's chunks switch together, on the cell's bounds, LOD0 once all of them have it (the surfaces' seams
     ///    conform within a cell at one tier); chunks past the fog's end plus 25 m are left out; ChipArena/StageLit, two materials
     ///    shared by every chunk;
-    ///  - lights the night (R4, the owner's lamp rule): the nearest working lamps take the eight practical slots (three on Low),
-    ///    every working lamp lays its pool on the floor and, near the eye, a wet streak toward it (camera-facing FX quads, about
-    ///    sixty, inside the 2,800 budget), flickering lamps' heads draw apart with their glow per frame, the nearest bowls throw
-    ///    soft beams on High (NativeVolumetricBeams), and pilots and zombies take the lamps' light (ActorLights);
+    ///  - lights the night (R4, the owner's lamp rule; owner 2026-11-20: "the light doesn't seem to be on the material properly? (Like
+    ///    this seems to be flat, in the air light)"): every working lamp lights the walls and floors round it through the city's lamp
+    ///    grid (NativeCityLampLight: ChipArena/StageLit per pixel, on every tier; until then only the eight practical slots did, and every
+    ///    other lamp showed a flat pool disc laid over the floor and floating over a sloped street); the nearest lamps take the slots for
+    ///    the pilots and zombies (ActorLights), marked so StageLit takes them from the grid; near the eye a soft wet glint toward it on
+    ///    level floors only (none on Low); flickering lamps' heads draw apart with their glow per frame; on High, where the camera draws
+    ///    its depth, faint beams under the nearest swan-necks and pendants that fade into the floor and walls and are gone 30 m off;
+    ///    DARKNESS puts the street lamps out (their light, glints, beams and glass);
     ///  - tells the greybox which blocks it replaced (<see cref="Hides"/>).
     /// Without the bank (CI, cloud and public builds, `--ca-no-pack-banks`) nothing is made and the greybox draws as before.
     /// Presentation only. Allocation free per frame once prepared, but for a chunk's LOD0 build (on a worker) and upload.
@@ -31,17 +35,20 @@ namespace ChipArena.UnityConversion
 
         private sealed class ChunkDraw{public int Index;public Bounds Box;public MeshRenderer Far,Near;public Mesh FarMesh,NearMesh;public Task<NativeMeridianMesh> Building;public int Shown=-1,NearTris,FarTris;}
         private NativeMeridianDress.Plan plan;private NativePackBank.Bank bank;private Dictionary<string,int[]> modules;private List<NativeMeridianDress.DrawChunk> units;
-        private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();private GameObject root;private Material solid,glow,poolMat;private Shader shader;private string mapId;private Camera eye;
-        private MaterialPropertyBlock block;private Mesh poolMesh;private Vector3[] poolV;private Color32[] poolC;private Vector2[] poolUv;private int[] poolT;
-        private readonly float[] slotPos=new float[NativeMapLooks.MaxLights*4],slotRgb=new float[NativeMapLooks.MaxLights*3];private readonly int[] nearest=new int[NativeMapLooks.MaxLights];
+        private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();private GameObject root;private Material solid,glow,glintMat;private Shader shader;private string mapId;private Camera eye;
+        private MaterialPropertyBlock block,darkBlock;private Mesh glintMesh;private Vector3[] glintV,glintUv;private Color[] glintC;private int[] glintT;private bool darkShown;
+        private readonly float[] slotPos=new float[NativeMapLooks.MaxLights*4],slotRgb=new float[NativeMapLooks.MaxLights*3],slotBeam=new float[NativeMapLooks.MaxLights];private readonly int[] nearest=new int[NativeMapLooks.MaxLights];
+        // the lamps' light (Core NativeMeridianDress.LightOf, in the plan's order) as the city's lamp grid holds it, and the floors under
+        // the glints
+        private NativeCityLamps.Lamp[] lampLight;private NativeCityLampLight.Block lampBlock;private NativeMeridianDress.Solids solids;
         private static readonly int GlowId=Shader.PropertyToID("_StageGlow");
         private NativeVolumetricBeams beams;private readonly NativeBeamList beamList=new NativeBeamList();private int building;
         // a 32 m cell's chunks (DrawChunks cuts a heavy cell for the caps) switch between LOD0 and LOD1 together, on the cell's whole
         // bounds, and LOD0 shows only once every one of them has its LOD0: the surfaces' seams conform within a cell at one tier
         // (NativeMeridianDress.SeamTable), so two chunks of one cell never draw at two tiers
         private Bounds[] cellBox;private float[] cellDist;private int[] cellWant,cellShown;private bool[] cellReady;
-        /// <summary>Last frame: chunks drawn at LOD0 and LOD1, their triangles, lamps lit, pools and streaks drawn.</summary>
-        public int NearChunks{get;private set;}public int FarChunks{get;private set;}public long Triangles{get;private set;}public int Pools{get;private set;}public int Streaks{get;private set;}
+        /// <summary>Last frame: chunks drawn at LOD0 and LOD1, their triangles, lamps lit, the wet glints and the beams drawn.</summary>
+        public int NearChunks{get;private set;}public int FarChunks{get;private set;}public long Triangles{get;private set;}public int LampsLit{get;private set;}public int Streaks{get;private set;}public int BeamsDrawn{get;private set;}
         public bool Ready=>plan!=null&&root!=null;
         public NativeMeridianDress.Plan Plan=>plan;
         /// <summary>Milliseconds the load spent planning and combining.</summary>
@@ -64,8 +71,10 @@ namespace ChipArena.UnityConversion
                 units=NativeMeridianDress.DrawChunks(plan,bank,modules);
                 solid=new Material(shader){name="Meridian dress",enableInstancing=true};solid.SetFloat("_Glow",0);
                 glow=new Material(shader){name="Meridian dress glow",enableInstancing=true};glow.SetFloat("_Glow",1);block=new MaterialPropertyBlock();
-                var pool=Resources.Load<Shader>("NativeFieldGlow");if(pool!=null){poolMat=new Material(pool){name="Meridian lamp pools",renderQueue=2990};poolMat.SetFloat("_Radial",1.6f);poolMat.SetFloat("_Offset",-2);poolMat.SetFloat("_Cull",0);}
+                var glint=Resources.Load<Shader>("NativeGlow");if(glint!=null)glintMat=new Material(glint){name="Meridian lamp glints"};
                 root=new GameObject("Meridian dress "+input.Map.id);mapId=input.Map.id;eye=camera;
+                // every lamp's light on the walls and floors round it (the city's lamp grid), and the floors the glints lie on
+                solids=new NativeMeridianDress.Solids(input.Map.blocks);lampLight=NativeMeridianDress.LightsOf(plan);lampBlock=NativeCityLampLight.Add(mapId,lampLight);
                 // every chunk's LOD1, combined a batch in parallel at a time and uploaded here in order
                 NativeMeridianDress.CombineUnits(plan,units,2,bank,modules,(c,data)=>
                 {
@@ -87,7 +96,7 @@ namespace ChipArena.UnityConversion
         {
             var go=new GameObject(name);go.transform.SetParent(root.transform,false);go.AddComponent<MeshFilter>().sharedMesh=mesh;var r=go.AddComponent<MeshRenderer>();
             r.sharedMaterials=mesh.subMeshCount>1?new[]{solid,glow}:new[]{solid};r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;r.lightProbeUsage=LightProbeUsage.Off;
-            r.reflectionProbeUsage=ReflectionProbeUsage.BlendProbes;r.enabled=false;return r;
+            r.reflectionProbeUsage=ReflectionProbeUsage.BlendProbes;r.enabled=false;if(darkShown)r.SetPropertyBlock(darkBlock);return r;
         }
         private static Mesh Upload(NativeMeridianMesh d,string name)
         {
@@ -135,23 +144,28 @@ namespace ChipArena.UnityConversion
         }
 
         // ------------------------------------------------------------------------------------------------------------------
-        // The night's light: slots, pools, streaks, flickering heads, beams
+        // The night's light: the lamps on the walls and floors (the city's lamp grid), the slots for the pilots and zombies, the wet
+        // glints, the flickering heads, the beams, DARKNESS
         // ------------------------------------------------------------------------------------------------------------------
-        /// <summary>Sodium (bible 3.1): the lamp #FFA14A, a route home's warmer #FF8E3A, linear, times the slot's intensity.</summary>
+        /// <summary>Sodium (bible 3.1): the lamp #FFA14A, a route home's warmer #FF8E3A (linear; Core NativeMeridianDress.Sodium).</summary>
         private static readonly Color Sodium=new Color(1f,.631f,.29f),RouteSodium=new Color(1f,.557f,.227f);
-        public const float SlotIntensity=1.35f,PoolAlpha=.34f,StreakAlpha=.26f,StreakReach=40f;
-        /// <summary>A lamp's light this frame (0 dead .. 1): a flickering lamp stutters (at most three times a second, the
-        /// photosensitivity rule), dropping out now and then.</summary>
-        public static float Level(NativeMeridianDress.Lamp l,float time)
-        {
-            if(l.State==NativeMeridianDress.Dead)return 0;if(l.State==NativeMeridianDress.Working)return 1;
-            float t=time*2.7f+l.Seed*17.3f;int k=(int)Mathf.Floor(t);float h=Mathf.Repeat(Mathf.Sin(k*12.9898f+l.Seed*78.233f)*43758.55f,1f);
-            return h<.32f?.08f+.12f*h:h<.45f?.55f:1f;
-        }
+        /// <summary>A slot that carries a city lamp to the pilots and zombies: StageLit takes it from the grid (NativeCityLamps.cginc).</summary>
+        public const float CitySlot=-1f;
+        /// <summary>The wet glint's opacity and reach; a beam's light (times the sodium) and where it fades out (m from the eye).</summary>
+        public const float GlintAlpha=.2f,GlintReach=40f,BeamGain=.075f,BeamNear=16f,BeamFar=30f;
+        /// <summary>A lamp's light this frame (0 dead .. 1): Core NativeMeridianDress.LampLevel (under 3 Hz; with Reduced effects a slow
+        /// breath, never dark).</summary>
+        public static float Level(NativeMeridianDress.Lamp l,float time)=>NativeMeridianDress.LampLevel(l,time,NativeAdvancedLighting.Reduced);
         private void Lights(Vector3 e,Camera cam,NativeGraphicsTier tier)
         {
-            float time=Time.time;var lamps=plan.Lamps;int slots=tier==NativeGraphicsTier.Low?3:NativeMapLooks.MaxLights;
-            // the nearest lit lamps take the slots (a lamp behind the eye only when nothing ahead is near)
+            float time=Time.time;bool reduced=NativeAdvancedLighting.Reduced,dark=NativeLighting.MutatorDark;var lamps=plan.Lamps;int slots=tier==NativeGraphicsTier.Low?3:NativeMapLooks.MaxLights;
+            // every lamp lights the walls and floors round it through the grid (NativeCityLampLight uploads after every drawer); DARKNESS
+            // puts the street lamps out (R4: the grid failing)
+            int lit=0;
+            if(lampBlock!=null)for(int i=0;i<lamps.Count;i++){float k=dark?0:NativeMeridianDress.LampLevel(lamps[i],time,reduced);lampBlock.Level[i]=k;if(k>0)lit++;}
+            LampsLit=lit;
+            // the nearest lit lamps take the slots for the pilots and zombies (a lamp behind the eye only when nothing ahead is near),
+            // marked so StageLit takes their light from the grid, never twice
             for(int s=0;s<nearest.Length;s++)nearest[s]=-1;var fwd=cam.transform.forward;
             for(int i=0;i<lamps.Count;i++)
             {
@@ -165,47 +179,48 @@ namespace ChipArena.UnityConversion
             }
             for(int s=0;s<NativeMapLooks.MaxLights;s++)
             {
-                int i=s<slots?nearest[s]:-1;if(i<0){slotPos[s*4]=0;slotPos[s*4+1]=-10000;slotPos[s*4+2]=0;slotPos[s*4+3]=1;slotRgb[s*3]=slotRgb[s*3+1]=slotRgb[s*3+2]=0;continue;}
-                var l=lamps[i];float k=Level(l,time)*SlotIntensity;var c=l.Protected?RouteSodium:Sodium;
-                slotPos[s*4]=l.Bowl.x;slotPos[s*4+1]=l.Bowl.y-.2f;slotPos[s*4+2]=l.Bowl.z;slotPos[s*4+3]=l.Radius*1.25f;slotRgb[s*3]=c.r*k;slotRgb[s*3+1]=c.g*k;slotRgb[s*3+2]=c.b*k;
+                int i=s<slots?nearest[s]:-1;slotBeam[s]=0;if(i<0){slotPos[s*4]=0;slotPos[s*4+1]=-10000;slotPos[s*4+2]=0;slotPos[s*4+3]=1;slotRgb[s*3]=slotRgb[s*3+1]=slotRgb[s*3+2]=0;continue;}
+                var g=lampLight[i];float k=dark?0:NativeMeridianDress.LampLevel(lamps[i],time,reduced);
+                slotPos[s*4]=g.At.x;slotPos[s*4+1]=g.At.y;slotPos[s*4+2]=g.At.z;slotPos[s*4+3]=g.Range;slotRgb[s*3]=g.R*k;slotRgb[s*3+1]=g.G*k;slotRgb[s*3+2]=g.B*k;slotBeam[s]=CitySlot;
             }
-            NativeLighting.PickedLights(slotPos,slotRgb);NativeLighting.ActorLights(true);
-            DrawPools(e,time,tier);
-            Heads(time);
-            if(tier==NativeGraphicsTier.High)Beams(cam,time);
+            NativeLighting.PickedLights(slotPos,slotRgb,slotBeam);NativeLighting.ActorLights(true);
+            Glints(e,time,tier,dark,reduced);
+            Heads(time,reduced,dark);
+            BeamsDrawn=0;if(tier==NativeGraphicsTier.High&&!dark)Beams(cam,time,reduced,e);
+            Darkness(dark);
         }
-        private void DrawPools(Vector3 e,float time,NativeGraphicsTier tier)
+        /// <summary>The wet street's glint toward the eye under each lamp within GlintReach (none on Low or in DARKNESS): an additive soft
+        /// streak about six metres long, laid only where the floor under it is level (on a slope or a step a flat streak would stand in
+        /// the air).</summary>
+        private void Glints(Vector3 e,float time,NativeGraphicsTier tier,bool dark,bool reduced)
         {
-            if(poolMat==null)return;var lamps=plan.Lamps;float far=NativeMeridianDress.Far(tier);int max=lamps.Count*2+8;
-            if(poolV==null||poolV.Length<max*4){poolV=new Vector3[max*4];poolC=new Color32[max*4];poolUv=new Vector2[max*4];poolT=new int[max*6];poolMesh=new Mesh{name="Meridian pools"};poolMesh.MarkDynamic();}
-            int q=0;Pools=Streaks=0;var right=Vector3.right;
+            Streaks=0;if(glintMat==null||tier==NativeGraphicsTier.Low||dark)return;var lamps=plan.Lamps;int max=lamps.Count+4;
+            if(glintV==null||glintV.Length<max*4)
+            {
+                glintV=new Vector3[max*4];glintC=new Color[max*4];glintUv=new Vector3[max*4];glintT=new int[max*6];
+                for(int k=0;k<max;k++){int v=k*4,t=k*6;glintT[t]=v;glintT[t+1]=v+2;glintT[t+2]=v+1;glintT[t+3]=v;glintT[t+4]=v+3;glintT[t+5]=v+2;glintUv[v]=new Vector3(-1,-1,0);glintUv[v+1]=new Vector3(1,-1,0);glintUv[v+2]=new Vector3(1,1,0);glintUv[v+3]=new Vector3(-1,1,0);}
+                if(glintMesh!=null)Destroy(glintMesh);glintMesh=new Mesh{name="Meridian lamp glints",indexFormat=max*4>65000?IndexFormat.UInt32:IndexFormat.UInt16};glintMesh.MarkDynamic();
+            }
+            int q=0;
             for(int i=0;i<lamps.Count;i++)
             {
-                var l=lamps[i];float level=Level(l,time);if(level<=.01f)continue;var p=new Vector3(l.Pool.x,l.Pool.y+.03f,l.Pool.z);float d=Vector3.Distance(p,e);if(d>far)continue;
-                var c=l.Protected?RouteSodium:Sodium;float r=l.Radius*.78f;
-                Quad(ref q,p,new Vector3(r,0,0),new Vector3(0,0,r),c,PoolAlpha*level,-1,1,-1,1);Pools++;
-                // the wet streak toward the eye: from under the lamp, laid on the street, about six metres long
-                if(d<StreakReach&&tier!=NativeGraphicsTier.Low)
-                {
-                    var to=new Vector3(e.x-p.x,0,e.z-p.z);float tl=to.magnitude;if(tl<1.5f)continue;to/=tl;var across=new Vector3(to.z,0,-to.x);float len=Mathf.Min(6.5f,tl*.6f);
-                    var mid=p+to*(len*.5f)+new Vector3(0,.01f,0);Quad(ref q,mid,across*.42f,to*(len*.5f),c,StreakAlpha*level,-1,1,-1,1);Streaks++;
-                }
+                var l=lamps[i];if(l.State==NativeMeridianDress.Dead||l.Kind==NativeMeridianDress.Flush)continue;var p=new Vector3(l.Pool.x,l.Pool.y,l.Pool.z);
+                var to=new Vector3(e.x-p.x,0,e.z-p.z);float tl=to.magnitude;if(tl>GlintReach||tl<1.5f)continue;
+                float level=NativeMeridianDress.LampLevel(l,time,reduced);if(level<=.01f)continue;to/=tl;float len=Mathf.Min(6.5f,tl*.6f);
+                var end=p+to*len;var half=p+to*(len*.5f);
+                if(Mathf.Abs(solids.Floor(end.x,end.z,p.y+.3f)-p.y)>.03f||Mathf.Abs(solids.Floor(half.x,half.z,p.y+.3f)-p.y)>.03f)continue;
+                var c=l.Protected?RouteSodium:Sodium;float a=GlintAlpha*level*(1-Mathf.SmoothStep(0,1,(tl-GlintReach*.6f)/(GlintReach*.4f)));
+                var across=new Vector3(to.z,0,-to.x)*.42f;var along=to*(len*.5f);var mid=half+new Vector3(0,.02f,0);int v=q*4;var col=new Color(c.r,c.g,c.b,a);
+                glintV[v]=mid-across-along;glintV[v+1]=mid+across-along;glintV[v+2]=mid+across+along;glintV[v+3]=mid-across+along;glintC[v]=glintC[v+1]=glintC[v+2]=glintC[v+3]=col;q++;
             }
-            if(q==0)return;
-            for(int k=q*4;k<poolV.Length;k++)poolV[k]=Vector3.zero;
-            poolMesh.Clear(false);poolMesh.vertices=poolV;poolMesh.colors32=poolC;poolMesh.uv=poolUv;
-            for(int k=0;k<poolT.Length;k++)poolT[k]=0;for(int k=0;k<q;k++){int v=k*4,t=k*6;poolT[t]=v;poolT[t+1]=v+2;poolT[t+2]=v+1;poolT[t+3]=v;poolT[t+4]=v+3;poolT[t+5]=v+2;}
-            poolMesh.triangles=poolT;poolMesh.bounds=new Bounds(e,Vector3.one*far*2.2f);
-            Graphics.DrawMesh(poolMesh,Matrix4x4.identity,poolMat,0,null,0,null,ShadowCastingMode.Off,false);
+            Streaks=q;if(q==0)return;
+            for(int k=q*4;k<glintV.Length;k++){glintV[k]=Vector3.zero;glintC[k]=Color.clear;}
+            glintMesh.vertices=glintV;glintMesh.colors=glintC;glintMesh.SetUVs(0,glintUv);if(glintMesh.GetIndexCount(0)==0)glintMesh.triangles=glintT;glintMesh.bounds=new Bounds(e,Vector3.one*GlintReach*2.4f);
+            Graphics.DrawMesh(glintMesh,Matrix4x4.identity,glintMat,0,null,0,null,ShadowCastingMode.Off,false);
         }
-        private void Quad(ref int q,Vector3 c,Vector3 a,Vector3 b,Color col,float alpha,float u0,float u1,float v0,float v1)
-        {
-            if((q+1)*4>poolV.Length)return;int v=q*4;var cc=new Color(col.r,col.g,col.b,alpha);
-            Color32 c32=cc;poolV[v]=c-a-b;poolV[v+1]=c+a-b;poolV[v+2]=c+a+b;poolV[v+3]=c-a+b;for(int k=0;k<4;k++)poolC[v+k]=c32;
-            poolUv[v]=new Vector2(u0,v0);poolUv[v+1]=new Vector2(u1,v0);poolUv[v+2]=new Vector2(u1,v1);poolUv[v+3]=new Vector2(u0,v1);q++;
-        }
-        /// <summary>The flickering lamps' heads (left out of the chunks): drawn at their places with their glow this frame.</summary>
-        private void Heads(float time)
+        /// <summary>The flickering lamps' heads (left out of the chunks): drawn at their places with their glow this frame (dark glass in
+        /// DARKNESS).</summary>
+        private void Heads(float time,bool reduced,bool dark)
         {
             var lamps=plan.Lamps;
             for(int i=0;i<lamps.Count;i++)
@@ -213,7 +228,7 @@ namespace ChipArena.UnityConversion
                 var l=lamps[i];if(l.State!=NativeMeridianDress.Flicker||l.Placement<0)continue;var pl=plan.Placements[l.Placement];if(!modules.TryGetValue(pl.Key,out var props))continue;
                 var d=new Vector3(l.Bowl.x,l.Bowl.y,l.Bowl.z)-(eye!=null?eye.transform.position:Vector3.zero);int tier=d.sqrMagnitude<38*38?0:2;var prop=bank.Props[props[tier]];
                 var m=new Matrix4x4();m.m00=pl.M[0];m.m01=pl.M[1];m.m02=pl.M[2];m.m03=pl.M[3];m.m10=pl.M[4];m.m11=pl.M[5];m.m12=pl.M[6];m.m13=pl.M[7];m.m20=pl.M[8];m.m21=pl.M[9];m.m22=pl.M[10];m.m23=pl.M[11];m.m33=1;
-                float k=Level(l,time);block.Clear();block.SetVector(GlowId,new Vector4(k,k,k,1));
+                float k=dark?0:NativeMeridianDress.LampLevel(l,time,reduced);block.Clear();block.SetVector(GlowId,new Vector4(k,k,k,1));
                 foreach(var part in prop.Parts)
                 {
                     var mesh=NativePackBanks.Mesh(NativeMeridianDress.Bank,part.Mesh);if(mesh==null)continue;var w=m*NativePackBanks.Place(part.Place);
@@ -221,24 +236,40 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        /// <summary>High's lamp beams: the nearest lit bowls' soft cones down to their pools (our NativeVolumetricBeams; VLB only
-        /// through the private add-on, which has no Meridian bridge yet).</summary>
-        private void Beams(Camera cam,float time)
+        /// <summary>High's lamp beams, only where the camera draws its depth (a beam then fades into the floor and walls it meets;
+        /// without it the cone would cut them as a flat sheet): the nearest lit swan-necks' and pendants' faint cones down to their
+        /// pools (none from a flush lamp low on its wall), a little fainter seen side on, gone BeamFar from the eye (our
+        /// NativeVolumetricBeams; VLB only through the private add-on, which has no Meridian bridge yet).</summary>
+        private void Beams(Camera cam,float time,bool reduced,Vector3 e)
         {
+            if((cam.depthTextureMode&DepthTextureMode.Depth)==0)return;
             if(beams==null){beams=new NativeVolumetricBeams();}if(!beams.Ready)return;var lamps=plan.Lamps;
             for(int s=0;s<nearest.Length;s++)
             {
-                int i=nearest[s];if(i<0)continue;var l=lamps[i];float k=Level(l,time);if(k<.05f)continue;var c=l.Protected?RouteSodium:Sodium;
-                float h=Mathf.Max(1,l.Bowl.y-l.Pool.y);beamList.Add(l.Bowl.x,l.Bowl.y-.05f,l.Bowl.z,l.Pool.x,l.Pool.y+.1f,l.Pool.z,.16,h*.55,c.r*.22*k,c.g*.22*k,c.b*.22*k,.5,l.Seed);
+                int i=nearest[s];if(i<0)continue;var l=lamps[i];if(l.Kind==NativeMeridianDress.Flush)continue;float k=NativeMeridianDress.LampLevel(l,time,reduced);if(k<.05f)continue;
+                var top=new Vector3(l.Bowl.x,l.Bowl.y-.05f,l.Bowl.z);var foot=new Vector3(l.Pool.x,l.Pool.y+.1f,l.Pool.z);var mid=(top+foot)*.5f;
+                float fade=1-Mathf.SmoothStep(0,1,(Vector3.Distance(mid,e)-BeamNear)/(BeamFar-BeamNear));if(fade<=.01f)continue;
+                var axis=(foot-top).normalized;var view=(mid-e).normalized;fade*=Mathf.Lerp(.55f,1f,Mathf.Abs(Vector3.Dot(axis,view)));
+                var c=l.Protected?RouteSodium:Sodium;float h=Mathf.Max(1,l.Bowl.y-l.Pool.y),g=BeamGain*k*fade;
+                if(beamList.Add(top.x,top.y,top.z,foot.x,foot.y,foot.z,.2,h*.4,c.r*g,c.g*g,c.b*g,.35,l.Seed))BeamsDrawn++;
             }
-            beams.Draw(beamList,cam,2,3,time,0);
+            beams.Draw(beamList,cam,3,3,time,0);
+        }
+        /// <summary>DARKNESS: the lamps' glass and the lit windows down to NativeMutatorLook.DarkGlow (their light is out through the grid
+        /// and the slots); back as baked when it lifts. Written only when it changes.</summary>
+        private void Darkness(bool dark)
+        {
+            if(dark==darkShown)return;darkShown=dark;darkBlock??=new MaterialPropertyBlock();darkBlock.Clear();
+            if(dark){float g=NativeMutatorLook.DarkGlow;darkBlock.SetVector(GlowId,new Vector4(g,g,g,1));}
+            foreach(var c in chunks){if(c.Far!=null)c.Far.SetPropertyBlock(dark?darkBlock:null);if(c.Near!=null)c.Near.SetPropertyBlock(dark?darkBlock:null);}
         }
 
         private void Release()
         {
             foreach(var c in chunks){if(c.FarMesh!=null)Destroy(c.FarMesh);if(c.NearMesh!=null)Destroy(c.NearMesh);}
             chunks.Clear();if(root!=null)Destroy(root);root=null;plan=null;
-            if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);if(poolMat!=null)Destroy(poolMat);if(poolMesh!=null)Destroy(poolMesh);solid=glow=poolMat=null;poolMesh=null;poolV=null;
+            NativeCityLampLight.Remove(lampBlock);lampBlock=null;lampLight=null;solids=null;darkShown=false;
+            if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);if(glintMat!=null)Destroy(glintMat);if(glintMesh!=null)Destroy(glintMesh);solid=glow=glintMat=null;glintMesh=null;glintV=null;
             beams?.Dispose();beams=null;building=0;
             if(activeMap==mapId){activeCovers=null;activeMap=null;}
         }
