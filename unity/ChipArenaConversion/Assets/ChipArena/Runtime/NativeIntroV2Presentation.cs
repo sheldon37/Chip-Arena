@@ -20,13 +20,20 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(raw,introNameRaw)){introNameRaw=raw;introName=NativeCosmeticRules.Name(raw);}
             v2.Context=new NativeIntroContext{Reduced=WeaponEffectsQuality<.5f,Low=LowGraphics,Quality=quality,Name=introName};
         }
-        // The intros' own motion bank (Core NativeIntroPack: pack clips as keys; the local assets' Resources, never the match's motion
-        // bank), read once. Without one an intro's pack segments leave its keys as keyed.
+        // The intros' own motion banks (Core NativeIntroPack: pack clips as keys; the local assets' Resources, never the match's motion
+        // bank): the first and one per batch-2 author (NativeIntroPack.Banks), each optional, read once and merged. Without any, an
+        // intro's pack segments leave its keys as keyed; a missing author's bank leaves only that author's segments keyed.
         private static bool introPackRead;
         private static void IntroPackLoad()
         {
-            if(introPackRead)return;introPackRead=true;var bytes=Resources.Load<TextAsset>(NativeIntroPack.Resource);if(bytes==null)return;
-            try{NativeIntroPack.Local=NativeIntroPack.Read(bytes.bytes);}catch(System.Exception e){Debug.LogWarning("Intro motion bank: "+e.Message);}
+            if(introPackRead)return;introPackRead=true;var banks=new List<NativeIntroPack.Bank>();
+            foreach(var name in NativeIntroPack.Banks)
+            {
+                var bytes=Resources.Load<TextAsset>(name);if(bytes==null)continue;
+                try{banks.Add(NativeIntroPack.Read(bytes.bytes,name));}catch(System.Exception e){Debug.LogWarning("Intro motion bank "+name+": "+e.Message);}
+            }
+            var duplicates=new List<string>();NativeIntroPack.Local=NativeIntroPack.Merge(banks,duplicates);
+            foreach(var d in duplicates)Debug.LogWarning("Intro motion banks: clip "+d+" (clip names must be unique across the banks; the first plays)");
         }
         /// <summary>A v2 intro's set at presentation time `t` (after its Props).</summary>
         private void IntroV2Set(NativeEntranceScript script,float t,Camera camera)
