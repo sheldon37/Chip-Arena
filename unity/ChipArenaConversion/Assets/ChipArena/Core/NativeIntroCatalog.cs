@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             //
             NativeIntroEntry.Weapon(NativeKatana.Spec,NativeIntroStillRain.Title,NativeIntroStillRain.Total,NativeIntroStillRain.CardAt,()=>new NativeIntroStillRain(),"I3","Rain, stillness and one cut: the rain stops in the air."),
             //
-            // glaive
+            NativeIntroEntry.Weapon(NativeGlaive.Spec,NativeIntroOrrery.Title,NativeIntroOrrery.Total,NativeIntroOrrery.CardAt,()=>new NativeIntroOrrery(),"I3","The ring that sets the heavens in order: it strikes round the orrery and comes home."),
             //
             NativeIntroEntry.Weapon(NativeFangs.Spec,NativeIntroApex.Title,NativeIntroApex.Total,NativeIntroApex.CardAt,()=>new NativeIntroApex(),"I3","A predator's pounce from the ruins: both fangs into the earth."),
             //
