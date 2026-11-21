@@ -1,3 +1,41 @@
+## 2026-11-21 — Claude (M3): Meridian's lamps light the walls and floors round them, not the air (owner report; presentation only)
+
+Owner (2026-11-20, Crown Hill at night): "the light doesn't seem to be on the material properly? (Like this seems to be flat, in the
+air light)". **Branch:** `claude/meridian-lamp-light` from shared `57110fe9`; code `6ad43517`..`b30e6224`, docs `11852168` and this
+entry. Pushed, not merged, not released. No bank to pack.
+- **Cause (proved live in the Editor, Crown Hill's deal xseed 2027808452, the foot of the sunken west street, High):** only the
+  eight practical slots (three on Low) put real light on a surface. The drawer gave them to the lamps nearest the camera in 3D, four
+  of them up on the terraces and unseen from the street. Then the camp's three kit lights, about 70 m off, took the slots that
+  `NativeKitLightPool.Merge` judged weakest. One was the swan-neck 22 m ahead on the left wall: its beam still drew (from the
+  drawer's own pick) over a dark wall. Every other lamp showed only a flat sodium disc laid on the floor, floating over a sloped
+  street with a hard edge. Toggles showed the floor's warmth was almost all disc.
+- **Fix, the city's lamp grid:** `Core/NativeCityLamps.cs` puts every light (place, reach, colour, lobe) into 8 m cells, 16 lights
+  at most, the brightest first. ChipArena/StageLit (`Resources/NativeCityLamps.cginc`) lights each pixel from its cell with the slots'
+  fall-off, N.L, highlight and anime steps. `Runtime/NativeCityLampLight.cs` uploads after every drawer. The grid is on only on its
+  own map, with no stage or v2 intro owning the light, so other maps draw as before. The slots (8, Low 3) still carry the nearest
+  lamps to pilots and zombies, marked w -1 so no surface takes a lamp twice.
+- **The lamps:** a reflector lobe throws light down. Swan-necks give 3.0 x sodium down and 1.35 to the sides. Flush lamps' light sits
+  0.3 m off the wall. There are no pool discs, and glints lie only on level floors. Beams are about a third as bright, only with the
+  depth texture, none from flush lamps, and fade out by 30 m. Reduced effects breathe (never under 0.6). DARKNESS puts the street
+  lamps out.
+- **Same fix in:** the street life (floods down their aim, signs, fires, flares, festoons), the bleed's lamps and the camp (its
+  slots marked, its pools gone). Systems: StageLit, the four drawers, `NativeLighting.StageOwned`. No collider, block, rule, bank,
+  network or save change; slot budgets unchanged. Animation impact: none.
+- **Checks:** full CoreTests the relgen5 way (LF worktree, `expedition_path.patch`, banks-next): exit 0, 1,095 groups at `8c3efd99`,
+  `3300877a` and `11852168`. `MeridianLampChecks` (`--meridian-lamps`, 8,931 checks) holds the wall 1 m and 2 m under every
+  swan-neck's bracket to at least 0.6 and 0.35 (measured 1.09 and 0.90), flush lenses to 0.2 (0.37), every reached pool floor to
+  0.25 (0.42). It also checks the whole city's grid (fullest cell 15 of 16) and the cause at the owner's view; it fails on shared.
+  The camp, streets, bleed, dress, seams, hub and stairs groups PASS. The Unity compile gate PASSes four assemblies at `b30e6224`.
+  fxc compiles StageLit's forward pass (ps 4.0 and 5.0; static frag instructions 7,195 to 7,449). `git diff --check` is clean.
+- **Editor (four holds, last 01:08-01:14):** BEFORE with the probe and toggles; two rejected levels (1.35 and 1.9 all round: floors
+  too dark without the discs); AFTER on `b30e6224`, High and Low: grid on (695 lights), slots marked, no shader or script error.
+  Editor back on `9319026b`, banks as released. Not run: player build, multiplayer, Reduced and DARKNESS live, the walk, other plans.
+- **Captures:** `F:/Chip Arena Development/scratch/meridian-lamps/clips/`: `clip-west-street-high.mp4` and `-low.mp4` (7 s),
+  `sheet-high.jpg`, `sheet-low.jpg`, `diagnosis-shared-high.jpg`, `variants-high.jpg`.
+- **Risks:** streets read darker from afar than shared (real light on dark setts and asphalt; `NativeMeridianDress.LampIntensity`
+  raises it); the busiest cell is 15 of 16 (the Arcades); per-pixel cost not profiled on the owner's GPU; lamps cast no shadows (as
+  the slots); greybox faces still take only the slots. **Next:** the integrator reviews the clips and merges.
+
 ## 2026-11-20 — Claude: release 5: Meridian's street life (part 1) and the bleed's lamps under 3 Hz (integrator)
 Owner: "streets seem very empty ... it still feels kind of 'grey box-ish'".
 - **Published:** shared and the builder at `e9b3441a`. Test channel revision `639308227806636494` (build `cd771ad8`, 384.3 MiB).

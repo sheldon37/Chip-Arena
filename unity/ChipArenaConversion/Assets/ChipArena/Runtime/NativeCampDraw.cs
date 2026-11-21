@@ -11,8 +11,10 @@ namespace ChipArena.UnityConversion
     /// <list type="bullet">
     /// <item><b>Live</b> (the generated Expedition hub, and its killcam): part 1 on the fence and overhead. The bank's props are combined
     /// once per run into a few world meshes (each side of the fence, the overhead strings and sails), drawn with ChipArena/StageLit
-    /// (Fine within 40 m, Low beyond and on the Low tier), the fires and halos as one effects batch, the camp's share of the practical
-    /// slots through NativeLighting.KitLights, and its sound through NativeAudio (Runtime NativeCampAudio.cs).</item>
+    /// (Fine within 40 m, Low beyond and on the Low tier), the fires and halos as one effects batch, every lamp's, flood's and fire's
+    /// light on the fence, the plaza and the tents through the city's lamp grid (NativeCityLampLight), the camp's share of the practical
+    /// slots through NativeLighting.KitLights for the pilots (marked: StageLit takes them from the grid), and its sound through
+    /// NativeAudio (Runtime NativeCampAudio.cs).</item>
     /// <item><b>The DEV preview</b> (the Developer walk only, in Editor and development builds): the whole W5 camp from the hub plan
     /// table, its structures, the survivors at their posts, glass that can be seen through, the camp's machines and an overlay of A1's
     /// clearances. It never draws in a live run.</item>
@@ -28,6 +30,9 @@ namespace ChipArena.UnityConversion
         private Mesh warLamp,glassMesh;private Matrix4x4 warLampAt;private readonly List<(Mesh mesh,Matrix4x4 at,string instance)> posters=new List<(Mesh,Matrix4x4,string)>(),crosses=new List<(Mesh,Matrix4x4,string)>();
         private Material solid,glow,glass,overlay;private MaterialPropertyBlock lampBlock;private static readonly int GlowId=Shader.PropertyToID("_StageGlow");
         private NativeCamp.Layout layout;private NativeCampFx fx;private NativeFxDraw fxDraw;private bool failed,lit;
+        // the camp's lights on the city's lamp grid (added on the first frame of the map it is drawn on), and its slots' mark (the
+        // pilots take them; StageLit takes them from the grid, never twice)
+        private NativeCityLampLight.Block cityLamps;private static readonly float[] CampSlots={-1,-1,-1};
         private Mesh overlayMesh;
         // The preview's posed figures, one mesh each with its post (the bank's, where no survivor draws on the model this frame).
         private readonly List<(string post,Mesh mesh)> figures=new List<(string,Mesh)>();
@@ -217,7 +222,10 @@ namespace ChipArena.UnityConversion
             fx.Brazier=showPreview&&HasPreview;
             fx.Build(time,at.x,at.y,at.z,r.x,r.y,r.z,u.x,u.y,u.z,pilot.HasValue?new V3(pilot.Value.x,pilot.Value.y,pilot.Value.z):(V3?)null,quality,low,reduced,dt);
             if(warLamp!=null){float k=fx.BoardLamp?1:0;lampBlock.SetVector(GlowId,new Vector4(k,k,k,1));Graphics.DrawMesh(warLamp,warLampAt,solid,0,null,0,lampBlock,ShadowCastingMode.On,true);if(warLamp.subMeshCount>1)Graphics.DrawMesh(warLamp,warLampAt,glow,0,null,1,lampBlock,ShadowCastingMode.Off,true);}
-            NativeLighting.KitLights(fx.LightPos,fx.LightRgb,fx.LightCount,at);lit=fx.LightCount>0;
+            var lampMap=NativeLighting.CurrentMap?.id;
+            if(cityLamps==null||cityLamps.Map!=lampMap){NativeCityLampLight.Remove(cityLamps);cityLamps=lampMap!=null?NativeCityLampLight.Add(lampMap,fx.CityLamps()):null;}
+            if(cityLamps!=null)fx.CityLevels(time,reduced,cityLamps.Level);
+            NativeLighting.KitLights(fx.LightPos,fx.LightRgb,fx.LightCount,at,CampSlots);lit=fx.LightCount>0;
             DrawFx(eye,time);
             NativeCampAudioFeed.Feed(layout,fx,Time.frameCount);
         }
@@ -249,14 +257,14 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Nothing this frame (the map is not the camp's): the slots and the sound are let go, once (another map's hazard kit
         /// keeps its own share of the slots).</summary>
-        public void Idle(){if(lit){NativeLighting.KitLights(null,null,0,Vector3.zero);lit=false;}if(NativeCampAudioFeed.Layout!=null)NativeCampAudioFeed.Feed(null,null,Time.frameCount);}
+        public void Idle(){NativeCityLampLight.Remove(cityLamps);cityLamps=null;if(lit){NativeLighting.KitLights(null,null,0,Vector3.zero);lit=false;}if(NativeCampAudioFeed.Layout!=null)NativeCampAudioFeed.Feed(null,null,Time.frameCount);}
 
         private void Release()
         {
             foreach(var c in live){Destroy(c.Fine);Destroy(c.Low);}foreach(var c in preview){Destroy(c.Fine);Destroy(c.Low);}live.Clear();preview.Clear();foreach(var f in figures)Destroy(f.mesh);figures.Clear();foreach(var m in props.Values)Destroy(m);props.Clear();
             Destroy(warLamp);Destroy(glassMesh);Destroy(overlayMesh);warLamp=glassMesh=overlayMesh=null;foreach(var p in posters)Destroy(p.mesh);foreach(var c in crosses)Destroy(c.mesh);posters.Clear();crosses.Clear();
             if(solid!=null)UnityEngine.Object.Destroy(solid);if(glow!=null)UnityEngine.Object.Destroy(glow);if(glass!=null)UnityEngine.Object.Destroy(glass);if(overlay!=null)UnityEngine.Object.Destroy(overlay);solid=glow=glass=overlay=null;
-            fxDraw?.Dispose();fxDraw=null;fx=null;layout=null;HasPreview=false;Rescued=-1;
+            fxDraw?.Dispose();fxDraw=null;fx=null;layout=null;HasPreview=false;Rescued=-1;NativeCityLampLight.Remove(cityLamps);cityLamps=null;
         }
         private static void Destroy(Mesh m){if(m!=null)UnityEngine.Object.Destroy(m);}
         public void Dispose(){Release();failed=false;}

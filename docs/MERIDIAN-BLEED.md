@@ -57,7 +57,8 @@ Rumour signs come every 36 m or so. Ward Zero's EVACUATION ROUTE signs always po
 - On a lower wall the bracket drops from 4.6 m to 3.9 m, still wholly over the clear height.
 - In the drift, cables between facing walls up to 32 m apart carry a pendant lamp in the instance's light.
 - Exceptions: Ward Zero's beacons turn, and the Poolrooms' threshold never fails.
-- Each working lamp lays a soft pool on the floor.
+- Each working lamp lights the walls and floors round it in its colour through the city's lamp grid (`NativeCityLamps`, 2026-11-21;
+  `docs/expedition/MERIDIAN-DRESS.md` "The light"), at its flicker or turn; the flat pool disc it laid on the floor is gone.
 - Over each instance door, the cloud deck glows in the bible's sky colour for it (an additive glow with no fog; Ward Zero's red over violet), so the rumour band reads from the camp.
 
 ### The atmosphere
