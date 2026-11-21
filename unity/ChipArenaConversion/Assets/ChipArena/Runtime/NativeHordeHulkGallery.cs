@@ -41,7 +41,9 @@ namespace ChipArena.UnityConversion
             var attack=NativeHordeKinds.Attack.Smash;float strike=NativeHordeKinds.Strike(st.hit,false,0),recover=NativeHordeKinds.Recover(st.hit,st.cycle,false,0);
             if(t<GalleryHulkDrop)
             {
-                var p=NativeHordeDrop.Hulk;bool shown=NativeHordeGait.Drop(minionPose,seed,t,GalleryHulkDrop,p.DefaultHeight,p,out float lift,out _);HordeDropJob(id,k,slot,yawToMe,p.DefaultHeight,t,GalleryHulkDrop,seed);
+                // The Hulk digs out (Core/NativeHordeEmerge), on a Hulk drop entry's marks (the torso out its 1.5 s recovery before it stands).
+                var marks=NativeHordeEmerge.Of(0,GalleryHulkDrop-NativeHordeDrop.Hulk.Recover,GalleryHulkDrop);bool shown=NativeHordeGait.Emerge(minionPose,k,seed,NativeHordeEmerge.Style.Dig,t,marks,out float lift);
+                HordeEmergeJob(id,k,slot,now-t,marks,NativeHordeEmerge.Style.Dig,seed,sc);lift*=sc;
                 s.Gait.Reset();if(!shown)return;NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(slot+Vector3.up*(NativeHordeKinds.DrawRoot(k,false)+lift),Quaternion.Euler(0,yawToMe,0));rig.Root.transform.localScale=Vector3.one*sc;
                 HordeQueue(rig,NativeHordeModels.Id(k,0,NativeHordeModels.Full),id,0,0,0,HordeGlow(id),1);HordeQueueJaw(rig,k,0,NativeHordeModels.Full,.15f,HordeGlow(id),1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,Vector3.zero,0,true,k*8);return;
             }

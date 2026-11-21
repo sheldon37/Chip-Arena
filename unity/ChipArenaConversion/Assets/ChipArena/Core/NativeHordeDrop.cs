@@ -3,23 +3,14 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The heavy kinds' jump-down entrance (owner 2026-10-12: "For now, we will have them enter from the middle of the map by
-    /// jumping down and creating a small slam effect on their landing. (I am planning to revamp this map, so keep this in mind)";
-    /// 2026-10-13, the Hulk: "The jump in too, shaking the ground and a even bigger stage effect when landing").
-    /// Shared presentation/simulation contract (docs/SIREN-ZOMBIES.md): an add whose
-    /// replicated entry is a map entry of kind <see cref="Kind"/> drops from <see cref="HeightOf"/> above that entry's landing
-    /// point (PveEntry.exit), on its kind's <see cref="Profile"/> from its replicated SpawnAt to its replicated ActiveAt:
-    /// <list type="number">
-    /// <item>The warning: a landing ring telegraphs the spot (the add is not shown yet; the Hulk's is wider, longer and rumbles).</item>
-    /// <item>The leap: it appears above the spot out of an ink tear, crouches and springs (HyperChase jump start).</item>
-    /// <item>The fall (<see cref="Fall"/>, from the height under the profile's gravity), tucked (the jump's air take).</item>
-    /// <item>The landing at <see cref="LandAt"/> = ActiveAt - the profile's recovery: the slam (ring, debris, dust, ink, a camera
-    /// shake for pilots near it, existing-bank thud; the Hulk's craters the floor, throws up a dust wall and jolts the props
-    /// near it), then the landing take's recovery until ActiveAt.</item>
-    /// </list>
-    /// The landing point, its facing and the drop height are map data (the entry), never coordinates here, so a revamped map
-    /// moves the drop by editing its entries. Everything is derived from the add's replicated entry index, SpawnAt and
-    /// ActiveAt, so host, guests and the killcam show the same drop with no new frame field.
+    /// A drop entry's clock (a map entry of kind <see cref="Kind"/>; the jump-down it used to play is gone, owner 2026-11-21: "The
+    /// hit indicator from the old drop in effect is massive and inaccurate, so I want to remove that drop in animation entirely").
+    /// The add now emerges from the floor at the entry's landing point (PveEntry.exit; Core/NativeHordeEmerge) on the same
+    /// timeline, so the rules' pacing, the wire and every peer's clock are unchanged: <see cref="Duration(float,in DropProfile)"/>
+    /// (SpawnAt to ActiveAt, the old warning, leap, fall and recovery on the kind's <see cref="Profile"/>) is the emergence, and
+    /// <see cref="LandAt(float,in DropProfile)"/> (the old touchdown, ActiveAt minus the recovery) is when its torso is out: its
+    /// collider opens and it can be hit (ExposedAt), still unable to move or attack until ActiveAt. Nothing lands and nothing is
+    /// struck. The landing pose (<see cref="At"/>, NativeHordeGait.Drop) stays for the Ironworks Rigger's chain drop.
     /// </summary>
     public static class NativeHordeDrop
     {
@@ -75,13 +66,6 @@ namespace ChipArena.UnityConversion
             }
             if(age>=leap){into=age-leap;float u=into/p.Leap;lift=Math.Max(.5f,height)+p.Hop*(u*u*(3-2*u));return Phase.Leap;}
             into=age;lift=Math.Max(.5f,height);return Phase.Warn;
-        }
-        /// <summary>The warning's rumble (0..1) at `age` s into a heavy drop's warning: building to the leap (the Hulk shakes the ground
-        /// before it lands); 0 for a light profile.</summary>
-        public static float Rumble(float age,float span,float height,in DropProfile p)
-        {
-            if(!p.Heavy)return 0;var ph=At(age,span,height,p,out float into,out _);
-            if(ph!=Phase.Warn&&ph!=Phase.Leap)return 0;float warn=span-p.Recover-Fall(height,p)-p.Leap;float u=ph==Phase.Leap?1:Math.Min(1,into/Math.Max(.1f,warn));return u*u;
         }
     }
 }

@@ -410,13 +410,8 @@ namespace ChipArena.UnityConversion
                 Flat(x+nx*.9,y+.03,z+nz*.9,nx,nz,1.2,.9,1,.15,.12,.18*o,1,true);Entrances++;
                 for(int j=0;j<5;j++){double t=Frac(time*.9+H(i,j,3));Sprite(x+nx*(.3+t*1.6)+(H(i,j,4)-.5)*nz*1.2,y+.15+t*.4,z+nz*(.3+t*1.6)-(H(i,j,4)-.5)*nx*1.2,.4+t*.8,.55,.5,.46,.16*o*(1-t),false);Entrances++;}
             }
-            for(int i=0;i<s.DropEntry.Length;i++)
-            {
-                float o=open!=null&&s.DropEntry[i]<open.Length?open[s.DropEntry[i]]:0;if(o<.02f)continue;double x=s.DropX[i],y=s.DropY[i],z=s.DropZ[i],hgt=s.DropH[i],size=s.DropSize[i];
-                // The hatch opens: a red warning shaft down to the landing and grit falling through it.
-                Cone(x,y+hgt-.05,z,hgt-.1,size*.45,size*.6,1,.15,.12,.08*o);Entrances++;
-                for(int j=0;j<10;j++){double t=Frac(time*.7+H(i,j,12));Line(x+(H(i,j,13)-.5)*size*.8,y+hgt-t*hgt,z+(H(i,j,14)-.5)*size*.8,x+(H(i,j,13)-.5)*size*.8,y+hgt-t*hgt+.15,z+(H(i,j,14)-.5)*size*.8,.03,.6,.58,.55,.6*o,false,0);Entrances++;}
-            }
+            // (The drop hatches' red warning shaft down to the landing and its grit went with the drop-in, owner 2026-11-21: nothing drops
+            // through them now; an add at a drop entry digs out of the floor under it, Core/NativeHordeEmerge.)
         }
         private void GuideFx(NativeWardFxScene s,in NativeWardMood m,double time)
         {

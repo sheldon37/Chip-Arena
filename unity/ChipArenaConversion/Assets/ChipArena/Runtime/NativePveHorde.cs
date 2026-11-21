@@ -74,29 +74,14 @@ namespace ChipArena.UnityConversion
         private void WardEntryPose(NativeMinion m)
         {
             var a=m.Pve;var e=a.Entry;Vector3 to=Vec(e.@exit.Position(m.Collider.height/2+.025f));
-            if(NativeWardEntries.Drop(e))
-            {
-                var profile=a.Stats.id=="hulk"?NativeHordeDrop.Hulk:NativeHordeDrop.Brute;
-                NativeHordeDrop.At(Time-a.SpawnAt,a.ActiveAt-a.SpawnAt,e.height,profile,out _,out float lift);
-                m.Body.position=to+Vector3.up*lift;
-                if(!a.Landed&&Time>=NativeHordeDrop.LandAt(a.ActiveAt,profile))
-                {a.Landed=true;WardLandingSlam(m,profile);}
-            }
+            // Out of the floor (Core/NativeHordeEmerge; owner 2026-11-21, the drop-in removed): a drop entry, a ceiling vent or a door
+            // with no opening keeps its clock, under the floor with no collider until the torso is out (ExposedAt), then the capsule
+            // rises with the drawn body to stand at ActiveAt. Nothing is struck on the way out (the drop's landing slam is gone).
+            if(NativeHordeEmerge.Emerges(e,a.Stats.id))
+            {m.Body.position=to+Vector3.up*NativeHordeEmerge.Sink(Time-a.SpawnAt,a.ExposedAt-a.SpawnAt,a.ActiveAt-a.SpawnAt,m.Collider.height);a.Landed=a.DropLanded=Time>=a.ExposedAt;}
             else if(e.kind=="vent"&&(string.IsNullOrEmpty(e.surface)||e.surface=="floor"))m.Body.position=to+Quaternion.Euler(0,m.Yaw,0)*Vec(NativeEntryRules.Climb(Time,a.ActiveAt));
             else m.Body.position=Vector3.Lerp(Vec(e.from.Position(e.surface=="wall"?.44f:m.Collider.height/2+.025f)),to,Mathf.Clamp01((Time-a.WalkAt)/Math.Max(.1f,a.ActiveAt-a.WalkAt)));
             m.Collider.enabled=Time>=a.ExposedAt;
-        }
-        private void WardLandingSlam(NativeMinion m,NativeHordeDrop.DropProfile profile)
-        {
-            var at=Vec(m.Pve.Entry.@exit.Position(.45f));
-            foreach(var p in Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss))
-            {
-                var d=p.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
-                if(Math.Abs(d.y)>2||distance>profile.SlamRadius||!MeleeVisible(at,p.Body.position,m.Owner,p.Collider,true))continue;
-                var dir=new Vector3(d.x,0,d.z).normalized;bool block=Time<p.BlockEnd;
-                if(block){BlockProc(p,m.Owner,p.Body.position,"clash");p.Knockback+=dir*(Mutator("bounce-house")?9:3);}
-                else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true,causeKind:m.Pve.Stats.id,attackerMinion:m);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
-            }
         }
         private readonly List<NativeMinion> hordeAdds=new List<NativeMinion>(192);
         private readonly List<NativePilot> hordeEnemies=new List<NativePilot>(8);
@@ -141,15 +126,12 @@ namespace ChipArena.UnityConversion
             {
                 if(m.Hp<=0)continue;var a=m.Pve;
                 if(a.Travelling){if(Time>=a.VentUntil)Reemerge(m);continue;}
-                bool bruteDrop=a.Stats.id=="brute"&&NativeHordeDrop.Is(a.Entry);
-                if(bruteDrop&&StepPveDrop(m))continue;
-                if(!bruteDrop&&Time<a.ActiveAt)
+                // Entering on its entry's clock (a door's walk, a vent's climb, a breach, an emergence from the floor): held, no AI.
+                if(Time<a.ActiveAt)
                 {WardEntryPose(m);continue;}
                 if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
                 if(m.Body.position.y < hordeKillY){if(a.Possessed)FoundPveBoss(BossRescue);RemoveMinion(m,false);continue;}
                 foreach(var pair in m.Dots.ToArray()){if(a.Stats.id=="cinderling"&&pair.Key.EndsWith(":fire",StringComparison.Ordinal)){m.Dots.Remove(pair.Key);continue;}var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time+1e-8&&dot.Next<=dot.Until+1e-8){if(!dot.HubNoReward)HitMinion(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,kind:"field",from:m.Body.position);dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
-                // Landed drops can take hits/DoTs and be shoved during recovery, but cannot move voluntarily or attack.
-                if(Time<a.ActiveAt){a.External*=Mathf.Exp(-6*dt);m.Body.linearVelocity=new Vector3(a.External.x,m.Body.linearVelocity.y,a.External.z);continue;}
                 Vector3 at=m.Body.position,navAt=Vec(NativeNavSearch.BodyAnchor(Vec(at),m.Collider.height/2));var target=a.Target;
                 bool roaming=HubOn&&hubMobs.ContainsKey(m.Id);
                 if(roaming){if(StepHubMind(m,enemies,out target))continue;}

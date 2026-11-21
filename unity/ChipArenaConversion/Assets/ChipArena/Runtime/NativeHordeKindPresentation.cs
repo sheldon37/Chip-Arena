@@ -46,6 +46,8 @@ namespace ChipArena.UnityConversion
         {
             public readonly NativeHordeGait Gait=new NativeHordeGait();public readonly NativeHordeReact React=new NativeHordeReact();
             public int Id,Kind=-1,Real,Look,Tier=-1,Lost,Frame;public float CancelAt=float.NaN,CancelFor=-100,Distance;public bool Possessed,Pinned;
+            /// <summary>The emergence's style picked for the add's SpawnAt (Core NativeHordeEmerge; -1 none yet).</summary>
+            public int EmergeStyle=-1;public float EmergeFor=float.NaN;
             public MeleeBlow Blow;public bool HasBlow;public float BlowAt=-100;public NVector2 Push;public string Spec;
             /// <summary>The drawn scale (the Hulk's), the jaw's opening, the roar's age (NaN none), the mouth in the world, the sac's
             /// swell when a hit cut the spit off.</summary>
@@ -61,7 +63,7 @@ namespace ChipArena.UnityConversion
             /// <summary>The newest replicated LastAttack seen and the one before it (the blow a guest still plays out until its clock
             /// reaches the newer one).</summary>
             public float AttackSeen=-100,AttackBefore=-100;
-            public void Reset(int id){Id=id;Kind=-1;Tier=-1;Lost=-1;CancelAt=float.NaN;CancelFor=-100;HasBlow=false;BlowAt=-100;Push=NVector2.Zero;Spec=null;Gait.Reset();React.Clear();Possessed=false;Scale=1;Jaw=0;RoarAge=float.NaN;CancelSwell=0;MouthKnown=false;Roam.Reset();Flow.Reset();Blend.Reset();Mode=-1;AttackSeen=AttackBefore=-100;MaxHp=100;GoreAt=-100;GoreAmount=0;GoreBlast=99;GoreCause=NativeHordeGore.Cause.None;GoreHead=GoreHeavy=false;GorePush=NVector2.Zero;}
+            public void Reset(int id){Id=id;Kind=-1;Tier=-1;Lost=-1;EmergeStyle=-1;EmergeFor=float.NaN;CancelAt=float.NaN;CancelFor=-100;HasBlow=false;BlowAt=-100;Push=NVector2.Zero;Spec=null;Gait.Reset();React.Clear();Possessed=false;Scale=1;Jaw=0;RoarAge=float.NaN;CancelSwell=0;MouthKnown=false;Roam.Reset();Flow.Reset();Blend.Reset();Mode=-1;AttackSeen=AttackBefore=-100;MaxHp=100;GoreAt=-100;GoreAmount=0;GoreBlast=99;GoreCause=NativeHordeGore.Cause.None;GoreHead=GoreHeavy=false;GorePush=NVector2.Zero;}
         }
         private readonly Dictionary<int,HordeKindState> hordeKindStates=new Dictionary<int,HordeKindState>();private readonly Stack<HordeKindState> hordeKindSpare=new Stack<HordeKindState>();
         private readonly List<int> hordeKindStale=new List<int>();private int hordeKindFrame,hordeKindEvent,hordeKindGeneration=-1;private NativeArena hordeKindArena;private float hordeKindTime=float.NaN;
@@ -260,14 +262,18 @@ namespace ChipArena.UnityConversion
                 var standing=NativeArena.Vec(a.Entry.@exit.Position(.9f));pos=standing+Quaternion.Euler(0,yaw,0)*new Vector3(0,climb.y,climb.z);ground=standing.y-.9f;
                 NativeHordeGait.VentClimb(minionPose,kind,seed,tau,new NVector(0,climb.y+(.9f-NativeHordeKinds.RootHeight(real,false)),climb.z)/sc);s.Gait.Reset();mode=2;
             }
-            else if(entering&&(NativeHordeDrop.Is(a.Entry)||a.Entry.surface=="ceiling"))
+            else if(entering&&NativeHordeEmerge.Emerges(a.Entry,a.Stats?.id))
             {
-                // The heavy kinds' jump-down (Core/NativeHordeDrop, on the kind's profile): the spot telegraphed, the leap, the fall, the slam.
-                if(now<a.SpawnAt)return true;var profile=NativeHordeDrop.Profile(kind);float height=NativeHordeDrop.HeightOf(a.Entry,profile);var land=NativeArena.Vec(a.Entry.@exit.Position(0));
-                bool shown=NativeHordeGait.Drop(minionPose,seed,now-a.SpawnAt,a.ActiveAt-a.SpawnAt,height,profile,out float lift,out var phase);
-                HordeDropJob(m.Id,kind,land,a.Entry.yaw*Mathf.Rad2Deg,height,now-a.SpawnAt,a.ActiveAt-a.SpawnAt,seed);s.Gait.Reset();
-                // (The touchdown is its own mode: the fall's tucked legs hand over to the landing's planted ones through the pop killer.)
-                if(!shown)return true;pos=land+Vector3.up*(NativeHordeKinds.DrawRoot(kind,false)+lift);ground=land.y;yaw=a.Entry.yaw*Mathf.Rad2Deg;mode=phase>=NativeHordeDrop.Phase.Land?5:3;
+                // Out of the floor (Core/NativeHordeEmerge; owner 2026-11-21, the drop-in removed): it digs out of open ground or lies
+                // there and rises (inside, under a ceiling vent, in the bleed), on its entry's replicated clock: hidden through the
+                // tell, its torso out at ExposedAt (where the authority's capsule opens), stood at ActiveAt; its ground is
+                // HordeEmergeJob's. A door with no opening faces a seeded way (its entry has none of its own).
+                if(now<a.SpawnAt)return true;var spot=NativeArena.Vec(a.Entry.@exit.Position(0));var marks=NativeHordeEmerge.Of(a.SpawnAt,a.ExposedAt,a.ActiveAt);
+                var style=HordeEmergeStyle(arena,s,kind,a.Entry,spot,seed,a.SpawnAt);
+                bool shown=NativeHordeGait.Emerge(minionPose,kind,seed,style,now-a.SpawnAt,marks,out float lift,s.Look);
+                HordeEmergeJob(m.Id,kind,spot,a.SpawnAt,marks,style,seed,sc);s.Gait.Reset();
+                if(!shown)return true;pos=spot+Vector3.up*(NativeHordeKinds.DrawRoot(kind==NativeHordeKinds.Crawler?NativeHordeKinds.Shambler:kind,false)+lift*sc);ground=spot.y;
+                yaw=a.Entry.yaw*Mathf.Rad2Deg+(NativeHordeEmerge.PopIn(a.Entry)?NativeHordeKinds.Hash(seed,336)*360:0);mode=6;
             }
             else
             {
@@ -515,7 +521,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             DrawIronworksFx(draw,zfx,eye,right,up,quality,now);DrawStationFx(draw,arena,now,eye,right,up,low);hordeJobCount=0;
-            DrawHordeDrops(draw,now,right,up,low);
+            DrawHordeEmerges(draw,now,right,up,low);
             HordeAcidDraw(draw,arena,now,eye,right,up,quality);DrawHordeStomps(draw,now,low);DrawHordeBreachFx(draw,now,eye,right,up,low);
             // Footfall dust (toon puffs kicked round the foot).
             for(int i=0;i<hordeDust.Length;i++){var d=hordeDust[i];if(d.Power<=0)continue;float since=now-d.Born;if(since<0||since>.5f)continue;if(zfx.Within(Vector3.Distance(eye,d.At),d.Power>1.5f))zfx.Footfall(d.At,since,d.Power,d.Seed);}
@@ -742,9 +748,12 @@ namespace ChipArena.UnityConversion
                 // The entrances (presentation only: the same poses and effects the live adds play from their replicated entries).
                 if(t<GalleryEntrance)
                 {
-                    if(k==NativeHordeKinds.Brute)
+                    if(k==NativeHordeKinds.Brute||k==NativeHordeKinds.Spitter)
                     {
-                        bool shown=NativeHordeGait.Drop(minionPose,seed,t,GalleryEntrance,NativeHordeDrop.DefaultHeight,out float lift,out _);HordeDropJob(id,k,new Vector3(slot.x,ground,slot.z),yaw,NativeHordeDrop.DefaultHeight,t,GalleryEntrance,seed);
+                        // The emergence (Core/NativeHordeEmerge): the brute digs out, the spitter lies there and rises, on a drop
+                        // entry's marks (the torso out .9 s before it stands).
+                        var style=k==NativeHordeKinds.Brute?NativeHordeEmerge.Style.Dig:NativeHordeEmerge.Style.Rise;var marks=NativeHordeEmerge.Of(0,GalleryEntrance-.9f,GalleryEntrance);
+                        bool shown=NativeHordeGait.Emerge(minionPose,k,seed,style,t,marks,out float lift);HordeEmergeJob(id,k,new Vector3(slot.x,ground,slot.z),now-t,marks,style,seed,1);
                         s.Gait.Reset();if(!shown)continue;NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(slot+Vector3.up*lift,Quaternion.Euler(0,yaw,0));
                         HordeQueue(rig,NativeHordeModels.Id(k,0,NativeHordeModels.Full),id,0,0,0,HordeGlow(id),1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,Vector3.zero,0,true,k*8);continue;
                     }
@@ -818,8 +827,27 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<PveEntry,HordeBreachCue> hordeBreachCues=new Dictionary<PveEntry,HordeBreachCue>();private readonly List<PveEntry> hordeBreachDone=new List<PveEntry>();
         // The Hulks seen alive this round (by add id), whose deaths crash down with a thud.
         private readonly HashSet<int> hordeHulks=new HashSet<int>();
+        private void HordeEmergeCues(NativeMinion m,NativePveAdd a,int kind,float t)
+        {
+            if(t<a.SpawnAt)return;var mk=NativeHordeEmerge.Of(a.SpawnAt,a.ExposedAt,a.ActiveAt);var at=NativeArena.Vec(a.Entry.@exit.Position(0));uint seed=NativeHordeKinds.Seed(m.Id);
+            bool heavy=NativeHordeEmerge.Heavy(kind),hulk=kind==NativeHordeKinds.Hulk;
+            float age=t-a.SpawnAt,b0=mk.Break,b1=mk.Break+(mk.Torso-mk.Break)*.48f;
+            // (The style is only worked out inside a cue's window: the bleed's field is not read every frame.)
+            if((age<.15f||age>=b0&&age-b0<.12f||age>=b1&&age-b1<.12f)&&NativeHordeEmerge.Choose(!NativeHordeEmerge.Outdoor(emergeMap)||a.Entry.surface=="ceiling",EmergeBleed(at),heavy,seed)==NativeHordeEmerge.Style.Dig)
+            {
+                if(t-a.SpawnAt<.15f&&Once("add"+m.Id+"r",a.SpawnAt)){if(hulk)BankPlay("structure.rumble",at,.75f,0,null,false,null,.7f);BankPlay("structure.crack",at,heavy?.55f:.35f,0,null,false,null,hulk?.7f:.9f);}
+                float brk=a.SpawnAt+mk.Break;if(t>=brk&&t-brk<.12f&&Once("add"+m.Id+"d",brk)){BankPlay("structure.debris",at,heavy?.8f:.55f,0,null,false,null,hulk?.75f:1);if(heavy)BankPlay("structure.thud",at,hulk?.8f:.55f,0,null,false,null,hulk?.65f:.85f);}
+                float haul=a.SpawnAt+b1;if(t>=haul&&t-haul<.12f&&Once("add"+m.Id+"h",haul)){BankPlay("structure.debris",at,heavy?.7f:.45f,0,null,false,null,hulk?.7f:.95f);if(hulk)BankPlay("structure.boom",at,.45f,0,null,false,null,.7f);}
+            }
+            float rise=a.SpawnAt+mk.Torso;if(t>=rise&&t-rise<.15f&&kind!=NativeHordeKinds.Hulk&&zombieVoices.First(m.Id,NativeZombieVoices.CallSlot,rise))ZombieCall(m.Id,NativeZombieCall.Groan,at,seed,kind,t);
+            if(hulk&&t>=rise&&t-rise<.12f&&Once("add"+m.Id+"o",rise))BankPlay("structure.groan",at,.9f,0,null,false,null,.55f);
+        }
+        /// <summary>The emergences' facts for the cues (the same the presentation picks its style from): the map, the bleed.</summary>
+        private string emergeMap;
+        private static bool EmergeBleed(Vector3 at){var theme=NativeMeridianDress.ThemeAt;return theme!=null&&theme(new V3(at.x,at.y,at.z))!=null;}
         private void HordeCues(NativeArena arena)
         {
+            emergeMap=arena?.MapId;
             if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeBreachCues.Clear();hordeHulks.Clear();HordeRoamClear();zombieVoices.Clear();StationCuesClear();}float t=arena.Time;HordeRoamSweep(t);
             foreach(var m in arena.Minions)
             {
@@ -828,18 +856,10 @@ namespace ChipArena.UnityConversion
                 if(kind==NativeHordeKinds.Hulk)hordeHulks.Add(m.Id);
                 if(t<a.ActiveAt)
                 {
-                    // The jump-down lands with the slam's thud (existing bank keys: the Siren's slam over the ground impact); the Hulk's
-                    // warning rumbles and its landing quakes.
-                    if(NativeHordeDrop.Is(a.Entry))
-                    {
-                        var p=NativeHordeDrop.Profile(kind);float land=NativeHordeDrop.LandAt(a.ActiveAt,p);
-                        if(p.Heavy&&t>=a.SpawnAt&&t-a.SpawnAt<.15f&&Once("add"+m.Id+"r",a.SpawnAt))BankPlay("structure.rumble",m.Body.position,.8f,0,null,false,null,.7f);
-                        if(t>=land&&t-land<.12f&&Once("add"+m.Id+"d",land))
-                        {
-                            BankPlay(NativeHordeKinds.StrikeCue(NativeHordeKinds.Attack.Smash),m.Body.position,NativeHordeKinds.StrikeGain);BankPlay(NativeHordeKinds.StrikeUnder(NativeHordeKinds.Attack.Smash),m.Body.position,NativeHordeKinds.UnderGain,0,null,false,null,p.Heavy?.55f:.7f);
-                            if(p.Heavy){BankPlay("blast.quake",m.Body.position,.9f,0,null,false,null,.8f);BankPlay("structure.boom",m.Body.position,.7f,0,null,false,null,.75f);}
-                        }
-                    }
+                    // The emergence (Core/NativeHordeEmerge; existing bank keys): the ground cracking a beat before, the earth breaking
+                    // as it claws through and as it hauls itself out (a heavy kind's heavier, the Hulk's rumbling first), a groan as it
+                    // rises; a lying body's stir is quiet until it groans getting up. Every peer cues the same moments from the clock.
+                    if(NativeHordeEmerge.Emerges(a.Entry,a.Stats.id))HordeEmergeCues(m,a,kind,t);
                     // A breach: the blows on the wall from behind, then it bursts (its restore is cued from the remembered break).
                     else if(NativeBreach.Is(a.Entry))
                     {
