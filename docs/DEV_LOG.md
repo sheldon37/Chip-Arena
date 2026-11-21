@@ -1,3 +1,32 @@
+## 2026-11-21 — Claude (I3): intros v2 batch 2: the seven melee weapon intros re-keyed for the model, the Glaive's Orrery, Afterimage's walk on a pack clip, filmed (owner: batches "if this will improve the quality (Hopefully dramatically)"; presentation only)
+
+Owner: "a much higher quality standard, great animations and effects ... great camera work", then "think like the top dog and Bombardier ones, they have unique animations". Batch 2's melee part (`docs/INTROS-MELEE.md`; contract `docs/INTROS-V2.md` 9a-9d).
+
+**Branch:** `claude/intro-melee`, code at `fc1cec00` (shared `57110fe9` and `claude/intro-framework` `510cbd09` merged in); pushed, not merged, not released.
+
+**What changed:**
+- **Bodies on the framework's pose tools:** hinged legs, `ModelFeet`, weapon paths re-keyed in the keyed chest's frame, and a new hold (`NativeIntroMeleeBlade.HoldAt`: the elbow by a soft minimum over 24 poles against the pose-craft limits, the hand along the forearm, at most 45° of roll in the forearm, two hands sharing a hilt); contacts on the model by `HoldDrawn`.
+- **Known issues fixed:** Severed Dawn's salute lowered to the right (the hilt hid the visor); Hold the Line braces the shield before the chest and lowers it (it hid the face; the guard read as rain cover); Afterimage's daggers rest low, points forward; Apex lit brighter, and its pounce now filmed from beside the arc (it read as a small vertical hop); Faultline chops into the floor and rests the blade on its point (the shoulder rest read as raised behind); Still Rain on the +z Katana with a two-handed kirioroshi, the chiburi and the noto along the saya.
+- **Orrery (Glaive), new:** the ring thrown round a summit observatory's four armillary rings and caught back; the rings lock into a sphere under starlight. On the Glaive's slot (Crescent Return archived).
+- **Afterimage's walk on a pack clip** (guide 9d; owner on a keyed run: "can we make this more realistic? Could use the running pack I have"): the owner's Frank Platformer everyday walk (`Frank_Platformer@Walk02_InPlace#melee-walk02`, not a clip the match plays), legs and torso, over the keyed walk at the clip's cadence; the only pack clip.
+- **Checks:** `Tests/IntroMeleeChecks` (`--intro-melee`, in the full suite): slots, no drawn weapon through the head or torso, the contacts each story makes, Afterimage's walk segment.
+- **Sound:** 74 rows in batch 2 (`docs/audio/intros-b2/I3.json`), 15 new keys; `sound-requests-intros-b2.json` (148 takes, 273 s); batch 1's manifest unchanged; no queue job; every cue keeps an alt and a clip.
+- **Banks (local, never committed; both in the Editor's Resources):** sets `F:/Chip Arena Development/scratch/intro-melee/bank/b2/ChipArenaIntroMelee.bytes` (11,933,443 bytes); motion `F:/Chip Arena Development/scratch/intro-melee/motion/ChipArenaIntroMotionMelee.bytes` (31,388 bytes, sha `e5a2f8ab`, one clip).
+
+**Systems touched:** Core (the seven intro files, `NativeIntroMelee.cs`, one registry line, the sound keys), Tests (`IntroMeleeChecks`, one Program line), docs and sound rows. No Runtime change. No voxel dependency.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (intro presentation only; registry lengths unchanged, Orrery 7.6/6.0 s).
+
+**Checks:** full CoreTests the relgen5 way on `fc1cec00`: exit 0, 1095 PASS (a first run during hold 9 stopped at BootIntroChecks' 20 ms timing of the archived weapon-sword entrance, 20.5 ms with the Editor compiling; rerun quiet: pass); `--intro-limits` 0 findings for all seven (intro poses 660 with the melee bank); `--intro-melee` 1258 (1257 without the bank); `--intros-v2` 8135; `--intro-pack` 132 (the final bank beside Slipstream's: 10 clips); Unity compile gate PASS (local 6000.3.24f1); `git diff --check origin/claude/sleepy-ritchie-g8ruhv` clean; `compile_sound_requests.py --batch b2 --check` up to date, `test_intro_sound_manifests` 7 OK.
+
+**Editor (queue rule, notes `editor-queue.md`):** hold 7 (23:45-23:56: the bake, Crescent Return, six intros High and Low), hold 8 (00:31-00:38: the one-clip rebake into Resources, Afterimage, Faultline, Apex; the walk drawn from the author bank in the Editor on this branch), hold 9 (00:45-00:50: Apex and Faultline again). After each the Editor went back to `9319026b`, stage and motion banks as released.
+
+**Not checked:** a Windows player build; multiplayer and a late joiner's view; Low graphics on a low-end GPU; sound in a capture (nothing generated yet).
+
+**Risks:** Faultline's hilt still passes the lower visor for about 0.3 s as the sword rises from the guard (front camera; three re-keys narrowed it); the Katana's saya hangs at the match's angle (48° under level); Orrery's last shot has a ring of the locked sphere across its right side.
+
+**Next:** the integrator reviews the clips (`F:/Chip Arena Development/scratch/intro-melee/clips/b2/`), merges, packs both banks into the Drive zip and writes the batch-2 sound job.
+
 ## 2026-11-20 — Claude: intros v2, the melee weapon intros: Still Rain, Apex, Faultline, Severed Dawn, Hold the Line, Afterimage (owner request; presentation only)
 
 Owner: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based background and designs, etc. With great camera work as well!" Then, the same morning: "we dont need the matches own annimation system. Think like the top dog and Bombardier ones, they have unique animations. Thats what im aiming for on these". I3, the melee family of the intros v2 work, on I0's contract (`docs/INTROS-V2.md`). Design and status: `docs/INTROS-MELEE.md`.

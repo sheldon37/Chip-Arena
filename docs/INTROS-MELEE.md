@@ -26,8 +26,16 @@ clean band under the pilot's feet in a full-length hero frame (`HeroFull`, `Name
   `NativeIntroStillRain.cs`, `NativeIntroApex.cs`, `NativeIntroFaultline.cs`, `NativeIntroSeveredDawn.cs`, `NativeIntroHoldTheLine.cs`,
   `NativeIntroAfterimage.cs`, `NativeIntroOrrery.cs`. Each registers with one line on its slot in `Core/NativeIntroCatalog.cs`.
 - **The body (batch 2, on the framework's pose tools; `docs/INTROS-V2.md` 9a-9c):**
-  - Keyed with `NativeEntranceKeys` (no clips): hinged planted legs, the feet and drops in the model's metres (`ModelFeet`: `Start` and
-    `Steps` are where the drawn ankles go; `ModelGround` for the Fangs' lintel), and Afterimage's walk on the framework's walk builder.
+  - Keyed with `NativeEntranceKeys` (no match clips): hinged planted legs, the feet and drops in the model's metres (`ModelFeet`:
+    `Start` and `Steps` are where the drawn ankles go; `ModelGround` for the Fangs' lintel).
+  - **One pack clip** (guide 9d; owner on a keyed run: "can we make this more realistic? Could use the running pack I have"):
+    Afterimage's walk up the lane plays the owner's Frank Platformer everyday walk (`Frank_Platformer@Walk02_InPlace#melee-walk02`, not
+    a clip the match plays) over the keyed walk, its legs and torso only (`Legs | Torso`, `BodyTurn.Clip`); the daggers stay keyed. The
+    lane runs at the clip's foot speed times its rate (1.57 m/s), and the keyed walk under it (the framework's walk builder) steps at the
+    clip's cadence, so the feet land in the same places with or without the bank. The bank is the melee intros' own,
+    `ChipArenaIntroMotionMelee` (local, never committed): baked by the local tool's `bozo-intromotion.request` (`clip=Assets/LocalAssets/
+    Frank_Slash_Pack/Assets/Animations/Frank_Platformer_1/02_Frank_Platformer_Moving_In-Place/Frank_Platformer@Walk02_InPlace.anim|||melee-walk02`).
+    Without it the keyed walk plays. Every other beat is weapon choreography and stays keyed.
   - **The weapon on a keyed path** (`NativeIntroWield`): the grip and the weapon's axis (a blade's line, the shield's face, the Glaive's
     ring) per key, mostly in the keyed chest's frame (`InChest`: it rides the body's lean, drop and turn), in the keyed rig's proportions
     (its shoulders at (±.345, .18, 0) from the chest joint, the arm .52 long).
@@ -96,7 +104,7 @@ it stands with the shield lowered at its side, the face clear under the name (be
 as cover from rain).
 
 ### Afterimage (daggers)
-Lantern Alley at night. The pilot walks up the lane on the model's feet and stops; two echoes peel off to either side (teal and magenta),
+Lantern Alley at night. The pilot walks up the lane (the owner's everyday walk, legs and torso) and stops; two echoes peel off to either side (teal and magenta),
 each a beat behind. It crosses its daggers in two backhand cuts, the right and then the left, the echoes cutting after it and throwing their
 edges up through two lanterns' cords; a lunge drives both daggers out; the echoes fold back into the body as it crosses its daggers before
 its chest, and it stands with them low at its sides, points forward (before, one was held out sideways under the name).
@@ -111,9 +119,15 @@ ring at its side, facing out. While the ring flies the held ring is not drawn (`
 spinning path.
 
 ## Captures and clips
-`F:/Chip Arena Development/scratch/intro-melee/clips/b2/` (local): per weapon the intro at High in real time, the old intro beside the new,
-a Low still strip, the drawn pilot from the side and at three-quarters at its beats, and a sheet of its High frames.
+`F:/Chip Arena Development/scratch/intro-melee/clips/b2/` (local), per weapon (`<spec>` as in the table): `<spec>-high.mp4`, the
+intro at High in real time; `<spec>-old-vs-new.mp4`, the archived signature beside it; `<spec>-low-strip.jpg`, Low graphics at its
+key moments; `<spec>-side-3q.jpg`, the drawn pilot from the side and at three-quarters at its beats (the legs, the head, the grip);
+`<spec>-sheet.jpg`, its High frames at its beats. Filmed in the Editor (BoZo `introeyeseq` review cameras) on `claude/intro-melee`.
 
 ## Status
-Batch 2 (the owner's batches "if this will improve the quality (Hopefully dramatically)") on `claude/intro-melee`: all seven re-keyed on
-the framework's pose tools, 0 `--intro-limits` findings; not merged. The integrator reviews the clips, merges, and packs the bank.
+Batch 2 (the owner's batches "if this will improve the quality (Hopefully dramatically)") on `claude/intro-melee`, filmed in the Editor
+(holds 7-9, 2026-11-20/21): all seven re-keyed on the framework's pose tools, 0 `--intro-limits` findings, Afterimage's walk on the
+pack clip (seen playing from the motion bank in the Editor). Not merged. Known: Faultline's hilt still passes the lower visor for
+about 0.3 s as the great sword rises from the guard (from the front camera; three re-keys narrowed it); the Katana's saya hangs at
+the match's angle (`NativeKatanaSaya.RestAt`, 48 degrees under level). The integrator reviews the clips, merges, and packs both banks
+(`ChipArenaIntroMelee`, the sets; `ChipArenaIntroMotionMelee`, the walk).
