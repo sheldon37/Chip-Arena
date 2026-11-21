@@ -43,8 +43,8 @@ Each is distinct in set, palette and camera:
   the top dog and Bombardier ones, they have unique animations"). No motion-bank clip plays (`Clip` is never true). Every beat is
   keyed (`NativeEntranceKeys`: anticipation, impact keys that ring out, pass keys that flow, contacts that plant):
   - Forgeborn: crouched in the column, it rises, chest first; three heavy steps out of the fire (the hips sinking onto each, the
-    free arm swinging, the staff upright at its side); straightening under the fire with the free hand rising open beneath the
-    crown; both arms up as the staff is swung high at its side; the staff driven down beside its foot in a deep slam, the free arm
+    free arm swinging, the staff upright at its side); straightening under the fire with the free arm rising open up and out at
+    its side beneath the crown; both arms up in a V as the staff is swung high at its side; the staff driven down beside its foot in a deep slam, the free arm
     thrown back; up into the hold.
   - Still Tide: head bowed; a look back over its right shoulder; the staff taken low across its body in both hands, the weight on a
     braced foot; coiling lower under the rearing wave; the arms swept wide apart into a wide stance as the wave parts (the staff
@@ -94,7 +94,7 @@ The forge of a dead volcano. The caldera wakes, the forge's fire rises as a colu
 | 1.0 | The cracks light in from the rim to the dais, sparks running down the seams | crane up and back | unseen | `intro2.fire.crack`; `structure.crack`, `stone` |
 | 2.15 | **Eruption** (speed ramp): a 9.5 m column of flame (tongues licking up it in four tiers, white at their feet, orange, red-tipped, round a white-hot heart; a little dark smoke off its head), sparks, the forge's joints flaring | low under it, then a crane up it | built in inside the fire | `intro2.fire.erupt`; `blast.fire`, `explosion` / `intro2.fire.column`; `hazard.lava`, `fire` |
 | 3.3 | It walks out of the fire, flame peeling off its shoulders and arms | front, pushing in at the lens | keyed walk, the staff upright at its side | `intro2.fire.step` (x2); `impact.stone`, `stone` |
-| 4.75 | The column spirals in and gathers on its head: a hot ring at the brow, nine flame tongues standing off it, uneven and curling | orbit framing the crown and the whole figure | the free hand raised open under it, the chin up | `intro2.fire.crown`; `magic.flame-lance`, `fire` |
+| 4.75 | The column spirals in and gathers on its head: a hot ring at the brow, nine flame tongues standing off it, uneven and curling | orbit from its right framing the crown and the whole figure | the free arm raised open up and out under it, the chin up | `intro2.fire.crown`; `magic.flame-lance`, `fire` |
 | 5.45 | The staff comes down: fire runs out along the floor, the lava rings flare outward | wide and low | both arms up, then the staff driven down, a deep slam | `intro2.fire.slam`; `magic.fire.hit`, `explosion` |
 | 6.0 | **Name** (Rise): the hero under the burning crown, the forge's mouth glowing behind (heat shimmering off it, sparks, embers) | low, from its right, rising | the hold, the staff upright at its side | `intro2.fire.name`; `melee.greatsword.hit`, `metal` |
 
@@ -121,10 +121,10 @@ A summit under a storm. The storm has been waiting for a conductor; the pilot is
 | 0 | Rain on the slate, St Elmo's fire on the spires, the clouds lit from inside | low and wide, tilting up | unseen | `intro2.storm.bed`; `structure.rumble`, `lightning` |
 | 1.1 | Arcs leap spire to spire and crawl in over the stone; the cloud turns into a vortex | straight up into it, turning | unseen | `intro2.storm.charge`; `blast.static`, `lightning` |
 | 2.0 | A point of light gathers in the vortex's eye | down from the cloud | unseen | `intro2.storm.gather`; `chip.vacuum`, `dash` |
-| 2.45 | **Strike** (ramp): the trunk and its branches come down and are the pilot, white-hot in a crouch (a lag-0 afterimage cooling), arcs run out over the stone, the pools flash, the rock is scorched round it | smash to wide and low, then a fast orbit | a three-point landing on its right knee, the fist on the stone | `intro2.storm.strike`; `magic.lightning.hit`, `lightning` / `intro2.storm.after`; `blast.shock`, `explosion` |
+| 2.45 | **Strike** (ramp): the trunk and its branches come down and are the pilot, white-hot in a crouch (a lag-0 afterimage cooling), arcs run out over the stone, the pools flash, the rock is scorched round it | smash to wide and low, then a fast orbit round its right side | a three-point landing on its right knee, the fist on the stone | `intro2.storm.strike`; `magic.lightning.hit`, `lightning` / `intro2.storm.after`; `blast.shock`, `explosion` |
 | 3.7 | It rises, arcs crawling on its limbs | low, rising with it | the push up, the right foot stepping through | `intro2.storm.crackle`; `status.shock-zap`, `electric-hook` |
 | 4.3 | The staff up: a bolt into its head, then to every spire, which fire back into the sky | low and close, looking up, the spires firing round it | the staff raised high at its side, rocked back by the bolt, driven down | `intro2.storm.call`; `magic.lightning.shot`, `electric-hook-hit` |
-| 5.5 | **Name** (Slam): the staff crackling, rain, the storm behind | a Dutch low orbit from its left | the hold | `intro2.storm.name`; `blast.quake`, `explosion` |
+| 5.5 | **Name** (Slam): the staff crackling, rain, the storm behind | a Dutch low orbit from its right | the hold | `intro2.storm.name`; `blast.quake`, `explosion` |
 
 In Reduced effects the cloud's flashes are held .45 s apart and widened (`Flash`), the bolts re-shape every .42 s, and the
 strike's white-out is halved.
