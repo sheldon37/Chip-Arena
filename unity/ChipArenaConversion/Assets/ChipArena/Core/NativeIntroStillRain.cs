@@ -329,6 +329,15 @@ namespace ChipArena.UnityConversion
                         fx.Glow(p,(i%3==0?Crimson:White*.9f+Steel*.3f)*(1.3f*(1-u)*(1-u)),0,.025f+.02f*(1-u),0,u,33100+i);}
                 }
             }
+            // The cut down in both hands: a crimson-white sweep from over the head to the front, through the falling rain.
+            if(t>=KiriAt-.16f&&t<KiriAt+.2f)BladeSweep(fx,t,0,KiriAt-.16f,.2f,White*1.3f+Crimson,Crimson,.016f,.35f,33450,low);
+            // The chiburi: the rain on the blade flung off it in a fan of drops along the flick.
+            if(t>=ChiburiAt-.02f&&t<ChiburiAt+.5f)
+            {
+                float a=t-ChiburiAt+.02f;DrawnBlade(t,0,out var root,out var tip);var along=tip-root;int m=low?8:20;
+                for(int i=0;i<m;i++){float u=(i+.5f)/m;var p0=root+along*(.3f+.7f*u);var v0=new Vector3(NativeEntranceMath.Signed(33461,i)*.8f-1.6f,.4f+.8f*NativeEntranceMath.Rand(33463,i),NativeEntranceMath.Signed(33465,i)*.6f+.6f);
+                    var p=p0+v0*a+new Vector3(0,-4.9f*a*a,0);if(p.Y<NativeEntranceStage.FloorY)continue;fx.Streak(p,v0+new Vector3(0,-9.8f*a,0),rain*(1.5f*(1-a/.5f)),.004f,.03f,.03f,.5f,a/.5f,33470+i);}
+            }
             // The freeze: a few motes hang in the cold light round the blade.
             if(still>0){int m=low?6:14;for(int i=0;i<m;i++){var p=LineAt(.4f+3.2f*NativeEntranceMath.Rand(33201,i))+new Vector3(.4f*NativeEntranceMath.Signed(33203,i),.5f*NativeEntranceMath.Signed(33205,i),.4f*NativeEntranceMath.Signed(33207,i));fx.Glow(p,Steel*(.35f*still),0,.02f,0,0,33210+i);}}
             // The click: the rain thrown off the pilot in a burst of drops, low and out.
@@ -358,6 +367,8 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(FreezeAt,"intro2.stillrain.still","boss.noctiel.slowdown","install",.6f),
             new NativeIntroCue(ResumeAt,"intro2.stillrain.resume","boss.noctiel.rain.lines","water",.6f),
             new NativeIntroCue(SlideAt+.05f,"intro2.stillrain.bamboo","break.wood","wood",.75f),
+            new NativeIntroCue(KiriAt,"intro2.stillrain.kiri","boss.noctiel.slash","sword",.85f,.9f),
+            new NativeIntroCue(ChiburiAt,"intro2.stillrain.chiburi","melee.sword.swing","sword",.45f,1.3f),
             new NativeIntroCue(SheatheAt+.05f,"intro2.stillrain.slide","boss.noctiel.sword.pull","sword",.35f,1.2f),
             new NativeIntroCue(SlideAt+1.23f,"intro2.stillrain.fall","structure.land.timber","wood",.6f),
             new NativeIntroCue(ClickAt,"intro2.stillrain.click","melee.block","metal",.6f,1.3f),

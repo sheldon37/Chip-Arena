@@ -236,6 +236,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(SplitAt,"intro2.afterimage.split","magic.blink-strike","dash",.7f),
             new NativeIntroCue(CutAAt+HitA-.08f,"intro2.afterimage.cut","melee.daggers.swing","daggers",.85f),
             new NativeIntroCue(CutAAt+HitA+LagL-.06f,"intro2.afterimage.echo","melee.daggers.swing","daggers",.6f,1.15f),
+            new NativeIntroCue(CutAAt+HitA+.12f,"intro2.afterimage.cross","melee.daggers.swing","daggers",.75f,1.05f),
             new NativeIntroCue(CutAAt+HitA+LagR-.04f,"intro2.afterimage.echo2","melee.daggers.swing","daggers",.5f,1.3f),
             new NativeIntroCue(CutAAt+HitA+LagL+.75f,"intro2.afterimage.lanterns","break.wood","wood",.6f,1.2f),
             new NativeIntroCue(CutCAt+HitC-.08f,"intro2.afterimage.cut2","melee.daggers.swing","daggers",.85f,.9f),

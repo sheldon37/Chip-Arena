@@ -885,6 +885,231 @@
       "levelDb": -12,
       "fadeOutMs": 300,
       "prompt": "Two daggers crossed with a light ringing scrape and a soft shimmer, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.kiri",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.9,
+      "targetSeconds": {
+        "min": 0.35,
+        "max": 0.8
+      },
+      "levelDb": -7,
+      "fadeOutMs": 80,
+      "prompt": "A heavy two-handed katana cut straight down through falling rain, a deep fast whoosh ending in a clean ringing steel edge, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.stillrain.chiburi",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -10,
+      "fadeOutMs": 60,
+      "prompt": "A sharp flick of a katana blade shaking water off it, a quick airy snap with a faint metal ring and a fine spatter of droplets, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.faultline.ground",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.1
+      },
+      "levelDb": -12,
+      "fadeOutMs": 200,
+      "prompt": "The point of a heavy great sword set down onto broken stone, a low gritty scrape ending in a solid stone tap with a faint hiss of heat, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.afterimage.cross",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -9,
+      "fadeOutMs": 60,
+      "prompt": "A second quick dagger slash crossing the first, a thin fast whoosh with a light metallic shimmer, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.dusk",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 6,
+      "targetSeconds": {
+        "min": 3.0,
+        "max": 5.8
+      },
+      "levelDb": -18,
+      "fadeOutMs": 600,
+      "prompt": "Thin high-altitude wind over an open stone summit observatory at dusk, a soft airy hush with a faint distant tonal hum of slowly turning brass rings, fading out at the end, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.wind",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.7,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.6
+      },
+      "levelDb": -14,
+      "fadeOutMs": 80,
+      "prompt": "A ring-shaped metal blade swung back across the body, a soft rising whoosh of a heavy ring cutting the air, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.throw",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "A heavy metal ring blade thrown hard, a fast spinning whirr rising in pitch and moving away, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.ping",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.4
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "prompt": "A spinning metal ring blade glancing off a huge brass hoop, a bright metallic ping with a deep resonant bell-like ring that shimmers away, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.ping2",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.4
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "prompt": "A spinning metal ring blade glancing off a large brass hoop, a crisp metallic ping with a clear higher bell-like ring that shimmers away, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.ping3",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.4
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "prompt": "A spinning metal ring blade striking a brass armillary hoop, a sharp metallic clang with a warm middle bell tone that rings away, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.ping4",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.4
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "prompt": "A spinning metal ring blade striking a small brass hoop, a bright high metallic ping with a sparkling bell-like ring that shimmers away, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.return",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.55
+      },
+      "levelDb": -12,
+      "fadeOutMs": 60,
+      "prompt": "A spinning ring blade flying back toward the listener, a whirring whoosh growing quickly louder and closer, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.catch",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.6,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.55
+      },
+      "levelDb": -8,
+      "fadeOutMs": 120,
+      "prompt": "A heavy spinning metal ring blade caught in an armoured hand, a solid metallic clack that stops the whirr, with a short ringing tail, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.lock",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.4
+      },
+      "levelDb": -10,
+      "fadeOutMs": 600,
+      "prompt": "Four great brass rings locking into alignment, a deep resonant mechanical chime with layered ringing overtones swelling and then settling, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.orrery.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.9
+      },
+      "levelDb": -14,
+      "fadeOutMs": 600,
+      "prompt": "A soft shimmering celestial chime, clear high bell tones like starlight with a gentle airy tail, isolated, no reverb, no music, no background noise"
     }
   ]
 }

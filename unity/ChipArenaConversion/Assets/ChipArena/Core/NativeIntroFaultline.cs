@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The beats (presentation s): the leap, the point biting the floor ahead, the blow (the feet down, the blade driven in), the
         /// cracks reaching the walls, the head up, the rise wrenching it out, the point grounded at the right side, the stance.</summary>
         public const float LeapAt=2.2f,ContactAt=2.79f,SlamAt=LeapAt+PlungeHit,SpreadAt=SlamAt+.5f,HeadUpAt=3.55f,RiseAt=3.85f,GroundAt=4.92f,StandAt=5.1f;
-        private const float PlungeHit=.63f,Blade=1.69f;
+        private const float PlungeHit=.63f,SwordLength=1.69f;
         /// <summary>Where the blow's point goes into the floor (source frame: ahead of the pilot), how deep, and the blade's slope below level
         /// (a great sword strikes the floor far out: its grip then sits low before the knees in the squash).</summary>
         public static readonly Vector3 Bite=Local(0,0,1.75f);private const float Depth=.22f,Slope=.54f;
@@ -108,7 +108,7 @@ namespace ChipArena.UnityConversion
 
         // ---- the body: keyed (no match clips), the arms solved onto the great sword's way ----
         private readonly NativeIntroWield Sword=new NativeIntroWield();
-        protected override float TipLength(bool left)=>left?.15f:Blade;
+        protected override float TipLength(bool left)=>left?.15f:SwordLength;
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
             // The right hand on its way (both hands on the hilt until it is wrenched out); from the moment the point bites, on the grip of the
@@ -116,10 +116,14 @@ namespace ChipArena.UnityConversion
             // on its point at the right side.
             TwoHands=Hands(t)*.9f;Wield(Sword,t,pose,root,rotation,false);
             float bite=NativeEntranceMath.Smooth((t-(ContactAt-.05f))/.05f)*(1-NativeEntranceMath.Smooth((t-RiseAt-.05f)/.3f));
-            if(bite>.001f){HiltAt(t,out var grip,out var blade);HoldDrawn(pose,root,rotation,false,grip,blade,bite);}
+            if(bite>.001f){HiltAt(t,out var grip,out var blade);HoldDrawn(pose,root,rotation,false,grip+BiteFix,blade,bite);}
             float rest=NativeEntranceMath.Smooth((t-(GroundAt-.22f))/.22f);
-            if(rest>.001f)HoldDrawn(pose,root,rotation,false,RestGrip+new Vector3(0,NativeEntranceStage.FloorY,0),Vector3.Normalize(Rest-RestGrip),rest);
+            if(rest>.001f)HoldDrawn(pose,root,rotation,false,RestGrip+RestFix+new Vector3(0,NativeEntranceStage.FloorY,0),Vector3.Normalize(Rest-RestGrip),rest);
         }
+        /// <summary>Where the right hand aims so the DRAWN grip lands on the blow's and the rest's grips (the drawn arm is not the keyed arm
+        /// scaled: measured on the model, the drawn grip sat 5 cm right, 10 cm high and 19 cm short of the blow's, and 8 cm right, 11 cm high
+        /// and 3 cm short of the rest's; source frame).</summary>
+        private static readonly Vector3 BiteFix=new Vector3(.045f,-.1f,.185f),RestFix=new Vector3(.084f,-.118f,.03f);
         /// <summary>The hilt in both hands until the point bites; the blow's shock throws the left hand off it, out for balance.</summary>
         private static float Hands(float t)=>1-NativeEntranceMath.Smooth((t-(ContactAt-.03f))/.06f);
         /// <summary>Where the drawn grip is and which way the blade points once its point bites the floor ahead: driven in along its own line
@@ -128,7 +132,7 @@ namespace ChipArena.UnityConversion
         {
             float d=Depth*NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-ContactAt)/(SlamAt+.07f-ContactAt)));
             var fwd=Local(0,0,1);blade=Vector3.Normalize(fwd*(float)Math.Cos(Slope)-Vector3.UnitY*(float)Math.Sin(Slope));
-            var tip=new Vector3(Bite.X,NativeEntranceStage.FloorY,Bite.Z)+blade*(d/(float)Math.Sin(Slope));grip=tip-blade*Blade;
+            var tip=new Vector3(Bite.X,NativeEntranceStage.FloorY,Bite.Z)+blade*(d/(float)Math.Sin(Slope));grip=tip-blade*SwordLength;
         }
         /// <summary>Both hands on the hilt until the bite (Core NativeIntroGrip: the left at the two-hander's lower grip).</summary>
         public bool GripAt(float t,out NativeIntroGripAt grip){float w=Hands(t);grip=new NativeIntroGripAt(w);return w>.001f;}
@@ -237,6 +241,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(SpreadAt+.25f,"intro2.faultline.rumble","structure.debris","stone",.7f,.7f),
             new NativeIntroCue(RiseAt,"intro2.faultline.lift","melee.greatsword.hit","metal",.4f,.8f),
             new NativeIntroCue(SpreadAt+.8f,"intro2.faultline.hiss","magic.fire.hit","fire",.4f,.7f),
+            new NativeIntroCue(GroundAt,"intro2.faultline.ground","structure.gravel","stone",.55f),
             new NativeIntroCue(CardAt,"intro2.faultline.name","structure.thud","greatsword",.45f,.9f),
         };
         public override void Card(float t,ref NativeIntroCardState card)

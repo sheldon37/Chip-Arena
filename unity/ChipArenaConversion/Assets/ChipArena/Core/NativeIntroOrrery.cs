@@ -76,17 +76,21 @@ namespace ChipArena.UnityConversion
             Ring.InChest().Key(0,V(-.4f,-.28f,.14f),V(-.25f,-.45f,.86f)).Key(WindAt-.15f,V(-.4f,-.27f,.15f),V(-.25f,-.44f,.86f))
                 .Key(WindAt+.17f,V(-.25f,-.18f,.25f),V(.8f,-.33f,.51f)).Pass()
                 .Key(ReleaseAt-.2f,V(-.1f,-.08f,.28f),V(.8f,.05f,-.6f))
-                .Key(ReleaseAt-.06f,V(-.24f,.04f,.4f),V(.46f,.38f,.8f)).Pass()
+                .Key(ReleaseAt-.1f,V(-.24f,.04f,.4f),V(.46f,.38f,.8f)).Pass()
+                .Key(ReleaseAt-.08f,V(-.38f,.08f,.37f),V(.27f,.6f,.75f)).Pass()
+                .Key(ReleaseAt-.05f,V(-.52f,.13f,.44f),V(-.05f,.3f,.95f)).Pass()
                 .Key(ReleaseAt,V(-.58f,.16f,.43f),V(-.03f,.1f,1)).Pass()
-                .Key(ReleaseAt+.06f,V(-.5f,.08f,.36f),V(-.6f,.15f,.78f))
+                .Key(ReleaseAt+.07f,V(-.5f,.08f,.38f),V(-.3f,.5f,.81f)).Pass()
                 // (the hand empty while the ring flies: the arm comes down easy, the hand as if it held it)
                 .Key(ReleaseAt+.18f,V(-.42f,-.03f,.27f),V(-.25f,.38f,.89f)).Pass()
                 .Key(ReleaseAt+.4f,V(-.4f,-.2f,.2f),V(-.22f,-.31f,.93f))
                 .Key(HitAt[1],V(-.4f,-.28f,.14f),V(-.25f,-.45f,.86f))
                 .Key(CatchAt-.45f,V(-.4f,-.26f,.15f),V(-.25f,-.44f,.86f))
                 .Key(CatchAt-.3f,V(-.43f,-.01f,.27f),V(-.36f,.44f,.82f))
+                .Key(CatchAt-.23f,V(-.46f,.18f,.33f),V(-.71f,.61f,.35f)).Pass()
                 .Key(CatchAt,V(-.55f,.48f,.34f),V(-.77f,.58f,-.28f))
-                .Key(CatchAt+.12f,V(-.46f,.1f,.26f),V(-.8f,.54f,.26f))
+                .Key(CatchAt+.1f,V(-.51f,.28f,.28f),V(-.82f,.56f,-.09f)).Pass()
+                .Key(CatchAt+.22f,V(-.46f,.1f,.26f),V(-.8f,.54f,.26f))
                 .Key(LockAt-.2f,V(-.42f,-.25f,.16f),V(-.85f,-.2f,.48f))
                 .Key(Total,V(-.42f,-.26f,.15f),V(-.85f,-.2f,.48f));
             // The camera: down through the oculus and the turning rings to the pilot; close on the wind-up; low and wide as the ring strikes
@@ -178,6 +182,8 @@ namespace ChipArena.UnityConversion
             return Quaternion.Normalize(tilt*swing);
         }
         private static Vector3 RingCentreAt=>new Vector3(0,RingY+NativeEntranceStage.FloorY,0);
+        /// <summary>The lowest point of armillary ring `k` at `t` (source frame y): its centre less its radius times its tilt's sine.</summary>
+        public static float RingLowest(int k,float t){var n=Vector3.Transform(Vector3.UnitY,RingTilt(k,t,out _));return RingY+NativeEntranceStage.FloorY-Radius[k]*(float)Math.Sqrt(Math.Max(0,1-n.Y*n.Y));}
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)
