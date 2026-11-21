@@ -26,17 +26,16 @@ Owner: "Yes, we can do them in batches if this will improve the quality (Hopeful
 **Captures** (clips `F:/Chip Arena Development/scratch/intro-elemental/clips/*-b2.*`):
 - Hold 7 (bank v9): all four at High in Cyber City, Still Tide on Polar (the same look: the intro owns its light). Three faults, all fixed: the staff passing the head from left-side cameras, Still Tide's mirrored half baked dark, the ice too close and flat.
 - Hold 8 (bank v10): Still Tide at High: the breaker lit through its lip, the ice lit from within. Hold 9 was cut off when the PC slept at 21:06.
-- Still to film: Forgeborn and Strike Point at High on their final cameras, the Low strips, the side and three-quarter proofs (offline model stick proofs stand in: `clips/*-sticks-b2.png`), and Black Sun on v10 (its clip is hold 7's on v9; only the obsidian's gloss and the eye shot's side differ).
+- Hold A (00:06-00:15, bank v10, on `e6fdf0ac`, through the Editor queue): Forgeborn and Strike Point at High on their final cameras, Black Sun at High, Still Tide on Polar (the same look as in Cyber City), and per intro one Low capture that is both its Low strip and its side and three-quarter proof at the beats. The proofs show no sideways legs, the heads on their bodies and the staff in hand, clear of the face from the right; model stick proofs as well (`clips/*-sticks-b2.png`).
 
 **Animation impact:** the intros' presentation only. No hit timing, hitbox, damage, cooldown, movement or network change; lengths and name times are unchanged.
 
 **Voxel dependency:** the keyed `CapturedRig` pose drives the model through the intro (the v2 contract's keyed pose), as every v2 intro's does. No new voxel reads (the ratchet passes; the file is unpinned at zero).
 
 **Risks:**
-- The captures still to film: Forgeborn's and Strike Point's clips predate their right-side cameras and the crown's raised arm.
 - The ice is lit from within (emissive), bright in the hero frame; the wave reads best from the low front.
 - No pack clips (the per-author bake reached the queue late); the walks and the rise are keyed and mostly framed close or partly hidden.
-- Hold 7 ran 30 minutes, over the 25-minute guide; later holds were cut short for the queue.
+- Hold 7 ran 30 minutes, over the 25-minute guide; later holds were cut short for the queue. The relaunched Editor films a capture in about 70 s (it took about 5 min before the PC slept).
 
 **Next:** the integrator's review and `PrototypeBuild.Validate`; bank v10 into the Drive zip; batch 2's sound job at release. Mocap through `ChipArenaIntroMotionElemental` could later replace Black Sun's walk (`2Hand-Staff-Crouch-Walk-Forward`, legs and torso) and Strike Point's rise.
 
