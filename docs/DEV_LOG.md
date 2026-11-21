@@ -1,3 +1,41 @@
+## 2026-11-20 — Claude (M1): no hole where the street dress gives a bay to the bleed: the lot's wall under Ward Zero's growth (owner report; presentation only)
+
+**Branch and status:** `claude/bleed-growth-wall` from shared `d4ee788c`: the fix `3b2db7e4`, shared `3f788a3d` merged in
+(`4397873c`), and `a1cd97f8` keeps the check's Program.cs lines clear of `claude/meridian-stairs`' (the two merge cleanly).
+Pushed, not merged into shared.
+**The owner:** "Weird building bug found near ward zero" (The Navigation, near the Ward Zero door, test channel `076ae3fc`).
+
+**The cause.** The street dress (D1) hands bays to the bleed (D3); not Astra's geometry:
+- The street dress leaves a facade bay's module out wherever nine points across the bay lie under the bleed's skins
+  (`NativeCityBleedDress.Covers`).
+- Ward Zero's warp skin, its containment growth, has no wall of its own: `tools/stages/meridian_bleed.py` `wall_growth` draws
+  only the violet blooms and their lit nodules.
+- On a 4 m ground storey, the growth covers the lower points and the quarantine sheeting above covers the top one. So the bay
+  was given away and left empty: a hole through the lot to the next street, the blooms floating in it. Those are the owner's
+  dark blobs with purple dots, and the lit street behind.
+- Two more skins need that wall: the quarantine sheeting hangs 6-26 cm off it, and the Ironworks' riveted plates leave 2 cm
+  seams.
+
+**What changed:** a bay given to the bleed keeps the lot's own plain wall, which the skins hang on (`BleedBay` in
+`Core/NativeMeridianDressLots.cs`; the bleed draws nine layers up, so nothing fights). Banks unchanged.
+
+**The check:** `BleedSkinChecks` (`--bleed-skins`, in the full suite). Every street plan's first four live deals and a deal
+like the owner's (`1126921887`: four growth bays in a row under the sheeting) are dressed with the bleed as the live run
+dresses them. Every bay given to the bleed must be walled. It fails on shared's code. Diagnostics come with it:
+`--bleed-skins-probe` and `--bleed-skins-export`.
+
+**Before/after:** `F:/Chip Arena Development/scratch/bleed-growth-wall/offline-wardzero-growth-before-after.jpg` (offline
+renders of that deal with both banks, back faces culled as in the game).
+
+**Checks:** the full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `a1cd97f8`:
+1,090 groups, exit 0 (`--bleed-skins`: 92 checks, 10 bays given, 4 under the growth). Also passing at `4397873c`:
+`--meridian-dress` and `--hub-zfight` with the city bank, the Unity compile gate (4 assemblies; `a1cd97f8` touches only the
+tests), `git diff --check` against shared and the pin scan (0 broken). Not run: an Editor capture (offline stills only), a Windows
+build.
+
+**Risks:** where a skin is sparse (the growth's blooms), the bay reads as the lot's plain wall with growth on it, which is the
+intent. For D3: the growth module could carry its own stained wall in a later bank pass.
+
 ## 2026-11-20 — Claude: intros v2 batch 1 released, with the hub z-fight fix and the floor seams (integrator)
 Owner: "Ship five now" (the dev intro and four generic intros; Slipstream follows on its Runner Action pack run). Shared `076ae3fc`; the builder at `076ae3fc`, test channel revision `639308124444299384` (build `a24d67a4`, 380.9 MiB). Earlier today: the hub z-fight fix alone, shared `5d54766c`, revision `639308000396336573`.
 - **Merged:** `claude/intro-v2` (framework `claude/intro-framework` to `de6c5207`, generic `claude/intro-generic` `1525dfc6`, dev `claude/intro-dev-architect` `8783ab51`) as `139b40e4`, then five fix merges; `claude/dress-seams` (`72ab4d28`) as `7115bad3`; `claude/hub-zfight` (`f279813f`, plus the PartyLoadingChecks re-pin for #437) as `5d54766c`.
