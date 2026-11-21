@@ -1,3 +1,48 @@
+## 2026-11-20 — Claude: releases 3 and 4: Slipstream on the Runner Action pack, Belvedere Camp's part 1, Meridian's stairs and the Ward Zero wall (integrator)
+**Release 3**
+- **Published:** shared `3f788a3d`, then `8181bc56` (release 3b), to the builder. Test channel revision `639308176599373533` (build `65eed03d`, 383.3 MiB).
+- **Merged:**
+  - `claude/intro-generic` `4bc722bb` (code `89a64310`, with framework `9bbf5845`'s pack clips);
+  - `claude/camp` `abac4150` (code `9200b7d9`);
+  - `51696398`, Slipstream's sound jobs.
+- **Live:**
+  - Slipstream is registered again. Its run, take-off and slide come from the owner's Runner Action pack, through `ChipArenaIntroMotion` sampled as keys.
+  - The camp's part 1: lamps, sails, barrel fires, the war and MISSING boards, bulb strings, and placeholders for the sound bed.
+  - The survivors and the whole camp stay a DEV preview until Astra's A1.
+- **The first build failed at the sound import (gate 6).** v2a's `intro2.slipstream.chime_01` came out at 0.549 s after silence trimming, under its 0.9 s minimum; a dry run then found v2b's `slide_02` at 0.624 s, under 0.7 s.
+  - **The fix, `55b5367f`:** the 15 accepted originals were copied with filtered receipts into new jobs v2c (stop, board, slide; 1 take each) and v2d (rush, burst, run, leap, pass, name; 2 takes each).
+  - v2a and v2b left the queue. The chime and the second slide take play their fallbacks. Nothing was regenerated.
+- **The Drive zip:** 170,838,020 bytes, sha `00fd2311`. It adds `ChipArenaIntroMotion` (131,257 bytes), `ChipArenaCamp` (6,938,012) and `ChipArenaCampMotion` (1,230,604), with their metas. The backup is `LocalAssets-2026-11-20-before-release3.zip`.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `51696398`;
+  - the full suite at `51696398` and at `55b5367f` (1,089 groups, exit 0);
+  - the Unity compile;
+  - the build's sound import and package validation.
+  - The Python sound tests fail the same 8 as on shared.
+
+**Release 4**
+- **Published:** shared and the builder at `3accbc3c`. Test channel revision `639308197846323091` (build `71da4aaf`, 383.3 MiB).
+- **Merged:** `claude/meridian-stairs` `7911a128` and `claude/bleed-growth-wall` `b8214acd` (both M1).
+- **Live, presentation only:**
+  - No staircasing: flights are cut on their lines, and the fire escapes are iron and caged.
+  - Ward Zero's growth bays keep the lot's wall, so there is no hole onto the next street.
+- **Checks:**
+  - the full suite at `184feb25` (1,091 groups, exit 0);
+  - the Unity compile;
+  - M1's `--meridian-stairs`, `--bleed-skins`, `--meridian-dress` (with the bank), `--dress-seams` and `--hub-zfight`.
+- **Not in the Editor:** the stairs were filmed live there before; the wall was checked offline only.
+
+**Not run, and for Astra**
+- **Not run:** two Windows clients, and the sounds by ear.
+- **For Astra:**
+  - `test_effects_audio`, `test_import_sound_requests` and `test_intro_music` run `install_local_assets.py` against the real `%LOCALAPPDATA%/ChipArena/SoundQueue`. They overwrote the builder PC's `Latest-Sound-Status.json`, which was restored from the builder's Drive copy; the fix is to isolate LOCALAPPDATA.
+  - Meridian's solid street props are proposed in `docs/expedition/MERIDIAN-STREETS.md` part 2 (release 5), and thin fire-escape flights in the staircasing notes.
+
+**Next**
+- release 5: the street life's part 1, and the bleed's lamps under 3 Hz;
+- batch 2, the weapon intros;
+- the camp's sounds, which wait on the owner.
+
 ## 2026-11-20 — Claude (M1): Meridian's flights on their lines: no staircasing; the fire escapes iron and caged (owner report; presentation only)
 
 **Branch and status:** `claude/meridian-stairs` from shared `7115bad3`; work `3113c4e0` and `1a30006f`, shared `d4ee788c` merged in
