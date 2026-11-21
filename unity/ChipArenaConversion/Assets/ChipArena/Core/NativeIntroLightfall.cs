@@ -14,12 +14,18 @@ namespace ChipArena.UnityConversion
     /// The bow's string, arrow and quiver are the match's (INativeIntroBow: Runtime draws them from the view given here); the arms are
     /// the Bow's own (NativeBowPose), as the old Arrowfall's were. Presentation only: pure functions of the presentation clock.
     /// </summary>
-    public sealed class NativeIntroLightfall:NativeRangedIntro,INativeIntroBow
+    public sealed class NativeIntroLightfall:NativeRangedIntro,INativeIntroBow,INativeIntroGrip
     {
         public const string Id=NativeIntroCatalog.WeaponPrefix+"bow";
         public const float Total=8.0f,CardAt=6.2f;
-        public const float NockFrom=1.15f,NockTo=1.66f,RaiseFrom=1.4f,RaiseTo=1.9f,DrawFrom=1.95f,Full=2.75f,Release=3.25f,Bloom=3.72f,RainFrom=4.12f,LowerFrom=4.9f,LowerTo=5.45f;
+        public const float NockFrom=1.15f,NockTo=1.85f,RaiseFrom=1.15f,RaiseTo=1.9f,DrawFrom=1.95f,Full=2.75f,Release=3.25f,Bloom=3.72f,RainFrom=4.12f,LowerFrom=4.9f,LowerTo=5.45f;
         public const float SkyPitch=50,SkySpeed=58;public const int Volley=24;
+        /// <summary>The shot's heading (world yaw: up over the shrine's left) and the side-on turn of the draw (the canonical bow draw's quarter
+        /// turn: the root that far right of the shot, so the left shoulder leads to it).</summary>
+        public const float ShotYaw=Facing+1.05f,SideOn=1.45f;
+        /// <summary>The full draw's pull on the drawn model: the bow arm straight (the bow's own extension, 1) and the string at the drawn jaw
+        /// (Tests/IntroRangedChecks: the model's narrow shoulders put the jaw nearer the riser than the keyed rig's anchor).</summary>
+        public const float DrawPull=.6f;
         private static readonly Vector3 Gold=NativeEntranceFx.Hex(0xffd88a),White=new Vector3(1,1,1),Moonlight=NativeEntranceFx.Hex(0x9ab8ff),Firefly=NativeEntranceFx.Hex(0xc8ff8a),Mist=NativeEntranceFx.Hex(0x8a9ab8);
         /// <summary>The moon (ranged_lightfall.py MOON: behind the pilot, up to the left), the six lanterns' fire boxes.</summary>
         private static readonly Vector3 Moon=Vector3.Normalize(SDir(.40f,.39f,-.83f));
@@ -34,21 +40,30 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroLightfall():base(Id,Total,CardAt,Release,0xffd88a)
         {
-            float drawYaw=Facing+1.05f;
-            Start=Stance(.16f,.07f,.1f,-.18f,-.1f,-.42f);
-            Steps=new[]{Step(true,1.75f,1.98f,.2f,.15f,.3f,.05f,drawYaw),Step(false,1.82f,2.06f,-.17f,-.13f,-.55f,.05f,drawYaw),Step(true,LowerFrom+.2f,LowerFrom+.5f,.16f,.07f,.1f,.05f),Step(false,LowerFrom+.32f,LowerFrom+.62f,-.18f,-.1f,-.42f,.05f)};
+            // ---- the keyed body (ModelFeet: the stance is the drawn model's ankles, the drops the drawn hips', docs/INTROS-V2.md 9c) ----
+            // Standing in the clearing, the bow low in the left hand; a glance up at the canopy. The nock: the string hand up over the right
+            // shoulder to the quiver, the head turning after it, an arrow drawn and brought down onto the string. The turn side-on to the shot
+            // (the canonical bow draw, NativeIntroPoses.BowDraw: the left shoulder to the sky's mark, the feet across the line), the bow raised
+            // and drawn to the anchor at the jaw (the pull the bow view gives, NativeIntroPoses.BowAnchorPull), the body settling into the
+            // draw; the release's follow-through; the bow down, squared to the facing for the name.
+            float drawYaw=ShotYaw-SideOn;
+            Steps=new[]{Step(true,1.5f,1.74f,.13f,.05f,.4f,.05f,drawYaw),Step(false,1.62f,1.86f,-.13f,-.05f,0,.04f,drawYaw),
+                Step(true,LowerFrom+.2f,LowerFrom+.46f,.13f,.04f,.15f,.04f),Step(false,LowerFrom+.32f,LowerFrom+.58f,-.13f,-.04f,-.3f,.04f)};
+            Start=Stance(.13f,.04f,.15f,-.13f,-.04f,-.3f);
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,0,Facing).J(Hd,.1f).J(RA,-.12f,0,-.16f).J(RE,-.3f);
-            k.Key(1.0f,stand).Root(0,.88f,0,Facing).J(Hd,-.06f,.05f,0).J(RA,-.12f,0,-.16f).J(RE,-.3f);
-            k.Key(NockFrom+.25f,stand).Root(0,.88f,0,Facing).J(Hd,-.05f,-.4f,0).J(C,0,-.1f,0).J(RA,-.12f,0,-.16f).J(RE,-.3f);
-            k.Key(NockTo,stand).Root(0,.88f,0,Facing+.15f).J(Hd,.0f,-.1f,0).J(RA,-.12f,0,-.16f).J(RE,-.3f);
-            k.Key(RaiseTo+.1f,stand).Root(0,.88f,0,drawYaw).Drop(-.05f).PassKey();
-            k.Key(Full,stand).Root(0,.88f,0,drawYaw).Drop(-.09f);
-            k.Key(Release,stand).Root(0,.88f,0,drawYaw).Drop(-.1f).ImpactKey();
-            k.Key(Release+.35f,stand).Root(0,.88f,0,drawYaw).Drop(-.07f).J(B,-.04f);
-            k.Key(LowerFrom,stand).Root(0,.88f,0,drawYaw).Drop(-.05f).J(RA,-.2f,0,-.25f).J(RE,-.6f);
-            k.Key(LowerTo,stand).Root(0,.88f,0,Facing).Drop(-.02f).J(RA,-.16f,0,-.22f).J(RE,-.45f);
-            k.Key(Total,NativeEntranceKeys.Hero());Keys=k;
+            k.Key(0,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).J(Hd,.1f,.04f);
+            k.Key(1.0f,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).J(Hd,-.08f,.06f);
+            // the bow coming up before the body, the string hand meeting the string, the eyes going up to the sky's mark
+            k.Key(NockFrom+.2f,stand).Root(0,.88f,0,Facing+.1f).Drop(-.025f).J(C,.02f,.06f).J(Hd,.06f,.12f);
+            k.Key(1.55f,stand).Root(0,.88f,0,Facing+.02f).Drop(-.035f).J(C,0,.02f).J(Hd,-.12f,.18f).PassKey();
+            // side-on to the shot as the bow comes up, sinking into the stance through the draw
+            k.Key(RaiseTo+.1f,NativeIntroPoses.BowDraw()).Root(0,.88f,0,drawYaw).Drop(-.05f).PassKey();
+            k.Key(Full,NativeIntroPoses.BowDraw()).Root(0,.88f,0,drawYaw).Drop(-.08f);
+            k.Key(Release,NativeIntroPoses.BowDraw()).Root(0,.88f,0,drawYaw).Drop(-.085f).ImpactKey();
+            k.Key(Release+.35f,NativeIntroPoses.BowDraw()).Root(0,.88f,0,drawYaw).Drop(-.06f).J(B,-.03f);
+            k.Key(LowerFrom,NativeIntroPoses.BowDraw()).Root(0,.88f,0,drawYaw).Drop(-.04f);
+            k.Key(LowerTo,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.02f).J(Hd,-.02f,.06f);
+            k.Key(Total,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.02f).J(Hd,0,.08f);Keys=k;
             // the volley: sixteen arrows in a ring on the terrace, eight out by the lanterns (one beside each lantern it lights)
             for(int i=0;i<Volley;i++)
             {
@@ -82,10 +97,10 @@ namespace ChipArena.UnityConversion
             var v=new NativeBow.View{Phase=NativeBow.Phase.Carry,Arrows=1};
             if(t<Release)
             {
-                float nock=NativeEntranceMath.Clamp01((t-NockFrom)/(NockTo-NockFrom)),a0=NativeBow.Follow/NativeBow.Nock,u=a0+(1-a0)*nock;
-                if(t>=NockFrom&&nock<1){v.Phase=NativeBow.Phase.Nock;v.Nocking=u;}v.Nocked=t>=NockFrom&&u>=.86f;v.Arrows=v.Nocked?1:0;
+                // (the arrow on the string from the start, the bow hand's finger keeping it on the shelf while the string hand is free)
+                v.Nocked=true;v.Arrows=1;
                 v.Raised=NativeEntranceMath.Ramp(t,RaiseFrom,RaiseTo);
-                if(t>=DrawFrom){float f=NativeEntranceMath.Clamp01((t-DrawFrom)/(Full-DrawFrom));v.Phase=f>=1?NativeBow.Phase.Hold:NativeBow.Phase.Draw;v.Age=t-DrawFrom;v.Meter=f;v.Pull=NativeBow.PullOf(f);v.Full=f>=1;v.Extend=v.Pull;}
+                if(t>=DrawFrom){float f=NativeEntranceMath.Clamp01((t-DrawFrom)/(Full-DrawFrom));v.Phase=f>=1?NativeBow.Phase.Hold:NativeBow.Phase.Draw;v.Age=t-DrawFrom;v.Meter=f;v.Pull=NativeBow.PullOf(f)*DrawPull;v.Full=f>=1;v.Extend=NativeBow.PullOf(f);}
                 return v;
             }
             float age=t-Release,down=NativeEntranceMath.Ramp(t,LowerFrom,LowerTo);
@@ -94,15 +109,74 @@ namespace ChipArena.UnityConversion
             v.Extend=1-NativeEntranceMath.Ramp(t,LowerFrom-.1f,LowerTo);v.Raised=1-down;return v;
         }
         public bool Bow(float t,out NativeBow.View view){view=ViewAt(t);return true;}
-        public static Vector3 AimAt(float t)=>NativeBowPose.AimOf(0,SkyPitch*NativeEntranceMath.Ramp(t,RaiseFrom,Full));
+        /// <summary>The aim's pitch at `t` (deg): up to the sky's mark as the bow rises.</summary>
+        public static float PitchAt(float t)=>SkyPitch*NativeEntranceMath.Ramp(t,RaiseFrom,Full);
+        // ---- the body on the model (docs/INTROS-V2.md 9a-9c) ----
+        protected override bool ModelFeet=>true;
+        /// <summary>The string hand on the string at the nock while the arrow is on it (the grip IK: its pull the bow view's), off at the release.</summary>
+        public bool GripAt(float t,out NativeIntroGripAt g)
+        {
+            // (the string elbow as the Bow's own: down and out with the bow low, back and high as it is raised to the draw)
+            var v=ViewAt(t);float on=OnString(t);var pole=Vector3.Normalize(Vector3.Lerp(new Vector3(-1,-.7f,-.2f),NativeIntroGrip.Pole(NativeIntroGrip.Kind.Bow),v.Raised));
+            float w=on>=.999f?1:0;g=new NativeIntroGripAt(w,pole,0,v.Pull,0);return w>0;
+        }
+        /// <summary>How far the string hand is on the string at `t` (the arrow seated .. the release).</summary>
+        private static float OnString(float t)=>t>=Release?0:NativeEntranceMath.Ramp(t,NockTo-.14f,NockTo);
+        private static readonly Quaternion RiserHand=NativeIntroGrip.Natural(NativeIntroGrip.Kind.Bow,false),StringHand=NativeIntroGrip.Natural(NativeIntroGrip.Kind.Bow,true);
+        /// <summary>Keeps arm `left`'s forearm twist (the elbow's own and the wrist's, in its hand's convention `natural`) within `most` (rad):
+        /// the hand rolled back about its forearm (a free hand after the release, whose turn the Bow's re-solved arm leaves wound).</summary>
+        private static void ClampForearm(CapturedRig.Pose pose,bool left,Quaternion natural,float most)
+        {
+            int e=left?CapturedRig.LElbow:CapturedRig.RElbow,h=e+1;
+            float Twist(Quaternion q,out Quaternion swing){var down=Vector3.Transform(-Vector3.UnitY,q);swing=CapturedRig.FromTo(-Vector3.UnitY,down);var tq=Quaternion.Normalize(Quaternion.Inverse(swing)*q);
+                float a=2*(float)Math.Atan2(-tq.Y,tq.W);while(a>Math.PI)a-=2*(float)Math.PI;while(a<-Math.PI)a+=2*(float)Math.PI;return a;}
+            float et=Twist(pose.Rotation[e],out _);var anatomical=Quaternion.Normalize(pose.Rotation[h]*Quaternion.Inverse(natural));float wt=Twist(anatomical,out var hs);
+            float total=et+wt;if(Math.Abs(total)<=most)return;float keep=Math.Sign(total)*most-et;
+            pose.Rotation[h]=Quaternion.Normalize(hs*Quaternion.CreateFromAxisAngle(-Vector3.UnitY,keep)*natural);
+        }
+        /// <summary>Eases a keyed wrist bent past `most` (rad, in its hand's convention `natural`) back to `most`, the hand turned toward its forearm.</summary>
+        private static void EaseWrist(CapturedRig.Pose pose,bool left,Quaternion natural,float most)
+        {
+            int h=left?CapturedRig.LHand:CapturedRig.RHand;var anatomical=Quaternion.Normalize(pose.Rotation[h]*Quaternion.Inverse(natural));
+            var dir=Vector3.Transform(-Vector3.UnitY,anatomical);float bend=(float)Math.Acos(Math.Max(-1,Math.Min(1,-dir.Y)));if(bend<=most)return;
+            var swing=CapturedRig.FromTo(-Vector3.UnitY,dir);var twist=Quaternion.Inverse(swing)*anatomical;
+            pose.Rotation[h]=Quaternion.Normalize(Quaternion.Slerp(Quaternion.Identity,swing,most/bend)*twist*natural);
+        }
         private static readonly int[] RightArm={RA,RE,RH};private readonly Quaternion[] keyed=new Quaternion[3];
+
+        /// <summary>The Bow's own arms (NativeBowPose, as the canonical bow draw: the bladed torso, the bow arm on the arrow line, the string
+        /// hand on the nock), the aim off the root toward the shot's heading; the nock's reach over the right shoulder re-solved with the
+        /// elbow up and out (the quiver is behind the shoulder); the palms turned by the forearms.</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
             var v=ViewAt(t);pose.World();for(int i=0;i<3;i++)keyed[i]=pose.Rotation[RightArm[i]];
-            var aim=AimAt(t);NativeBowPose.Torso(pose,aim,v.Raised,0,0);
+            var f=Vector3.Transform(Vector3.UnitZ,rotation);float facing=(float)Math.Atan2(f.X,f.Z),yaw=ShotYaw-facing;while(yaw>Math.PI)yaw-=2*(float)Math.PI;while(yaw<-Math.PI)yaw+=2*(float)Math.PI;
+            var aim=Vector3.Transform(Vector3.UnitZ,CapturedRig.Rot(CapturedRig.Y,yaw)*CapturedRig.Rot(CapturedRig.X,-PitchAt(t)*(float)Math.PI/180));
+            NativeBowPose.Torso(pose,aim,v.Raised,1,0);
             NativeBowPose.Arms(pose,Read,v,t,aim,NativeBowPose.ChestAnchor(pose),NativeBowPose.Start,v.Raised,NativeBowPose.CarryWrist,0,false);
-            float reach=NativeEntranceMath.Ramp(t,NockFrom-.02f,NockFrom+.14f);
-            if(t<RaiseFrom&&reach<1){for(int i=0;i<3;i++)pose.Rotation[RightArm[i]]=Quaternion.Slerp(keyed[i],pose.Rotation[RightArm[i]],reach);pose.World();}
+            // (the string hand free by the side until it meets the string as the bow comes up: the keyed arm, then the Bow's and the grip's)
+            float on=OnString(t);
+            if(on<.999f&&t<Release)
+            {
+                // The hook: the string hand from its hang up the right side onto the string (an arc out from the body, the elbow out and then
+                // back and high as the Bow's), its hand turning onto the string; before it, the keyed arm.
+                if(on<=.001f){for(int i=0;i<3;i++)pose.Rotation[RightArm[i]]=keyed[i];pose.World();}
+                else
+                {
+                    // (the hand anatomical while hooking: the string's hand without its convention, which the grip takes on at the string)
+                    var string0=pose.WorldPosition[LH]+Vector3.Transform(NativeBow.NockAt(v.Pull)-NativeBowModels.Hook,pose.WorldRotation[LH]);var onString=pose.WorldRotation[RH];
+                    for(int i=0;i<3;i++)pose.Rotation[RightArm[i]]=keyed[i];pose.World();var hang=pose.WorldPosition[RH];
+                    var chest=pose.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var outward=Vector3.Transform(-Vector3.UnitX,chest);
+                    float u=NativeEntranceMath.Smooth(on);var at=Vector3.Lerp(hang,string0,u)+outward*(.16f*(float)Math.Sin(Math.PI*u))+Vector3.Transform(Vector3.UnitZ,chest)*(.06f*(float)Math.Sin(Math.PI*u));
+                    var turn=Quaternion.Slerp(pose.WorldRotation[RH],Quaternion.Normalize(onString*Quaternion.Inverse(StringHand)),u);var pole=Vector3.Normalize(Vector3.Lerp(new Vector3(-1,-.6f,-.1f),NativeIntroGrip.Pole(NativeIntroGrip.Kind.Bow),u*u));
+                    CapturedRig.Arm(pose,false,Vector3.Transform(at-pose.WorldPosition[CapturedRig.Chest],inv),Quaternion.Normalize(inv*turn),pole);pose.World();
+                }
+            }
+            // (the string hand after the release is a free hand: the fingers open and it flies back straight on its forearm, no roll wound in)
+            if(t>=Release)pose.Rotation[RH]=Quaternion.Identity;
+            var rightHand=on>=.999f?StringHand:Quaternion.Identity;
+            NativeIntroGrip.Forearm(pose,true,RiserHand);NativeIntroGrip.Forearm(pose,false,rightHand);
+            EaseWrist(pose,true,RiserHand,1.39f);EaseWrist(pose,false,rightHand,1.39f);ClampForearm(pose,false,rightHand,1.52f);pose.World();
         }
         private void Planned()
         {
@@ -239,7 +313,7 @@ namespace ChipArena.UnityConversion
         private static readonly NativeIntroCue[] cues=
         {
             new NativeIntroCue(.02f,"intro2.lightfall.grove",null,null,.35f),
-            new NativeIntroCue(NockFrom+.05f,"intro2.lightfall.nock","melee.daggers.swing","daggers",.35f,1.2f),
+            new NativeIntroCue(NockFrom+.05f,"intro2.lightfall.nock","melee.daggers.swing","daggers",.3f,1.2f),
             new NativeIntroCue(NockTo-.06f,"intro2.lightfall.seat","ui.click","ui",.3f,1.3f),
             new NativeIntroCue(DrawFrom,"intro2.lightfall.draw","structure.creak","wood",.5f,1.3f),
             new NativeIntroCue(DrawFrom+.2f,"intro2.lightfall.gather","chip.delayed.charge","install",.55f),

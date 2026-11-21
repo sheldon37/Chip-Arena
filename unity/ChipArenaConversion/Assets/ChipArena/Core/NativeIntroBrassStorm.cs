@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     /// Presentation only: pure functions of the presentation clock, thinned by quality; in Reduced effects the muzzle burns steady
     /// instead of strobing.
     /// </summary>
-    public sealed class NativeIntroBrassStorm:NativeRangedIntro
+    public sealed class NativeIntroBrassStorm:NativeRangedIntro,INativeIntroGrip
     {
         public const string Id=NativeIntroCatalog.WeaponPrefix+"machinegun";
         public const float Total=7.8f,CardAt=6.0f;
@@ -30,70 +30,139 @@ namespace ChipArena.UnityConversion
         private static readonly float[] Drums={2.6f,8.4f, 3.35f,8.9f, 2.95f,9.6f, 3.9f,9.9f, 2.2f,9.9f};
         private static readonly float[] Crates={-4.6f,8.6f,1.0f,.1f, -5.7f,9.1f,1.0f,-.15f, -4.9f,9.4f,.9f,.05f};
         /// <summary>The drum knocked over and the crate burst (their indices) and when.</summary>
-        private const int Knocked=0,Burst=0;private const float KnockAt=3.05f,BurstAt=3.62f;
-        /// <summary>The right wrist on the grip while firing (source frame) and the low carry.</summary>
-        private static readonly Vector3 Grip=L(-.17f,1.22f,.24f),Carry=L(-.15f,.98f,.3f);
+        private const int Knocked=0,Burst=0;
+        private static readonly float KnockAt=FireFrom+DrumRound*Rate+.075f,BurstAt=FireFrom+CrateRound*Rate+.075f;
+        /// <summary>The drawn gun's grip while firing (the weapon frame's origin on the drawn model, shouldered; Tests/IntroRangedChecks holds
+        /// the bore on each round's strike from there).</summary>
+        private static readonly Vector3 Grip=L(-.17f,1.22f,.24f);
         private readonly Vector3[] at=new Vector3[96];private readonly Quaternion[] turn=new Quaternion[96];
 
         public NativeIntroBrassStorm():base(Id,Total,CardAt,2.6f,0xffa040)
         {
-            // ---- the keyed body: the low carry, the step up to the bags, braced for the burst (arms by IK), lowered after ----
-            Start=Stance(.16f,-.05f,.1f,-.2f,-.4f,-.45f);
-            Steps=new[]{Step(true,StepUp,StepUp+.3f,.17f,.14f,.12f,.07f),Step(false,StepUp+.12f,StepUp+.42f,-.22f,-.22f,-.5f,.05f)};
+            // ---- the keyed body (ModelFeet: the stance is the drawn model's ankles, the drops the drawn hips', docs/INTROS-V2.md 9c) ----
+            // In the dark behind the bags: the gun at the low carry (the owner's rest-low rule), the weight back, the head turning to each
+            // flood as it bangs on (left, right, then up the yard to the shutter). The step in: the left foot to the bags, the gun up into the
+            // shoulder as the off hand racks the handle back and home. The burst: the match's long-gun stance (NativeIntroPoses.RifleAim's
+            // blade, the cheek down on the stock), the knees soft and the weight driven into the gun, the hips swinging with the traverse (the
+            // root's yaw takes half of it, the arms the rest), each round's kick in the muzzle. The belt runs dry: a beat on the stock, then
+            // the head up out of the smoke and the gun down to the carry, squared to the facing for the name.
+            Start=Stance(.13f,-.1f,.12f,-.15f,-.34f,-.35f);
+            Steps=new[]{Step(true,StepUp,StepUp+.3f,.14f,.18f,.3f,.07f),Step(false,StepUp+.12f,StepUp+.42f,-.14f,-.16f,-.6f,.05f),
+                Step(false,Lower+.05f,Lower+.38f,-.15f,-.1f,-.35f,.04f),Step(true,Lower+.22f,Lower+.5f,.14f,.12f,.15f,.035f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,-.1f,Facing).Drop(-.03f).J(B,.06f).J(Hd,.04f).J(RA,-.55f,.15f,-.15f).J(RE,-1.05f).J(LA,-.75f,-.15f,.2f).J(LE,-.9f);
-            k.Key(StepUp,stand).Root(0,.88f,-.1f,Facing).Drop(-.03f).J(B,.06f).J(Hd,-.02f).J(RA,-.55f,.15f,-.15f).J(RE,-1.05f).J(LA,-.75f,-.15f,.2f).J(LE,-.9f);
-            k.Key(FireFrom-.1f,stand).Root(0,.88f,0,Facing).Drop(-.08f).J(B,.14f).J(Sp,.05f).J(C,.04f,.05f,0).J(Hd,.04f,-.05f,0).J(LL,-.25f,0,.12f).J(LK,.3f).J(RL,.18f,0,-.12f).J(RK,.25f);
-            k.Key(FireTo,stand).Root(0,.88f,0,Facing).Drop(-.09f).J(B,.16f).J(Sp,.06f).J(C,.05f,.05f,0).J(Hd,.05f,-.05f,0).J(LL,-.25f,0,.12f).J(LK,.32f).J(RL,.18f,0,-.12f).J(RK,.26f);
-            k.Key(Lower,stand).Root(0,.88f,0,Facing).Drop(-.06f).J(B,.1f).J(C,.02f,.05f,0).J(Hd,.02f,-.03f,0).J(LL,-.2f,0,.12f).J(LK,.25f).J(RL,.12f,0,-.12f).J(RK,.2f);
-            k.Key(Total,stand).Root(0,.88f,0,Facing).Drop(-.05f).J(B,.08f).J(C,.02f,.06f,0).J(Hd,-.02f,-.06f,0).J(LL,-.18f,0,.12f).J(LK,.22f).J(RL,.1f,0,-.12f).J(RK,.18f);Keys=k;
+            float[] carry(float head,float turn,float drop)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.Yaw]=Facing;v[NativeEntranceKeys.BodyY]=drop;
+                NativeEntranceKeys.Set(v,B,.03f,0,0);NativeEntranceKeys.Set(v,C,-.02f,.06f+turn*.3f,0);NativeEntranceKeys.Set(v,Hd,head,turn,0);});
+            k.Key(0,carry(.06f,0,-.03f));
+            k.Key(Flood1-.05f,carry(.06f,0,-.03f));
+            // each flood bangs on: a start, the head snapping toward it (left, right, then up the yard)
+            k.Key(Flood1+.12f,carry(-.04f,.38f,-.05f)).ImpactKey();
+            k.Key(Flood2+.12f,carry(-.06f,-.34f,-.05f)).ImpactKey();
+            k.Key(Flood3+.14f,carry(-.1f,0,-.045f)).ImpactKey();
+            k.Key(StepUp,carry(-.02f,0,-.05f));
+            // the step in, the gun coming up (the hips forward, the chest blading)
+            k.Key(StepUp+.26f,NativeIntroPoses.RifleAim()).Root(Fwd(.08f).X,.88f,Fwd(.08f).Z,Facing).Drop(-.07f).J(B,.1f).J(Sp,0,-.2f).J(C,0,-.25f).J(CapturedRig.Neck,.3f,0,.12f).J(Hd,-.15f,.45f,.15f).PassKey();
+            // the burst: the hips swing with the traverse, the weight in the gun
+            k.Key(FireFrom-.12f,Aim(.12f,-.075f)).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(0));
+            foreach(int r in TurnRounds){float lean=.13f+.035f*(r%2);k.Key(Fired(r),Aim(lean,-.08f-.012f*(r%2))).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(r));}
+            // dry: a beat on the stock, then the head up out of the smoke and the gun down
+            k.Key(Dry+.3f,Aim(.11f,-.075f)).Root(Fwd(.12f).X,.88f,Fwd(.12f).Z,Facing+HipShare*Bearing(Rounds-1));
+            k.Key(Lower+.2f,stand).Root(Fwd(.06f).X,.88f,Fwd(.06f).Z,Facing).Drop(-.05f).J(B,.05f).J(C,-.02f,-.1f).J(Hd,-.08f,.1f).PassKey();
+            k.Key(Lower+.6f,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.03f).J(C,-.05f,-.08f).J(Hd,-.02f,-.04f);
+            k.Key(Total,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.03f).J(C,-.06f,-.1f).J(Hd,0,-.06f);Keys=k;
 
             // ---- the camera ----
             Rig.Spline(0,new[]{L(-9.6f,6.6f,-4.6f),L(-8.2f,4.8f,-4.0f),L(-6.8f,3.4f,-3.2f)},L(0,1.3f,6.5f),L(0,1.2f,5),50,46).Ease(NativeIntroEase.InOut).Focus(0,0,.2f)
                .Dolly(StepUp-.03f,L(1.32f,.36f,2.65f),L(1.06f,.4f,2.3f),L(0,1.24f,0),L(0,1.3f,0),38,35).Focus(0,0,.45f)
-               .Dolly(FireFrom-.02f,L(-.76f,1.56f,-1.46f),L(-.68f,1.5f,-1.3f),L(.6f,2.0f,12),L(-.6f,2.1f,12),42,40).Handheld(.9f).Focus(0,0,.15f)
-               .Dolly(2.5f,L(-2.3f,1.32f,1.05f),L(-2.1f,1.24f,.4f),L(-.25f,1.22f,.5f),L(-.3f,1.08f,.3f),36,34).Focus(0,0,.55f)
-               .Dolly(2.92f,L(-2.25f,.1f,.95f),L(-2.1f,.12f,.78f),L(-.5f,.62f,.3f),L(-.5f,.66f,.28f),52,50).Focus(0,0,.4f)
-               .Dolly(3.45f,L(7.6f,2.4f,3.0f),L(7.3f,2.5f,3.4f),L(0,1.4f,4.5f),L(-.2f,1.35f,4.2f),56,54).Handheld(.6f).Focus(0,0,.15f)
+               .Dolly(FireFrom-.02f,L(-.76f,1.56f,-1.46f),L(-.68f,1.5f,-1.3f),L(-.4f,1.9f,12),L(-2.4f,1.5f,12),42,40).Handheld(.9f).Focus(0,0,.15f)
+               // the drum knocked over in the foreground, the gun firing at the lens behind it
+               .Dolly(2.42f,L(-3.1f,.62f,10.0f),L(-3.0f,.6f,9.7f),L(-.3f,1.18f,.6f),L(-.32f,1.15f,.6f),27,25).Handheld(.5f).Focus(0,0,.2f)
+               // the brass pouring out (slowed), then the heap round the boots at the floor
+               .Dolly(2.9f,L(-2.3f,1.32f,1.05f),L(-2.1f,1.24f,.4f),L(-.25f,1.22f,.5f),L(-.3f,1.08f,.3f),36,34).Focus(0,0,.55f)
+               .Dolly(3.4f,L(-2.25f,.1f,.95f),L(-2.1f,.12f,.78f),L(-.5f,.62f,.3f),L(-.5f,.66f,.28f),52,50).Focus(0,0,.4f)
+               // the crate bursting in the foreground, the gunner walking the belt onto it
+               .Dolly(3.78f,L(6.2f,1.3f,10.5f),L(6.0f,1.32f,10.1f),L(1.6f,1.0f,4.0f),L(1.5f,1.05f,3.9f),33,31).Handheld(.6f).Focus(0,0,.15f)
                .Dolly(Dry+.04f,L(.25f,1.32f,9.7f),L(.45f,1.26f,4.5f),L(0,1.25f,0),L(0,1.22f,0),40,36).Ease(NativeIntroEase.Out).Focus(0,0,.35f)
                .Dolly(Lower+.25f,L(1.58f,.62f,3.28f),L(1.26f,.66f,2.86f),L(-.23f,1.08f,.1f),L(-.23f,1.13f,.1f),35,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(Flood1-.02f,.55f).Black(Flood2,0);
             // The brass waterfall slowed; repaid as the burst runs on.
-            Ramps.Ramp(2.52f,.3f,1.0f,1.3f);
+            Ramps.Ramp(2.95f,.3f,1.0f,1.3f);
         }
 
-        // ---- the gun: where it points over the burst (a traverse across the shutter), and the hands on it ----
-        /// <summary>Where round `i` strikes (source frame): sweeping across the shutter and its drums and crates.</summary>
+        // ---- the gun: where it points over the burst (one traverse, as a gunner walks a belt across a target), and the hands on it ----
+        /// <summary>The rounds that strike the drum and the crate (three each, as the sweep crosses them).</summary>
+        public const int DrumRound=10,CrateRound=30;
+        private static readonly Vector3 DrumHit=S(Drums[Knocked*2],.55f,Drums[Knocked*2+1]-.25f),CrateHit=S(Crates[Burst*4],.55f,Crates[Burst*4+1]-.5f);
+        /// <summary>A bearing from the gun (rad off the facing, + toward the pilot's left) and its point in the facing's frame.</summary>
+        private static float BearingOf(Vector3 p){var d=Vector3.Transform(p-Grip,NativeEntranceMath.Yaw(-Facing));return (float)Math.Atan2(d.X,d.Z);}
+        private static readonly float DrumBearing=BearingOf(DrumHit),CrateBearing=BearingOf(CrateHit);
+        /// <summary>Round `i`'s bearing: from the shutter's middle round to the drum on the right, one long walk back across the shutter and
+        /// the wall to the crate on the left, then back onto the shutter as the belt runs out (eased at each turn).</summary>
+        public static float Bearing(int i)
+        {
+            if(i<DrumRound-1)return NativeEntranceMath.Lerp(-.06f,DrumBearing,NativeEntranceMath.Smooth(i/(float)(DrumRound-1)));
+            if(i<=DrumRound+1)return DrumBearing;
+            if(i<CrateRound-1)return NativeEntranceMath.Lerp(DrumBearing,CrateBearing,NativeEntranceMath.Smooth((i-DrumRound-1)/(float)(CrateRound-DrumRound-2)));
+            if(i<=CrateRound+1)return CrateBearing;
+            return NativeEntranceMath.Lerp(CrateBearing,.2f,NativeEntranceMath.Smooth((i-CrateRound-1)/(float)(Rounds-CrateRound-2)));
+        }
+        /// <summary>Where round `i` strikes (source frame): the drum, the crate, or the shutter (the wall beside it past its edges) at the
+        /// round's bearing, the height wandering with the gun's climb.</summary>
         public static Vector3 Strike(int i)
         {
-            float u=i/(float)(Rounds-1);float x=3.2f*(float)Math.Sin(u*5.2f-.4f)+.25f*NativeEntranceMath.Signed(5100,i);float y=1.1f+.55f*(float)Math.Sin(u*9.1f+1)+.3f*NativeEntranceMath.Signed(5101,i);
-            if(Math.Abs(i-17)<=1)return S(Drums[Knocked*2],.55f,Drums[Knocked*2+1]-.25f);// the drum
-            if(Math.Abs(i-26)<=1)return S(Crates[Burst*4],.55f,Crates[Burst*4+1]-.5f);// the crate
-            return L(x,Math.Max(.3f,y),ShutterZ-.04f);
+            if(Math.Abs(i-DrumRound)<=1)return DrumHit;
+            if(Math.Abs(i-CrateRound)<=1)return CrateHit;
+            var g=Vector3.Transform(Grip,NativeEntranceMath.Yaw(-Facing));float b=Bearing(i),z=ShutterZ-.04f,x=g.X+(float)Math.Tan(b)*(z-g.Z);
+            if(Math.Abs(x)>3.6f){z=ShutterZ+.16f;x=g.X+(float)Math.Tan(b)*(z-g.Z);}
+            float y=1.05f+.45f*(float)Math.Sin(i*.5f+1)+.22f*NativeEntranceMath.Signed(5101,i);
+            return L(x,Math.Max(.3f,y),z);
         }
+        /// <summary>Whether round `i` holes the steel (the shutter or the wall), not the drum or the crate.</summary>
+        public static bool Holed(int i)=>Math.Abs(i-DrumRound)>1&&Math.Abs(i-CrateRound)>1;
         public static float Fired(int i)=>FireFrom+i*Rate;
-        /// <summary>The bore's direction at `t`: low carry, raised at the step, on the traverse while firing.</summary>
-        private static Vector3 Bore(float t)
+        /// <summary>The aim's body at the burst: RifleAim's blade with the cheek down on the stock (the neck bowed, the head tilted back level and
+        /// rolled onto it: the fit in Tests/IntroRangedChecks), leaning `lean` into the gun, the hips `drop` lower (the model's metres).</summary>
+        private static float[] Aim(float lean,float drop)=>NativeEntranceKeys.With(NativeIntroPoses.RifleAim(),v=>{v[NativeEntranceKeys.BodyY]=drop;
+            NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,CapturedRig.Neck,.6f,0,.25f);NativeEntranceKeys.Set(v,Hd,-.3f,.75f,.3f);});
+        /// <summary>The world yaw and pitch from the gun to where it points at `t` (the traverse across the shutter; the first strike before it).</summary>
+        public static void TargetAngles(float t,Vector3 from,out float yaw,out float pitch)
         {
-            var carry=Vector3.Normalize(Local(0,-.72f,.7f));if(t<StepUp+.1f)return carry;
-            float f=(t-FireFrom)/Rate;int i=Math.Max(0,Math.Min(Rounds-1,(int)Math.Floor(f)));float u=NativeEntranceMath.Clamp01(f-i);
-            var aim=Vector3.Normalize(Vector3.Lerp(Strike(i),Strike(Math.Min(Rounds-1,i+1)),u)-Grip);
-            if(t<FireFrom)aim=Vector3.Normalize(Strike(0)-Grip);
-            float up=NativeEntranceMath.Ramp(t,StepUp+.1f,FireFrom-.15f),down=NativeEntranceMath.Ramp(t,Lower-.2f,Lower+.35f);
-            return Vector3.Normalize(Vector3.Lerp(Vector3.Lerp(carry,aim,up),carry,down));
+            float f=(t-FireFrom)/Rate;int i=Math.Max(0,Math.Min(Rounds-1,(int)Math.Floor(f)));float u=t<FireFrom?0:NativeEntranceMath.Clamp01(f-i);
+            var d=Vector3.Lerp(Strike(i),Strike(Math.Min(Rounds-1,i+1)),u)-from;yaw=(float)Math.Atan2(d.X,d.Z);pitch=(float)Math.Atan2(d.Y,Math.Sqrt(d.X*d.X+d.Z*d.Z));
         }
+        /// <summary>The drawn gun's grip in the root's frame while it is shouldered (Tests/IntroRangedChecks holds the bore on every strike
+        /// from there): the aim's line starts at the drawn gun as the hips swing it.</summary>
+        private static readonly Vector3 GripOnRoot=new Vector3(-.174f,1.3f-.88f,.398f);
+        /// <summary>How much of the sweep the hips take (the arms the rest), so the head stays on the gun.</summary>
+        private const float HipShare=.75f;
+        /// <summary>The rounds the hips are keyed on through the burst (the sweep's turns among them).</summary>
+        private static readonly int[] TurnRounds={0,5,DrumRound,15,20,25,CrateRound,34,Rounds-1};
+        private static float Wrap(float a){while(a>Math.PI)a-=2*(float)Math.PI;while(a<-Math.PI)a+=2*(float)Math.PI;return a;}
+        private static Vector3 Fwd(float z)=>Local(0,0,z);
+        /// <summary>How far the gun is up in the shoulder at `t` (0: the low carry).</summary>
+        private static float Up(float t)=>NativeEntranceMath.Ramp(t,StepUp+.04f,FireFrom-.14f)*(1-NativeEntranceMath.Ramp(t,Dry+.32f,Lower+.32f));
+
+        // ---- the body on the model (docs/INTROS-V2.md 9a-9c) ----
+        protected override bool ModelFeet=>true;
+        /// <summary>The off hand on the handguard throughout: racked back along the gun to the handle and home as it comes up, the stock in the
+        /// drawn shoulder while it is up.</summary>
+        public bool GripAt(float t,out NativeIntroGripAt g){g=new NativeIntroGripAt(1,default,-.3f*NativeEntranceMath.Bump(t,Rack-.14f,Rack+.2f),0,Up(t));return true;}
+        /// <summary>Only the main hand is keyed here (the off hand is the grip's): the low carry (the muzzle down and across the body), then the
+        /// match's long-gun aim along the traverse (the yaw the hips leave), each round's kick lifting the muzzle (a steady lean in Reduced).</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            var dir=Bore(t);var up=Vector3.Normalize(Vector3.UnitY-dir*dir.Y);float lift=NativeEntranceMath.Ramp(t,StepUp+.1f,FireFrom-.15f)*(1-NativeEntranceMath.Ramp(t,Lower-.2f,Lower+.35f));
-            var grip=Vector3.Lerp(Carry,Grip,lift);
-            // the burst's kick: a quick shove back each round (smooth in Reduced effects: a steady lean)
-            if(t>=FireFrom&&t<FireTo+.05f){float k=Context.Reduced?.5f:(float)Math.Exp(-((t-FireFrom)%Rate)/(Rate*.35f));grip-=dir*(.022f*k);}
-            // racking the handle: the left hand back along the receiver and home
-            float rack=NativeEntranceMath.Bump(t,Rack-.12f,Rack+.18f);
-            var q=Look(dir,up);NativeEntrancePose.Reach(pose,root,rotation,false,grip,q,1);
-            NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*(.46f-.3f*rack)-up*.04f+Vector3.Normalize(Vector3.Cross(up,dir))*(.02f*rack),q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),1);
+            float up=Up(t);
+            if(up<.999f)NativeIntroGrip.Hold(pose,false,"machinegun",CarryAt,NativeIntroGrip.Aim(pose,.45f,-.75f),new Vector3(-1,-.7f,-.2f));
+            if(up>.001f)
+            {
+                var f=Vector3.Transform(Vector3.UnitZ,rotation);float facing=(float)Math.Atan2(f.X,f.Z);TargetAngles(t,root+Vector3.Transform(GripOnRoot,rotation),out float yaw,out float pitch);
+                float kick=t>=FireFrom&&t<FireTo+.05f?(Context.Reduced?.5f:(float)Math.Exp(-((t-FireFrom)%Rate)/(Rate*.35f))):0;
+                NativeIntroPoses.AimRifle(pose,"machinegun",Wrap(yaw-facing),pitch+.03f*kick,up);
+            }
         }
-        private Vector3 MuzzleAt(float t)=>Drawn(t,out var m,out _)?m:Wrist(t)+Bore(t)*.78f;
+        /// <summary>The low carry: the right wrist by the right hip (the chest's frame, the keyed rig's proportions).</summary>
+        private static readonly Vector3 CarryAt=new Vector3(-.2f,-.25f,.22f);
+        private Vector3 MuzzleAt(float t)=>Anchor(NativeEntranceAnchor.RightMuzzle,t);
+        private Vector3 BoreAt(float t){var b=WeaponBore(false,t);return b.LengthSquared()>1e-6f?b:Vector3.Normalize(Local(0,-.72f,.7f));}
 
         // ---- the brass: each round's case kicked out to the right, falling round the boots ----
         private bool Case(int i,float t,out Vector3 p,out Quaternion q)
@@ -161,7 +230,7 @@ namespace ChipArena.UnityConversion
             float stutter=a<.12f?(a<.03f||a>.07f?1:.15f):1;return stutter*(.35f+.65f*NativeEntranceMath.Ramp(a,.05f,.7f));
         }
         /// <summary>How many holes the shutter has at `t` and how bright the light through them is.</summary>
-        private static int Holes(float t){int n=0;for(int i=0;i<Rounds;i++){if(Math.Abs(i-17)<=1||Math.Abs(i-26)<=1)continue;if(Fired(i)+Vector3.Distance(Grip,Strike(i))/TracerSpeed<=t)n++;}return n;}
+        private static int Holes(float t){int n=0;for(int i=0;i<Rounds;i++){if(!Holed(i))continue;if(Fired(i)+Vector3.Distance(Grip,Strike(i))/TracerSpeed<=t)n++;}return n;}
         protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Sodium);v.Far=NativeEntranceFx.Hex(0x0e0a08);v.Floor=NativeEntranceFx.Hex(0x1a1612);v.Pool=Sodium;v.Rim=Hot;return v;}
 
         // ---- the light ----
@@ -180,9 +249,9 @@ namespace ChipArena.UnityConversion
             // the muzzle: strobing with each round (steady in Reduced), the hot barrel after
             if(t>=FireFrom&&t<FireTo+.06f)
             {
-                float k=Context.Reduced?.55f:(float)Math.Exp(-((t-FireFrom)%Rate)/(Rate*.3f));l.Add(MuzzleAt(t)+Bore(t)*.15f,Hot*(10*k),7);
+                float k=Context.Reduced?.55f:(float)Math.Exp(-((t-FireFrom)%Rate)/(Rate*.3f));l.Add(MuzzleAt(t)+BoreAt(t)*.15f,Hot*(10*k),7);
             }
-            float heat=NativeEntranceMath.Ramp(t,FireFrom+.6f,FireTo)*(1-NativeEntranceMath.Ramp(t,FireTo+.5f,Total));if(heat>.02f)l.Add(MuzzleAt(t)-Bore(t)*.2f,NativeEntranceFx.Hex(0xff5a1c,1.4f*heat),1.6f);
+            float heat=NativeEntranceMath.Ramp(t,FireFrom+.6f,FireTo)*(1-NativeEntranceMath.Ramp(t,FireTo+.5f,Total));if(heat>.02f)l.Add(MuzzleAt(t)-BoreAt(t)*.2f,NativeEntranceFx.Hex(0xff5a1c,1.4f*heat),1.6f);
             // the work light leaking out through the holes onto the yard and the pilot
             float leak=Math.Min(1,Holes(t)/24f);if(leak>.01f)l.Add(L(0,2.2f,ShutterZ-1.5f),Work*(5*leak),16);
             var chest=Anchor(NativeEntranceAnchor.Chest,t);float card=NativeEntranceMath.Ramp(t,CardAt-.4f,CardAt+.4f);if(card>.01f)l.Add(chest+SDir(1.4f,.6f,1.5f),Sodium*(1.8f*card),6);
@@ -196,7 +265,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<3;i++){float on=Flood(i,t);if(on<=.01f)continue;var p=S(Floods[i*4],Floods[i*4+1],Floods[i*4+2]);fx.Glow(p,Sodium*(2.2f*on),0,.9f,1,0,6000+i);fx.Glow(p,Sodium*(.5f*on),0,3.2f,0,0,6010+i);
                 NativeEntranceFx.Shaft(fx,t,p,Vector3.Lerp(p,S(0,0,6),.75f)+new Vector3(0,-p.Y*.6f,0),.3f,2.6f,Sodium*.06f,on,q<.5f?4:6,q<.5f?4:10,6020+i*20,q);}
             // the burst: each round's flash (one at a time; a steady flame in Reduced), tracer, strike, case
-            var wrist=Wrist(t);var bore=Bore(t);var muzzle=MuzzleAt(t);if(Drawn(t,out _,out var drawnBore))bore=drawnBore;
+            var wrist=Anchor(NativeEntranceAnchor.RightGrip,t);var bore=BoreAt(t);var muzzle=MuzzleAt(t);
             if(t>=FireFrom&&t<FireTo+.06f)
             {
                 if(reduced){fx.Glow(muzzle+bore*.12f,Hot*1.6f,0,.35f,1,0,6100);fx.Glow(muzzle+bore*.2f,Sodium*1.1f,0,.8f,0,0,6101);}
@@ -214,7 +283,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(a>=travel&&a<travel+.45f&&last-i<8)
                 {
-                    bool steel=!(Math.Abs(i-26)<=1);NativeEntranceFx.Sparks(fx,t,fired+travel,strike,-dir+new Vector3(0,.3f,0),1.1f,q<.5f?4:9,5.5f,.4f,9.8f,1.2f,Hot*2.6f,Sodium*2,.012f,6300+i*13,q,floor);
+                    bool steel=Math.Abs(i-CrateRound)>1;NativeEntranceFx.Sparks(fx,t,fired+travel,strike,-dir+new Vector3(0,.3f,0),1.1f,q<.5f?4:9,5.5f,.4f,9.8f,1.2f,Hot*2.6f,Sodium*2,.012f,6300+i*13,q,floor);
                     if(!steel)NativeEntranceFx.Sparks(fx,t,fired+travel,strike,-dir,.9f,q<.5f?2:5,3,.6f,9.8f,1,NativeEntranceFx.Hex(0xb08a5a,1.2f),NativeEntranceFx.Hex(0x5a4430,.6f),.02f,6340+i*13,q,floor);
                 }
             }
@@ -236,7 +305,7 @@ namespace ChipArena.UnityConversion
             int holes=0,rays=q<.5f?20:44;float haze=NativeEntranceMath.Ramp(t,FireFrom+.4f,FireTo)*(1-.3f*NativeEntranceMath.Ramp(t,Dry+.3f,Total));
             for(int i=0;i<Rounds;i++)
             {
-                if(Math.Abs(i-17)<=1||Math.Abs(i-26)<=1)continue;float hitAt=Fired(i)+Vector3.Distance(Grip,Strike(i))/TracerSpeed;if(t<hitAt)continue;
+                if(!Holed(i))continue;float hitAt=Fired(i)+Vector3.Distance(Grip,Strike(i))/TracerSpeed;if(t<hitAt)continue;
                 for(int s=0;s<2;s++)
                 {
                     var h=Strike(i)+(s==0?Vector3.Zero:SDir(NativeEntranceMath.Signed(6700,i)*.22f,NativeEntranceMath.Signed(6701,i)*.18f,0));float glow=NativeEntranceMath.Ramp(t,hitAt,hitAt+.25f);

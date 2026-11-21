@@ -19,15 +19,17 @@ namespace ChipArena.UnityConversion
         public const string Id=NativeIntroCatalog.WeaponPrefix+"pistol";
         public const float Total=7.8f,CardAt=6.0f;
         // Beats (presentation s).
-        public const float WalkTo=1.32f,Toll1=1.15f,Toll2=1.85f,Break=2.8f,FallFrom=2.82f,DrawFrom=2.86f,AimFrom=3.1f,ShotAt=3.55f,HitAt=3.72f,Plinth=3.78f,
+        public const float WalkTo=1.7f,Toll1=1.15f,Toll2=1.85f,Break=2.8f,FallFrom=2.82f,DrawFrom=2.86f,AimFrom=3.1f,ShotAt=3.55f,HitAt=3.72f,Plinth=3.78f,
             OffEdge=3.98f,Ground=4.18f,RollTo=5.3f,BlowFrom=4.5f,BlowAt=4.85f,BlowTo=5.2f,Rest=5.5f,LastRing=6.02f;
         // The set (Unity space, ranged_sundown.py).
         private static readonly Vector3 BelfryU=new Vector3(-2.4f,0,10.8f);private const float HangY=6.32f,BellH=1.1f,PlinthY=.9f;
         /// <summary>The bell's hang point and where it comes to rest (source frame).</summary>
         public static readonly Vector3 Hang=S(BelfryU.X,HangY,BelfryU.Z),RestAt=L(1.15f,.0f,.95f);
-        /// <summary>The blow, in the keyed rig's space: the muzzle target above the keyed head joint, and the wrist below the muzzle along an
-        /// upright barrel (m; measured on the drawn model in the Editor captures).</summary>
-        private const float KeyedMouth=.06f,BlowReach=.3f;
+        /// <summary>The drawn pistol's muzzle as the shot leaves it (Tests/IntroRangedChecks holds it there): the aim's line runs from here to
+        /// the bell, so the drawn bore lies on the bullet's path.</summary>
+        public static readonly Vector3 ShotFrom=L(.195f,1.488f,1.115f);
+        /// <summary>How far the stance blades off the bell's line for the shot (rad, the hips turned left: the gun shoulder leads).</summary>
+        private const float Blade=.42f;
         private static readonly Vector3 Sun=Vector3.Normalize(SDir(0,.05f,1)),Gold=NativeEntranceFx.Hex(0xffc070),Ember=NativeEntranceFx.Hex(0xff8a3c),Dust=NativeEntranceFx.Hex(0xb08a62),Rose=NativeEntranceFx.Hex(0xff6a88);
         private static readonly Vector3 WindmillHub=S(-18.5f,9.2f+.28f,22.0f+.42f),Saloon=S(-(10f-.14f)+.04f,.42f,-7.1f+.56f);
         private const int Shingles=26,Planks=8,Splinters=18;
@@ -35,65 +37,60 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroSundown():base(Id,Total,CardAt,ShotAt,0xffc070)
         {
-            // ---- the keyed body: the walk out, the stop, the hand by the hip, the draw to the bell, the shot, the blow, the rest ----
-            float aimYaw=Facing+(float)Math.Atan2(2.4f,10.8f);
-            Start=Stance(.14f,-1.35f+.07f,.05f,-.16f,-1.35f-.32f,-.35f);
-            Steps=new[]
-            {
-                Step(false,.05f,.45f,-.16f,-1.35f+.42f,-.3f,.07f),Step(true,.45f,.85f,.14f,-1.35f+.82f,.05f,.07f),Step(false,.85f,1.2f,-.16f,-.12f,-.32f,.06f),
-                Step(true,1.18f,1.42f,.15f,.07f,.08f,.05f),
-                // squaring to the bell for the shot, and back to the street for the rest
-                Step(false,2.86f,3.02f,-.2f,-.06f,-.25f,.04f,aimYaw),Step(true,Rest-.22f,Rest+.06f,.15f,.08f,.08f,.04f),
-            };
-            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            // The walk: a gunslinger's slow walk down the street, keyed on every contact and passing pose with the step plan above:
-            // the gun hand hovering by the holster, the off arm swinging against the legs, the chest countering the hips, a low
-            // bob that drops on each contact, the head level on the belfry. (Owner 2026-11-20: bespoke animation, no match clips.)
-            k.Key(0,stand).Root(0,.88f,-1.35f,Facing).Drop(-.02f).J(P,0,-.04f,0).J(C,.02f,.05f,0).J(Hd,.04f,-.04f,0).J(RA,-.08f,.1f,-.3f).J(RE,-.5f).J(LA,.18f,0,.14f).J(LE,-.22f);
-            k.Key(.25f,stand).Root(0,.88f,-1.35f,Facing).Drop(.012f).J(P,0,0,0).J(C,.02f,0,0).J(Hd,.03f,-.02f,0).J(RA,-.05f,.1f,-.31f).J(RE,-.52f).J(LA,-.02f,0,.13f).J(LE,-.25f).PassKey();
-            k.Key(.45f,stand).Root(0,.88f,-1.35f,Facing).Drop(-.026f).J(P,0,.05f,0).J(C,.03f,-.05f,0).J(Hd,.04f,0,0).J(RA,0,.1f,-.32f).J(RE,-.55f).J(LA,-.24f,0,.12f).J(LE,-.32f);
-            k.Key(.65f,stand).Root(0,.88f,-1.35f,Facing).Drop(.012f).J(P,0,0,0).J(C,.02f,0,0).J(Hd,.03f,-.02f,0).J(RA,-.05f,.1f,-.31f).J(RE,-.52f).J(LA,-.02f,0,.13f).J(LE,-.25f).PassKey();
-            k.Key(.85f,stand).Root(0,.88f,-1.35f,Facing).Drop(-.026f).J(P,0,-.05f,0).J(C,.03f,.05f,0).J(Hd,.04f,-.04f,0).J(RA,-.1f,.1f,-.3f).J(RE,-.5f).J(LA,.2f,0,.14f).J(LE,-.2f);
-            k.Key(1.03f,stand).Root(0,.88f,-1.35f,Facing).Drop(.01f).J(P,0,0,0).J(C,.02f,0,0).J(Hd,.02f,-.02f,0).J(RA,-.05f,.1f,-.31f).J(RE,-.52f).J(LA,-.02f,0,.13f).J(LE,-.25f).PassKey();
-            k.Key(1.2f,stand).Root(0,.88f,-1.35f,Facing).Drop(-.024f).J(P,0,.04f,0).J(C,.02f,-.04f,0).J(Hd,0,0,0).J(RA,0,.1f,-.32f).J(RE,-.55f).J(LA,-.2f,0,.13f).J(LE,-.3f);
-            // the stop: the back foot comes up beside, the weight settles into the heels, the gun hand stays hovering
-            k.Key(WalkTo+.12f,stand).Root(0,.88f,0,Facing).Drop(-.03f).J(P,0,0,0).J(C,0,.03f,0).J(Hd,-.02f,.02f,0).J(RA,-.12f,.1f,-.24f).J(RE,-.32f).J(LA,-.05f,0,.15f).J(LE,-.22f);
-            // the tolls: the head comes up toward the belfry
-            k.Key(Toll2-.1f,stand).Root(0,.88f,0,Facing).J(Hd,-.12f,.12f,0).J(C,-.03f,.06f,0).J(RA,-.16f,0,-.24f).J(RE,-.3f).J(LA,-.05f,0,.15f);
+            // ---- the keyed body (ModelFeet: the plan is the drawn model's ankles, the drops the drawn hips', docs/INTROS-V2.md 9c) ----
+            // A gunslinger's walk down the street already under way (the framework's walk on the model: each contact and passing keyed, the
+            // hips turning with the leading leg, the chest countering, the off arm swinging; the gun hand low by the thigh, muzzle down), the
+            // head lifting to the belfry at the first toll; the stop, the feet together. Stillness, the hand by the hip. The draw: the knees
+            // give, the gun whipped up past the shoulder to the high ready (barrel to the sky, the hips turning to blade the stance, the off arm
+            // out for balance), a heartbeat, then snapped down onto the falling bell, the arm straight and the muzzle tracking it down; the shot,
+            // its kick through the wrist; the head following the bell in as it rolls to the boots; the barrel up by the face and the smoke blown
+            // off it; down to the thigh, squared to the street, the hero's rest. Every beat keyed (owner 2026-11-20: no match clips).
+            float aimYaw=Facing+(float)Math.Atan2(2.4f,10.8f),bladeYaw=aimYaw+Blade;
+            var track=new NativeIntroFeet.Track(Local(0,0,-1.6f),Facing,-.5f,1.55f,1.6f,.4f,.5f);
+            RootPath=(t,r)=>{var a=track.At(t);return new Vector3(a.X,r.Y,a.Z);};
+            var k=new NativeEntranceKeys();var plan=new System.Collections.Generic.List<NativeEntrancePose.Step>();
+            NativeIntroPoses.Walk(k,plan,track,-.42f,4,.56f,.44f,true,.8f);
+            // (the first toll: the head lifts toward the belfry over the walk's last steps, and stays there)
+            int hd=NativeEntranceKeys.Joints+Array.IndexOf(NativeEntranceKeys.Bones,Hd)*3;
+            for(int i=0;i<k.Times.Length;i++){float w=NativeEntranceMath.Ramp(k.Times[i],Toll1-.1f,Toll1+.35f);k.Values[i*NativeEntranceKeys.Channels+hd]-=.1f*w;k.Values[i*NativeEntranceKeys.Channels+hd+1]+=.12f*w;}
+            // the feet: as they were before the walk's first steps, then the walk, then squared and bladed for the shot, then back for the rest
+            var stride=track.Dir*(2*track.V*.56f);var l0=new Vector3(plan[0].X,0,plan[0].Z)-stride;var r0=new Vector3(plan[1].X,0,plan[1].Z)-stride;
+            Start=new[]{l0.X,l0.Z,Facing+.08f,r0.X,r0.Z,Facing-.08f};
+            plan.Add(Step(false,DrawFrom+.03f,DrawFrom+.19f,-.07f,.17f,.15f,.04f,aimYaw));plan.Add(Step(true,DrawFrom+.1f,DrawFrom+.27f,.19f,-.07f,.75f,.04f,aimYaw));
+            plan.Add(Step(true,Rest-.24f,Rest+.04f,.13f,.03f,.12f,.04f));plan.Add(Step(false,Rest-.1f,Rest+.18f,-.13f,-.02f,-.25f,.035f));
+            Steps=plan.ToArray();
+            var stand=NativeEntranceKeys.Stand();
+            // the stop: the weight settling into the heels, the head up on the belfry as it cracks
+            k.Key(1.95f,stand).Root(0,.88f,0,Facing).Drop(-.035f).J(B,.02f).J(C,-.02f,.04f).J(Hd,-.15f,.16f).J(LA,-.06f,0,.14f).J(LE,-.25f);
             // the hand by the hip, fingers loose: the stillness
-            k.Key(2.45f,stand).Root(0,.86f,0,Facing).Drop(-.03f).J(Hd,-.08f,.1f,0).J(C,0,.04f,0).J(RA,-.05f,.1f,-.32f).J(RE,-.55f).J(LA,-.05f,0,.18f).J(LE,-.2f);
-            k.Key(Break,stand).Root(0,.86f,0,Facing).Drop(-.04f).J(Hd,-.1f,.12f,0).J(C,0,.04f,0).J(RA,-.02f,.1f,-.34f).J(RE,-.6f).J(LA,-.05f,0,.2f).J(LE,-.22f);
-            // the draw and the aim at the bell (squared to it), the shot's kick, the follow-through
-            // The draw, bespoke: the hand drops to the holster (the knees give), whips the gun up past the shoulder with the barrel to the
-            // sky (the off arm flung out for balance, the hips turning to the bell), holds a heartbeat at the high ready, then snaps the
-            // muzzle down onto the bell, overshooting a hair below the line and settling. The sky-pointing beat is the flourish.
-            float midYaw=Facing+(aimYaw-Facing)*.55f;
-            k.Key(DrawFrom,stand).Root(0,.86f,0,Facing).Drop(-.065f).J(C,.06f,.05f,0).J(Hd,-.08f,.1f,0).J(RA,.14f,.1f,-.36f).J(RE,-.95f).J(LA,-.1f,0,.24f).J(LE,-.3f);
-            k.Key(DrawFrom+.08f,stand).Root(0,.86f,0,midYaw).Drop(-.075f).J(C,-.02f,.08f,0).J(Hd,-.05f,.06f,0).J(RA,-2.2f,.1f,-.38f).J(RE,-1.55f).J(LA,-.35f,0,.48f).J(LE,-.4f);
-            k.Key(DrawFrom+.15f,stand).Root(0,.86f,0,aimYaw).Drop(-.07f).J(C,-.04f,.06f,0).J(Hd,-.04f,0,0).J(RA,-2.45f,.08f,-.3f).J(RE,-1.7f).J(LA,-.3f,0,.4f).J(LE,-.5f).PassKey();
-            k.Key(DrawFrom+.23f,stand).Root(0,.86f,0,aimYaw).Drop(-.06f).J(C,-.02f,.05f,0).J(Hd,.03f,0,0).J(RA,-1.32f,.05f,-.08f).J(RE,-.02f).J(LA,-.3f,0,.3f).J(LE,-.58f).ImpactKey();
-            k.Key(DrawFrom+.32f,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.05f,0).J(Hd,.02f,0,0).J(RA,-1.48f,.05f,-.08f).J(RE,-.08f).J(LA,-.3f,0,.25f).J(LE,-.6f).PassKey();
-            // the settled stance on the bell: a slow breath, the arm dead still
-            k.Key(3.36f,stand).Root(0,.86f,0,aimYaw).Drop(-.055f).J(C,-.04f,.05f,0).J(Hd,.02f,0,0).J(RA,-1.49f,.05f,-.08f).J(RE,-.08f).J(LA,-.3f,0,.25f).J(LE,-.6f);
-            k.Key(ShotAt,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.05f,0).J(Hd,.03f,0,0).J(RA,-1.5f,.05f,-.08f).J(RE,-.06f).J(LA,-.3f,0,.25f).J(LE,-.6f);
-            k.Key(ShotAt+.05f,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.06f,.05f,0).J(Hd,-.02f,0,0).J(RA,-1.85f,.05f,-.08f).J(RE,-.3f).J(LA,-.3f,0,.25f).J(LE,-.6f).ImpactKey();
-            k.Key(4.2f,stand).Root(0,.86f,0,aimYaw).Drop(-.05f).J(C,-.02f,.04f,0).J(Hd,.02f,0,0).J(RA,-1.45f,.05f,-.08f).J(RE,-.1f).J(LA,-.3f,0,.25f).J(LE,-.6f);
-            k.Key(4.42f,stand).Root(0,.865f,0,aimYaw-.05f).Drop(-.04f).J(C,.02f,.02f,0).J(Hd,.14f,-.08f,0).J(RA,-1.1f,.05f,-.12f).J(RE,-.3f).J(LA,-.2f,0,.22f).J(LE,-.45f);
-            // the barrel up by the face, the head leaning in to blow
-            k.Key(BlowFrom+.25f,stand).Root(0,.87f,0,aimYaw-.1f).Drop(-.03f).J(C,0,-.05f,0).J(Hd,.05f,-.15f,0).J(RA,-.45f,.35f,-.5f).J(RE,-2.05f).J(LA,-.08f,0,.18f).J(LE,-.25f);
-            k.Key(BlowAt,stand).Root(0,.87f,0,aimYaw-.1f).Drop(-.03f).J(C,.02f,-.08f,0).J(Hd,.16f,-.28f,.05f).J(RA,-.42f,.38f,-.5f).J(RE,-2.1f).J(LA,-.08f,0,.18f).J(LE,-.25f);
-            k.Key(BlowTo,stand).Root(0,.87f,0,aimYaw-.1f).Drop(-.03f).J(C,0,-.04f,0).J(Hd,.0f,-.1f,0).J(RA,-.45f,.3f,-.45f).J(RE,-1.95f).J(LA,-.08f,0,.18f).J(LE,-.25f);
-            // down to the hip, squared to the street again: the hero's rest, weight on the back foot
-            k.Key(Rest,stand).Root(0,.88f,0,Facing).Drop(-.02f).J(C,0,.06f,0).J(Hd,-.04f,-.05f,0).J(RA,-.1f,.05f,-.24f).J(RE,-.4f).J(LA,-.08f,0,.17f).J(LE,-.25f);
-            k.Key(Total,stand).Root(0,.88f,0,Facing).Drop(-.02f).J(C,0,.07f,0).J(Hd,-.05f,-.06f,0).J(RA,-.1f,.05f,-.24f).J(RE,-.4f).J(LA,-.08f,0,.17f).J(LE,-.25f);Keys=k;
-            // The walk's root: the keys carry it along the facing.
-            RootPath=(t,r)=>{float u=NativeEntranceMath.Clamp01(t/WalkTo);var p=Local(0,0,-1.35f*(1-u*(1.15f-.15f*u*u)));return new Vector3(p.X,r.Y,p.Z);};
+            k.Key(2.45f,stand).Root(0,.88f,0,Facing).Drop(-.04f).J(C,0,.04f).J(Hd,-.11f,.14f).J(LA,-.05f,0,.16f).J(LE,-.22f);
+            k.Key(Break,stand).Root(0,.88f,0,Facing).Drop(-.045f).J(C,0,.04f).J(Hd,-.14f,.17f).J(LA,-.05f,0,.17f).J(LE,-.22f);
+            // the draw: the knees give, the gun whipped up to the high ready as the hips blade (the off arm out), a heartbeat, the snap down
+            k.Key(DrawFrom,stand).Root(0,.88f,0,Facing+.05f).Drop(-.08f).J(B,.05f).J(C,.04f,.06f).J(Hd,-.1f,.12f).J(LA,-.12f,0,.26f).J(LE,-.3f);
+            k.Key(DrawFrom+.1f,stand).Root(0,.88f,0,aimYaw+Blade*.7f).Drop(-.085f).J(B,.03f).J(Sp,0,.06f).J(C,-.02f,.12f).J(Hd,-.12f,-.12f).J(LA,-.3f,0,.5f).J(LE,-.42f).PassKey();
+            k.Key(DrawFrom+.18f,stand).Root(0,.88f,0,bladeYaw).Drop(-.08f).J(B,.03f).J(Sp,0,.08f).J(C,-.03f,.16f).J(Hd,-.16f,-.3f).J(LA,-.28f,0,.42f).J(LE,-.5f);
+            k.Key(DrawFrom+.27f,stand).Root(0,.88f,0,bladeYaw).Drop(-.07f).J(B,.05f).J(Sp,0,.08f).J(C,.03f,.18f).J(Hd,-.05f,-.36f).J(LA,-.16f,0,.3f).J(LE,-.4f).ImpactKey();
+            // the settled aim on the falling bell: a breath, the arm dead still
+            k.Key(3.36f,stand).Root(0,.88f,0,bladeYaw).Drop(-.065f).J(B,.04f).J(Sp,0,.08f).J(C,.02f,.18f).J(Hd,-.02f,-.36f).J(LA,-.1f,0,.22f).J(LE,-.3f);
+            k.Key(ShotAt,stand).Root(0,.88f,0,bladeYaw).Drop(-.06f).J(B,.04f).J(Sp,0,.08f).J(C,.02f,.18f).J(Hd,-.03f,-.36f).J(LA,-.1f,0,.22f).J(LE,-.3f);
+            // the shot's kick through the shoulder; the follow-through on the bell
+            k.Key(ShotAt+.05f,stand).Root(0,.88f,0,bladeYaw).Drop(-.06f).J(B,.0f).J(Sp,0,.08f).J(C,-.05f,.17f).J(Hd,-.07f,-.34f).J(LA,-.1f,0,.23f).J(LE,-.3f).ImpactKey();
+            k.Key(3.95f,stand).Root(0,.88f,0,bladeYaw).Drop(-.06f).J(B,.04f).J(Sp,0,.08f).J(C,.02f,.17f).J(Hd,.02f,-.32f).J(LA,-.1f,0,.22f).J(LE,-.3f);
+            // the head following the bell in as it rolls to the boots
+            k.Key(4.3f,stand).Root(0,.88f,0,aimYaw+Blade*.7f).Drop(-.05f).J(B,.05f).J(Sp,0,.05f).J(C,.04f,.1f).J(Hd,.24f,-.06f).J(LA,-.08f,0,.2f).J(LE,-.28f);
+            // the barrel up by the face, the head leaning in to blow, and up again
+            k.Key(BlowFrom+.25f,stand).Root(0,.88f,0,aimYaw+Blade*.5f).Drop(-.035f).J(C,0,.06f).J(Hd,-.02f,-.2f,.04f).J(LA,-.08f,0,.18f).J(LE,-.25f);
+            k.Key(BlowAt,stand).Root(0,.88f,0,aimYaw+Blade*.5f).Drop(-.035f).J(C,.02f,.04f).J(Hd,-.08f,-.3f,.08f).J(LA,-.08f,0,.18f).J(LE,-.25f);
+            k.Key(BlowTo,stand).Root(0,.88f,0,aimYaw+Blade*.4f).Drop(-.03f).J(C,0,.05f).J(Hd,0,-.06f).J(LA,-.08f,0,.18f).J(LE,-.25f);
+            // down to the thigh, squared to the street again: the hero's rest, weight on the back foot
+            k.Key(Rest,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.025f).J(C,-.05f,-.06f).J(Hd,-.03f,-.04f);
+            k.Key(Total,NativeIntroPoses.Hero()).Root(0,.88f,0,Facing).Drop(-.025f).J(C,-.06f,-.08f).J(Hd,-.02f,-.06f);Keys=k;
 
             // ---- the camera ----
-            var bellLook=L(2.2f,5.4f,10.6f);var muzzle=L(-.12f,1.42f,.72f);var hit=BellAt(HitAt);
+            var bellLook=L(2.2f,5.4f,10.6f);var muzzle=ShotFrom;var hit=BellAt(HitAt)+SDir(0,-.45f,-.3f);
             var dir=Vector3.Normalize(hit-muzzle);var side=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,dir));
             Rig.Dolly(0,L(-.62f,.3f,-7.4f),L(-.48f,.36f,-6.1f),L(.6f,2.0f,9),L(.8f,2.4f,9),34,30).Ease(NativeIntroEase.Linear).Focus(3.4f,3.2f,.4f)
-               .Dolly(1.08f,L(-1.18f,1.56f,.28f),L(-1.06f,1.57f,.36f),L(0,1.56f,.25f),L(0,1.58f,.25f),24,22).Focus(0,0,.55f)
+               .Dolly(1.08f,L(-1.18f,1.56f,-.05f),L(-1.06f,1.57f,.06f),L(0,1.56f,-.12f),L(0,1.58f,.0f),24,22).Focus(0,0,.55f)
                .Dolly(1.62f,L(-.78f,1.74f,-2.25f),L(-.7f,1.72f,-1.95f),bellLook,bellLook+new Vector3(0,.05f,0),16,14).Focus(0,0,.3f)
                .Dolly(2.24f,L(-1.25f,1.02f,1.45f),L(-1.05f,1.0f,1.25f),L(-.25f,.98f,.05f),L(-.22f,1.0f,.08f),26,24).Focus(0,0,.6f)
                .Dolly(2.78f,L(-5.6f,1.55f,-3.2f),L(-5.3f,1.62f,-2.75f),L(1.3f,2.6f,4.0f),L(1.4f,2.45f,4.1f),45,43).Focus(0,0,.2f)
@@ -101,25 +98,53 @@ namespace ChipArena.UnityConversion
                .Dolly(ShotAt-.02f,muzzle-dir*.55f+side*.32f+new Vector3(0,.16f,0),hit-dir*1.1f+side*.42f+new Vector3(0,.22f,0),muzzle+dir*3,hit+dir*.4f,52,46).Ease(NativeIntroEase.Linear)
                .Dolly(HitAt+.02f,L(4.8f,.62f,6.1f),L(4.5f,.7f,6.35f),L(2.3f,1.4f,10.2f),L(1.6f,.7f,8.4f),42,40).Focus(0,0,.2f)
                .Dolly(Ground-.04f,L(1.35f,.3f,3.2f),L(1.25f,.32f,2.9f),L(1.8f,.45f,7.4f),L(.4f,.7f,.6f),38,36).Focus(0,0,.35f)
-               .Dolly(BlowFrom,L(.82f,1.62f,1.65f),L(.7f,1.64f,1.48f),L(.02f,1.6f,0),L(.02f,1.62f,.02f),30,28).Focus(0,0,.6f)
+               .Dolly(BlowFrom,L(-.62f,1.66f,1.62f),L(-.52f,1.68f,1.46f),L(-.08f,1.66f,0),L(-.08f,1.7f,.02f),32,29).Focus(0,0,.6f)
                .Dolly(Rest-.25f,L(-1.5f,.7f,3.45f),L(-1.18f,.72f,3.0f),L(.15f,1.0f,0),L(.15f,1.06f,0),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.55f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(.06f,0);
             // Slow motion through the shot and the strike; repaid while the bell rolls.
             Ramps.Ramp(3.48f,.28f,.85f,1.25f);
         }
-        // ---- the arms over the keys (no match clips: every beat is keyed above) ----
-        /// <summary>The blow: the gun hand brought up by the mouth, the barrel raised, then down again (the keyed rig drives the model here).</summary>
+        // ---- the body on the model (docs/INTROS-V2.md 9a-9c) and the gun hand ----
+        protected override bool ModelFeet=>true;
+        /// <summary>The gun hand (the keys carry the rest): low by the thigh, muzzle down (swinging a little with the walk); whipped up to the
+        /// high ready by the shoulder, barrel to the sky; snapped down onto the bell along a straight arm, the muzzle tracking the falling
+        /// bell to the strike, the shot's flip through the wrist; up by the face for the blow; and down to the thigh. Each pose in the chest's
+        /// frame (the keyed rig's proportions, NativeIntroGrip.Hold), the elbow down and out, the palm turned by the forearm.</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            float w=NativeEntranceMath.Ramp(t,BlowFrom,BlowFrom+.3f)*(1-NativeEntranceMath.Ramp(t,BlowTo,Rest));if(w<=.001f)return;
-            var fwd=Vector3.Transform(Vector3.UnitZ,rotation);var left=Vector3.Cross(Vector3.UnitY,fwd);pose.World();
-            // In the keyed rig's own space (Arms runs while the keyed pose is built, before the model is drawn, so no anchors here; the model
-            // copies the keyed arm turn for turn): the muzzle target sits KeyedMouth above the keyed head joint, just right of the visor
-            // (the barrel upright beside it, never across it), and the wrist BlowReach below it along the barrel. Both were measured on the
-            // drawn model in the Editor (holds 3 and 4): the drawn muzzle then stands at the drawn mouth's height beside the visor.
-            var head=root+Vector3.Transform(pose.WorldPosition[Hd],rotation);var barrel=Vector3.Normalize(Vector3.UnitY+fwd*.1f);
-            var muzzle=head+new Vector3(0,KeyedMouth,0)+fwd*.28f-left*.15f;var at=muzzle-barrel*BlowReach;
-            NativeEntrancePose.Reach(pose,root,rotation,false,at,Look(barrel,-fwd),w);
+            if(t<DrawFrom+.1f){Low(t,pose,1);float a=NativeEntranceMath.Ramp(t,DrawFrom+.01f,DrawFrom+.1f);if(a>.001f)HighReady(pose,a);}
+            else if(t<DrawFrom+.27f){HighReady(pose,1);float b=NativeEntranceMath.Ramp(t,DrawFrom+.18f,DrawFrom+.27f);if(b>.001f)OnTarget(t,pose,root,rotation,b);}
+            else if(t<BlowFrom+.3f){OnTarget(t,pose,root,rotation,1);float c=NativeEntranceMath.Ramp(t,4.32f,BlowFrom+.3f);if(c>.001f)Blow(pose,c);}
+            else{Blow(pose,1);float d=NativeEntranceMath.Ramp(t,BlowTo,Rest);if(d>.001f)Low(t,pose,d);}
+        }
+        private static readonly Vector3 Pole=new Vector3(-1,-.7f,-.2f);
+        /// <summary>The gun low by the right thigh, muzzle down and a little forward (a straight wrist), swinging with the walk.</summary>
+        private static void Low(float t,CapturedRig.Pose pose,float w)
+        {
+            float swing=.045f*(float)Math.Sin(2*Math.PI*(t+.42f)/1.12f)*(1-NativeEntranceMath.Ramp(t,1.5f,1.85f));
+            NativeIntroGrip.Hold(pose,false,"pistol",new Vector3(-.31f,-.31f,.07f+swing),NativeIntroGrip.Aim(pose,-.08f,-1.15f+swing),Pole,w);
+        }
+        /// <summary>The high ready: the gun by the right shoulder, the barrel to the sky.</summary>
+        private static void HighReady(CapturedRig.Pose pose,float w)=>NativeIntroGrip.Hold(pose,false,"pistol",new Vector3(-.25f,.2f,.2f),NativeIntroGrip.Aim(pose,-.05f,1.42f),Pole,w);
+        /// <summary>The barrel up beside the right cheek for the blow, its muzzle over the brow (the pistol is long: Tests/IntroRangedChecks' fit).</summary>
+        private static void Blow(CapturedRig.Pose pose,float w)=>NativeIntroGrip.Hold(pose,false,"pistol",BlowWrist,NativeIntroGrip.Aim(pose,BlowYaw,BlowPitch),Pole,w);
+        private static readonly Vector3 BlowWrist=new Vector3(-.24f,.12f,.18f);private const float BlowYaw=.4f,BlowPitch=1.52f;
+        /// <summary>The arm straight from the shoulder along the line from the drawn muzzle to the bell (tracking it down, then on the strike),
+        /// the shot's flip lifting the muzzle and settling.</summary>
+        private void OnTarget(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation,float w)
+        {
+            pose.World();var chest=pose.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);
+            var shoulder=Vector3.Transform(pose.WorldPosition[CapturedRig.RArm]-pose.WorldPosition[CapturedRig.Chest],inv);
+            var target=AimTarget(t);var dir=NativeIntroGrip.ChestPoint(pose,root,rotation,target)-NativeIntroGrip.ChestPoint(pose,root,rotation,ShotFrom);dir=Vector3.Normalize(dir);
+            float flip=NativeEntranceMath.Pulse(t,ShotAt,.012f,.1f);var up=Vector3.Normalize(Vector3.Transform(Vector3.Transform(Vector3.UnitY,rotation),inv));
+            var aim=Vector3.Normalize(dir+up*(.45f*flip));
+            NativeIntroGrip.Hold(pose,false,"pistol",shoulder+dir*.47f+up*(.03f*flip),NativeIntroGrip.Look(aim,up),Pole,w);
+        }
+        /// <summary>Where the muzzle points at `t` (world): following the falling bell, then on the strike point from just before the shot.</summary>
+        public static Vector3 AimTarget(float t)
+        {
+            var strike=BellAt(HitAt)+SDir(0,-.45f,-.3f);if(t>=ShotAt-.16f)return strike;
+            var bell=BellAt(Math.Min(t+.1f,HitAt))+SDir(0,-.45f,-.3f);return Vector3.Lerp(bell,strike,NativeEntranceMath.Ramp(t,ShotAt-.38f,ShotAt-.16f));
         }
 
         // ---- the bell: swinging, falling, struck, off the plinth, rolling to the boots ----
@@ -254,7 +279,7 @@ namespace ChipArena.UnityConversion
             int wisps=q<.5f?4:9;
             for(int i=0;i<wisps;i++){float u=((t*.35f+i/(float)wisps)%1f);var p=L(5.5f-11*u,.18f+.2f*NativeEntranceMath.Rand(7040,i),-3+8*NativeEntranceMath.Rand(7041,i));fx.Smoke(p,Dust,.18f*(float)Math.Sin(Math.PI*u),.6f+.6f*u,u,7050+i,floor);}
             // the walk's boot dust
-            for(int s=0;s<4;s++){float land=StepLands[s];NativeEntranceFx.GroundDust(fx,t,land,Local(s%2==0?-.16f:.14f,0,-1.35f+.42f+.4f*s),q<.5f?3:6,.05f,.6f,.7f,Dust,.22f,.18f,7100+s*10,q,floor);}
+            for(int s=0;s<4;s++){float land=Steps[s].Land;NativeEntranceFx.GroundDust(fx,t,land,new Vector3(Steps[s].X,0,Steps[s].Z),q<.5f?3:6,.05f,.6f,.7f,Dust,.22f,.18f,7100+s*10,q,floor);}
             // the tolls: dust shaken from the frame; the crack's splinter burst
             for(int k=0;k<2;k++){float at2=k==0?Toll1:Toll2;NativeEntranceFx.Jet(fx,t,at2,at2+.25f,S(BelfryU.X,6.7f,BelfryU.Z),new Vector3(0,-1,0),24,.6f,1.3f,.35f,Dust,.25f,7200+k*20,q,floor,.05f,.6f);}
             NativeEntranceFx.Sparks(fx,t,Toll2,Hang+new Vector3(0,.15f,0),new Vector3(0,.3f,0),1,q<.5f?6:12,3.2f,.6f,9.8f,.6f,NativeEntranceFx.Hex(0xc8a070,1.2f),NativeEntranceFx.Hex(0x6a5038,.6f),.012f,7240,q,floor);
@@ -270,7 +295,7 @@ namespace ChipArena.UnityConversion
             if(t>=ShotAt-.01f&&t<ShotAt+.12f)Muzzle(fx,t,ShotAt,muzzle,flashDir,.16f,Gold,7400,q,.09f);
             if(t>=ShotAt&&t<HitAt+.05f)
             {
-                var m0=Wrist(ShotAt)+Vector3.Normalize(BellAt(HitAt)-Wrist(ShotAt))*.26f;var target=BellAt(HitAt)+SDir(0,-.45f,-.3f);var d=target-m0;float len=d.Length();var dir=d/len;
+                var m0=Anchor(NativeEntranceAnchor.RightMuzzle,ShotAt);var target=BellAt(HitAt)+SDir(0,-.45f,-.3f);var d=target-m0;float len=d.Length();var dir=d/len;
                 float u=NativeEntranceMath.Clamp01((t-ShotAt)/(HitAt-ShotAt));var head=m0+d*u;
                 fx.Glow(head,NativeEntranceFx.Hex(0xfff2c8,3.2f),0,.05f,1,0,7420);fx.Glow(head,Gold*1.4f,0,.16f,0,0,7421);
                 Line(fx,eye,fwd,head,head-dir*Math.Min(2.4f,len*u),NativeEntranceFx.Hex(0xffe0a0,3.0f),.026f,.9f,0,7422);fx.Glow(head,NativeEntranceFx.Hex(0xffd890,2.2f),0,.3f,0,0,7423);
@@ -297,16 +322,15 @@ namespace ChipArena.UnityConversion
             if(t>CardAt-.4f)NativeEntranceFx.Embers(fx,t,CardAt-.4f,Total,L(0,.2f,0),1.6f,q<.5f?10:22,.35f,2.4f,Gold*.6f,.03f,7800,q,.4f);
         }
         private const float SmokeTo=BlowTo+.6f;
-        private static readonly float[] StepLands={.45f,.85f,1.2f,1.42f};
 
         // ---- sound: its own cues (no bed) ----
         private static readonly NativeIntroCue[] cues=
         {
             new NativeIntroCue(.02f,"intro2.sundown.wind","structure.whoosh","dash",.32f,.7f),
-            new NativeIntroCue(.45f,"intro2.sundown.step","move.step.gravel",null,.35f),
-            new NativeIntroCue(.85f,"intro2.sundown.step","move.step.gravel",null,.32f),
+            new NativeIntroCue(.58f,"intro2.sundown.step","move.step.gravel",null,.35f),
+            new NativeIntroCue(1.14f,"intro2.sundown.step","move.step.gravel",null,.32f),
             new NativeIntroCue(Toll1,"intro2.sundown.toll","impact.metal","metal",.9f,.42f),
-            new NativeIntroCue(1.2f,"intro2.sundown.step","move.step.gravel",null,.3f),
+            new NativeIntroCue(1.7f,"intro2.sundown.step","move.step.gravel",null,.28f),
             new NativeIntroCue(Toll2,"intro2.sundown.toll","impact.metal","metal",.95f,.4f),
             new NativeIntroCue(Toll2+.03f,"intro2.sundown.crack","break.wood","wood",.75f),
             new NativeIntroCue(Break,"intro2.sundown.collapse","structure.debris","stone",.85f),

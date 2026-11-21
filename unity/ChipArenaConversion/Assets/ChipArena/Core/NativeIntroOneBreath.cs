@@ -13,17 +13,23 @@ namespace ChipArena.UnityConversion
     /// The spent case rings on the wet coping and steams. The pilot rises with the rifle low, the beacon blinking behind, the name.
     /// Presentation only: pure functions of the presentation clock, thinned by quality; every beat kept in Reduced effects.
     /// </summary>
-    public sealed class NativeIntroOneBreath:NativeRangedIntro
+    public sealed class NativeIntroOneBreath:NativeRangedIntro,INativeIntroGrip
     {
         public const string Id=NativeIntroCatalog.WeaponPrefix+"rifle";
         public const float Total=8.4f,CardAt=6.4f;
         public const float Lightning=.95f,LensAt=1.3f,GlintAt=2.22f,BreathFrom=2.62f,ShotAt=3.3f,HitAt=3.6f,CaseLands=4.72f,FallTo=5.5f,RiseFrom=5.35f,RiseTo=6.05f;
-        /// <summary>The drone's centre (source frame), and the rifle's line from the right wrist to it while the pilot aims.</summary>
-        public static readonly Vector3 Drone=S(6,13,134),AimWrist=L(-.13f,1.04f,.36f);
+        /// <summary>The drone's centre (source frame), and the rifle's line to it while the pilot aims: the drawn rifle's grip (the weapon
+        /// frame's origin on the drawn model, shouldered, the breath held; Tests/IntroRangedChecks holds it there) and the bore to the drone.</summary>
+        public static readonly Vector3 Drone=S(6,13,134),AimWrist=L(-.181f,1.008f,.425f);
         public static readonly Vector3 AimDir=Vector3.Normalize(Drone-AimWrist);
+        /// <summary>The kneel's facing (the hips square to the drone; the chest bladed off it by the aim) and the aim's pitch up to it.</summary>
+        public static readonly float KneelYaw=(float)Math.Atan2(AimDir.X,AimDir.Z),AimPitch=(float)Math.Asin(AimDir.Y);
         private static readonly Vector3 Up=Vector3.Normalize(Vector3.UnitY-AimDir*AimDir.Y),Right=Vector3.Normalize(Vector3.Cross(AimDir,Vector3.UnitY));
-        /// <summary>The scope's lens and the muzzle along the rifle's line (the keyed aim; the drawn wrist moves them when handed in).</summary>
-        private const float ScopeAt=.42f,MuzzleAt=1.0f;
+        /// <summary>The rifle model's scope (its line .175 over the bore; the objective lens .31 ahead of the grip, the eyepiece .135 behind it)
+        /// and the muzzle's crown along the bore (NativeMuzzleFx.Crown, the Standard skin).</summary>
+        public const float ScopeY=.175f,ScopeAt=.31f,EyepieceAt=-.135f,MuzzleAt=1.21f;
+        /// <summary>The scope's lens on the aim (for the camera).</summary>
+        private static readonly Vector3 AimLens=AimWrist+AimDir*ScopeAt+Up*ScopeY;
         private static readonly Vector3 Ice=NativeEntranceFx.Hex(0x9fd8ff),Red=NativeEntranceFx.Hex(0xff2a20),Warm=NativeEntranceFx.Hex(0xffb070),Rain=NativeEntranceFx.Hex(0x9ab0d0);
         private static readonly Vector3 Beacon=S(-7.4f,.012f+8.3f,-.6f),Bulb=S(6.0f,2.4f,-8.2f+1.9f);
         private static readonly Vector3[] Rotor={new Vector3(.813f,.1f,.813f),new Vector3(-.813f,.1f,.813f),new Vector3(.813f,.1f,-.813f),new Vector3(-.813f,.1f,-.813f)};
@@ -34,65 +40,93 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroOneBreath():base(Id,Total,CardAt,ShotAt,0x9fd8ff)
         {
-            float aimYaw=(float)Math.Atan2(Drone.X-AimWrist.X,Drone.Z-AimWrist.Z);
-            // ---- the keyed body: knelt at the parapet on the right knee, the rifle laid on the coping (the arms by IK in Arms) ----
-            Start=Stance(.18f,.32f,.05f,-.2f,-.28f,-.5f,aimYaw);
-            Steps=new[]{Step(false,RiseFrom+.1f,RiseFrom+.5f,-.18f,-.08f,-.4f,.06f),Step(true,RiseTo-.05f,RiseTo+.25f,.16f,.08f,.08f,.04f)};
-            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            float[] kneel(float drop,float lean,float head,float breath)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.Yaw]=aimYaw;v[NativeEntranceKeys.RootY]=.88f;v[NativeEntranceKeys.BodyY]=drop+breath*.012f;v[NativeEntranceKeys.PlantL]=1;v[NativeEntranceKeys.PlantR]=0;
-                NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Sp,.06f+breath*.03f,0,0);NativeEntranceKeys.Set(v,C,-.04f-breath*.04f,.04f,0);NativeEntranceKeys.Set(v,Hd,head,-.05f,.08f);
-                NativeEntranceKeys.Set(v,LL,-1.25f,0,.2f);NativeEntranceKeys.Set(v,LK,1.65f,0,0);NativeEntranceKeys.Set(v,RL,.3f,0,-.14f);NativeEntranceKeys.Set(v,RK,1.55f,0,0);
-                NativeEntranceKeys.Set(v,RA,-1.1f,.3f,-.3f);NativeEntranceKeys.Set(v,RE,-1.5f,0,0);NativeEntranceKeys.Set(v,LA,-1.3f,-.2f,.25f);NativeEntranceKeys.Set(v,LE,-.4f,0,0);});
-            k.Key(0,kneel(-.4f,.28f,.1f,0));
-            k.Key(BreathFrom,kneel(-.4f,.28f,.1f,0));
-            k.Key(BreathFrom+.38f,kneel(-.4f,.28f,.1f,1)).PassKey();
-            k.Key(ShotAt,kneel(-.4f,.29f,.1f,1));
-            k.Key(ShotAt+.04f,kneel(-.4f,.2f,.05f,.4f)).ImpactKey();
-            k.Key(ShotAt+.5f,kneel(-.4f,.27f,.08f,0));
-            k.Key(RiseFrom,kneel(-.4f,.25f,.02f,0));
-            // up, the rifle down at the low carry, squared to the facing for the name
-            k.Key(RiseTo,stand).Root(0,.88f,0,Facing).Drop(-.03f).J(B,.04f).J(C,.02f,.08f,0).J(Hd,-.04f,-.06f,0).J(RA,-.55f,.15f,-.15f).J(RE,-1.05f).J(LA,-.75f,-.15f,.2f).J(LE,-.9f);
-            k.Key(Total,stand).Root(0,.88f,0,Facing).Drop(-.03f).J(B,.04f).J(C,.02f,.1f,0).J(Hd,-.05f,-.07f,0).J(RA,-.55f,.15f,-.15f).J(RE,-1.05f).J(LA,-.75f,-.15f,.2f).J(LE,-.9f);Keys=k;
+            // ---- the keyed body (ModelFeet: the stance is the drawn model's ankles, the drops the drawn hips', docs/INTROS-V2.md 9c) ----
+            // Knelt at the parapet on the right knee, the left foot planted ahead, square to the drone; the torso bladed as the match aims a
+            // long gun (NativeIntroPoses.RifleAim: the left shoulder forward, the cheek down on the stock), leaning into the rifle. The rifle
+            // shouldered on the drone with its fore-end over the coping (Arms: NativeIntroPoses.AimRifle), the off fist on the handguard by
+            // the grip (GripAt). One breath: the chest fills and empties, the shoulders settle; the shot's kick rocks the body back through
+            // the shoulder. Then up off the knee: the weight forward over the front foot, the knee lifts, the back foot steps up beside it as
+            // the hips rise, the rifle down from the shoulder to the low carry, squared to the facing for the name.
+            Start=Stance(.13f,.42f,.1f,-.13f,-.1f,-.3f,KneelYaw);
+            Steps=new[]{Step(false,RiseFrom+.2f,RiseFrom+.52f,-.15f,.3f,-.18f,.07f),Step(true,RiseTo-.06f,RiseTo+.22f,.14f,.4f,.12f,.035f)};
+            float[] kneel(float breath,float lean,float head)=>NativeEntranceKeys.With(NativeIntroPoses.Kneel(),v=>
+            {
+                v[NativeEntranceKeys.Yaw]=KneelYaw;v[NativeEntranceKeys.BodyY]=-.41f+.012f*breath;// (a high kneel: the fore-end over the coping)
+                // (RifleAim's blade on the kneel: the spine and chest turned right, the clavicles drawn; the neck bowed forward and the head
+                // tilted back level onto the line, rolled onto the stock: the visor at the scope's eyepiece, Tests/IntroRangedChecks)
+                NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Sp,.02f+.035f*breath,-.27f,0);NativeEntranceKeys.Set(v,C,.03f-.05f*breath,-.33f,0);
+                NativeEntranceKeys.Set(v,CapturedRig.Neck,.45f,0,.25f);NativeEntranceKeys.Set(v,Hd,-.45f+head,.6f,.15f);
+                NativeEntranceKeys.Set(v,CapturedRig.LClav,0,-.6f,0);NativeEntranceKeys.Set(v,CapturedRig.RClav,0,.9f-.08f*breath,0);
+            });
+            var k=new NativeEntranceKeys();
+            k.Key(0,kneel(0,.1f,0));
+            k.Key(BreathFrom,kneel(0,.1f,0));
+            // the breath in, held at the top (the scope steadies), the shot on the held breath
+            k.Key(BreathFrom+.38f,kneel(1,.09f,.01f)).PassKey();
+            k.Key(ShotAt,kneel(.9f,.095f,.015f));
+            // the kick: the shoulder driven back, the head off the stock a touch, rippling out; then the breath out
+            k.Key(ShotAt+.05f,kneel(.6f,.03f,-.04f)).ImpactKey();
+            k.Key(ShotAt+.55f,kneel(.1f,.09f,0));
+            k.Key(RiseFrom,kneel(0,.11f,.02f));
+            // up: the weight over the front foot (the hips forward, the chest over the knee), the knee lifting off the floor
+            k.Key(RiseFrom+.22f,NativeIntroPoses.Kneel()).Root(Fwd(.08f).X,.88f,Fwd(.08f).Z,KneelYaw+(Facing-KneelYaw)*.3f).Drop(-.42f).J(B,.32f).J(Sp,.06f,-.12f).J(C,.04f,-.1f).J(Hd,-.12f,.18f).PassKey();
+            // the drive: the front leg straightening, the back foot coming through to land beside it, the chest lifting
+            k.Key(RiseFrom+.48f,NativeEntranceKeys.Stand()).Root(Fwd(.26f).X,.88f,Fwd(.26f).Z,Facing).Drop(-.16f).J(B,.16f).J(Sp,.03f).J(C,.02f,.04f).J(Hd,-.08f,.06f).PassKey();
+            // standing: a small settle past the top, then the weight back on the heels, the chin up, for the name
+            k.Key(RiseTo,NativeIntroPoses.Hero()).Root(Fwd(.3f).X,.88f,Fwd(.3f).Z,Facing).Drop(-.01f).J(B,.02f).J(C,-.04f,-.02f).J(Hd,-.02f,-.06f);
+            k.Key(RiseTo+.35f,NativeIntroPoses.Hero()).Root(Fwd(.3f).X,.88f,Fwd(.3f).Z,Facing).Drop(-.03f).J(C,-.06f,-.06f).J(Hd,.01f,-.05f);
+            k.Key(Total,NativeIntroPoses.Hero()).Root(Fwd(.3f).X,.88f,Fwd(.3f).Z,Facing).Drop(-.03f).J(C,-.06f,-.08f).J(Hd,.02f,-.07f);Keys=k;
 
             // ---- the camera ----
-            var scope=AimWrist+AimDir*ScopeAt+Up*.07f;var muzzle=AimWrist+AimDir*MuzzleAt;
+            var scope=AimLens;var muzzle=AimWrist+AimDir*MuzzleAt;
             var flyFrom=muzzle+AimDir*.6f+Right*.5f+Up*.22f;var flyTo=Drone-AimDir*4.5f+Right*1.4f+Up*.6f;
             Rig.Spline(0,new[]{L(-3.6f,8.2f,-9.4f),L(-2.7f,5.2f,-6.2f),L(-1.5f,2.3f,-3.1f)},L(0,.9f,3),L(0,1.25f,9),46,40).Ease(NativeIntroEase.InOut).Focus(0,0,.25f)
                .Dolly(LensAt,scope+Right*.34f+AimDir*.42f+Up*.05f,scope+Right*.3f+AimDir*.36f+Up*.05f,scope,scope,20,18).Focus(0,0,.8f)
                .Dolly(2.0f,Drone-AimDir*3.5f+Right*1.2f+Up*.3f,Drone-AimDir*3.6f+Right*1.1f+Up*.3f,scope+new Vector3(0,2.2f,0),scope+new Vector3(0,2.25f,0),3.6f,3.0f).Focus(0,0,.15f)
-               .Dolly(BreathFrom,L(-1.45f,1.22f,.62f),L(-1.32f,1.2f,.68f),L(-.05f,1.12f,.42f),L(-.04f,1.13f,.44f),30,27).Focus(0,0,.6f)
+               .Dolly(BreathFrom,L(-1.5f,1.3f,.52f),L(-1.38f,1.28f,.58f),L(-.1f,1.2f,.36f),L(-.1f,1.21f,.38f),30,27).Focus(0,0,.6f)
                .Dolly(ShotAt-.03f,muzzle+Right*1.25f+AimDir*1.4f+Up*.25f,muzzle+Right*1.2f+AimDir*1.32f+Up*.28f,muzzle-AimDir*.4f,muzzle-AimDir*.35f,40,38)
                .Dolly(ShotAt+.06f,flyFrom,flyTo,flyFrom+AimDir*6,Drone,48,30).Ease(NativeIntroEase.Linear)
                .Dolly(HitAt+.02f,L(-.95f,1.78f,-1.65f),L(-.9f,1.76f,-1.55f),Drone,Drone-new Vector3(0,9,0),7,9.5f).Focus(0,0,.1f)
-               .Dolly(CaseLands-.32f,L(.5f,1.16f,1.95f),L(.45f,1.14f,1.85f),L(-.2f,1.05f,1.32f),L(-.22f,1.05f,1.3f),30,28).Focus(0,0,.75f)
-               .Dolly(RiseFrom,L(-2.25f,.72f,.85f),L(-2.05f,.82f,1.0f),L(0,1.0f,.1f),L(0,1.32f,.1f),36,34).Focus(0,0,.4f)
-               .Dolly(RiseTo-.1f,L(1.4f,1.32f,3.6f),L(1.08f,1.34f,3.1f),L(0,1.22f,0),L(0,1.27f,0),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
+               .Dolly(CaseLands-.32f,L(-1.08f,1.16f,1.96f),L(-1.0f,1.14f,1.88f),L(-.48f,1.05f,1.32f),L(-.5f,1.05f,1.3f),30,28).Focus(0,0,.75f)
+               .Dolly(RiseFrom,L(-2.25f,.72f,.85f),L(-2.05f,.82f,1.0f),L(0,1.02f,.15f),L(0,1.36f,.3f),36,34).Focus(0,0,.4f)
+               .Dolly(RiseTo-.1f,L(1.4f,1.32f,3.6f),L(1.08f,1.34f,3.1f),L(0,1.22f,.3f),L(0,1.27f,.3f),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(.08f,0);
             // The breath held: the shot and the round's flight slowed; repaid while the drone falls.
             Ramps.Ramp(3.22f,.3f,1.15f,1.3f);
         }
-        /// <summary>The kneel's arms: the right hand on the grip at the shoulder's pocket, the bore on the drone; the left on the
-        /// fore-end over the coping. Released into the low carry as the pilot rises.</summary>
+        // ---- the body on the model (docs/INTROS-V2.md 9a-9c) ----
+        /// <summary>The stance and steps are the drawn model's ankles, the drops the drawn hips'.</summary>
+        protected override bool ModelFeet=>true;
+        /// <summary>The right knee on the floor until the rise lifts it.</summary>
+        protected override float ModelKneel(float t,bool left)=>left?0:1-NativeEntranceMath.Ramp(t,RiseFrom+.06f,RiseFrom+.24f);
+        /// <summary>The off hand on the handguard throughout (the grip IK); the stock in the drawn shoulder while the pilot aims, off it as
+        /// the rifle comes down to the carry.</summary>
+        public bool GripAt(float t,out NativeIntroGripAt g){g=new NativeIntroGripAt(1,default,0,0,1-NativeEntranceMath.Ramp(t,RiseFrom+.04f,RiseFrom+.36f));return true;}
+        /// <summary>Only the main hand is keyed here (the off hand is the grip's): the match's long-gun aim (the wrist under the cheek, the butt
+        /// in the shoulder pocket) onto the drone, the shot's kick lifting the muzzle a hair; then down to the low carry (the owner's rest-low
+        /// rule: the muzzle down and across the body), the stock off the shoulder.</summary>
         protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            float rise=NativeEntranceMath.Ramp(t,RiseFrom,RiseFrom+.55f);
-            float kick=NativeEntranceMath.Pulse(t,ShotAt,.015f,.12f);var aim=Vector3.Normalize(AimDir+Up*(.06f*kick));
-            var carry=Vector3.Normalize(Facing0*.62f+new Vector3(0,-.78f,0));var dir=Vector3.Normalize(Vector3.Lerp(aim,carry,rise));
-            var up=Vector3.Normalize(Vector3.UnitY-dir*dir.Y);
-            var grip=Vector3.Lerp(AimWrist-AimDir*(.05f*kick)+Up*(.012f*kick),CarryGrip,rise);var q=Look(dir,up);
-            NativeEntrancePose.Reach(pose,root,rotation,false,grip,q,1);
-            NativeEntrancePose.Reach(pose,root,rotation,true,grip+dir*.38f-up*.035f,q*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.3f),1);
+            float kick=NativeEntranceMath.Pulse(t,ShotAt,.015f,.14f),carry=NativeEntranceMath.Ramp(t,RiseFrom+.04f,RiseFrom+.46f);
+            var f=Vector3.Transform(Vector3.UnitZ,rotation);float facing=(float)Math.Atan2(f.X,f.Z);
+            if(carry<.999f)NativeIntroPoses.AimRifle(pose,"rifle",Wrap(KneelYaw-facing),AimPitch+.06f*kick);
+            if(carry>.001f)NativeIntroGrip.Hold(pose,false,"rifle",CarryAt,NativeIntroGrip.Aim(pose,CarryYaw,CarryPitch),new Vector3(-1,-.7f,-.2f),carry);
         }
-        /// <summary>The low carry's right wrist (standing, the rifle across the body, muzzle down and forward).</summary>
-        private static readonly Vector3 CarryGrip=L(-.16f,.98f,.26f);
-        /// <summary>The rifle's line at `t`: the drawn right wrist (or the keyed aim) and the bore.</summary>
-        private void Rifle(float t,out Vector3 wrist,out Vector3 dir)
+        /// <summary>The low carry: the right wrist by the right hip (the chest's frame, the keyed rig's proportions), the bore down and across.</summary>
+        private static readonly Vector3 CarryAt=new Vector3(-.2f,-.25f,.22f);private const float CarryYaw=.5f,CarryPitch=-.8f;
+        private static float Wrap(float a){while(a>Math.PI)a-=2*(float)Math.PI;while(a<-Math.PI)a+=2*(float)Math.PI;return a;}
+        /// <summary>A point `z` metres ahead along the hero facing (the root's floor point).</summary>
+        private static Vector3 Fwd(float z)=>Local(0,0,z);
+        /// <summary>The rifle at `t` (model-aware anchors, docs/INTROS-V2.md 2a): the drawn grip (the weapon frame's origin), the bore, the
+        /// rifle's up (the bore has no roll here) and its muzzle.</summary>
+        private void Rifle(float t,out Vector3 grip,out Vector3 bore,out Vector3 up,out Vector3 muzzle)
         {
-            // the drawn rifle when the runtime hands it in (its muzzle back along its bore to where the keyed wrist would be), else the keyed aim
-            if(Drawn(t,out var m,out var b)){dir=b;wrist=m-b*MuzzleAt;return;}
-            wrist=Wrist(t);dir=AimDir;if(t>RiseFrom+.2f){dir=Vector3.Normalize(Facing0*.62f+new Vector3(0,-.78f,0));}
+            grip=Anchor(NativeEntranceAnchor.RightGrip,t);bore=WeaponBore(false,t);if(bore.LengthSquared()<1e-6f)bore=AimDir;
+            up=Vector3.UnitY-bore*bore.Y;up=up.LengthSquared()>1e-6f?Vector3.Normalize(up):Vector3.UnitY;muzzle=Anchor(NativeEntranceAnchor.RightMuzzle,t);
         }
         private static readonly Vector3 Facing0=Local(0,0,1);
+        /// <summary>Where the spent case comes to rest on the coping, right of the barrel.</summary>
+        private static readonly Vector3 CaseRest=L(-.5f,1.035f,1.3f);
 
         // ---- the drone: hovering, turning its eye to the glint, struck, falling burning between the towers ----
         public static Vector3 DroneAt(float t,out Quaternion q)
@@ -143,8 +177,8 @@ namespace ChipArena.UnityConversion
         }
         private void Case(float t,out Vector3 p,out Quaternion q)
         {
-            var port=Anchor(NativeEntranceAnchor.RightGrip,ShotAt)+WeaponBore(false,ShotAt)*.16f+Right*.04f+Up*.05f;var v=Right*1.4f+Up*1.9f-AimDir*.4f;float a=t-ShotAt;float land=CaseLands-ShotAt;
-            var end=L(-.32f,1.035f,1.32f);
+            var port=Anchor(NativeEntranceAnchor.RightGrip,ShotAt)+WeaponBore(false,ShotAt)*.07f+Right*.05f+Up*.02f;var v=Right*1.4f+Up*1.9f-AimDir*.4f;float a=t-ShotAt;float land=CaseLands-ShotAt;
+            var end=CaseRest;
             if(a<land){float u=a/land;p=Vector3.Lerp(port,end,u)+new Vector3(0,(1.3f)*4*u*(1-u),0);q=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.3f,1,.2f)),a*22)*Look(AimDir,Vector3.UnitY);return;}
             float r=Math.Min(1,(t-CaseLands)/.6f);float roll=1-(1-r)*(1-r);p=end+Facing0*(-.12f*roll)+Right*(.03f*roll)+new Vector3(0,.004f+.03f*NativeEntranceMath.Pulse(t,CaseLands,.01f,.06f),0);
             q=Quaternion.CreateFromAxisAngle(Facing0,roll*5)*Look(Vector3.Normalize(Right+Facing0*.3f),Vector3.UnitY);
@@ -165,16 +199,16 @@ namespace ChipArena.UnityConversion
             l.Add(Bulb,NativeEntranceFx.Hex(0xffd8a0,1.6f),6);
             float blink=NativeEntranceMath.Bump(t%1.2f,0,.45f);l.Add(Beacon,Red*(1.2f*blink),9);
             l.Add(chest+SDir(-.6f,.9f,-1.8f),NativeEntranceFx.Hex(0x8fb8ff,1.4f),6);
-            float shot=Flash(t,ShotAt,.01f,.09f);if(shot>.01f){Rifle(t,out var w,out var d);l.Add(w+d*MuzzleAt,NativeEntranceFx.Hex(0xfff0d0,16*shot),6);}
-            float lens=NativeEntranceMath.Bump(t,LensAt,2.0f);if(lens>.01f)l.Add(AimWrist+AimDir*.9f+Up*.2f,Red*(.6f*lens),2.2f);
+            float shot=Flash(t,ShotAt,.01f,.09f);if(shot>.01f)l.Add(Anchor(NativeEntranceAnchor.RightMuzzle,t),NativeEntranceFx.Hex(0xfff0d0,16*shot),6);
+            float lens=NativeEntranceMath.Bump(t,LensAt,2.0f);if(lens>.01f)l.Add(AimLens+AimDir*.5f+Up*.1f,Red*(.6f*lens),2.2f);
             float card=NativeEntranceMath.Ramp(t,CardAt-.4f,CardAt+.4f);if(card>.01f)l.Add(chest+SDir(-1.5f,.5f,1.6f),Ice*(1.6f*card),6);
         }
 
         // ---- effects ----
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
-            View(t,out var eye,out var fwd);float floor=Floor;Rifle(t,out var wrist,out var bore);
-            var scope=wrist+bore*ScopeAt+Up*.07f;var muzzle=wrist+bore*MuzzleAt;
+            View(t,out var eye,out var fwd);float floor=Floor;Rifle(t,out var grip,out var bore,out var rup,out var muzzle);
+            var scope=grip+bore*ScopeAt+rup*ScopeY;
             // the rain round the eye: short falling streaks (each under a metre), slowed with the clock; splashes on the roof
             float slow=t>3.15f&&t<HitAt+.1f?.35f:1;int drops=q<.5f?70:150;
             for(int i=0;i<drops;i++)
@@ -197,8 +231,8 @@ namespace ChipArena.UnityConversion
             }
             // the scope's lens: the eye's red in the glass, rain beading on it (close shot), and the glint seen from afar
             float lens=NativeEntranceMath.Bump(t,LensAt-.05f,2.0f);
-            if(lens>.01f){fx.Glow(scope+bore*.12f,Red*(1.1f*lens),0,.025f,1,0,8600);for(int i=0;i<(q<.5f?3:6);i++){var p=scope+bore*.125f+Right*(NativeEntranceMath.Signed(8610,i)*.018f)+Up*(NativeEntranceMath.Signed(8611,i)*.018f-.02f*((t*.6f+i*.3f)%1f));fx.Glow(p,Ice*(.6f*lens),0,.006f,0,0,8610+i);}}
-            float glint=Flash(t,GlintAt,.03f,.28f);if(glint>.02f)Star(fx,eye,fwd,scope+bore*.13f,NativeEntranceFx.Hex(0xe8f6ff,3.4f*glint),(t>2.0f&&t<BreathFrom?.75f:.25f)*glint+.05f,.6f,8650);
+            if(lens>.01f){fx.Glow(scope+bore*.008f,Red*(1.1f*lens),0,.03f,1,0,8600);for(int i=0;i<(q<.5f?3:6);i++){var p=scope+bore*.012f+Right*(NativeEntranceMath.Signed(8610,i)*.026f)+Up*(NativeEntranceMath.Signed(8611,i)*.026f-.02f*((t*.6f+i*.3f)%1f));fx.Glow(p,Ice*(.6f*lens),0,.006f,0,0,8610+i);}}
+            float glint=Flash(t,GlintAt,.03f,.28f);if(glint>.02f)Star(fx,eye,fwd,scope+bore*.012f,NativeEntranceFx.Hex(0xe8f6ff,3.4f*glint),(t>2.0f&&t<BreathFrom?.75f:.25f)*glint+.05f,.6f,8650);
             // the breath: a faint plume from the drawn visor's mouth (just under the eyes, in front of the glass) as the hold breaks after the shot
             {var head=Anchor(NativeEntranceAnchor.Eyes,t);float b=NativeEntranceMath.Bump(t,ShotAt+.25f,ShotAt+1.1f);if(b>.02f)for(int i=0;i<3;i++){float u=(t*.8f+i/3f)%1f;fx.Smoke(head+new Vector3(0,-.07f+.06f*u,0)+bore*(.12f+.2f*u),new Vector3(.75f,.8f,.88f),.12f*b*(1-u),.06f+.12f*u,u,8700+i,floor);}}
             // the shot: the flash, the brake's side jets, the round and its vapour line across the avenue, the casing's steam
