@@ -142,8 +142,8 @@ strobing, the floods rise smoothly, no glints.
 | 1.15 | The bow comes up before the body, the arrow already on the string; the string hand meets the string at the set (1.71-1.85) |
 | 1.95 | Side-on to the shot, the draw toward the sky (a low orbit); the fireflies spiral into the arrowhead, the gate's glyphs wake |
 | 2.75 | Full draw: the arrowhead's star (close); the leaves stop in the air |
-| 3.25 | The release, slowed: a bolt of light climbs (low under the bow) |
-| 3.6–4.1 | The archer in profile at the head's height, looking up along the shot; the bolt blooms high above and splits (3.72), its light on the face |
+| 3.25 | The release, slowed, in profile from the chest's side at the head's height: the string hand flies back past the ear, a bolt of light climbs |
+| 3.6–4.1 | Up along the bolt from beside the archer: it blooms high above and splits (3.72) |
 | 4.12–5.2 | The volley of light rains round the shrine (high wide); each landing a burst of petals; the lanterns light |
 | 4.9–5.45 | The bow comes down |
 | 6.2 | The name (Assemble), the moon behind, the arrows standing in the moss |
@@ -161,8 +161,9 @@ drawn elbow arrives on its side without a flip. The arrow is on the string from 
 finger keeps it on the shelf, as the match's carry): the reach to the back quiver kept twisting the keyed arm past its limits, and a
 v2 bow intro draws no arrow in the hand. The string hand hooks the string on an arc outside the body as the bow comes up, and after the
 release it flies back straight on its forearm. The bow, string, arrow and quiver are the match's, drawn by the runtime from the
-intro's view (`INativeIntroBow`). The bloom (3.6-4.1 s) is seen from the chest's side at the head's height (the low shot from behind
-under the shoulders read the head and the arms oddly).
+intro's view (`INativeIntroBow`). The slowed release (3.22-3.6 s, about 3.4-4.2 s of the clip) is seen in profile from the chest's side
+at the head's height (owner 2026-11-21: the low shot from behind under the shoulders read the head and the arms oddly), then the bloom
+from beside the archer, up along the bolt.
 
 ## The arms as they read (all four; owner 2026-11-21)
 

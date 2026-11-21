@@ -90,7 +90,8 @@ namespace ChipArena.UnityConversion
                .Dolly(HitAt+.02f,L(-.95f,1.78f,-1.65f),L(-.9f,1.76f,-1.55f),Drone,Drone-new Vector3(0,9,0),7,9.5f).Focus(0,0,.1f)
                .Dolly(CaseLands-.32f,L(-1.08f,1.16f,1.96f),L(-1.0f,1.14f,1.88f),L(-.48f,1.05f,1.32f),L(-.5f,1.05f,1.3f),30,28).Focus(0,0,.75f)
                .Dolly(RiseFrom,L(-2.25f,.72f,.85f),L(-2.05f,.82f,1.0f),L(0,1.02f,.15f),L(0,1.36f,.3f),36,34).Focus(0,0,.4f)
-               .Dolly(RiseTo-.1f,L(1.4f,1.32f,3.6f),L(1.08f,1.34f,3.1f),L(0,1.22f,.3f),L(0,1.27f,.3f),34,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
+               // (a cut: blended from the rise's side, the eye passed under the parapet's coping for a frame)
+               .Dolly(RiseTo-.1f,L(1.4f,1.32f,3.6f),L(1.08f,1.34f,3.1f),L(0,1.22f,.3f),L(0,1.27f,.3f),34,31).Ease(NativeIntroEase.Out).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(.08f,0);
             // The breath held: the shot and the round's flight slowed; repaid while the drone falls.
             Ramps.Ramp(3.22f,.3f,1.15f,1.3f);
