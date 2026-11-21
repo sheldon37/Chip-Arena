@@ -1,3 +1,21 @@
+## 2026-11-20 — Claude: release 5: Meridian's street life (part 1) and the bleed's lamps under 3 Hz (integrator)
+Owner: "streets seem very empty ... it still feels kind of 'grey box-ish'".
+- **Published:** shared and the builder at `e9b3441a`. Test channel revision `639308227806636494` (build `cd771ad8`, 384.3 MiB).
+- **Merged:**
+  - `claude/meridian-streets` `9991e2a4` (M2): the street life's 81 non-colliding kinds by district, and the solid props' DEV walk preview;
+  - `claude/bleed-flicker` `50ac5e71` (integrator): the bleed's flickering lamps stepped at 11 Hz with no Reduced path. They now step at 2.6 Hz, or at 0.8 Hz with Reduced effects (never under .6, no dark beats). `BleedChecks.Flicker` holds it: at most 4 changes in any second, 1 with Reduced effects.
+- **Drive zip:** 171,791,223 bytes, sha `f918da76`. It adds `ChipArenaCityStreets` (1,307,384 bytes) and `ChipArenaCityStreetProps` (2,846,835), with their metas, and removes nothing. The backup is `LocalAssets-2026-11-20-before-release5.zip`. Both banks stay in the Editor's Resources.
+- **Checks:**
+  - PrototypeBuild.Validate in the Editor on `a5a2a7ef`;
+  - the full suite at `e66b3e1c` (1,094 groups, exit 0);
+  - the Unity compile;
+  - the build's package validation.
+  - The pin scan flagged one fragment in `NativeCityBleedDraw.cs`; the suite passes, so it is the rewritten `Intensity`.
+  - Not run: two Windows clients, Low tier and Reduced effects in the Editor.
+- **Owner:** the camp keeps its placeholder sounds ("Keep placeholders").
+- **For Astra:** the solid street props need `prop-<stem>-<i>` blocks; the contract is `docs/expedition/MERIDIAN-STREETS.md` part 2.
+- **After the release:** the PC slept from about 21:06 to 23:15. The background agents ended, and the Unity Editor closed with no crash report. I5's Editor hold (20:57) was cut off. The integrator cleared its stale lock and moved the closed Editor's checkout back to `9319026b`; the banks check as released. A relaunch waits on the owner.
+
 ## 2026-11-20 — Claude (M2): Meridian's streets come alive: honest street life in the live run and the walk (part 1), and the solid street props proposed for Astra with a DEV preview (part 2)
 
 Owner: "Also, streets seem very empty? (Not talking about zombies, but like theres no life essentially like props or anything, it
