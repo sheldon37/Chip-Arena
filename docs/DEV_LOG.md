@@ -18,8 +18,20 @@
 - **Proof** (`F:/Chip Arena Development/scratch/fps-tactical/`): `stills-held/hands-std-2000x1173.jpg`,
   `hands-ars-2000x1173.jpg`, `hands-robe-2000x1173.jpg` (2000x1173, chips on: velocity, magazine, fire rate, demolition; each gun
   at rest, aimed, mid-reload), `clips-held/fp-pistol.mp4`, `fp-rifle.mp4`, `fp-machinegun.mp4`.
-- **Known:** in the robe the bare arm's upper end shows as a dark cut low at the screen's edge (the upper-arm skin part does not
-  show); the long guns' support forearm still crosses the lower left (our models' handguards sit further out than the pack's).
+- **Framing pass (integrator review of `e0877dde`):** the robe's wide sleeve is cut cleanly at mid-forearm (by where its
+  corners lie along the arm at rest: its hanging part is weighted to the upper arm) with the forearm's skin below it, no bare
+  stumps; the long guns sit lower right (`WeaponOffset`) with the support hand 10-14 cm back toward the receiver (`GripBack`);
+  the aimed pistol's shoulders sit 16 cm lower (`AimShoulderDrop`: short arms rising to a compact hold, the sights on the eye);
+  the rifle's reload turns 30% of the pack's (`ActionTurn`: its scope no longer swings into the middle).
+- **Coverage** (the view model's pixels, where the first-person frame differs from the world camera's; 2000x1173, Brickfall,
+  `scratch/fps-tactical/stills-held/coverage-*.txt`): at rest pistol 5.7-7.9%, rifle 10.6-12.7%, machine gun 4.8-5.7%; inside
+  the central 30% box at rest 0.4-0.6% (pistol), 4.6-5.0% (rifle: its scope's front), 0.4-1.1% (machine gun). Aimed: pistol
+  11.8-13.0% (its sights and hands under the centre), machine gun 3.0-6.1%, rifle 0 (its scope). Mid-reload 5.7-12.1%.
+- **Checks:** PrototypeBuild.Validate ok at `366967ce` and `303b7f3a`; `--tactical-view` 2,759; the compile check PASS;
+  `git diff --check` clean; the full suite at `f5469246` (1,105 groups, exit 0).
+- **Known:** the machine gun at rest now sits low (its receiver at the bottom edge, dark on a night stage); the rifle at rest
+  covers 12.7% in the robe. Captures take 4-8 minutes each: every capture's domain reload is about 80 s, mostly
+  `InitializeOnLoad` processing (42 s) and restoring instances (29 s), and the capture tool reloads on every capture.
 
 ## 2026-11-22 — Claude: releases 17 and 18: the Tactical Shooter Pack in first and third person (integrator)
 Owner: "Utilize new FPS system / animations from tactical pack"; then "Use pack guns", "Fix pilot's arms", "Can we fix the animations to
