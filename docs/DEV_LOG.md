@@ -1,3 +1,29 @@
+## 2026-11-22 — Claude: releases 17 and 18: the Tactical Shooter Pack in first and third person (integrator)
+Owner: "Utilize new FPS system / animations from tactical pack"; then "Use pack guns", "Fix pilot's arms", "Can we fix the animations to
+use their shooting animations and walking/running for guns?", "think we need to fix this here" and "check the hands and gun anchoring".
+- **Release 17, first person:** merged `claude/fps-tactical` `4995f293` (F1).
+  - Published: shared and the builder at `0e460209`. Test channel revision `639309345534715754` (build `1aaa9749`, 400.0 MiB).
+  - Drive zip: adds the view bank `ChipArenaViewMotion.bytes` and `ChipArenaViewGuns.prefab` with the three pack guns' meshes,
+    materials and textures (91 entries, about 8 MB, no scripts). The visual body is 478.22 of 480 MB. The packer follows
+    `ChipArenaViewGuns*.prefab` (F1's one-line change). The previous zip is kept as `LocalAssets-2026-11-22-before-fps-tactical.zip`.
+  - Checks: PrototypeBuild.Validate on `4995f293`, the full suite (1,104 groups, exit 0), the Unity compile and the build.
+- **Release 18, third person:** merged `claude/tp-tactical` `b80471c1` (T1): the pack's aim, shots, reloads, carry and draw for
+  the pistol, rifle and machine gun, plus the support-hand and anchoring pass.
+  - Published: shared and the builder at `277fc25a`. Test channel revision `639309394535493249` (build `94c5f9d1`, 400.0 MiB).
+  - Motion bank `548c7889` (6,438,026 bytes: the 499 released clips plus 14 pack clips). It went into the Drive zip with the
+    first attempt, which relgen5 stopped unpublished because T1 committed mid-suite. The previous zip is kept as
+    `LocalAssets-2026-11-22-before-tp-tactical.zip`.
+  - Checks: PrototypeBuild.Validate on `631e1c61`, the full suite at `b80471c1` (1,105 groups, exit 0), the Unity compile and the
+    build. The pin scan's one hit is a string T1's own check expects to be absent.
+  - Note: a full BoZo motion rebake drops the 14 pack records. Re-append them with T1's `ChipArenaT1Bake.cs`.
+- **Not run (both):** two clients, the Low tier, every Arsenal skin. In first person every skin draws as the plain pack gun.
+- **Editor incident, 00:08 on 2026-11-22:** the checkout's local `"com.unity.shadergraph": "17.3.0"` manifest line vanished.
+  Without it ugui and render-pipelines.core did not resolve, so the BoZo tool failed to compile on every commit. The writer is
+  unknown (no agent step writes the manifest). The line was restored at 00:17, and the integrator's `editor_on` now re-adds it.
+- **Open:**
+  - The old first-person view model still draws the other weapons, with their hands below the frame (F1's audit).
+  - The pack's 149 WAV weapon sounds are unused (listed in `docs/FPS-TACTICAL.md`).
+
 ## 2026-11-22 — Claude (T1): third-person guns: the support hand closed on the gun in every state; the gun stays on the hand (follow-up)
 Owner (via the coordinator, on a frame of the rifle's run): "think we need to fix this here" (the support hand open and flat on the
 rifle's side, not on the handguard), then "we may have to check the hands and gun anchoring, I think sometimes it appears the gun and
