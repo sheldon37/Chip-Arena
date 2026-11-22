@@ -129,6 +129,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.AllBlocks)
             {
                 if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e)||e.Machine)continue;if(p.Fragment&&NativeStructureFxPresentation.ShapedFragments)continue;if(poolroomsKit&&ArenaPresentation.PoolroomsKitBlock(arena.MapId,p.Definition.id))continue;if(backroomsKit&&ArenaPresentation.BackroomsKitBlock(arena.MapId,p.Definition.id))continue;if(causewayKit&&NativeCausewayLooks.KitBlock(p.Definition.id))continue;if(deepwellKit&&NativeDeepwellLooks.KitBlock(p.Definition.id))continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;if(meridianBlocks&&NativeMeridianDressDraw.Hides(arena.MapId,p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
+                if(campBlocks&&NativeCampDraw.Hides(arena.MapId,p.Definition.id))continue;
                 if(arena.MapId==NativeThunderheart.Id&&!p.Fragment)continue;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;if(Nudged.Count>0&&p.Definition.id!=null&&Nudged.TryGetValue(p.Definition.id,out var nudge))pos+=nudge;
                 if(Posed.Count>0&&p.Definition.id!=null&&Posed.TryGetValue(p.Definition.id,out var pose)){pos=pose.MultiplyPoint3x4(pos);rot=pose.rotation*rot;}
@@ -171,6 +172,8 @@ namespace ChipArena.UnityConversion
             // The blocks Meridian's street dress draws in place of give way to it wherever it draws: the walk's layouts and the live
             // run's generated map (one deal's street plan since PR #432; drawn under the dress there, the hub's floors fought it).
             meridianBlocks=NativeMeridianDress.HidesGreybox(mapId);
+            // Belvedere Camp's structures (A1's camp-* blocks on the generated hub) give their boxes up to the camp's art while it draws.
+            campBlocks=mapId==NativeExpeditionGeneratedWorld.MapId;
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
             var source=map.blocks;if(dressed&&!ReferenceEquals(source,liftBlocks)){liftBlocks=source;lifts=NativeSurfaceLayers.Blocks(source);liftIndex.Clear();if(source!=null)for(int i=0;i<source.Length;i++)if(source[i]?.id!=null&&!liftIndex.ContainsKey(source[i].id))liftIndex[source[i].id]=i;}
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
@@ -270,7 +273,7 @@ namespace ChipArena.UnityConversion
         // intact stage and the legacy meshes for the others on the low tier.
         private bool surveyBlocks;
         // whether the map's blocks under Meridian's street dress are left out while it draws (NativeMeridianDress.HidesGreybox)
-        private bool meridianBlocks;
+        private bool meridianBlocks,campBlocks;
         private Mesh surveyMesh;
         private Mesh toonMesh;private readonly Mesh[] wrapMeshes=new Mesh[NativeToonMesh.WrapMeshes];
         private Mesh StageForMap(int stage)

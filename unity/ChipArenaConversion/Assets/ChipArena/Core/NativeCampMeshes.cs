@@ -46,17 +46,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A box of the overlay: corners (min, max), colour and alpha.</summary>
         public readonly struct Box{public readonly V3 Lo,Hi;public readonly int Hex;public readonly float Alpha;public Box(V3 lo,V3 hi,int hex,float alpha){Lo=lo;Hi=hi;Hex=hex;Alpha=alpha;}}
         /// <summary>The camp's two machines as PveMachine records (the A1 hand-off's points: front 0.7, dispense 1.3, chipDrop 2.2).</summary>
-        public static PveMachine[] Machines()
-        {
-            var o=new PveMachine[NativeCamp.Machines.Length];
-            for(int i=0;i<o.Length;i++)
-            {
-                var (id,kind,x,z,yaw)=NativeCamp.Machines[i];float fx=(float)Math.Sin(yaw),fz=(float)Math.Cos(yaw);
-                PvePoint P(float d)=>new PvePoint{x=x+fx*d,y=0,z=z+fz*d};
-                o[i]=new PveMachine{m=i,id=id,kind=kind,x=x,y=0,z=z,yaw=yaw,front=P(.7f),dispense=P(1.3f),chipDrop=P(2.2f)};
-            }
-            return o;
-        }
+        public static PveMachine[] Machines()=>NativeExpeditionHubPlan.Machines();
         /// <summary>The overlay for a seed's landing field.</summary>
         public static List<Box> Boxes(uint seed)
         {

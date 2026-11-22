@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
 using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
@@ -7,7 +8,54 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         internal static System.Numerics.Vector3 PodFeet(NativePilot p){var v=p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight;return new System.Numerics.Vector3(v.x,v.y,v.z);}
-        public NativePodRecord[] PodRecords=Array.Empty<NativePodRecord>();
+        private NativePodRecord[] podRecords=Array.Empty<NativePodRecord>();
+        private readonly Dictionary<int,GameObject> podSolids=new Dictionary<int,GameObject>();
+        private readonly List<int> expiredPods=new List<int>(8);
+        public NativePodRecord[] PodRecords
+        {
+            get=>podRecords;
+            set
+            {
+                podRecords=value??Array.Empty<NativePodRecord>();
+                SyncPodSolids();
+            }
+        }
+        internal void SyncPodSolids()
+        {
+            if(MapId!=NativeExpeditionGeneratedWorld.MapId||root==null)return;
+            bool Standing(NativePodRecord record)=>!record.departed
+                &&Time>=record.end+NativePodDrop.ImpactOf(record.order)
+                &&(record.launchAt<0||Time<record.launchAt+NativePodDrop.LaunchGone);
+            foreach(var record in podRecords)
+            {
+                if(!Standing(record)||podSolids.TryGetValue(record.seat,out var solid)&&solid!=null)continue;
+                var centre=NativePodDrop.Centre(record.x,record.y,record.z,record.yaw);
+                var body=new GameObject("Expedition pod "+record.seat);
+                body.transform.SetParent(root.transform,false);
+                body.transform.position=new Vector3(centre.X,centre.Y+1.425f,centre.Z);
+                body.transform.rotation=Quaternion.Euler(0,record.yaw,0);
+                body.layer=PropLayer;
+                body.AddComponent<BoxCollider>().size=new Vector3(1.96f,2.85f,1.96f);
+                var cross=new GameObject("Cross");
+                cross.transform.SetParent(body.transform,false);
+                cross.transform.localRotation=Quaternion.Euler(0,45,0);
+                cross.layer=PropLayer;
+                cross.AddComponent<BoxCollider>().size=new Vector3(1.96f,2.85f,1.96f);
+                podSolids[record.seat]=body;
+            }
+            foreach(var pair in podSolids)
+            {
+                bool present=false;
+                foreach(var record in podRecords)
+                    if(record.seat==pair.Key&&Standing(record)){present=true;break;}
+                if(present)continue;
+                pair.Value.SetActive(false);
+                CapturedAnimation.Release(pair.Value);
+                expiredPods.Add(pair.Key);
+            }
+            foreach(int seat in expiredPods)podSolids.Remove(seat);
+            expiredPods.Clear();
+        }
         internal Func<NativePilot,string> BoardPod;
         public bool PodDeparting(int seat)=>PodRecords.Any(r=>r.seat==seat&&r.launchAt>=0&&!r.departed);
         internal bool PodInteraction(NativePilot pilot,out string notice)
@@ -59,6 +107,7 @@ namespace ChipArena.UnityConversion
             if(m.Phase!=NativePhase.Countdown)return false;
             hub.Input=new InputFrame();hub.Step(++splitTick);
             foreach(var area in expeditionM1Layout.areas)splitAreas.Find(area.id).Arena.Match.SynchronizeExpeditionClock(splitTick/60d);
+            hub.Arena.SyncPodSolids();
             pending=new InputFrame();ExpeditionView=SplitView(account.Access.AccountId);return true;
         }
         private void TickPodDepartures()

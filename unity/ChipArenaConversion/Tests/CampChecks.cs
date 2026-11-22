@@ -31,9 +31,9 @@ internal static class CampChecks
     public static void Run(string root)
     {
         checks = 0;
-        Table(); Field(); Posts(); Live(); Fx(); Synth(); Survivors(); Sources(root); Bank(); Motion();
+        Table(); Field(); Posts(); Live(); Fx(); Synth(); Survivors(); OnBlocks(); Sources(root); Bank(); Motion();
         Console.WriteLine("PASS camp: " + checks + " checks (the W5 table and its clearances, 2,000 landing fields, " + NativeCamp.Posts.Length +
-            " posts, the live camp's honesty, its light, sound and budgets, the survivors' roles" + (Environment.GetEnvironmentVariable("CHIPARENA_CAMP_BANK") != null ? ", the bank's meshes" : "") +
+            " posts, the live camp's honesty, its light, sound and budgets, the survivors' roles, the camp on A1's blocks (its art, its greybox, who has joined, the awning's metre)" + (Environment.GetEnvironmentVariable("CHIPARENA_CAMP_BANK") != null ? ", the bank's meshes" : "") +
             (Environment.GetEnvironmentVariable("CHIPARENA_CAMP_MOTION") != null ? ", the survivors' clips" : "") + ")");
     }
 
@@ -98,7 +98,7 @@ internal static class CampChecks
         for (uint i = 0; i < 2000; i++)
         {
             uint seed = unchecked(i * 2654435761u); var spots = NativeExpeditionHubPlan.LandingField(seed);
-            for (int k = 0; k < 4; k++)
+            for (int k = 0; k < spots.Length; k++)
             {
                 var p = spots[k]; double a = p.yaw * Math.PI / 180; float fx = (float)Math.Sin(a), fz = (float)Math.Cos(a);
                 foreach (var r in NativeCamp.Table)
@@ -113,7 +113,7 @@ internal static class CampChecks
         }
         Check(worstHull >= 1 - 1e-3f, "every pod hull 1 m clear of every block (worst " + worstHull.ToString("0.00", CultureInfo.InvariantCulture) + " m)");
         Check(worstSkid >= 1 - 1e-3f, "every skid apron 1 m clear of every block (worst " + worstSkid.ToString("0.00", CultureInfo.InvariantCulture) + " m)");
-        // (for A1: today's Clear() does not test the capsule at ExitReach 2.4 m; A1 adds it, which may move some draws)
+        Check(capsuleShort == 0, "every ramp-foot capsule clears camp structures by one metre");
         Console.WriteLine("camp: landing field over 2000 seeds: hull clear by " + worstHull.ToString("0.00", CultureInfo.InvariantCulture) + " m, skid by " + worstSkid.ToString("0.00", CultureInfo.InvariantCulture) +
             " m; the ExitReach 2.4 capsule clear by " + worstCapsule.ToString("0.00", CultureInfo.InvariantCulture) + " m (" + capsuleShort + " block pairs under 1 m)");
     }
@@ -352,6 +352,64 @@ internal static class CampChecks
         Check(GC.GetAllocatedBytesForCurrentThread() - before == 0, "a survivor's sample allocates nothing");
     }
 
+    // ---------------- the camp on A1's blocks (live since A1) ----------------
+    private static void OnBlocks()
+    {
+        // every row's art: one key per kind (the bank's meshes are checked against their blocks with the bank, Bank())
+        foreach (var r in NativeCamp.Table) Check(NativeCamp.ArtOf(r.Kind) != null, r.Id + " has its art (" + r.Kind + ")");
+        var structures = NativeCamp.Structures();
+        Check(structures.All(x => x.Key.StartsWith("camp/row/", StringComparison.Ordinal) && x.Post == null), "the structures are row art only (no figure)");
+        foreach (var key in NativeCamp.Table.Select(r => NativeCamp.ArtOf(r.Kind)).Distinct()) Check(structures.Any(x => x.Key == key), "the structures draw " + key);
+        Check(structures.Count(x => x.Key == "camp/row/bench") == 4 && structures.Count(x => x.Key == "camp/row/sentry") == 4 && structures.Count(x => x.Key == "camp/row/sandbag") == 8 &&
+            structures.Count(x => x.Key == "camp/row/ring") == 1 && structures.Count(x => x.Key == "camp/row/kiosk") == 1 && structures.Count(x => x.Key == "camp/row/lookout") == 1, "one piece per structure");
+        // the preview is the structures, the figures and the fourth bench's keep, as before
+        var all = NativeCamp.Preview(1964354793u, 5); var none = NativeCamp.Preview(1964354793u, 0);
+        Check(all.Count == structures.Count + NativeCamp.Posts.Length && none.Count == structures.Count + 13 + 1 && none.Any(x => x.Key == "camp/row/bench-waiting") && !all.Any(x => x.Key == "camp/row/bench-waiting"),
+            "the preview: the structures, everyone in the camp, the fourth bench's keep until its survivor joins");
+        // who is in the camp: the 13 from the start always; the rescued once their instance is cleared (by area id or the walk's name)
+        var cleared = new HashSet<string>(StringComparer.Ordinal);
+        Check(NativeCamp.Posts.Count(p => NativeCamp.Joined(p, -1, cleared)) == 13, "live with nothing cleared: the 13");
+        foreach (var p in NativeCamp.Posts.Where(p => p.Rescued != null))
+        {
+            cleared.Clear(); cleared.Add(p.Rescued);
+            Check(NativeCamp.Posts.Count(q => NativeCamp.Joined(q, -1, cleared)) == 14 && NativeCamp.Joined(p, -1, cleared), p.Id + " joins when " + p.Rescued + " is cleared");
+            cleared.Clear(); cleared.Add(NativeCampDraw_Name(p.Rescued));
+            Check(NativeCamp.Joined(p, -1, cleared), p.Id + " joins by the instance's name too");
+        }
+        cleared.Clear(); foreach (var p in NativeCamp.Posts) if (p.Rescued != null) cleared.Add(p.Rescued); cleared.Add("Final court");
+        Check(NativeCamp.Posts.All(p => NativeCamp.Joined(p, -1, cleared)), "everyone once all five are cleared (the final court brings no one)");
+        for (int k = 0; k <= 5; k++) Check(NativeCamp.Posts.Count(p => NativeCamp.Joined(p, k, null)) == 13 + k && NativeCamp.PreviewPosts(k).Count() == 13 + k, "the walk's count " + k);
+        long before = GC.GetAllocatedBytesForCurrentThread(); int n = 0;
+        for (int i = 0; i < 100; i++) foreach (var p in NativeCamp.Posts) if (NativeCamp.Joined(p, -1, cleared)) { var at = NativeCamp.PostAt(p); n += at.y >= 0 ? 1 : 0; }
+        Check(GC.GetAllocatedBytesForCurrentThread() - before == 0 && n == 1800, "who is in the camp and where: no allocation per frame");
+        // the owner's call (2026-11-21, "Move to 1 m"): the awning posts stand a metre or more clear of the chip machine's body
+        var chip = NativeExpeditionHubPlan.Machines().Single(m => m.kind == "chip"); var body = NativeExpeditionLayout.MachineBlock(chip);
+        foreach (var r in NativeCamp.Table.Where(r => r.Kind == NativeCamp.RowKind.AwningPost))
+        {
+            float gap = BodyGap(body.pos.x, body.pos.z, body.size.x / 2, body.size.z / 2, chip.yaw, r);
+            Check(gap >= 1, r.Id + " a metre clear of the chip machine's body (" + gap.ToString("0.000", CultureInfo.InvariantCulture) + " m)");
+            Check(r.Top >= NativeCamp.Overhead + .3f, r.Id + " carries the awning above 3.1 m");
+        }
+    }
+    // The gap (m) between a machine's turned body (centre, half extents along its own x and z, yaw radians) and a row's box, in plan.
+    private static float BodyGap(float cx, float cz, float hx, float hz, float yaw, NativeCamp.Row r)
+    {
+        float c = (float)Math.Cos(yaw), s = (float)Math.Sin(yaw); float best = float.MaxValue;
+        // sample the row's outline densely against the body's own frame (exact enough at 1 cm for a 0.3 m post)
+        for (int i = 0; i <= 120; i++)
+        {
+            float t = i / 120f; foreach (var (x, z) in new[] { (r.Min.x + (r.Max.x - r.Min.x) * t, r.Min.z), (r.Min.x + (r.Max.x - r.Min.x) * t, r.Max.z), (r.Min.x, r.Min.z + (r.Max.z - r.Min.z) * t), (r.Max.x, r.Min.z + (r.Max.z - r.Min.z) * t) })
+            {
+                float dx = x - cx, dz = z - cz; float lx = dx * c - dz * s, lz = dx * s + dz * c;
+                float ox = Math.Max(0, Math.Abs(lx) - hx), oz = Math.Max(0, Math.Abs(lz) - hz); best = Math.Min(best, (float)Math.Sqrt(ox * ox + oz * oz));
+            }
+        }
+        return best;
+    }
+    private static string NativeCampDraw_Name(string instance) => instance switch
+    {
+        "exp-backrooms" => "Level 0", "exp-poolrooms" => "The Poolrooms", "exp-ward-zero" => "Ward Zero", "exp-transit" => "Central Station", "exp-foundry" => "City Ironworks", _ => instance
+    };
     private static void Sources(string root)
     {
         string R(string f) => File.ReadAllText(Path.Combine(root, "Assets/ChipArena/Runtime", f));
@@ -365,11 +423,18 @@ internal static class CampChecks
             Check(walk.Contains(hook), "the walk's hook " + hook);
         var w = R("NativeCampWalk.cs"); Check(w.StartsWith("#if UNITY_EDITOR || DEVELOPMENT_BUILD", StringComparison.Ordinal), "the DEV preview's switches exist only in Editor and development builds");
         var d = R("NativeCampDraw.cs");
-        Check(d.Contains("else if(NativeCampWalk.Active(arena.MapId)){walk=true;") && d.Contains("bool live=run?.City!=null&&arena.MapId==run.Map.id;walk=false;show=false;"), "the preview shows only in the walk: a live run never sets it");
-        int start = d.IndexOf("private void BuildPreview", StringComparison.Ordinal); Check(start > 0 && d.IndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", start, StringComparison.Ordinal) - start < 200, "the preview's build is compiled only in Editor and development builds");
-        var survivors = R("NativeCampSurvivorsDraw.cs"); Check(survivors.StartsWith("#if UNITY_EDITOR || DEVELOPMENT_BUILD", StringComparison.Ordinal), "the survivors on the model exist only in Editor and development builds");
-        int survivorsHook = d.IndexOf("if(show)CampSurvivorsFrame(arena,now,NativeCampWalk.Rescued);else CampSurvivorsHide();", StringComparison.Ordinal);
-        Check(survivorsHook > 0 && d.LastIndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", survivorsHook, StringComparison.Ordinal) > d.LastIndexOf("#endif", survivorsHook, StringComparison.Ordinal), "the survivors draw only in the preview, in Editor and development builds");
+        Check(d.Contains("else if(NativeCampWalk.Active(arena.MapId)){walk=true;") && d.Contains("bool live=run?.City!=null&&arena.MapId==run.Map.id;walk=false;show=live;") &&
+            d.Contains("show=NativeCampWalk.Preview;}"), "the camp on A1's blocks shows in the live hub always, in the walk while its preview is on (C)");
+        int start = d.IndexOf("private void BuildCamp", StringComparison.Ordinal); int overlay = d.IndexOf("overlayMesh=OverlayMesh(seed);", start, StringComparison.Ordinal);
+        Check(start > 0 && overlay > start && d.LastIndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", overlay, StringComparison.Ordinal) > start, "the clearance overlay is built only in Editor and development builds");
+        var survivors = R("NativeCampSurvivorsDraw.cs"); Check(!survivors.StartsWith("#if", StringComparison.Ordinal) && survivors.Contains("private void CampSurvivorsPrewarm()"), "the survivors on the model draw live (every build), their bodies made behind the loading screen");
+        int survivorsHook = d.IndexOf("if(show)CampSurvivorsFrame(arena,now,rescued,cleared);else CampSurvivorsHide();", StringComparison.Ordinal);
+        int walkCount = d.IndexOf("if(walk){rescued=NativeCampWalk.Rescued;cleared=null;}", StringComparison.Ordinal);
+        Check(survivorsHook > 0 && walkCount > 0 && walkCount < survivorsHook && d.LastIndexOf("#if UNITY_EDITOR || DEVELOPMENT_BUILD", walkCount, StringComparison.Ordinal) > d.LastIndexOf("#endif", walkCount, StringComparison.Ordinal),
+            "the survivors follow the run's cleared instances live; the walk's count (U) only in Editor and development builds");
+        Check(R("NativeArenaDressing.cs").Contains("if(campBlocks&&NativeCampDraw.Hides(arena.MapId,p.Definition.id))continue;") && R("NativeArenaDressing.cs").Contains("campBlocks=mapId==NativeExpeditionGeneratedWorld.MapId;"),
+            "the arena dressing leaves out a camp block's box while its art draws");
+        Check(d.Contains("if(covers.Count>0){activeCovers=covers;activeMap=mapId;activeFrame=Time.frameCount;}") && d.Contains("Time.frameCount-activeFrame<=1"), "the boxes come back the frame after the art stops drawing");
         foreach (var (name, text) in new[] { ("NativeCampDraw.cs", d), ("NativeCampAudio.cs", R("NativeCampAudio.cs")), ("NativeCampWalk.cs", w), ("NativeCamp.cs", Core("NativeCamp.cs")), ("NativeCampFx.cs", Core("NativeCampFx.cs")), ("NativeCampMeshes.cs", Core("NativeCampMeshes.cs")), ("NativeCampSynth.cs", Core("NativeCampSynth.cs")), ("NativeCampSurvivors.cs", Core("NativeCampSurvivors.cs")), ("NativeCampSurvivorsDraw.cs", survivors) })
         {
             foreach (var bad in new[] { "Collider", "Rigidbody", "Physics.", "NativeNetwork", "Emit(", "Replicat", "voxel", "Voxel" })
@@ -475,7 +540,21 @@ internal static class CampChecks
             var prop = bank.Find(s.Key + "/0"); Check(prop != null, "the bank has the preview's " + s.Key);
             if (!s.Key.StartsWith("camp/row/", StringComparison.Ordinal) || s.Key == "camp/row/ring" || s.Key == "camp/row/fountain") continue;
         }
-        Console.WriteLine("camp: the live camp's bank meshes " + fineTris + " Fine triangles");
+        // the camp on A1's blocks (live since A1): below 3.1 m every structure's art lies within 0.25 m of a block's faces (its own, or
+        // a neighbour's: the posts under the kiosk's awning), so no art stands where a pilot could walk into it unblocked
+        float worstArt = 0; string worstAt = "";
+        foreach (var sh in NativeCamp.Structures())
+        {
+            double ra = sh.Yaw * Math.PI / 180; float co = (float)Math.Cos(ra), si = (float)Math.Sin(ra);
+            foreach (var v in Verts(sh.Key, new[] { co, 0, si, sh.At.x, 0, 1, 0, sh.At.y, -si, 0, co, sh.At.z }))
+            {
+                if (v.y >= NativeCamp.Overhead) continue; float near = float.MaxValue;
+                foreach (var r in NativeCamp.Table) { float dx = Math.Max(0, Math.Max(r.Min.x - v.x, v.x - r.Max.x)), dy = Math.Max(0, Math.Max(r.Min.y - v.y, v.y - r.Max.y)), dz = Math.Max(0, Math.Max(r.Min.z - v.z, v.z - r.Max.z)); near = Math.Min(near, (float)Math.Sqrt(dx * dx + dy * dy + dz * dz)); }
+                if (near > worstArt) { worstArt = near; worstAt = sh.Key + " " + Fmt(v); }
+            }
+        }
+        Check(worstArt <= NativeCamp.WallReach + 1e-3f, "the structures' art below 3.1 m within 0.25 m of its blocks (worst " + worstArt.ToString("0.000", CultureInfo.InvariantCulture) + " m: " + worstAt + ")");
+        Console.WriteLine("camp: the live camp's bank meshes " + fineTris + " Fine triangles; the structures' art at most " + worstArt.ToString("0.000", CultureInfo.InvariantCulture) + " m off its blocks below 3.1 m");
     }
     private static long Tris(NativePackBank.Bank bank, string name) { var p = bank.Find(name); return p == null ? 0 : p.Parts.Sum(x => (long)bank.Meshes[x.Mesh].Submeshes.Sum(s => s.Indices.Length) / 3); }
 

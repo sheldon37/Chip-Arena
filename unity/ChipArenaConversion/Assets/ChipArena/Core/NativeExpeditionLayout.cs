@@ -143,7 +143,16 @@ namespace ChipArena.UnityConversion
                 foreach(var group in area.doors.Select(d=>d.entries).Concat(area.doors.Select(d=>d.returns)).Concat(new[]{area.slots}))
                     for(int i=0;i<group.Length;i++)for(int j=0;j<i;j++)if((group[i].Position-group[j].Position).Length<1)throw new FormatException("Expedition layout: overlapping party slots.");
                 foreach(var p in area.bossPoints)Check(p.Position,routeRadius,routeHeight);
-                foreach(var machine in area.machines){Check(machine.front.Position(),.45f,1.8f);Check(machine.dispense.Position(),.45f,1.8f);if(!reachable(area.map,origin.Position,machine.front.Position(),.45f,1.8f))throw new FormatException("Expedition layout: unreachable machine "+machine.id);}
+                foreach(var machine in area.machines)
+                {
+                    var front=machine.front.Position();
+                    var dispense=machine.dispense.Position();
+                    Check(front,.45f,1.8f);
+                    Check(dispense,.45f,1.8f);
+                    if(!reachable(area.map,origin.Position,front,.45f,1.8f)||
+                       area.map==NativeExpeditionGeneratedWorld.MapId&&!reachable(area.map,origin.Position,dispense,.45f,1.8f))
+                        throw new FormatException("Expedition layout: unreachable machine "+machine.id);
+                }
                 foreach(var anchor in area.anchors)
                 {
                     // A placed cache's anchor locates the locker or its wall-backed hologram.
@@ -190,8 +199,10 @@ namespace ChipArena.UnityConversion
             data.pads=(area.role=="world"?area.slots:area.doors.SelectMany(d=>d.entries)).Select(p=>new PvePoint{x=p.x,y=p.y,z=p.z}).ToArray();
             // New instances require their own machine authoring; Ward coordinates are never a fallback.
             data.machines=area.machines;
-            data.machineBlocks=area.machines.Select(m=>new ContentBlock{id="pve-machine-"+m.m,role="static",material="foundation",pos=new V3(m.x-(float)Math.Sin(m.yaw)*.25f,m.y+1.1f,m.z-(float)Math.Cos(m.yaw)*.25f),size=new V3(1.3f,2.2f,.9f),rotation=new ContentRotation{y=(float)Math.Sin(m.yaw/2),w=(float)Math.Cos(m.yaw/2)}}).ToArray();
+            data.machineBlocks=area.machines.Select(MachineBlock).ToArray();
         }
+        public static ContentBlock MachineBlock(PveMachine m)=>new ContentBlock{id="pve-machine-"+m.m,role="static",material="foundation",pos=new V3(m.x-(float)Math.Sin(m.yaw)*.25f,m.y+1.1f,m.z-(float)Math.Cos(m.yaw)*.25f),size=new V3(1.3f,2.2f,.9f),rotation=new ContentRotation{y=(float)Math.Sin(m.yaw/2),w=(float)Math.Cos(m.yaw/2)}};
+
         // Identity covers exact manifest bytes and the validated map/PvE revision, which includes the blocks.
         public static string Compatibility(string json,ConversionContent content)=>NativeMapRules.Revision(json+"\n"+content.contentRevision);
         private static bool Flag(Dictionary<string,object> o,string key)

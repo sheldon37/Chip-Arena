@@ -29,9 +29,9 @@ internal static class PodRunChecks
         Check(m.Phase==NativePhase.Fight&&m.FightAt==5,"controls unlock after countdown");
         Check(!pods.Start(m)&&pods.Snapshot()[0].end==5,"area return or reconnect cannot start another countdown");
         Check(!pods.Board(2,Vector3.Zero,5,true)&&!pods.Board(77,Vector3.Zero,5,true),"cannot use another pilot's pod or unknown seat");
-        Check(!pods.Board(1,new Vector3(0,0,-1),5,true)&&!pods.Board(1,new Vector3(0,2,0),5,true)&&!pods.Board(1,new Vector3(0,0,1.51f),5,true),"door side, height and radius enforced");
+        Check(!pods.Board(1,new Vector3(0,0,-2),5,true)&&!pods.Board(1,new Vector3(0,2,0),5,true)&&!pods.Board(1,new Vector3(0,0,.41f),5,true),"door side, height and radius enforced");
         Check(!pods.Board(1,Vector3.Zero,5,false)&&!pods.Board(1,new Vector3(float.NaN,0,0),5,true),"authority eligibility and finite position required");
-        Check(pods.Board(1,new Vector3(0,0,1.5f),5,true)&&pods.Departing(1),"own door accepts interaction at boundary");
+        Check(pods.Board(1,new Vector3(0,0,.39f),5,true)&&pods.Departing(1),"own door accepts interaction at boundary");
         var wire=Copy(pods.Snapshot());Check(NativePodRun.Valid(wire,5)&&wire[0].launchAt==5&&wire[0].look=="paint:aabbcc"&&wire[0].x==0,"late join preserves fixed anchors, look and launch timestamp");
         wire[0].x=999;Check(pods.Snapshot()[0].x==0,"snapshots cannot mutate authority");
         int extracted=0;pods.Tick(8.39,_=>true,_=>{extracted++;return true;});Check(extracted==0,"pilot remains until launch gone");
@@ -48,7 +48,7 @@ internal static class PodRunChecks
         {
             var door=Record();door.yaw=yaw;double angle=yaw*Math.PI/180;
             var forward=new Vector3((float)Math.Sin(angle),0,(float)Math.Cos(angle));
-            Check(NativePodRun.InReach(door,forward)&&!NativePodRun.InReach(door,-forward),"door yaw in degrees "+yaw);
+            Check(NativePodRun.InReach(door,-1.1f*forward)&&NativePodRun.InReach(door,Vector3.Zero)&&!NativePodRun.InReach(door,-2.4f*forward),"door yaw in degrees "+yaw);
         }
         Economy(data);
         Console.WriteLine("PASS "+count+" pod rules checks");
