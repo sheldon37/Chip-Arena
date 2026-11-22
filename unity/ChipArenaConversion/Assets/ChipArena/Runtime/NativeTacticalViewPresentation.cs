@@ -336,9 +336,10 @@ namespace ChipArena.UnityConversion
         /// model stands).</summary>
         private bool TacticalViewPose(Actor a,float time)
         {
-            // (The old view model keeps its elbow cut: the body it places by the right hand alone raised whole upper arms into the
-            // air, tried 2026-11-21 on the greatsword.)
-            bool on=TacticalViewPosed(a,time);TacticalArmCut(on);TacticalFill(on);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
+            // Every other weapon and class: the eye-anchored arms on the old view model's hands (NativeViewArmsPresentation.cs), with
+            // the same cut at the clavicles and fill light. (Cut at the shoulders on the old view model's own rigid body, the
+            // greatsword's upper arms rose into the air, tried 2026-11-21: the body must turn with the eye first.)
+            bool on=TacticalViewPosed(a,time),arms=on||ViewArmsPose(a,time);TacticalArmCut(arms);TacticalFill(arms);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
             return on;
         }
         private bool TacticalViewPosed(Actor a,float time)
