@@ -221,22 +221,21 @@ namespace ChipArena.UnityConversion
             if(shoulders&&tacticalCuts.Exists(c=>c.Skin!=null&&!c.Made))
             {
                 // A wide or cloth sleeve (the DEV Sheldon robe's kimono sleeves; owner 2026-11-22: "the forearm thing might be cause
-                // im using 'Sheldon Robe'") ends at the elbow in first person, the forearm's own skin shown below it (the dressing
-                // hides that skin under the sleeve); third person keeps the robe and its cloth.
-                var upper=new System.Collections.Generic.HashSet<Transform>(arm);
-                for(int side=0;side<2;side++)foreach(var t in tacticalArms.Lower[side].GetComponentsInChildren<Transform>(true))upper.Remove(t);
+                // im using 'Sheldon Robe'") is left out of first person, the arms' own skin shown instead (the dressing hides it under
+                // the sleeve): cut at the elbow, its cloth still draped the upper sleeve down over the forearm. Third person keeps the
+                // robe and its cloth.
                 tacticalWide=tacticalCuts.Exists(c=>c.Skin!=null&&c.Shown&&TacticalIsWide(c.Skin));
                 foreach(var c in tacticalCuts)if(c.Skin!=null&&!c.Made)
                 {
                     bool wide=TacticalIsWide(c.Skin);
-                    c.Shoulder=ArmMesh(c.Skin,wide?upper:arm,c.Source,wide?wideMeshes:shoulderMeshes,wide?" (upper arms)":" (arms)");c.Made=true;
+                    c.Shoulder=wide?null:ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;
                 }
                 TacticalSkinUnder();
             }
             foreach(var c in tacticalCuts)
             {
                 if(c.Skin==null)continue;
-                bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&c.Source.name=="lowerarms";
+                bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&(c.Source.name=="lowerarms"||c.Source.name=="upperarms");
                 var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null&&shown;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
             }
             tacticalShoulders=shoulders;
@@ -300,7 +299,7 @@ namespace ChipArena.UnityConversion
         // A top with wide or cloth sleeves (the kimono of the DEV Sheldon robe).
         private static bool TacticalIsWide(SkinnedMeshRenderer r)=>r.name.IndexOf("Kimono",System.StringComparison.Ordinal)>=0;
         private bool tacticalWide;
-        private static readonly System.Collections.Generic.Dictionary<Mesh,Mesh> wideMeshes=new System.Collections.Generic.Dictionary<Mesh,Mesh>();
+
 
         // ---- First person only: the forearms and upper arms a little slimmer (their twist bones' girth, never their length),
         // so the pilot's sleeves sit at the pack's reach as its own slimmer arms do (owner 2026-11-21: the sleeves must not fill
