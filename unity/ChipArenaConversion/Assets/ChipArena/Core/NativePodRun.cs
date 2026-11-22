@@ -30,8 +30,9 @@ namespace ChipArena.UnityConversion
         public static bool InReach(NativePodRecord r,Vector3 feet)
         {
             if(r==null||r.departed||r.launchAt>=0||!Finite(feet.X)||!Finite(feet.Y)||!Finite(feet.Z))return false;
-            float dx=feet.X-r.x,dz=feet.Z-r.z;
+            var centre=NativePodDrop.Centre(r.x,r.y,r.z,r.yaw);
             double radians=r.yaw*Math.PI/180;
+            float dx=feet.X-centre.X-1.3f*(float)Math.Sin(radians),dz=feet.Z-centre.Z-1.3f*(float)Math.Cos(radians);
             return Math.Abs(feet.Y-r.y)<=1.7f&&dx*dx+dz*dz<=UseRadius*UseRadius&&dx*Math.Sin(radians)+dz*Math.Cos(radians)>=-.2f;
         }
         public bool Board(int seat,Vector3 feet,double now,bool eligible)

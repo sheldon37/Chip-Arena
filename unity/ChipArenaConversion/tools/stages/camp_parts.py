@@ -638,10 +638,20 @@ def _shelves(g, T, f, x0, x1, z, y0, y1, n=3, depth=.3, face=1):
                 k += 1
 
 
-def kiosk(T):
+def awning_posts(plan, kiosk=(16.4, 16.4)):
+    """The two awning posts' centres in the kiosk's frame, from the plan's table (A1's camp-awning-post-0 and -1)."""
+    out = []
+    for k in (0, 1):
+        row = next(r for r in plan['table'] if r['id'] == 'camp-awning-post-%d' % k)
+        out.append(((row['min'][0] + row['max'][0]) / 2 - kiosk[0], (row['min'][2] + row['max'][2]) / 2 - kiosk[1]))
+    return tuple(out)
+
+
+def kiosk(T, plan):
     """The trading kiosk (2.6 x 3.2 x 2.6 m): mismatched corrugated walls on a timber frame, its hatches on the south and west faces
     at the corner nearest the chip machine (counter, mesh), shelves of goods inside, TRADE and QM painted on, and the striped awning
-    over the machine from its top edge to the two awning posts (art above 3.1 m)."""
+    over the machine from its top edge to the two awning posts (art above 3.1 m; the posts where the plan's table stands them,
+    1 m clear of the machine since the owner's 2026-11-21 call)."""
     f = F()
     g = Geo()
     h, w = 3.2, 1.3
@@ -669,7 +679,7 @@ def kiosk(T):
         ck.lettering(side, T, 'QM', 0.0, 2.15, 0.0, .06, f['spray-white'], depth=.002)
         g.extend(side.transformed(sk.affine(mk.qy(90), (-w - .02, 0, -.65))))
     # the awning posts (A1's 0.3 m blocks) and the awning over the chip machine
-    posts = ((14.6 - 16.4, 12.4 - 16.4), (12.4 - 16.4, 14.6 - 16.4))
+    posts = awning_posts(plan)
     for (x, z) in posts:
         bx(g, T, x - .15, x + .15, 0.0, 3.4, z - .15, z + .15, f['timber'], bevel=.015)
     corners = [(-w, h, .35), (.35, h, -w), (posts[0][0], 3.42, posts[0][1]), (posts[1][0], 3.42, posts[1][1])]

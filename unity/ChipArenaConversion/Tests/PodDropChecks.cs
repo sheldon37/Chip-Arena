@@ -39,10 +39,10 @@ internal static class PodDropChecks
     {
         count=0;Plans();Flights();Ground();Lasting();Effects();Shots();Field();Hold();Launch();Sounds();Look();Sign();Models();Station();Wiring(root);
         Console.WriteLine("PASS pod drop: "+count+" checks (a crash over the 5 s opening and the 3 s fallback: its own line from behind the door, door down then rolled forward, the retros, two failing, "+
-            "the impact in its turn, the plough to its centre, sunk and leaning inside the envelope, the bolts and the door, the pilot braced in the seat then standing on the capsule by GO; the crater, "+
+            "the impact in its turn, the plough to its centre, sunk and leaning inside the envelope, the bolts and the door, the pilot braced in the seat, then standing and climbing out down the ramp onto the capsule at its foot by GO; the crater, "+
             "furrow, cooling hull and smoke from the record and the clock; A0's landing field (the apron, the REVIVE-O-MATIC, the fence); the directed camera (my body hidden only inside, the eye never in "+
             "the hull or the head), its shake and the still shot; GO's hold; the sounds; parked, then leaving; the look map; the LED sign; the models, safe untinted; W3's contract names; the wiring and no "+
-            "Unity object made in a field initializer)"+field);
+            "Unity object made in a field initializer)"+field+"; the climb-out's top pace on the 5 s opening "+string.Join(", ",climbPace.Select((v,i)=>"pod "+(i+1)+" "+v.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)))+" m/s");
     }
     private static float Deg(float r)=>r*180/(float)Math.PI;
     private static PodPlan P(int seat,int order,float x,float z,double end,float yaw,float opening)=>NativePodDrop.Plan(seat,order,x,z,end,yaw,opening);
@@ -164,10 +164,35 @@ internal static class PodDropChecks
             var go=NativePodDrop.Evaluate(-NativePodDrop.StandMargin,p);Check(Vector3.Distance(go.Pilot,NativePodDrop.Capsule(p))<1e-3f&&Angle(go.PilotTilt)<1e-3f&&go.Harness>.99f&&go.Sit<1e-3f&&go.Fold>.99f,"by GO the pilot stands upright on the capsule, the harness up, the seat folded away");
             var unbuckled=NativePodDrop.Evaluate(p.StandFrom-.01f,p);Check(unbuckled.Shown&&Angle(unbuckled.PilotTilt)>NativePodDrop.HunchAngle*.5f&&unbuckled.Sit==1,"braced in the seat against the bar when the door blows");
             float lastSit=1;for(float t=p.DoorAt;t<=0;t+=1/60f){var f=NativePodDrop.Evaluate(t,p);Check(f.Sit<=lastSit+1e-5f,"the pilot only rises out of the seat");lastSit=f.Sit;}
+            Climb(p,opening);
         }
-        // the capsule is the pod centre until A1 (ExitReach 0), and the record is the capsule
-        Check(NativeExpeditionHubPlan.ExitReach==0&&NativePodDrop.Centre(3,0,-2,90)==new Vector3(3,0,-2),"the pod centre is the record (ExitReach 0)");
+        // A1: the capsule (the record) stands at the ramp's foot, ExitReach 2.4 m ahead of the pod centre along its facing
+        Check(NativeExpeditionHubPlan.ExitReach==2.4f&&Vector3.Distance(NativePodDrop.Centre(3,0,-2,90),new Vector3(3-2.4f,0,-2))<1e-5f&&Vector3.Distance(NativePodDrop.Centre(3,0,-2,180),new Vector3(3,0,.4f))<1e-5f,
+            "the pod centre is the record 2.4 m back along its facing (ExitReach 2.4)");
+        float ease=0;for(int i=0;i<=200;i++){float t=i/200f,v=(NativePodDrop.Stride(Math.Min(1,t+.005f))-NativePodDrop.Stride(Math.Max(0,t-.005f)))/(Math.Min(1,t+.005f)-Math.Max(0,t-.005f));ease=Math.Max(ease,v);}
+        Check(NativePodDrop.Stride(0)==0&&Math.Abs(NativePodDrop.Stride(1)-1)<1e-6f&&ease<1.5f,"the climb-out's walk eases in and out, its steady pace under 1.5 times the mean ("+ease+")");
     }
+    // The climb-out (A1, ExitReach 2.4 m): up in the cabin first, then out over the sill, down the ramp and onto the capsule, only
+    // ever forward, its feet on the cabin floor, the ramp's tread or the crater, inside the doorway's width; a walk for the first pods
+    // and never faster than a run for the first four.
+    private static void Climb(PodPlan p,float opening)
+    {
+        float last=-1,fastest=0;var was=Vector3.Zero;bool any=false;string wrong=null;var fwd=p.Forward;float from=p.StandFrom+.12f;
+        for(float t=p.DoorAt;t<=-NativePodDrop.StandMargin+1e-4f;t+=1/120f)
+        {
+            var f=NativePodDrop.Evaluate(t,p);var at=f.Pilot;float along=Vector3.Dot(new Vector3(at.X,0,at.Z),fwd),aside=Math.Abs(Vector3.Dot(new Vector3(at.X,0,at.Z),new Vector3(fwd.Z,0,-fwd.X)));
+            if(!(along>=last-.01f))wrong??="only ever forward ("+t+": "+along+" after "+last+")";
+            if(f.Sit>.5f&&!(along<.05f))wrong??="up in the cabin before the first step ("+t+")";
+            if(!(aside<NativePodModels.DoorWidth*.5f-.1f+.05f))wrong??="inside the doorway's width ("+aside+")";
+            if(!(at.Y>-.12f&&at.Y<.42f))wrong??="feet on the cabin floor, the ramp or the crater ("+at.Y+")";
+            if(any){float v=new Vector2(at.X-was.X,at.Z-was.Z).Length()*120;fastest=Math.Max(fastest,v);}
+            was=at;any=true;last=along;
+        }
+        Check(wrong==null,"the climb-out ("+p.Order+", "+opening+" s): "+wrong);
+        Check(Math.Abs(last-NativeExpeditionHubPlan.ExitReach)<1e-3f,"the climb-out ends on the capsule at the ramp's foot ("+last+")");
+        if(opening==5&&p.Order<4){Check(fastest<(p.Order<2?3.2f:4.6f),"pod "+p.Order+"'s pilot walks out (the first two) or jogs (the next two), never faster ("+fastest+" m/s)");climbPace[p.Order]=Math.Max(climbPace[p.Order],fastest);}
+    }
+    private static readonly float[] climbPace=new float[4];
     private static void Lasting()
     {
         var p=P(7,2,9,4,300.1,135,5);

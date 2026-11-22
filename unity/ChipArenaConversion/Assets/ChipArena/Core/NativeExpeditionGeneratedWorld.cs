@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
     }
     public static partial class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-blockout-5";
+        public const string Version="deployment-world-blockout-6";
         public const string MapId="expedition-generated-city";
         internal static V3 CacheForward(float yaw)
         {
@@ -79,10 +79,12 @@ namespace ChipArena.UnityConversion
             city.Map.tag="Expedition";
             city.Map.look="expedition-night";
             for(int i=0;i<8;i++){
-                var row=new MapSpawn{pos=new V3(i%4*2-3,1.1f,i/4*3-2)};
+                var row=new MapSpawn{pos=new V3(i%4*2-3,1.1f,i/4*3+9)};
                 city.Map.spawns.ffa[i]=row;city.Map.spawns.teams[i/4].points[i%4]=row;
             }
-            city.Map.nav=NativeMeridianNavigation.Build(city.Map);
+            var machines=NativeExpeditionHubPlan.Machines();
+            city.Map.blocks=city.Map.blocks.Concat(NativeExpeditionHubPlan.Blocks()).ToArray();
+            city.Map.nav=NativeMeridianNavigation.Build(city.Map,machines);
             var gates=new List<ExpeditionHubGate>();var fences=new List<ExpeditionHubFence>();
             foreach(var direction in new[]{(x:0,z:1,side:"north",yaw:0f),(x:1,z:0,side:"east",yaw:90f),(x:0,z:-1,side:"south",yaw:180f),(x:-1,z:0,side:"west",yaw:270f)})
             {
@@ -92,11 +94,16 @@ namespace ChipArena.UnityConversion
                     string block="camp-fence-"+I(gates.Count)+"-"+I(sign);
                     ids.Add(block);fences.Add(new ExpeditionHubFence{Block=block,Kind="metal",Side=d.side,Gate=id});
                 }
+                // On sloped exits the street can already be below the plaza three metres past the gate.
+                var outside=Point(d.x*28,d.z*28);
+                var street=city.Map.nav.nodes.Where(n=>n.pos.x==outside.x&&n.pos.z==outside.z)
+                    .OrderBy(n=>Math.Abs(n.pos.y-.9f)).First();
+                outside.y=street.pos.y-.9f;
                 gates.Add(new ExpeditionHubGate{Id=id,Kind="metal",Motion="slide",Side=d.side,X=d.x*25,Z=d.z*25,Yaw=d.yaw,Width=10,Height=3.2f,
                     Closure=Volume(d.x*25,d.z*25,d.x==0?10:.4f,d.x==0?.4f:10,3.2f),
-                    Interact=Volume(d.x*25,d.z*25,10,10),Sensor=Volume(d.x*25,d.z*25,12,12),Inside=Point(d.x*22,d.z*22),Outside=Point(d.x*28,d.z*28),Fence=ids.ToArray()});
+                    Interact=Volume(d.x*25,d.z*25,10,10),Sensor=Volume(d.x*25,d.z*25,12,12),Inside=Point(d.x*22,d.z*22),Outside=outside,Fence=ids.ToArray()});
             }
-            var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,slots=NativeExpeditionHubPlan.LandingField(state.worldSeed),
+            var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,machines=machines,slots=NativeExpeditionHubPlan.LandingField(state.worldSeed).Select(NativeExpeditionHubPlan.RampFoot).ToArray(),
                 sanctuary=new[]{Volume(0,0,49.6f,49.6f)}};
             var result=new ExpeditionGeneratedWorld{Area=area,Blueprint=state,Hub=new ExpeditionHubLayout{Area=area.id,Fence=fences.ToArray(),Gates=gates.ToArray()}};
             PopulateMeridian(result,city);
@@ -157,6 +164,12 @@ namespace ChipArena.UnityConversion
             text.Append("\narea|").Append(a.id).Append('|').Append(a.map);
             foreach(var v in a.sanctuary)V(v);foreach(var p in a.slots)P(p);foreach(var p in a.bossPoints)P(p);V(a.bossTrigger);
             foreach(var anchor in a.anchors){text.Append("\nanchor|").Append(anchor.id).Append('|').Append(anchor.kind).Append('|').Append(anchor.building);F(anchor.x);F(anchor.y);F(anchor.z);F(anchor.yaw);}
+            foreach(var machine in a.machines)
+            {
+                text.Append("\nmachine|").Append(machine.id).Append('|').Append(machine.kind);
+                F(machine.x);F(machine.y);F(machine.z);F(machine.yaw);
+                foreach(var point in new[]{machine.front,machine.dispense,machine.chipDrop}){F(point.x);F(point.y);F(point.z);}
+            }
             foreach(var door in a.doors){text.Append("\ndoor|").Append(door.anchor);V(door.interact);V(door.closure);P(door.approach);F(door.join.x);F(door.join.y);F(door.join.z);F(door.join.r);F(door.join.h);foreach(var p in door.returns)P(p);}
             foreach(var g in a.gates){text.Append("\ngate|").Append(g.id).Append('|').Append(g.opens);V(g.closure);}
             foreach(var i in a.interactions){text.Append("\ninteract|").Append(i.anchor);F(i.x);F(i.y);F(i.z);F(i.range);}

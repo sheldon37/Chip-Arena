@@ -281,7 +281,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<map.blocks.Length;i++)
             {
                 var b=map.blocks[i];string id=b.id??"";
-                w.Wall[i]=!w.Treads.Contains(id)&&b.size.y>=Storey+.1f&&!Starts(id,"hall-","city-hall","court-","cordon","camp-fence","fire-escape","landmark-","viaduct-parapet","street-rail");
+                w.Wall[i]=!w.Treads.Contains(id)&&b.size.y>=Storey+.1f&&!Starts(id,"hall-","city-hall","court-","cordon","camp-","fire-escape","landmark-","viaduct-parapet","street-rail");
             }
             return w;
         }

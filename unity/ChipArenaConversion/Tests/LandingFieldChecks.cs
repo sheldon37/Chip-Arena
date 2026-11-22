@@ -21,7 +21,8 @@ namespace ChipArena.UnityConversion
             bool Clear(float x,float z,float yaw)=>NativeExpeditionHubPlan.Clear(new ExpeditionPoint{x=x,z=z,yaw=yaw});
             Check(!Clear(13.5f,13.5f,225),0,"reject a hull on the chip machine");
             Check(!Clear(-13.5f,13.5f,135),0,"reject a hull on the revive machine");
-            Check(Clear(13.5f,8.5f,0)&&!Clear(13.5f,8.5f,180),0,"skid behind a clear centre must miss the camp machines");
+            Check(Clear(13.5f,8,0)&&!Clear(13.5f,8,180),0,"skid behind a clear centre must miss the camp machines");
+            Check(!Clear(13.5f,8.5f,0),0,"reject a ramp foot too close to the chip service");
             var figures=new HashSet<(float,float,float,float,float,float,float,float)>();
             for(uint i=0;i<Seeds;i++)
             {
@@ -110,6 +111,25 @@ namespace ChipArena.UnityConversion
                         }
                         return false;
                     }
+                    foreach(var gate in world.Hub.Gates)
+                        Check(Attached(gate.Outside.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight),seed,"camp route to "+gate.Id);
+                    foreach(var row in NativeCamp.Table)
+                    {
+                        var block=map.blocks.Single(b=>b.id==row.Id);
+                        Check(block.pos.x==row.X&&block.pos.z==row.Z&&block.pos.y==row.Y0+row.Sy/2&&
+                            block.size.x==row.Sx&&block.size.y==row.Sy&&block.size.z==row.Sz,seed,"generated camp solid "+row.Id);
+                    }
+                    var machines=world.Area.machines;
+                    Check(machines.Length==2&&machines[0].m==0&&machines[0].kind=="chip"&&machines[1].m==1&&machines[1].kind=="med",seed,"camp machine roster");
+                    foreach(var m in machines)
+                    {
+                        Check(m.id=="exp-city:hub-machine:"+m.kind,seed,"hub service id");
+                        foreach(var (point,distance) in new[]{(m.front,.7f),(m.dispense,1.3f),(m.chipDrop,2.2f)})
+                        {
+                            Check((point.Position()-NativeMachineRules.World(m,0,0,distance)).Length<.001f,seed,"hub service point "+m.id);
+                            Check(Attached(point.Position(),.45f,1.8f),seed,"walkable hub service "+m.id);
+                        }
+                    }
                     var caches=world.Area.anchors.Where(a=>a.kind=="chest").ToArray();
                     var approaches=caches.Select(a=>NativeExpeditionGeneratedWorld.CacheApproach(a).Position).ToHashSet();
                     var routed=new HashSet<V3>();
@@ -129,8 +149,8 @@ namespace ChipArena.UnityConversion
                     for(int j=0;j<8;j++)
                     {
                         var slot=world.Area.slots[j];
-                        Check((slot.Position-expected[j].Position).Length==0&&slot.yaw==expected[j].yaw,seed,"expedition spawn "+j);
-                        var old=new V3(j%4*2-3,1.1f,j/4*3-2);
+                        Check((slot.Position-NativeExpeditionHubPlan.RampFoot(expected[j]).Position).Length==0&&slot.yaw==expected[j].yaw,seed,"expedition spawn "+j);
+                        var old=new V3(j%4*2-3,1.1f,j/4*3+9);
                         var ffa=map.spawns.ffa[j];var team=map.spawns.teams[j/4].points[j%4];
                         Check((ffa.pos-old).Length==0&&ffa.yaw==0&&(team.pos-old).Length==0&&team.yaw==0,seed,"PvP row "+j);
                     }
@@ -139,7 +159,7 @@ namespace ChipArena.UnityConversion
                 int done=System.Threading.Interlocked.Increment(ref completed);
                 if(done==1||done%100==0)Console.WriteLine("Generated world sweep "+done+"/"+seeds.Length+" at "+clock.Elapsed);
             });
-            Console.WriteLine("PASS "+seeds.Length+" generated maps through Validate and ValidateGeometry, Hulk nav and unchanged PvP spawn rows");
+            Console.WriteLine("PASS "+seeds.Length+" generated maps through Validate and ValidateGeometry, Hulk nav and separate PvP spawn rows");
         }
     }
 }

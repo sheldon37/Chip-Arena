@@ -21,7 +21,7 @@ internal static class NativeMeridianNavigation
         }
     }
 
-    public static MapNav Build(ContentMap map)
+    public static MapNav Build(ContentMap map,PveMachine[] machines=null)
     {
         float radius = NativeHordeKinds.HulkRadius, height = NativeHordeKinds.HulkHeight;
         var bins = new Dictionary<(int,int),List<Surface>>();
@@ -40,7 +40,14 @@ internal static class NativeMeridianNavigation
         foreach (var b in map.blocks.Where(b=>!treads.Contains(b.id)))
             Add(new Surface { X=b.pos.x,Z=b.pos.z,W=b.size.x/2,D=b.size.z/2,
                 Bottom=b.pos.y-b.size.y/2,Top=b.pos.y+b.size.y/2,
-                Street=!b.id.StartsWith("fire-escape-",StringComparison.Ordinal) });
+                Street=!b.id.StartsWith("camp-",StringComparison.Ordinal)&&!b.id.StartsWith("fire-escape-",StringComparison.Ordinal) });
+        foreach(var m in machines??Array.Empty<PveMachine>())
+        {
+            var b=NativeExpeditionLayout.MachineBlock(m);
+            float c=Math.Abs((float)Math.Cos(m.yaw)),s=Math.Abs((float)Math.Sin(m.yaw));
+            Add(new Surface{X=b.pos.x,Z=b.pos.z,W=(b.size.x*c+b.size.z*s)/2,D=(b.size.x*s+b.size.z*c)/2,
+                Bottom=m.y,Top=m.y+b.size.y});
+        }
         foreach (var r in map.ramps)
         {
             var d=r.high-r.low;
@@ -91,8 +98,8 @@ internal static class NativeMeridianNavigation
         }
         var visited=new HashSet<(int x,float y,int z)>();
         var queue=new Queue<(int x,float y,int z)>();
-        var start=(0,0f,0);
-        if(!nodes[(0,0)].Contains(0)) throw new Exception("Obstructed Meridian camp");
+        var start=(0,0f,8);
+        if(!nodes.TryGetValue((0,8),out var startLevels)||!startLevels.Contains(0)) throw new Exception("Obstructed Meridian camp");
         visited.Add(start);
         queue.Enqueue(start);
         var directions=new[]{(2,0),(-2,0),(0,2),(0,-2)};

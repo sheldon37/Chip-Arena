@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
             // Clone content so the ordinary Siren mode and authored resources remain unchanged.
             data=JsonUtility.FromJson<NativePveContent>(JsonUtility.ToJson(data));
             NativeExpeditionLayout.BindContent(area,data);
-            if(NativeMapRules.ExpeditionInstance(MapId))BuildPveMachines(data);
+            if(NativeMachineRules.Present(MapId,true))BuildPveMachines(data);
             Pve=new NativePveState{Content=data,Started=true,Stage=area.role=="instance"?"wave":"intermission",Wave=1,Cap=NativeExpeditionMutators.Cap(ActiveMutators,8),Rate=0,Floor=0,Phase=1,
                 SpawnRandom=new NativePveRandom(director.Session.Run.Snapshot().seed),EconomyRandom=new NativePveRandom(12345)};
             Pve.Boss=Pilots.Single(p=>p.Seat.AuthorityBoss);SetBossHidden(true);
@@ -213,7 +213,7 @@ namespace ChipArena.UnityConversion
                 else notice=result.reason;
                 SyncExpeditionInventory();return true;
             }
-            if(NativeMapRules.ExpeditionInstance(MapId))
+            if(NativeMachineRules.Present(MapId,true))
             {
                 var machine=Pve.Content.machines.Where(m=>(m.front.Position()-feet).Length<=2.2f&&ExpeditionVisible(feet,m.front.Position()))
                     .OrderBy(m=>(m.front.Position()-feet).Length).FirstOrDefault();
