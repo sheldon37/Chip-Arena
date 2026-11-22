@@ -29,6 +29,8 @@ namespace ChipArena.UnityConversion
             Check(bank.Count==Keys.Length,"the synthetic bank reads back every clip");
             foreach(var g in new[]{NativeTacticalGun.Pistol,NativeTacticalGun.Rifle,NativeTacticalGun.MachineGun})Check(bank.Covers(g),g.Weapon+"'s set is covered");
             Check(NativeTacticalGun.For(WeaponId.Sword)==null,"no tactical set for the sword");
+            // The pack's own lens: its FPCamera's 90 degrees, each gun's TacAnimSettings aimFov.
+            Check(NativeTacticalGun.Pistol.HipFov==90&&NativeTacticalGun.Rifle.HipFov==90&&NativeTacticalGun.MachineGun.HipFov==90&&NativeTacticalGun.Pistol.AimFov==80&&NativeTacticalGun.Rifle.AimFov==70&&NativeTacticalGun.MachineGun.AimFov==70,"the view model's lens is the pack's (90; aimed 80 for the Viper, 70 for the SRM-12 and TR15)");
             Bad(()=>NativeTacticalBank.Parse(new byte[]{1,2,3}),"a short file");
             Bad(()=>{var b=(byte[])bytes.Clone();b[0]=(byte)'X';NativeTacticalBank.Parse(b);},"a wrong magic");
             Bad(()=>NativeTacticalBank.Parse(bytes.Take(bytes.Length-5).ToArray()),"a truncated bank");
@@ -246,6 +248,10 @@ namespace ChipArena.UnityConversion
             Check(weapon.Contains("if(rig==viewRig&&TacticalPackDrawn(viewBody))return true;")&&weapon.Contains("TacticalPackAfterDraw();"),"the pack gun replaces the model for the view rig alone, and hides when not drawn");
             foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeVisualWeaponPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal))
                 Check(!File.ReadAllText(f).Contains("TacticalPackDrawn("),Path.GetFileName(f)+" never draws the pack gun");
+            // The pilot's arms: the skin under the garments hidden, the girth put back every frame, the fill light on the view model alone.
+            Check(pres.Contains("if(!(under[tris[i]]&&under[tris[i+1]]&&under[tris[i+2]]))")&&pres.Contains("TacticalIsSkin(SkinnedMeshRenderer r)=>r.name.StartsWith(\"Body\""),"the body's skin under a garment is hidden in the tactical view");
+            Check(pres.Contains("if(Twist[i][k]!=null)Twist[i][k].localScale=TwistScale[i][k];")&&pres.Contains("TacticalSlim(arms);"),"the slimmer forearms are the tactical view's alone (Rest puts them back every frame)");
+            Check(pres.Contains("tacticalFill.cullingMask=1<<10;tacticalFill.shadows=LightShadows.None;"),"the fill light lights the view-model layer alone, without shadows");
             Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool on=TacticalViewPosed(a,time);TacticalArmCut(on);"),"the view body's arms are cut at the shoulders only while the tactical view draws");
         }
     }
