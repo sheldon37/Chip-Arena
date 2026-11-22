@@ -242,9 +242,19 @@ namespace ChipArena.UnityConversion
             foreach(var c in tacticalCuts)
             {
                 if(c.Skin==null||c.Shoulder==null||TacticalIsSkin(c.Skin))continue;
-                var w=World(c);var used=new bool[w.Count];
-                for(int sm=0;sm<c.Shoulder.subMeshCount;sm++)foreach(int i in c.Shoulder.GetTriangles(sm))if(i<used.Length)used[i]=true;
-                for(int i=0;i<w.Count;i++){if(!used[i])continue;var k=Key(w[i]);if(!grid.TryGetValue(k,out var l))grid[k]=l=new System.Collections.Generic.List<Vector3>();l.Add(w[i]);any=true;}
+                // The garment's drawn surface, sampled no sparser than the gap (a plate's few corners leave its middle bare).
+                var w=World(c);
+                void Add(Vector3 v){var k=Key(v);if(!grid.TryGetValue(k,out var l))grid[k]=l=new System.Collections.Generic.List<Vector3>();l.Add(v);any=true;}
+                for(int sm=0;sm<c.Shoulder.subMeshCount;sm++)
+                {
+                    var tris=c.Shoulder.GetTriangles(sm);
+                    for(int i=0;i+2<tris.Length;i+=3)
+                    {
+                        Vector3 p0=w[tris[i]],p1=w[tris[i+1]],p2=w[tris[i+2]];float edge=Mathf.Max((p1-p0).magnitude,Mathf.Max((p2-p1).magnitude,(p0-p2).magnitude));
+                        int n=Mathf.Clamp(Mathf.CeilToInt(edge/(cell*.7f)),1,24);
+                        for(int u=0;u<=n;u++)for(int v=0;v<=n-u;v++){float a=u/(float)n,b2=v/(float)n;Add(p0+(p1-p0)*a+(p2-p0)*b2);}
+                    }
+                }
             }
             if(any)foreach(var c in tacticalCuts)
             {

@@ -98,8 +98,20 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
   the long guns. The rifle tilts 60% of the pack's reload and bolt turn (`ActionTurn`): at the full tilt its long stock rose
   into the eye. The view rig's right hand sits on the model's fitted weapon frame, so the muzzle flash, the rounds' origin and
   the Q kit pieces stay on the model.
-- **The lens.** The view model draws at 85 degrees at the hip, 74 aimed (the pack frames its arms for its camera's 90, its aim
-  70-80); the world camera keeps the game's (first person 75, the aim row's sight FOV, the rifle's scope).
+- **The lens and the eye.** The eye is the pack's own camera: its `FPCamera` (the head bone at (0.02, -0.077, 0.035), turning
+  with the look, never the head; `camera_bone` is a root-level null at the origin whose animated turn is the clips' camera
+  motion, applied by `TacticalCameraKick`). The view model draws at the pack's lens: 90 degrees vertical at the hip (its
+  FPCamera), aimed each gun's `TacAnimSettings` aimFov (Viper 80, SRM-12 and TR15 70); the world camera keeps the game's (first
+  person 75, the aim row's sight FOV, the rifle's scope). The pack's own idle poses put the Viper 6 degrees right and 21 below
+  the centre, the SRM-12 and TR15 25 right and 19-31 below.
+- **The pilot's arms** (owner: "Fix pilot's arms"). In the tactical view the body's skin under its garments is hidden (every
+  skin triangle within 3.5 cm of a drawn sleeve or glove vertex, `TacticalSkinUnder`, made once per outfit), so only the
+  garment draws there and bare arms, bare hands and a short sleeve's hem keep their skin; the forearms are 82% and the upper
+  arms 90% of their girth (their twist bones, never their length; put back every frame for the old view model); a fill light
+  from over the eye lights the view-model layer alone (`TacticalFill`, .55, no shadows) so the hands and sleeves read on dark
+  stages as the gun does.
+- **Sights.** The SRM-12 carries its iron sights (`A_Oryx_SRM-12_IronSights`; the Phantom TAC scope filled the right half of
+  the view), the TR15 its own; aiming the rifle still brings up the game's scope.
 - **The other pack guns** (AK105, MX68, Mk14 EBR, R08, Herrington 11-87, MKR9) are not imported.
 - **Camera motion**: `TacticalCameraKick` turns the camera by the playing clip's `camera_bone` after the aim point is taken
   (as `HitKick` does), first person with camera shake on, .4 with reduced effects; the arms are placed in the camera without

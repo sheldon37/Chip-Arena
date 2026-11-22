@@ -5,7 +5,7 @@ certain weapons in first person"; "Can we fix the animations to use their shooti
 first (`5078329f`), then shared `8ed75305` (PuppetMaster hits; `5c0f3181`), DEV_LOG and PROJECT_STATE keeping both sides.
 Code `8aa68815`..`38782002`. Pushed, not merged, not released.
 - **What:** first person draws the KINEMATION pack's own gun in place of the game's model, whatever the skin: pistol -> WK-11
-  Viper, rifle -> Oryx SRM-12 with its Phantom TAC scope, machine gun -> TR15 with its iron sights (the owner's mapping; the
+  Viper, rifle -> Oryx SRM-12 on its iron sights, machine gun -> TR15 on its iron sights (the owner's mapping; the
   TR15 is the gun the machine gun's clip set was made for). The gun rides the clip's gun bone; its slide, bolt, hammer, trigger,
   magazine and release move by its own weapon clips; both hands take the pack's places and palms on its grips, magazine and bolt,
   every finger the clip's (the pistol's support hand is the pack's thumbs-forward wrap); aiming puts the gun's aim point on the
@@ -50,10 +50,12 @@ Code `8aa68815`..`38782002`. Pushed, not merged, not released.
   `clips2/third-pistol.mp4`, `third-rifle.mp4`, `third-machinegun.mp4`, `third-sword.mp4` (behind the shoulder and three-quarter
   on a studio floor; third person unchanged); `stills/hands-sheet.jpg` and nine stills (both hands at rest, aimed, mid-reload
   per gun, Brickfall); `audit-sheet-b1.jpg` (every weapon in first person at rest).
-- **Known issues:** brown patches on the upper arms in the tactical view (skin colour showing on the sleeves near the screen
-  edge; not the cut's bones nor the blend shapes, both tried); likely the skin poking through where the arm stretches to the
-  pack's reach, next to fix. The pistol's two-hand wrap reads dark from behind at night. The SRM-12's Phantom TAC scope is large
-  in the view (the pack's own).
+- **Arms pass (owner: "Fix pilot's arms"):** the view model takes the pack's lens (90 at the hip; aimed 80 Viper, 70 SRM-12
+  and TR15), the skin under the garments is hidden in the tactical view (the brown patches were the body's skin through the
+  sleeves and gloves), the forearms and upper arms slimmer (82% and 90% girth on their twist bones, first person only), a fill
+  light on the view-model layer for dark stages, and the SRM-12 on its iron sights (the Phantom TAC filled the right half).
+  The floating orange squares in the Brickfall stills are Brickfall's drifting paper scraps (`NativeBrickfallFx` atmosphere),
+  on shared too (the old view model's frames show them).
 - **Next:** the owner reviews the clips; the integrator merges and re-packs the Drive zip (below, in the PR); test channel.
 
 ## 2026-11-21 — Claude (F1): first person on the Tactical Shooter Pack's clips (pilot model's arms, game's guns)
