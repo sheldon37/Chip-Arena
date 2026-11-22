@@ -12,8 +12,9 @@ namespace ChipArena.UnityConversion
     /// game's.</summary>
     public static class NativeViewArms
     {
-        /// <summary>The shoulders' midpoint in the eye frame at true size (the pack's first-person rifle and pistol shoulders).</summary>
-        public static readonly Vector3 ShoulderAnchor=new Vector3(0,-.12f,-.17f);
+        /// <summary>The shoulders' midpoint in the eye frame at true size (below the pack's first-person shoulders: the melee holds
+        /// sit nearer the eye than a gun's, and from the pack's own shoulders the upper arms filled the lower view).</summary>
+        public static readonly Vector3 ShoulderAnchor=new Vector3(0,-.2f,-.12f);
         /// <summary>Each elbow's pole in the eye frame at true size: down and out, as the pack's elbows hang.</summary>
         public static readonly Vector3 PoleRight=new Vector3(.3f,-.42f,-.02f),PoleLeft=new Vector3(-.3f,-.42f,-.02f);
 

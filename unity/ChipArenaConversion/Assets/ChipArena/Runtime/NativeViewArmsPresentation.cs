@@ -31,7 +31,10 @@ namespace ChipArena.UnityConversion
             Vector3 hl=arms.Hand[0].position,hr=arms.Hand[1].position;Quaternion ql=arms.Hand[0].rotation,qr=arms.Hand[1].rotation;
             float twistL=TacticalTwist(arms.Lower[0],arms.Hand[0]),twistR=TacticalTwist(arms.Lower[1],arms.Hand[1]);
             // The body turned with the eye, its shoulders on the eye-anchored place (at the old view's scale).
-            var cam=ViewCamera.transform;Vector3 eye=cam.position;Quaternion eyeRot=cam.rotation;float s=root.lossyScale.x;
+            // At true size (the old view enlarges the whole body about the weapon frame, so its arms filled the lower view): the
+            // hands stay where the old view put them, on the weapon, a little smaller.
+            var cam=ViewCamera.transform;Vector3 eye=cam.position;Quaternion eyeRot=cam.rotation;
+            var parent=root.parent;float ps=parent!=null?parent.lossyScale.x:1;root.localScale=Vector3.one/Mathf.Max(1e-4f,ps);const float s=1;
             root.rotation=eyeRot;
             Vector3 ours=(arms.Upper[0].position+arms.Upper[1].position)*.5f,want=eye+eyeRot*(CapturedAnimation.Vec(NativeViewArms.ShoulderAnchor)*s);
             root.position+=want-ours;
