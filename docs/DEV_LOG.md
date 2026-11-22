@@ -1,3 +1,43 @@
+## 2026-11-21 — Claude (F1): first person on the pack's own guns (second pass: pack guns, both hands, arms, the pack's motion)
+Owner (through the integrator): "Use pack guns"; the pistol's support hand ("the hand in front"); "Seems they disappear on
+certain weapons in first person"; "Can we fix the animations to use their shooting animations and walking/running for guns?";
+"I'd like to see how third person is looking as well". **Branch:** `claude/fps-tactical`; shared `0a30de5d` (camp A1) merged
+first (`5078329f`, DEV_LOG and PROJECT_STATE kept both sides). Code `8aa68815`..`8e84bad9`. Pushed, not merged, not released.
+- **What:** first person draws the KINEMATION pack's own gun in place of the game's model, whatever the skin: pistol -> WK-11
+  Viper, rifle -> Oryx SRM-12 with its Phantom TAC scope, machine gun -> TR15 with its iron sights (the owner's mapping; the
+  TR15 is the gun the machine gun's clip set was made for). The gun rides the clip's gun bone; its slide, bolt, hammer, trigger,
+  magazine and release move by its own weapon clips; both hands take the pack's places and palms on its grips, magazine and bolt,
+  every finger the clip's (the pistol's support hand is the pack's thumbs-forward wrap); aiming puts the gun's aim point on the
+  eye (the rifle keeps its scope overlay); the muzzle flash, brass and chip kit sit on the pack gun's muzzle. Third person, the
+  menus and every other rig keep the game's guns and skins. Arsenal skins: the pack gun draws as it is in first person (a skin's
+  look is its model's materials and parts, not one tint). Without the local guns prefab the first pass (the game's models) draws.
+- **Arms:** the tactical view's arms are cut from the clavicles, not the elbows, so they run in from the screen's edges (the
+  flat black blocks were the elbow cut's open sleeves on screen). The old view model keeps its elbow cut (tried at the shoulders
+  on the greatsword: its body, placed by the right hand alone, raised whole upper arms into the air).
+- **The pack's motion:** the pack has walk, sprint, jump and fire clips. The sprint carry and walk sway were already its own at
+  full strength: `A_FP_Sprint` moves the gun exactly as the idle pose plus `A_FP_Idle_Sprint_Loop` on the additive bone (compared
+  frame by frame), `A_FP_Walk` as the walk pose plus `A_FP_Walk_Loop`; each loop steps with the pilot's stride. New: the jumps
+  (`Jump_Start`/`_Loop`/`_End` on the additive bone, on the pilot's grounded state); the fire clips at full strength on the pack
+  guns (the Viper's kick with its slide, the SRM-12's full bolt tilt with its bolt); the TR15 has no character fire clip in the
+  pack: procedural recoil plus its bolt clip each shot.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking; nothing reads or
+  writes a rule. The weapon clips follow their arms clips (reload on `ReloadAt..ReloadUntil`, the bolt home at `ShootReady`);
+  a shot's weapon clip fits the interval (the TR15's .117 s bolt into the machine gun's .085 s); jumps play at the pack's pace on
+  the grounded state. The rounds' origin and aim are the game's.
+- **Shipping:** the bake also writes `ChipArenaViewGuns.prefab` beside `ChipArenaViewMotion.bytes` (Editor checkout's
+  `Assets/LocalAssets/ChipArenaLocal/Resources`); `tools/pack_visual_body.py` now follows `ChipArenaViewGuns*.prefab` too (a
+  one-line change in Astra's packer). About 8.2 MB on the Drive zip's 469.9 MB visual body (480 MB cap, kept per
+  EXPEDITION-OVERHAUL Q10): textures cut to bodies 1024 / their metal-gloss 512 / magazines 512 and 256 to fit.
+- **Audit (first person at rest, old view model):** the hands sit below the frame for the sword, katana, daggers, fangs, bow,
+  shield, glaive, the four staffs, L33t and the Bombadier; the greatsword's left forearm ends in its cut sleeve; the Siren
+  (voxel arms by design), Top Dog and Cyber Lord read fine; Emperor, Ansatsuken and the DEV Greatsword/Katana not filmed (time).
+  Not fixed here: the old view model's framing per class is its own task (a lift per class, or the tactical view's eye-anchored
+  arms for melee with melee clips).
+- **Checks:** full CoreTests at `025b9fbe` in a clean worktree (expedition_path.patch, the 14 stage banks): 1,103 groups,
+  exit 0 (`--tactical-view` 2,739 checks); `tools/check_unity_compile.py` PASS (four assemblies); `git diff --check` clean;
+  the pin scan clean; PrototypeBuild.Validate ok at `8aa68815` and `025b9fbe`.
+- **Next:** the owner reviews the clips; the integrator merges and re-packs the Drive zip (below, in the PR); test channel.
+
 ## 2026-11-21 — Claude (F1): first person on the Tactical Shooter Pack's clips (pilot model's arms, game's guns)
 Owner: "Utilize new FPS system / animations from tactical pack." **Branch:** `claude/fps-tactical` from shared `ead0ef02`; code
 `97c780fa` (filmed: pistol and machine gun at `6db638ee`, rifle at `97c780fa`; the commits between touch the rifle alone), docs
