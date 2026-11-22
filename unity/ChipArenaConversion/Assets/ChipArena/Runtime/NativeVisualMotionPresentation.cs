@@ -761,7 +761,9 @@ namespace ChipArena.UnityConversion
                 // ready carry (owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest): both turns of the gun hand's wrist, the
                 // gun placed on the hand again after them (owner 2026-11-22: "sometimes it appears the gun and hand aren't connected"; they
                 // used to turn the gun alone about its grip, up to 35 and 20 degrees inside the palm).
-                if(m.Set.Gun&&!reloading)VisualGunWrist(m,weaponHand,a,wgt,heldTurn);
+                // (A pack gun eases them off through a reload and back with its pitch, PitchKeep: cut at ReloadUntil, the gun and hand jumped
+                // up to 35 degrees in one frame and the support hand missed the fore-end by up to 3.7 cm for that frame.)
+                if(m.Set.Gun&&(m.Set.Tactical!=null||!reloading))VisualGunWrist(m,weaponHand,a,wgt*(m.Set.Tactical!=null?m.PitchKeep:1),heldTurn);
                 // Held in a paired move's victim clip: the weapon hangs head-down from the grip, and the support hand lets it go (below).
                 float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));
                 // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
