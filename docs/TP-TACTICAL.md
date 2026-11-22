@@ -76,6 +76,14 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
   The fingers close to the pack's TR15 foregrip fist by the same weight (`VisualTacticalFist`); half the wrist's new twist goes into
   the forearm. Before, the pack's carry left the support hand open on the near face (its own support hands lie flat, fingers out),
   and the old reach let go beyond 0.40 m.
+- **A long gun grips at rest too, and between states.** Its match idle's low carry closes the hand on the handguard like the carry
+  and the raise do; the grip's share is at least the body's readiness (`GripHold`, eased once over 0.12 s), not only the product of
+  those three layers' eased shares, which dipped as one eased out and the next in (the hand slid up to 4 cm off the handguard for a
+  moment after a reload, into a jump, or on stopping). The pistol keeps its match idle's low two-hand ready and the game's one-hand
+  sprint (the pack has no pistol sprint carry), its support hand free there.
+- **One hold in the hand.** A pack gun sits in the gun hand at one hold, the pack's ready hold; the gun set's own hold differed from
+  it by 24.3 degrees (rifle; 21.5 machine gun, 17.0 pistol), which turned the gun in the palm whenever it was raised or lowered.
+  That difference is now the wrist's.
 - **The gun follows the hand.** A raised gun's barrel turn onto the aim (at most 35 degrees) and a lowered gun's 20-degree low carry
   used to turn the gun alone about its grip, inside the palm. They now turn the gun hand at the wrist and the gun is placed on the
   hand again (`VisualGunWrist`), so the grip never slides or turns in the palm. This holds for every gun, with or without the pack's

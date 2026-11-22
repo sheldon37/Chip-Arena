@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
             // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
             // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
-            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip; public float[] CarryMix, FistMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
+            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip, GripHold; public float[] CarryMix, FistMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -642,7 +642,12 @@ namespace ChipArena.UnityConversion
             }
             // A pack gun's support hand on the model by the pack's share (NativeTacticalMotion.GripWeight; let go in a paired move's hold).
             // (A long gun at rest grips too: its match idle's low carry with the support hand closed on the handguard.)
-            m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight(m.Set.Tactical,1-(1-m.CarryShare)*(1-m.Upper)*(1-(m.Set.RestArms!=null?Ease(m.Rest):0)),a,time,drawAge)*(1-Mathf.Clamp01(m.VictimShare)):0;
+            // (A long gun holds through the hand-over between those layers too, its rest, carry and raise each closing the hand on the
+            // handguard: by the body's readiness, eased once, at least; their product dipped as one eased out and the next in, so the
+            // hand slid off the gun for a moment after a reload, into a jump, or on stopping.)
+            m.GripHold=m.Set.Tactical!=null&&m.Set.RestArms!=null?Mathf.MoveTowards(m.GripHold,ready?1:0,dt>0?dt/UpperEase:1):0;
+            float packShare=1-(1-m.CarryShare)*(1-m.Upper)*(1-(m.Set.RestArms!=null?Ease(m.Rest):0));
+            m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight(m.Set.Tactical,Mathf.Max(packShare,Ease(m.GripHold)),a,time,drawAge)*(1-Mathf.Clamp01(m.VictimShare)):0;
             VisualTacticalFist(m);
             VisualMotionInertia(m,jumped,dt,keepLegs);
             if(keepLegs){VisualMotionApply(m,m.Legs);hipsAt=m.ProxyHips.localPosition;hipsTurn=m.ProxyHips.localRotation;}
