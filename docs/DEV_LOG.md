@@ -30,12 +30,14 @@ Owner: "Utilize Ragdoll Asset for hit reactions" (RootMotion's PuppetMaster, bou
   `--addons-allowlist "F:/Chip Arena Development/scratch/puppet-hits/local/private-addons-allowlist.json"` to the usual
   `pack_visual_body.py <Drive zip> <new> --project <Editor checkout>/unity/ChipArenaConversion --with-cloth` repack, then
   `install_local_assets.py <new> --check --require-cloth`. The Drive zip has no `private-addons.json` yet, so nothing is replaced.
+  Dry run on a copy of the current Drive zip (19:40): packed, the check passed (cloth 414 files, 106 add-on paths listed); the
+  output was deleted and the Drive zip was not touched.
 - **For Astra (build tooling, nothing changed):** `tools/check_unity_compile.py` references every Unity module, but the project
   enables nine; PuppetMaster's `PuppetMasterSetup.cs` (names `UnityEngine.Cloth`) passed it and failed in the Editor (P1's hold
   rolled it back within a minute; the Editor was never left broken). The add-on set leaves that file out; local add-ons are now
   checked against the Editor's own `Library/Bee/artifacts/*/Assembly-CSharp.rsp` references.
 - **Checks:** full CoreTests (clean LF worktree, `expedition_path.patch`, the 14 stage banks) at `7abc5703`: 1,103 groups, exit 0
-  (`HitPuppetChecks` new), and at the head (FINALSUITE); `--hit-puppets` at the head; `tools/check_unity_compile.py` passed; `git diff --check` clean; the
+  (`HitPuppetChecks` new), and at `738fbd14` (code as pushed): 1,103 groups, exit 0; `--hit-puppets` at the head; `tools/check_unity_compile.py` passed; `git diff --check` clean; the
   Editor compiled the add-ons and the branch; captures (below).
 - **Clips:** `F:/Chip Arena Development/scratch/puppet-hits/clips/` (before | after on the same build, the bridge off by
   `Temp/hitpuppets-off.flag`; 1/30 s frames at 10 fps, 3x slower): `greatsword-bot.mp4`, `katana-bot.mp4`,
