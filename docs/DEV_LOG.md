@@ -1,3 +1,84 @@
+## 2026-11-21 — Claude (C1): Belvedere Camp on A1: the camp's art and survivors live on Astra's blocks, the ramp climb-out, the awning at 1 m (owner: go ahead if Astra hasn't shipped it; presentation, plus one owner-decided table row)
+
+**Branch:** `claude/camp-a1`, from Astra's draft `codex/belvedere-camp-a1` (`fe75f109`: A1's rules, unchanged) merged with shared `ead0ef02` (`78b3d898`; DEV_LOG kept both sides). Implementation head `56f2bdb2` (after `ebf3bd6b` and `3026737c`). Pushed; not merged, not released.
+
+**Owner decision (2026-11-21) on the awning blocker Astra raised: "Move to 1 m".**
+- The awning posts move from (14.6, 12.4) and (12.4, 14.6) to (14.85, 12.15) and (12.15, 14.85). They now stand 1.35 m out along the chip machine's sides, 1.05 m clear of its body (was 0.694 m).
+- This is the only change to A1's table (`NativeExpeditionHubPlan.Table`). Astra's own one-metre service check (`ReviveMachineChecks`) now passes.
+- **Astra: the blocker is resolved. No rule of yours changed.**
+- The seed-123 world and layout identity pin in `ExpeditionDeploymentChecks` is re-pinned for the moved rows. That check now prints both hashes when it fails.
+
+### What changed (Claude's part of A1's release)
+- **The camp on A1's blocks, live.** These draw in every live hub, built behind the loading screen (`Runtime/NativeCampDraw.cs`):
+  - the structures' art: the mess ring, the fountain with its brazier burning, the benches, the kiosk and awning, the infirmary, the lookout, the sentries, the radio shack, the supply cabin, the generator and the sandbags;
+  - their glass, every survivor's posed figure, and the fourth bench's keep.
+- **The greybox gives way.** Each camp-* block's box is left out where the bank holds its art (`NativeCamp.ArtOf`, `NativeCampDraw.Hides`, one line in `NativeArenaDressing`, generated hub only). The blocks' collision is untouched. Without the camp bank the greybox stays.
+- **The survivors, live.**
+  - The 13 are always in the camp. Each rescued survivor joins once the live view says its instance is cleared (`NativeCamp.Joined`). No new key, wire field or replicated state.
+  - The nearest six within 30 m are the pilot model on the camp's motion bank (`Runtime/NativeCampSurvivorsDraw.cs`, now in every build). Their bodies are made behind the hub's loading screen.
+  - A survivor who joined while the pilots were away is cheered when they return.
+  - The walk's DEV preview (C, U, K, Y) is unchanged and still Editor/development only.
+- **The climb-out (ExitReach 2.4 m).** In `Core/NativePodDrop` the pilot stands up in the cabin (at most 0.45 s), then walks out over the sill, down the ramp's tread and onto the capsule at its foot by 0.05 s before GO.
+  - The stand may end 0.9 s later than the old stand-in-place.
+  - Top pace on the 5 s opening, pods 1 to 4: 2.2, 2.6, 3.1 and 3.8 m/s. The model's own locomotion plays the stride.
+  - `PodDropChecks`' ExitReach pin is now 2.4 (the pod centre 2.4 m back along the record's facing). New checks hold the path (forward only, inside the doorway, on the floor, ramp or crater) and its pace.
+- **The directed drop sees through the pods.** A1's pod solids pulled the arc's eye in and out of the hull (seen in the Editor: the view popped between smoke at the door and the high arc). The drop's out-of-walls pull-in now skips them (`NativePodView`), and my own pod eases into glass as W4 designed it.
+  - After GO the game's cameras keep their own casts. A shoulder camera inside a glass pod filled the view with panes, so the hull pulls it in, as any wall does.
+  - The Classic camera is untouched.
+- **The bleed's wall finder** skips every `camp-*` block (it skipped only `camp-fence` before).
+- **Art.** The kiosk's awning reads its posts from the plan (`tools/stages/camp_parts.py`). The camp bank was rebuilt: `ChipArenaCamp.bytes`, 6,938,012 bytes, sha256 `7aab4f8d…`, 0 art-rule failures.
+- **Docs:** `docs/expedition/BELVEDERE-CAMP.md` (Part 2 live, the climb-out, the owner's awning call).
+
+### Affected systems
+- camp presentation in the live hub;
+- the pod drop's pilot and directed camera;
+- the arena dressing's greybox on camp-* blocks;
+- the bleed dress's wall finder;
+- one table row (the awning posts) and its identity pin.
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The capsule (the authority's pilot position) never moves; only the drawn body walks to it before GO. The survivors have no collider and are never replicated.
+
+### Checks
+- **Full CoreTests, the relgen5 way** (a clean LF worktree, `expedition_path.patch`, the 14 stage banks), each exit 0:
+  - `ebf3bd6b`: 1,102 PASS lines in 1,236 s;
+  - `3026737c`: 1,102 PASS lines in 1,223 s;
+  - `56f2bdb2` (the code head): 1,102 PASS lines in 1,228 s.
+- **Targeted, at the head:**
+  - `--pod-drop`: 329,371 checks, with the climb-out's pace;
+  - `--camp`: 67,256 checks; with `CHIPARENA_CAMP_BANK` on the rebuilt bank, 152,335; with the motion bank too, 162,370. The structures' art lies at most 0.08 m off its blocks below 3.1 m.
+  - `--revive-machine` (Astra's one-metre service clearance): 2,508 checks, passing now;
+  - `--expedition-deployment`: 7,100 checks;
+  - `--landing-field`, pod rules (31), machine placement, hub z-fight, bleed skins and the voxel ratchet all pass.
+- **Before the fix:** Astra's branch failed `PodDropChecks` (the ExitReach 0 pin) and `ReviveMachineChecks` (the awning posts at 0.694 m).
+- **`tools/check_unity_compile.py`:** all four assemblies pass at `56f2bdb2`.
+- **`git diff --check`:** clean.
+- **PrototypeBuild.Validate in the Editor:** ok at `ebf3bd6b`, `3026737c` and `56f2bdb2`. This includes the native generated-world and activation fixtures (hub machines, pod collision, touchdown and extraction).
+- **Live Expedition starts in the Editor:** 7 runs (3 at `ebf3bd6b`, 2 at `3026737c`, 2 at `56f2bdb2`), each `STAGE_LOADING ... kind=Expedition ... reason=ready`.
+  - Each run built the camp with 35 blocks drawn as art, 18 figures and the survivors' motion bank.
+  - No exception, and no `FormatException` from layout validation.
+- **Editor holds:** 3 holds (842 s, 372 s and 375 s), queued as C1.
+  - The rebuilt camp bank was in Resources only during each hold. The released bank (`01b5083b`) was put back and the Editor was back on `ead0ef02` each time.
+- **Not run:** the Windows builder (that is the integrator's release), a two-peer or guest view, and the Low tier.
+
+### Clips and stills
+In `F:/Chip Arena Development/scratch/camp-a1/clips/` (local):
+- `1-pod-drop-climb-out-half-speed.mp4`: two live runs at `56f2bdb2`, side by side. The drop, the arc down behind the pod as it turns to glass, the pilot walking out down the ramp to the capsule, then GO. 8.1 s at half speed.
+- `2-survivors-mess-ring.mp4`: a push-in on the survivors round the brazier, live, 6.1 s.
+- `3-chip-machine-awning-1m.mp4`: an arc round the chip machine under its awning on the moved posts, with the kiosk and the Quartermaster, 6.1 s.
+- `4-walk-in-south-gate.mp4`: the pilot opens the south gate, and the camera walks in past the sandbags to the ring, 7.1 s.
+- Stills (`still-*.jpg`, `stills-sheet.jpg`):
+  - the awning from the front and the side;
+  - the ring, the kiosk, the infirmary with Doc, the med machine, Sparks at the REVIVE-O-MATIC, the radio shack, a sentry, the lookouts, and the camp from above;
+  - the landed pod with the pilot on the capsule at the ramp's foot (side, behind, front).
+
+### Risks and next steps
+- **Assets for the release (the integrator's zip swap).** Replace `ChipArenaCamp.bytes` in the Drive zip with the rebuilt bank: `F:/Chip Arena Development/scratch/camp-a1/bank/ChipArenaLocal/Resources/ChipArenaCamp.bytes`, sha256 `7aab4f8d…`. The zip's `.meta` stays.
+  - With the old bank the awning hangs from the old post spots, 0.25 m off its new posts.
+  - The camp motion bank (`427d92ef…`) and the garment bank are already in the zip.
+- **Not seen:** a guest's view of the live camp; a party of more than one pod (the captures used one pilot); the Low tier.
+- **Release coupling:** this branch carries A1 and must ship with it. Astra's builder acceptance is the release's native check.
+- **Next:** the integrator merges and releases with A1, so Astra's rules and Claude's art ship together. After the release come the survivors' interactions (plan R6).
+
 ## 2026-11-21 — Claude: release 13: the shipped game is lit as the approved Editor looks were (integrator)
 The owner plays on High: the live build read 2-7 times darker than the Editor clips the owner approved.
 - **Published:** shared and the builder at `a7bda65f`. Test channel revision `639308945926123514` (build `d41b3f08`, 394.0 MiB).
