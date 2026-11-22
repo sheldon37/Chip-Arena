@@ -34,12 +34,11 @@ hold at rest, so the idles do not move).
   ready hold with a small sway, the port carry); the jumps and the loops only drive the pack's additive gun bone and leave the
   body at rest. So the legs stay the game's strides and jumps, and the pack supplies the carry over them. There is no strafe or
   backward set; the carry is the same whichever way the legs go, so the 8-way blend is unchanged.
-- **The draws do not carry the gun in the hands.** In `A_FP_WK-11_Viper_Quick_Draw`, `A_FP_SRM-12_Draw` and `A_FP_TR15_Draw` the arm
-  bones are keyed but stay low while `ik_hand_gun` travels up (the pack's runtime IK carries the hands to the gun), so baked plainly
-  they show hanging arms and a gun moving by itself. The bake puts the arms back on the gun bone (`ikgun=`: each hand at its place
-  on the gun in that gun's idle pose, its fingers the idle's; the right hand throughout, the left ramping in over the draw's last
-  part), which is what the pack's runtime does. The game has no weapon swap, so the draw plays once a round, ending on GO; the
-  holsters are not played (nothing in the rules puts a gun away).
+- **The draws** (`A_FP_WK-11_Viper_Quick_Draw`, `A_FP_SRM-12_Draw`, `A_FP_TR15_Draw`) carry the hands with the gun (measured: the
+  right hand holds still in the gun bone's frame through every frame). The bake also seats each hand at its place on the gun in
+  that gun's idle pose with the idle's closed fingers (`ikgun=`; the right throughout, the left over the draw's last part), so the
+  draw ends exactly on the aim's grip. The game has no weapon swap, so the draw plays once a round, ending on GO; the holsters are
+  not played (nothing in the rules puts a gun away).
 - **The pack's support hands lie flat** under the handguard with the fingers out (SRM-12, TR15 non-grip, the walk and sprint), which
   read as open, splayed hands on the model; the long guns' left fingers take the TR15 foregrip's closed fist while the support
   fist holds the model's handguard (`VisualTacticalFist`), and the clip's own while it lets go (a reload).
@@ -76,7 +75,7 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
 - `Runtime/NativeTacticalMotionPresentation.cs`: the carry (upper-body muscles over the stride, the legs' hips kept), the spine's
   pitch and the machine gun's kick, the pistol held out.
 - **Rebaking the bank:** the BoZo tool's full motion rebake (`MotionSpecs`) does not know the pack's clips (it reads humanoid clips
-  only). After any full rebake, append the 31 pack records again with `ChipArenaT1Bake.cs` (base bank = the new one; the draws with
+  only). After any full rebake, append the 14 pack records again with `ChipArenaT1Bake.cs` (base bank = the new one; the draws with
   `ikgun=`).
 
 ## Checks

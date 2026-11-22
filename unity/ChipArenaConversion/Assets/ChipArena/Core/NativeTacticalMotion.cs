@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         public static float ReloadTime(Gun g,float time,float at,float until)
             =>g==null?0:g.ReloadEnd*Clamp01((time-at)/Math.Max(.05f,until-at));
         /// <summary>The draw's clip time `age` s into it (DrawEnd at DrawTime), or NaN outside it (age from DrawTime before the fight's
-        /// start: Runtime passes NativeSpawnIn.Age plus DrawTime).</summary>
+        /// start: Runtime passes the spawn-in's age plus DrawTime).</summary>
         public static float DrawClipTime(Gun g,float age)=>g?.Draw==null||float.IsNaN(age)||age<0||age>=g.DrawTime?float.NaN:g.DrawEnd*age/g.DrawTime;
         /// <summary>The raise's time (s): aiming, the gun's Settle (the rules' aim settle: pistol .15, rifle .3, machine gun .2); a shot
         /// from the hip, `quick`.</summary>
