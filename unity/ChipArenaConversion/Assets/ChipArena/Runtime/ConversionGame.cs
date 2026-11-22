@@ -266,6 +266,8 @@ namespace ChipArena.UnityConversion
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             // The gun Q kit's first-person kick (Core/NativeGunKitMotion.CameraKick): fanned rounds, Overdrive's buzz; camera shake on.
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.GunKitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
+            // The tactical view's own camera motion (NativeTacticalViewPresentation.cs): its clips' look, first person, camera shake on.
+            if(!menu&&Spectator==null&&!cinematic.Directing&&presentation.FirstPerson&&prefs.cameraShake)presentation.TacticalCameraKick(cameraView.transform,prefs.reducedEffects?.4f:1);
             // The match-start spawn-in (NativeSpawnInPresentation.cs): my first-person view rides the beam's hold and drop, and the touchdown kicks.
             if(!menu&&Spectator==null&&!cinematic.Directing)presentation.SpawnCamera(cameraView.transform,arena,renderTime,prefs.cameraShake,prefs.reducedEffects);
             // A pod run's ride (NativePodRidePresentation.cs): one braced second in first person in my falling pod's cabin.
