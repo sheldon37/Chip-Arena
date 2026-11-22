@@ -17,7 +17,7 @@ Until Astra's A1 builds the hub blocks, nothing stands on the plaza floor that a
   leaf travel or pocket (5-10.3 m either side of a gate, from the inner face to 0.5 m inboard, up to 3.4 m).
 - Strings and sails hang from 3.5 m (every bulb from 4.3 m).
 - Nothing stands where an A1 block will, so part 1 never moves when the blocks land.
-- No survivor is drawn in a live run until A1's structures exist.
+- No survivor is drawn in a live run until A1's structures exist. (They exist since A1: see "Part 2".)
 
 `CampChecks` holds every piece's envelope and base to these rules. With `CHIPARENA_CAMP_BANK` set, it also holds every vertex of the
 bank's meshes to them, and checks that no face lies flat on a surface the hub already draws (the floor and the dress's asphalt
@@ -67,12 +67,27 @@ until the owner's listening pass and batch.
   (`PrewarmCamp` in `PrewarmStage`), so the hub's first frame builds nothing.
 - Without the bank (CI, cloud and public builds, `--ca-no-pack-banks`), nothing is drawn.
 
-## Part 2: the DEV preview
+## Part 2: the camp on A1's blocks (live) and its DEV preview
 
-The whole W5 camp from the hub plan table, for the owner's and the integrator's review before Astra's blocks exist.
+Since Astra's A1 (`codex/belvedere-camp-a1`) builds the hub plan table's blocks, the camp below draws in every live run's hub, on
+those blocks. The Developer walk shows the same camp as its DEV preview.
 
-**Where:** Settings · Developer · Walk Meridian greybox, on any layout or deal, in Editor and development builds only. It never draws
-in a live run: the walk's map is the only map it answers to, and its switches are compiled only into those builds.
+**Live** (`claude/camp-a1`, every build, with the camp bank):
+- The structures' art (below) on their blocks. Each block's greybox gives way where the bank holds its art
+  (`NativeCamp.ArtOf`, `NativeCampDraw.Hides`, read by the arena dressing on the generated hub only). Without the bank the
+  greybox stays and nothing else draws. The blocks keep their collision; the art keeps within 0.25 m of their faces below 3.1 m
+  (CampChecks measures 0.08 m at most on the bank).
+- The survivors at their posts, the 13 from the start always, and each rescued survivor once the run's live view says its
+  instance is cleared (`NativeCamp.Joined`: no new key or wire field). A survivor who joined while the pilots were away is
+  cheered as they come back to the hub.
+- The brazier burns in the fountain.
+- The camp's machines and the REVIVE-O-MATIC are the live hub's own (Astra's A1 builds and serves them; their models,
+  labels and the chip price with its mutators come from the machine presentation).
+- The survivors' bodies are made behind the hub's loading screen, so none is made while the pods come down.
+
+**The DEV preview:** Settings · Developer · Walk Meridian greybox, on any layout or deal, in Editor and development builds only.
+The walk's map is the only map its switches (C, U, K, Y) answer to, and they are compiled only into those builds. It adds the
+camp's two machines and the REVIVE-O-MATIC (the walk has no live ones) and the clearance overlay.
 
 **What it draws:**
 - A1's structures, on their blocks' exact boxes:
@@ -133,8 +148,8 @@ intromotion request bakes it (the hold script is `scratch/camp/hold/bake-motion2
   binding's weapon frames) or on its head.
 
 **Budget:** at most six survivors draw on the model, the nearest within 30 m, kept until 33 m (Runtime
-`NativeCampSurvivorsDraw.cs`, Editor and development builds only, the walk only). The rest stay the bank's figures, which now draw
-one by one so that a survivor on the model leaves its figure out.
+`NativeCampSurvivorsDraw.cs`: the live hub and the walk). The rest stay the bank's figures, which draw one by one so that a
+survivor on the model leaves its figure out. Without the camp's motion bank every survivor is its figure.
 
 **Checks:** `CampChecks` holds:
 - a role for every post;
@@ -164,18 +179,38 @@ clearance:
 Over 2,000 seeds, the pods' hulls and skid aprons clear every block by 1 m or more. The capsule at ExitReach 2.4 m clears them by
 1.73 m or more.
 
+**Changed by the owner (2026-11-21, "Move to 1 m"):** the awning posts stand at (14.85, 12.15) and (12.15, 14.85), 1.35 m out
+along the chip machine's sides, 1.05 m clear of its body (the preview's (14.6, 12.4) and (12.4, 14.6) left 0.694 m). The kiosk's
+art reads the posts from the plan, so the awning spans them wherever the table stands them.
+
 **Changed while the art was modelled:** camp-kiosk is 3.2 m tall, not 2.6 m. The awning over the chip machine hangs from its top edge
 above 3.1 m, and nothing stands proud of the kiosk below.
 
-## When A1 lands (Claude, the same release)
+## With A1 (Claude, the same release: `claude/camp-a1`)
 
-- The structures' art draws on A1's blocks, each block's greybox hidden only where its art draws.
-- The survivors move to the live camp: the visual body near, these rigid figures beyond 30 m, at most six skinned, with
-  SurvivorChecks.
-- The machines' presentation: `NativeMachineRules.Present` for the generated hub, the chip label's mutators, and the kiosk and
-  infirmary as their dressing.
-- The bleed's wall finder skips `camp-*` (`Core/NativeCityBleedDress.cs`).
-- The survivors' interactions follow (plan R6).
+- Done: the structures' art draws on A1's blocks, each block's greybox hidden only where its art draws.
+- Done: the survivors live in the camp, the visual body near and the rigid figures beyond 30 m, at most six skinned
+  (CampChecks: who has joined, the art's reach, the awning's metre).
+- Done by Astra in A1: `NativeMachineRules.Present` for the generated hub and the chip label's mutators. The kiosk and the
+  infirmary dress the machines.
+- Done: the bleed's wall finder skips every `camp-*` block (`Core/NativeCityBleedDress.cs`).
+- Done: the climb-out (below).
+- Next, after the release: the survivors' interactions (plan R6), driven by existing replicated events.
+
+### The climb-out (ExitReach 2.4 m)
+
+A1 moved each pod's record (the capsule where the pilot stands at GO) to the ramp's foot, 2.4 m ahead of the pod centre. The drop
+(Core `NativePodDrop`) now has the pilot climb out to it:
+1. braced in the jump seat until the bolts blow the door;
+2. the harness up, standing up in the cabin (at most 0.45 s);
+3. a walk out over the sill, down the ramp's tread and off its foot onto the capsule, easing in and out, by 0.05 s before GO.
+
+The stand may end up to 0.9 s later than the old stand-in-place, so on the 5 s opening every pod's pilot reaches the capsule
+just before GO. The first two pods' pilots walk (at most 2.2 and 2.6 m/s), the third and fourth jog (3.1 and 3.8 m/s; the
+checks hold them under 3.2 and 4.6). The walk moves the
+drawn body, so the model's own locomotion plays its stride. Nothing here is a rule: the capsule never moves, and the clock,
+boarding and collision are Astra's. `PodDropChecks` holds the path (forward only, inside the doorway, on the floor, the ramp or
+the crater) and its pace.
 
 ## Building the bank
 

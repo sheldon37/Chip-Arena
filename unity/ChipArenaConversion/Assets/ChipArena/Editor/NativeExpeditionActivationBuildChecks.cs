@@ -224,6 +224,29 @@ namespace ChipArena.UnityConversion.Editor
                     }
                     finally{guest?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
                 }
+                if(generated!=null)
+                {
+                    hub.Arena.ValidateHubMachines();
+                    var scene=EditorSceneManager.NewPreviewScene();
+                    try
+                    {
+                        using(var replica=new NativeArena(content,new NativeMatch(content),hub.Arena.MapId){Replica=true,ReplicaScene=scene,GeneratedRun=generated})
+                        {
+                            var frame=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=hub.Arena.NetworkFrame()})).frame;
+                            replica.ApplyFrame(frame,1);
+                            var machines=hub.Arena.Pve.Content.machines;
+                            Check(machines.Length==2&&replica.Pve.Content.machines.Select(m=>m.id).SequenceEqual(machines.Select(m=>m.id)),"hub machine id parity");
+                            foreach(var arena in new[]{hub.Arena,replica})
+                            foreach(var m in machines)
+                            {
+                                var block=NativeExpeditionLayout.MachineBlock(m);
+                                var body=arena.Props.Single(p=>p.LocalFixture&&p.Definition.id==block.id);
+                                Check(body.GetComponent<BoxCollider>().enabled&&(body.transform.position-NativeArena.Vec(block.pos)).sqrMagnitude<.0001f,"hub machine collider "+m.id);
+                            }
+                        }
+                    }
+                    finally{EditorSceneManager.ClosePreviewScene(scene);}
+                }
                 Debug.Log("PASS native Expedition activation ["+(generated?.Identity??"authored")+"]: four simultaneous areas, subset ownership, independent encounters, shared clock, stale input and ready/command codec. 1800 ticks ms="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", worst="+worst.ToString("F1")+", p95="+samples.OrderBy(ms=>ms).ElementAt((int)(samples.Count*.95)).ToString("F1")+", raw packet bytes="+packetBytes+", managed memory delta="+(GC.GetTotalMemory(false)-memoryBefore)+". Automated fixture; not a human multiplayer playtest.");
             }
         }

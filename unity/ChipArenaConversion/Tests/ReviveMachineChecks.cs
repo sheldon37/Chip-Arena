@@ -178,6 +178,55 @@ namespace ChipArena.UnityConversion
             string mapsJson=Read("UnityMaps.json");json=Read("ExpeditionLayout.json");var maps=System.Text.Json.JsonSerializer.Deserialize<UnityMapContent>(mapsJson,new System.Text.Json.JsonSerializerOptions{IncludeFields=true});
             var content=new ConversionContent{maps=maps.maps,contentRevision=NativeMapRules.Revision(mapsJson)};layout=NativeExpeditionLayout.Parse(json);layout.compatibility=NativeExpeditionLayout.Compatibility(json,content);return content;
         }
+        // Compare oriented footprints edge to edge. Testing the four face normals catches crossing rectangles.
+        private static float ServiceGap(NativeCamp.Row row,Vector3 centre,float width,float depth,float yaw)
+        {
+            var axis=new Vector2((float)Math.Cos(yaw),-(float)Math.Sin(yaw));
+            var perpendicular=new Vector2(-axis.Y,axis.X);
+            var origin=new Vector2(centre.X-row.X,centre.Z-row.Z);
+            var half=new Vector2(row.Sx/2,row.Sz/2);
+            bool separated=false;
+            foreach(var normal in new[]{Vector2.UnitX,Vector2.UnitY,axis,perpendicular})
+            {
+                float radius=Math.Abs(normal.X)*half.X+Math.Abs(normal.Y)*half.Y+
+                    Math.Abs(Vector2.Dot(normal,axis))*width/2+Math.Abs(Vector2.Dot(normal,perpendicular))*depth/2;
+                if(Math.Abs(Vector2.Dot(origin,normal))>radius)separated=true;
+            }
+            if(!separated)return 0;
+            float gap=float.MaxValue;
+            for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)
+            {
+                var corner=origin+x*axis*width/2+z*perpendicular*depth/2;
+                gap=Math.Min(gap,Vector2.Max(Vector2.Abs(corner)-half,Vector2.Zero).Length());
+                var delta=new Vector2(x*half.X,z*half.Y)-origin;
+                var local=new Vector2(Vector2.Dot(delta,axis),Vector2.Dot(delta,perpendicular));
+                gap=Math.Min(gap,Vector2.Max(Vector2.Abs(local)-new Vector2(width/2,depth/2),Vector2.Zero).Length());
+            }
+            return gap;
+        }
+        private static void CampServices(ExpeditionAreaLayout area,Matrix4x4 frame,float yaw)
+        {
+            var failures=new List<string>();
+            void Clear(string id,Vector3 centre,float width,float depth,float angle)
+            {
+                foreach(var row in NativeCamp.Table)
+                {
+                    float gap=ServiceGap(row,centre,width,depth,angle);
+                    if(gap<.9999f)failures.Add(row.Id+" to "+id+" = "+gap.ToString("F3")+" m");
+                }
+            }
+            foreach(var m in area.machines)
+            {
+                var b=NativeExpeditionLayout.MachineBlock(m);
+                Clear(m.id,b.pos.ToVector(),b.size.x,b.size.z,m.yaw);
+                foreach(var point in new[]{m.front,m.dispense,m.chipDrop})Clear(m.id+" service point",point.Position().ToVector(),0,0,0);
+            }
+            foreach(var solid in NativeReviveMachine.Solids)
+                Clear("revive",Vector3.Transform(solid.centre,frame),solid.size.X,solid.size.Z,yaw+solid.yaw);
+            Clear("revive mat",Vector3.Transform(NativeReviveMachineModels.MatAt,frame),NativeReviveMachineModels.MatSize,NativeReviveMachineModels.MatSize,yaw);
+            Clear("revive use",Vector3.Transform(NativeReviveMachine.UsePoint,frame),0,0,0);
+            Check(failures.Count==0,"one-metre service clearance: "+string.Join(", ",failures));
+        }
         private static void Hub(string map,ExpeditionAreaLayout area,ExpeditionHubLayout hub,string name)
         {
             Check(NativeReviveMachine.Spot(map,out var at,out float yaw),name+": a spot");var frame=NativeReviveMachine.Frame(at,yaw);
@@ -190,10 +239,15 @@ namespace ChipArena.UnityConversion
                 }
                 return false;
             }
+            if(map==NativeExpeditionGeneratedWorld.MapId)CampServices(area,frame,yaw);
             bool Inside(Vector3 w){foreach(var v in area.sanctuary)if(Math.Abs(w.X-v.x)<=v.sx/2&&Math.Abs(w.Z-v.z)<=v.sz/2)return true;return false;}
             foreach(var (centre,size,_) in NativeReviveMachine.Solids){for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){var w=Vector3.Transform(centre+new Vector3(sx*size.X/2,0,sz*size.Z/2),frame);Check(Inside(w),name+": the machine is inside the sanctuary "+w);}}
             float half=NativeReviveMachineModels.MatSize/2;var mat=NativeReviveMachineModels.MatAt;for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){var w=Vector3.Transform(mat+new Vector3(sx*half,0,sz*half),frame);Check(Inside(w),name+": the mat is inside the sanctuary "+w);}
-            if(map==NativeExpeditionGeneratedWorld.MapId)foreach(var slot in area.slots)Check(NativeExpeditionHubPlan.Clear(slot),name+": pod hull and full skid clear the revive solids, use and mat");
+            if(map==NativeExpeditionGeneratedWorld.MapId)foreach(var slot in area.slots)
+            {
+                var centre=NativePodDrop.Centre(slot.x,slot.y,slot.z,slot.yaw);
+                Check(NativeExpeditionHubPlan.Clear(new ExpeditionPoint{x=centre.X,z=centre.Z,yaw=slot.yaw}),name+": pod hull, skid and capsule clear the revive solids, use and mat");
+            }
             foreach(var s in area.slots)Check(!InSolid(new Vector3(s.x,0,s.z),.6f),name+": clear of a party slot "+s.x+","+s.z);
             foreach(var g in hub.Gates){Check(!InSolid(new Vector3(g.X,0,g.Z),3),name+": clear of a gate "+g.Id);Check(!InSolid(g.Inside.Position.ToVector(),1.2f),name+": clear of a gate's way in "+g.Id);}
             foreach(var i in area.interactions)if(i.anchor!=null&&!i.anchor.Contains(":machine:"))Check(!InSolid(new Vector3(i.x,0,i.z),.8f),name+": clear of "+i.anchor);

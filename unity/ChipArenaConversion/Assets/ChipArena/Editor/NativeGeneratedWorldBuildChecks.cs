@@ -119,7 +119,8 @@ namespace ChipArena.UnityConversion.Editor
                 var arena=runtime.Arena;arena.GeneratedRun=bundle;Physics.SyncTransforms();
                 // Real Unity codec acceptance: clocks, remote pod looks and persistent late-join launch state.
                 arena.Match.Seat(1).pod="paint:112233,trim:aabbcc,light:123456";
-                var podRules=new NativePodRun(new[]{new NativePodRecord{seat=1,order=0,name="Generated A",bodyColor="#123456",accentColor="#abcdef",look=arena.Match.Seat(1).pod}});
+                var spot=world.Area.slots[0];
+                var podRules=new NativePodRun(new[]{new NativePodRecord{seat=1,order=0,x=spot.x,y=spot.y,z=spot.z,yaw=spot.yaw,name="Generated A",bodyColor="#123456",accentColor="#abcdef",look=arena.Match.Seat(1).pod}});
                 if(!podRules.Start(arena.Match))throw new Exception("Generated pod countdown did not start.");
                 arena.PodRecords=podRules.Snapshot();
                 var landing=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=arena.NetworkFrame()})).frame;
@@ -137,7 +138,10 @@ namespace ChipArena.UnityConversion.Editor
                 if(arena.Match.Phase!=NativePhase.Fight||arena.Snapshot().Actors.Any(a=>!a.Grounded))
                     throw new Exception("Ground contact changed at GO.");
                 arena.Match.SynchronizeExpeditionClock(6);
-                if(!podRules.Board(1,new System.Numerics.Vector3(),6,true))throw new Exception("Pod boarding refused.");
+                arena.PodRecords=podRules.Snapshot();
+                var shell=arena.Root.transform.Find("Expedition pod 1");
+                if(shell==null||shell.GetComponentsInChildren<BoxCollider>().Length!=2)throw new Exception("Landed pod collision missing");
+                if(!podRules.Board(1,new System.Numerics.Vector3(spot.x,spot.y,spot.z),6,true))throw new Exception("Pod boarding refused.");
                 arena.PodRecords=podRules.Snapshot();
                 var launch=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=arena.NetworkFrame()})).frame;
                 if(launch==null||launch.pods==null||launch.pods.Length!=1||launch.seats==null||launch.seats.Length<1||launch.seats[0].pod!=arena.Match.Seat(1).pod||launch.pods[0].launchAt!=6||launch.pods[0].look!=arena.Match.Seat(1).pod||!NativePodRun.Valid(launch.pods,launch.time))
@@ -151,6 +155,10 @@ namespace ChipArena.UnityConversion.Editor
                     throw new Exception("Generated run ticket lost in Unity snapshot codec.");
                 var lobby=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="lobby",deployment=room.Ticket}));
                 if(lobby.deployment?.station!=room.Ticket.station)throw new Exception("Station ticket lost in lobby codec.");
+                arena.Match.SynchronizeExpeditionClock(6+NativePodDrop.LaunchGone+.01);
+                podRules.Tick(arena.Time,_=>true,_=>true);
+                arena.PodRecords=podRules.Snapshot();
+                if(shell!=null&&shell.gameObject.activeSelf)throw new Exception("Departed pod still blocks the hub");
                 var points=world.Area.slots.Concat(world.Area.bossPoints).Concat(world.Area.doors.SelectMany(d=>d.returns.Concat(new[]{d.approach})))
                     .Concat(world.Area.anchors.Where(a=>a.kind=="chest").Select(NativeExpeditionGeneratedWorld.CacheApproach));
                 foreach(var p in points)

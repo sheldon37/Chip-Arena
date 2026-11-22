@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The pilot shows (the bolts have blown the door); before it the pilot rides hidden inside.</summary>
         public bool Shown;
         /// <summary>The drawn pilot's feet over the pod's rest centre (world) and its tilt about them: strapped in on the pod's
-        /// full offset and lean, then unbuckled and standing on the capsule (Capsule).</summary>
+        /// full offset and lean, then unbuckled, standing in the cabin and climbing out down the ramp onto the capsule (Capsule, Climb).</summary>
         public Vector3 Pilot;public Quaternion PilotTilt;
         /// <summary>The harness bar: 0 down over the pilot's stomach, 1 up. How seated the pilot is (1 braced in the jump seat in
         /// the lobby Chair pose, 0 standing) and the seat's cushion (0 down, 1 folded up against the backrest).</summary>
@@ -92,8 +92,8 @@ namespace ChipArena.UnityConversion
     ///    (inside the collider envelope A1 will give it). Slam, shake, a small hot flash at its base, the shockwave racing out and
     ///    the dust wall, sparks, and the flash through the blast lights.
     ///  - The explosive bolts blow the door down into a ramp; the pilot, braced in the jump seat on the pod's full offset and lean,
-    ///    lifts the harness bar, stands up out of the seat (it folds away) and stands on the capsule by GO. The capsule never
-    ///    moves.
+    ///    lifts the harness bar, stands up out of the seat (it folds away) and climbs out: over the sill, down the ramp and onto
+    ///    the capsule at its foot (A1's ExitReach, 2.4 m ahead of the pod centre) by GO. The capsule never moves.
     ///  - What lasts, from the record and the clock: the crater, the scorch and the furrow, the hull cooling from white hot to
     ///    char over CoolSeconds and its smoke thinning over SmokeSeconds. Then the pod stays parked for the run (the pilot's way
     ///    out: leaving by pod is Astra's rule; Launch is its look).
@@ -128,6 +128,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The bolts fire this long before the door moves; the harness bar lifts over HarnessSeconds; the door settles
         /// over DoorSettle; the pilot stands by StandMargin before GO.</summary>
         public const float BoltLead=.06f,HarnessSeconds=.3f,DoorSettle=.3f,StandMargin=.05f;
+        /// <summary>The climb-out (A1: the capsule stands at the ramp's foot, ExitReach ahead of the pod centre). Unbuckled, the pilot
+        /// stands up in the cabin over at most RiseSeconds (RiseShare of the stand), then walks out over the sill, down the ramp's tread
+        /// (RampTread over the door's centre line, on its liner) and off its foot onto the capsule, speeding up over ClimbEaseIn of the
+        /// walk and slowing over its last ClimbEaseOut, by StandEnd. ClimbSeconds: how much later than the old stand-in-place the stand
+        /// may end (by GO at the latest), so the first pods walk out and the fourth jogs.</summary>
+        public const float RiseSeconds=.45f,RiseShare=.3f,RampTread=.05f,ClimbEaseIn=.25f,ClimbEaseOut=.3f,ClimbSeconds=.9f;
         /// <summary>The shield's share of its turn into the flow on the way in, and once the retros have stood it up.</summary>
         public const float FlightTilt=.55f,TouchTilt=.14f;
         /// <summary>The braced pilot's forward hunch against the bar, and the seated eye in the cabin (the station's, W3's
@@ -157,7 +163,7 @@ namespace ChipArena.UnityConversion
             p.Appear=-o;p.Ride=L(-2.6f,-4.1f,k);p.CabinEnd=p.Ride+L(.55f,1,k);
             p.Impact=ImpactOf(p.Order,o);p.RetroAt=p.Impact-L(.3f,.4f,k);
             p.DoorSeconds=L(.18f,.22f,k);p.DoorAt=Math.Min(p.Impact+L(.35f,.6f,k),-(p.DoorSeconds+DoorSettle+.05f));
-            p.StandEnd=Math.Min(p.DoorAt+L(.95f,1.4f,k),-StandMargin);p.StandFrom=Math.Max(p.DoorAt+.04f,Math.Min(p.DoorAt+.12f,p.StandEnd-.3f));
+            p.StandEnd=Math.Min(p.DoorAt+L(.95f,1.4f,k)+ClimbSeconds,-StandMargin);p.StandFrom=Math.Max(p.DoorAt+.04f,Math.Min(p.DoorAt+.12f,p.StandEnd-.3f));
             p.End=Math.Max(p.StandEnd,p.DoorAt+p.DoorSeconds+DoorSettle);
             p.Stop=p.Impact-L(.25f,.35f,k);p.ArcFrom=p.Impact+L(.35f,.55f,k);p.HandOff=L(.5f,.6f,k);p.ArcTo=Math.Min(-.02f,Math.Max(p.ArcFrom+.5f,-p.HandOff-.05f));p.ArcFrom=Math.Min(p.ArcFrom,p.ArcTo-.25f);
             // first person: the cut from the doorway's view into my own eyes, late in the stand-up and before the hand-off
@@ -208,7 +214,7 @@ namespace ChipArena.UnityConversion
         {
             float a=yawDegrees*Deg;return new Vector3(x,y,z)-new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a))*NativeExpeditionHubPlan.ExitReach;
         }
-        /// <summary>The capsule's rest feet over the pod centre: on it today, ExitReach ahead once A1 moves the slot to the ramp foot.</summary>
+        /// <summary>The capsule's rest feet over the pod centre: ExitReach ahead, at the ramp's foot (A1 moved the slot there).</summary>
         public static Vector3 Capsule(in PodPlan p)=>p.Forward*NativeExpeditionHubPlan.ExitReach+new Vector3(0,NativeSpawnIn.RestFeet,0);
         private static float Wrap(float a){while(a>Pi)a-=Tau;while(a<-Pi)a+=Tau;return a;}
         private static Vector3 Turn(Vector3 v,float a){float c=(float)Math.Cos(a),s=(float)Math.Sin(a);return new Vector3(v.X*c+v.Z*s,v.Y,-v.X*s+v.Z*c);}
@@ -315,15 +321,48 @@ namespace ChipArena.UnityConversion
             f.Beacon=((int)(Math.Max(0,since)*1.25f))%2==0?1:.25f;f.Hull=Cool(since);f.Smoke=SmokeLevel(since);f.Pilot=Capsule(p);f.PilotTilt=Quaternion.Identity;f.Lean=p.Lean;
         }
         // The pilot: braced in the jump seat with the pod (hunched into the bar) until the harness lifts, then standing up out of the
-        // seat (it folds away behind them) onto the capsule.
+        // seat (it folds away behind them) in the cabin, and climbing out: over the sill, down the ramp and onto the capsule by StandEnd.
         private static void Pilot(ref PodFrame f,in PodPlan p,float age)
         {
             var strapped=PodPoint(f,p,CabinFeet);var braced=Quaternion.Multiply(f.Tilt,Quaternion.CreateFromAxisAngle(Pitch(p.Forward),HunchAngle));
             if(!f.Shown){f.Pilot=strapped;f.PilotTilt=braced;f.Harness=0;f.Sit=1;f.Fold=0;return;}
             f.Harness=Smooth((age-p.StandFrom)/HarnessSeconds);
-            float from=p.StandFrom+.12f,span=Math.Max(.2f,p.StandEnd-from),stand=Smooth((age-from)/span);
-            f.Sit=1-stand;f.Fold=Smooth((age-from-.25f*span)/(.6f*span));
-            f.Pilot=Vector3.Lerp(strapped,Capsule(p),stand);f.PilotTilt=Quaternion.Slerp(braced,Quaternion.Identity,stand);
+            float from=p.StandFrom+.12f,span=Math.Max(.2f,p.StandEnd-from),rise=Math.Max(.08f,Math.Min(RiseSeconds,RiseShare*span)),stand=Smooth((age-from)/rise);
+            f.Sit=1-stand;f.Fold=Smooth((age-from-.25f*rise)/(.6f*rise));
+            // the first step as the pilot is nearly upright; on the capsule by StandEnd
+            float set=from+.8f*rise;f.Pilot=Climb(f,p,Stride((age-set)/Math.Max(.05f,p.StandEnd-set)));
+            f.PilotTilt=Quaternion.Slerp(braced,Quaternion.Identity,stand);
+        }
+        /// <summary>The climb-out's path on frame `f` (its pod's offset, lean and door) at `u` (0 the cabin floor's centre .. 1 the capsule,
+        /// by length along it): the cabin floor, the sill, the ramp's tread from its hinge to its foot, the capsule. The pilot's feet over
+        /// the pod's rest centre.</summary>
+        public static Vector3 Climb(in PodFrame f,in PodPlan p,float u)
+        {
+            Span<Vector3> at=stackalloc Vector3[5];
+            float c=(float)Math.Cos(f.Door),s=(float)Math.Sin(f.Door),near=.12f,far=NativePodModels.DoorHeight-.12f;var h=NativePodModels.Hinge;var tread=new Vector3(0,s,-c)*RampTread;
+            at[0]=PodPoint(f,p,CabinFeet);
+            at[1]=PodPoint(f,p,new Vector3(0,NativePodModels.Floor,h.Z-.1f));
+            at[2]=PodPoint(f,p,h+new Vector3(0,near*c,near*s)+tread);
+            at[3]=PodPoint(f,p,h+new Vector3(0,far*c,far*s)+tread);
+            at[4]=Capsule(p);
+            float total=0;for(int i=1;i<at.Length;i++)total+=Vector3.Distance(at[i-1],at[i]);
+            float want=Clamp01(u)*total;
+            for(int i=1;i<at.Length;i++)
+            {
+                float d=Vector3.Distance(at[i-1],at[i]);
+                if(want<=d||i==at.Length-1)return d>1e-6f?Vector3.Lerp(at[i-1],at[i],Clamp01(want/d)):at[i];
+                want-=d;
+            }
+            return at[at.Length-1];
+        }
+        /// <summary>A walk's travel over its time (0..1 to 0..1): speeding up over the first ClimbEaseIn, steady, slowing over the last
+        /// ClimbEaseOut (its steady pace 1/(1-(in+out)/2) times the mean).</summary>
+        public static float Stride(float t)
+        {
+            t=Clamp01(t);float a=ClimbEaseIn,b=ClimbEaseOut,v=1/(1-(a+b)/2);
+            if(t<a)return v*t*t/(2*a);
+            if(t>1-b){float r=1-t;return 1-v*r*r/(2*b);}
+            return v*(t-a/2);
         }
         /// <summary>The ablative tiles' glow `land` s after the impact: hot off the touchdown, char black by CoolSeconds.</summary>
         public static float Cool(float land)=>land<0?.9f:.9f*(float)Math.Pow(Math.Max(0,1-land/CoolSeconds),1.6);
