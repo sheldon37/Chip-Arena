@@ -1,3 +1,18 @@
+## 2026-11-22 — Claude (F1): first-person arms for every other weapon and class (in progress)
+Owner: "Go ahead and fix" (after F1's first-person audit). **Branch:** `claude/fps-melee` from shared `134c2001`, shared
+`d058426d` (release 19) merged in. Pushed, not merged, not released.
+- **What:** the old view model keeps its clips, hands and weapon; the view body then turns with the eye at true size, its
+  shoulders on an eye-anchored place below the pack's, and each arm reaches its hand by two-bone IK, cut at the clavicles, with
+  the tactical view's girth, proxy rule and fill light (`Core/NativeViewArms.cs`, `Runtime/NativeViewArmsPresentation.cs`).
+  Each class's hold rises into view by a lift measured on its view at rest (the one-hand blades' right hand sat 46-51 degrees
+  below the centre and out past the right edge; the staffs' 66 degrees below; the Bombadier's on the bottom edge). Guns, the
+  Siren, the Top Dog and the Cyber Lord keep their views. Also the machine gun 3 cm higher at the hip (release 19 follow-up).
+- **Animation impacts:** none on rules, timing, hitboxes or the wire; the lifts move the first-person hold only.
+- **Status:** the sword, Katana, daggers, Fangs, glaive, staffs and Bombadier show their hands at rest; the greatsword's and the
+  shield's arms still fill the lower view; the bow, Emperor, Ansatsuken and the DEV Greatsword/Katana are not filmed yet.
+- **Checks so far:** `--tactical-view` 3,378; the compile check PASS; `git diff --check` clean. Not yet: the contact sheet, the
+  review clips (the before frames are filmed), PrototypeBuild.Validate, the full suite.
+
 ## 2026-11-22 — Claude (F1): first person holds the gun the pilot holds (owner: "use whatever gun we are holding"), the rods, the robe
 **Branch:** `claude/fps-held-gun` from shared `134c2001` (releases 17 and 18). Pushed, not merged, not released.
 - **Owner:** "theres rods for some reason? ... Can we fix this to use whatever gun we are holding lol"; "the forearm thing might
