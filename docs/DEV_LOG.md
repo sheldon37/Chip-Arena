@@ -62,6 +62,14 @@ Code `8aa68815`..`38782002`. Pushed, not merged, not released.
   probe (`ArenaPresentation.TacticalAnchor`): pistol 2,815 frames through the draw, idle, walk, sprint, fire, reload, jump and
   aim, max 0.00 mm both hands (the hands are set on the gun after the recoil and kick). The pilot's hand is about 8% longer than
   the pack's (wrist to middle knuckle 10.3 against 9.5 cm), so the palm sits within about a centimetre of the pack's.
+  Rifle 3,230 and machine gun 3,323 frames (draw, bolt, reload, idle, walk, sprint, jump, aim): max 0.00 mm. The anchor is the
+  hand bone on its target, true by construction; the stills are the visual proof (the support hand on the handguard).
+- **Pistol (integrator review 2026-11-22):** at the hip the Viper sits lower right, 7.5 cm further right, 6 cm lower, 5 cm
+  further out and turned 5 degrees in; aimed, the sight picture is unchanged. The "pistol rest" frame with no gun or hands
+  (hold B11) did not happen again at the same moment and look in B13: B11 ran just after the Editor's package restore, while
+  its shaders recompiled (its gloves were also untinted). Rifle and machine gun at rest: the visible hand is the support hand
+  on the handguard (the pack poses it 12-20 degrees right and 20-33 below the centre); the firing hand is below the frame
+  (65 degrees down in the pack's pose).
 - **Checks:** full CoreTests at `97c780fa` in a clean worktree (expedition_path.patch, the 14 stage banks): 1,103 groups, exit 0,
   with the new `TacticalViewChecks` (`--tactical-view`, 2,135 checks: the bank reader on a synthetic bank, every clip clock on the
   rules, the sight picture, the hands on the model, no allocation per frame, first person and presentation only, no pack code or
