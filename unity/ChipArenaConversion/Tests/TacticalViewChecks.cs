@@ -243,6 +243,11 @@ namespace ChipArena.UnityConversion
             // The pack guns: a local asset read by name, drawn for the view rig alone (the game's model in third person and on every
             // other rig), hidden the frame SourceCharacter does not draw them; the arms cut at the shoulders only for the tactical view.
             Check(pres.Contains("Resources.Load<GameObject>(NativeTacticalBank.GunsResource)"),"the pack guns are read by their resource name");
+            // The held gun (owner 2026-11-22: "use whatever gun we are holding"): the game's model and skin, the support hand on its own
+            // handguard by third person's grip, the pack guns no longer shipped, a wide sleeve ended at the elbow.
+            Check(pres.Contains("bool pack=false;")&&pres.Contains("var grip=NativeTacticalMotion.For(spec)?.Support;")&&pres.Contains("gripAt=W(s.Weapon)+wq*(held.Support+"),"first person holds the game's own gun, the support hand on its handguard");
+            Check(!File.ReadAllText(Path.Combine(root,"tools/pack_visual_body.py")).Contains("glob('ChipArenaViewGuns"),"the pack guns' prefab is not packed");
+            Check(pres.Contains("TacticalIsWide(SkinnedMeshRenderer r)=>r.name.IndexOf(\"Kimono\"")&&pres.Contains("wide?upper:arm"),"a wide (robe) sleeve ends at the elbow in first person");
             Check(Directory.GetFiles(Path.Combine(root,"Assets"),"ChipArenaViewGuns*",SearchOption.AllDirectories).All(f=>f.Replace('\\','/').Contains("/Assets/LocalAssets/")),"the pack guns are only ever a local asset");
             string weapon=File.ReadAllText(Path.Combine(runtime,"NativeVisualWeaponPresentation.cs")),bodyFile=File.ReadAllText(Path.Combine(runtime,"NativeVisualBodyPresentation.cs"));
             Check(weapon.Contains("if(rig==viewRig&&TacticalPackDrawn(viewBody))return true;")&&weapon.Contains("TacticalPackAfterDraw();"),"the pack gun replaces the model for the view rig alone, and hides when not drawn");
@@ -250,7 +255,7 @@ namespace ChipArena.UnityConversion
                 Check(!File.ReadAllText(f).Contains("TacticalPackDrawn("),Path.GetFileName(f)+" never draws the pack gun");
             // The pilot's arms: the skin under the garments hidden, the girth put back every frame, the fill light on the view model alone.
             Check(pres.Contains("if(!(under[tris[i]]&&under[tris[i+1]]&&under[tris[i+2]]))")&&pres.Contains("TacticalIsSkin(SkinnedMeshRenderer r)=>r.name.StartsWith(\"Body\""),"the body's skin under a garment is hidden in the tactical view");
-            Check(pres.Contains("c.Skin.enabled=mesh!=null&&c.Shown;")&&pres.Contains("Shown=skin.enabled"),"the arm cut never turns on a renderer the outfit switched off (the hologram proxy, the skin under the garments)");
+            Check(pres.Contains("c.Skin.enabled=mesh!=null&&shown;")&&pres.Contains("bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&c.Source.name==\"lowerarms\";")&&pres.Contains("Shown=skin.enabled"),"the arm cut never turns on a renderer the outfit switched off (the hologram proxy), but the forearm's skin below a wide sleeve");
             Check(pres.Contains("if(Twist[i][k]!=null)Twist[i][k].localScale=TwistScale[i][k];")&&pres.Contains("TacticalSlim(arms);"),"the slimmer forearms are the tactical view's alone (Rest puts them back every frame)");
             Check(pres.Contains("tacticalFill.cullingMask=1<<10;tacticalFill.shadows=LightShadows.None;"),"the fill light lights the view-model layer alone, without shadows");
             Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool on=TacticalViewPosed(a,time);TacticalArmCut(on);"),"the view body's arms are cut at the shoulders only while the tactical view draws");
