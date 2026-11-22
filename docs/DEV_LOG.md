@@ -1,3 +1,63 @@
+## 2026-11-21 — Claude (T1): third person on the Tactical Shooter Pack's gun clips (aim, fire, reload, carry, draw)
+Owner: "Can we fix the animations to use their shooting animations and walking/running for guns?" **Branch:** `claude/tp-tactical`
+from shared `0a30de5d`, shared `8ed75305` merged in; code head `c93d7ab7` (filmed and validated at `2f39590a`; the commit after it
+moves one Core comment and a test's file list). Pushed, not merged, not released.
+- **What:** in third person the pistol (WK-11 Viper), rifle (SRM-12) and machine gun (TR15) play the pack's clips on the upper
+  body over the game's own legs, on the game's models and Arsenal skins (`docs/TP-TACTICAL.md`): the aim (the pack's ready hold,
+  shouldered; pitched by the spine; the pistol held out 0.17 m, its first-person hold sat at the visor), each shot (the pistol's
+  kick, the rifle's shot and bolt, the machine gun's procedural kick), the tactical reload, the carry on the move and in the air
+  (the pack walk's ready hold, its sprint's port carry by the sprint's share), and the draw on the round's GO. The long guns'
+  support hand closes on the model's handguard (the TR15 foregrip fist: the pack's own support hands lie flat, fingers out).
+  Unchanged: the standing match idles (low carry, pistol low ready), the legs, Q/E, techniques, first person.
+- **Measured (why the legs are the game's):** the pack's walk, sprint and jump clips move no leg (feet and pelvis fixed over every
+  frame: first-person clips); the jumps and loops only drive its additive gun bone. The draws carry the hands with the gun (the bake
+  also seats them on the idle's grip and fingers, `ikgun=`). No strafe/back set: the carry rides the game's 8-way blend unchanged.
+- **How:** local bake `ChipArenaT1Bake.cs` (git-ignored; Operator avatar from the pack's humanoid reference skeleton with the
+  body's bone map) appends 14 records to the released bank: `ChipArenaVisualMotion.t1c.bytes` 6,438,026 bytes sha256 `548c7889`
+  (the 499 released records byte for byte + 14). Core `NativeTacticalMotion` (clips, timing on the rules), `NativeVisualMotion.Tactical`
+  (a pack set only when the bank carries its clips), Runtime `NativeTacticalMotionPresentation.cs`. No pack code in git or at
+  runtime.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking: nothing reads or
+  writes a rule differently. Fits: rifle bolt home (1.167 s) on `Interval` 1.15 s; pistol kick at its pace inside 0.42 s; machine
+  gun kick 0.11 s per 0.085 s shot; reloads back on the gun at `ReloadUntil` (pistol 2.8x, rifle 1.06x, machine gun 1.25x); the
+  raise over the gun's `Settle` when aiming (.15/.3/.2 s); draws 0.6/1.1/1.2 s ending on GO (no rule).
+- **Checks:**
+  - Full CoreTests the relgen5 way (a clean LF worktree, `expedition_path.patch`, the 14 stage banks): `c93d7ab7` 1,104 PASS lines,
+    exit 0, 1,186 s (also `39423ce1`, 1,104, exit 0); with the new `TacticalMotionChecks` (`--tp-tactical`, 101 checks: the old sets
+    without the pack's clips, each gun's pack set over its own idles/strides/jumps, every clip clock on the rules, the carry, the
+    draw, presentation only, no pack code or bank in git). Re-pinned: `VisualRigChecks` (3 strings), `RunArmChecks` (1), and
+    `SpawnInChecks`' presentation list (+ `Runtime/NativeTacticalMotionPresentation.cs`, the draw's GO clock); a `2f39590a` run
+    failed that last check on a Core comment, fixed in `c93d7ab7`.
+  - `tools/check_unity_compile.py`: all four assemblies PASS at `c93d7ab7`. `git diff --check`: clean. String-pin scan: 0 broken.
+  - PrototypeBuild.Validate in the Editor: ok at `2f39590a` (its native guns pass included).
+  - Editor play captures (Cyber City, shared Editor): before on shared `8ed75305` with the released bank, after on `2f39590a` with
+    T1's bank; no exceptions logged.
+  - Not run: a Windows build, two clients (a guest's view reads the same replicated fields: shots, reload span, aim, pitch,
+    sprint, the match phase), Low graphics.
+- **Clips** (`F:/Chip Arena Development/scratch/tp-tactical/clips`, BEFORE shared `8ed75305` with the released bank, AFTER `2f39590a`
+  with T1's bank, side view, real time at 15 fps, brightened alike): `tp-pistol.mp4`, `tp-rifle.mp4`, `tp-machinegun.mp4` (13.5 s:
+  idle, run, sprint, strafe right and forward-right, aim-walk, shots, reload, jump), `tp-bot-eye-rifle.mp4` (6.7 s, a fixed eye
+  5 m in front: aim, two shots, reload; its BEFORE is the branch without the bank, which keeps every gun's own set),
+  `tp-draw-rifle.mp4`, `tp-draw-pistol.mp4` (the round start). Stills of both hands: `.../tp-tactical/stills` (pistol and rifle
+  standing aimed, after a shot and at rest; the Arsenal pistol; machine gun crops from its run). The two runs' street positions
+  drift by a few metres (capture stalls), so walls cross some frames differently.
+- **Risks / owner's calls:**
+  - Without the new bank nothing changes (every gun keeps its set); a later full BoZo motion rebake drops the pack records.
+  - On the move the long guns now carry at the pack's ready hold (muzzle tipped 20 degrees down as before); standing keeps the
+    low carry (owner 2026-11-10). The owner may prefer them lower on the move too.
+  - The pistol is held two-handed on the move and aimed (`PistolReach` 0.17 m out); the rifle's bolt-action reload tips the long
+    model up past the head (the pack's SRM-12 reload).
+  - The draw plays on every round's GO from the holster or sling (the first frame takes over from the rest carry over 0.12 s);
+    the holsters are unused (no rule puts a gun away).
+  - Clips: F1's FBX in the Editor's git-ignored `KinemationTactical/Animations` plus 3 T1 added for the evaluation (Viper quick
+    holster, TR15 holster and empty reload; unused); no textures, meshes, scripts or demo. F1's files are untouched; T1's tool is
+    its own (`ChipArenaT1Bake.cs`, also in `F:/Chip Arena Development/scratch/tp-tactical/tool`); `Tests/Program.cs` takes T1's
+    lines apart from F1's.
+- **To ship (integrator):** put `F:/Chip Arena Development/scratch/tp-tactical/bank/ChipArenaVisualMotion.t1c.bytes` in as the
+  Editor's `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes` and repack the Drive zip with
+  `tools/pack_visual_body.py` (F1's `ChipArenaViewMotion.bytes` rides the same folder). Without the new bank every gun keeps
+  its old set. A later full BoZo motion rebake drops the 14 pack records: re-append them with `ChipArenaT1Bake.cs`.
+
 ## 2026-11-21 — Claude: releases 14 and 15: Belvedere Camp on A1, and PuppetMaster hit reactions (integrator)
 - **Release 14:** Belvedere Camp lives in the Expedition hub on Astra's A1 rules (owner: the hub "life" update; awning "Move to 1 m").
   - Merged `claude/camp-a1` `5d4ff955`: Astra's `codex/belvedere-camp-a1` `fe75f109` plus C1's camp art, the survivors, the pod climb-out and the awning posts at 1.05 m.
