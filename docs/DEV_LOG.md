@@ -1,3 +1,57 @@
+## 2026-11-22 — Claude (T1): third-person guns: the support hand closed on the gun in every state; the gun stays on the hand (follow-up)
+Owner (via the coordinator, on a frame of the rifle's run): "think we need to fix this here" (the support hand open and flat on the
+rifle's side, not on the handguard), then "we may have to check the hands and gun anchoring, I think sometimes it appears the gun and
+hand aren't connected properly". **Branch:** `claude/tp-tactical`: release 16's `328872ec`, then `1fc9b900`..`7737ec68`, shared
+`0e460209` (F1) merged at `95ebe739`, head `631e1c61` (code), then this entry. Pushed, not merged, not released. **No new bank:** the released `548c7889`
+(6,438,026 bytes) serves; the pack's TR15 foregrip clip in it is no longer used.
+- **The support hand** (`Runtime/NativeTacticalMotionPresentation.cs` `VisualTacticalGrip`, `VisualTacticalFist`,
+  `VisualShoulderReach`; Core `NativeTacticalMotion.Grip`, `GripWeight`): in every state the gun is held two-handed (aim standing and
+  walking, the run, sprint and strafe carries, a jump, each shot, a reload's start and end, and the long guns at rest) the palm's frame
+  turns onto the gun's hold and the arm reaches it on the model's measured `Support` (each Standard and Arsenal model's own): the long
+  guns' palm under the handguard, the middle knuckle under its far edge, the fingers curled up the far side and over the top, the
+  thumb along the near side; the pistol's thumbs-forward wrap. The fingers take the grip's own pose (`Grip.Hand`; the pack's support
+  hands, its foregrip fist too, retarget open and splayed on this body: finger spreads up to 5.9 against the game's own hands' 0.5).
+  A fore-end past the straight arm turns the shoulder forward (at most 30 degrees; the Arsenal rifle's carry was 6 cm short). The
+  grip's share is at least the body's readiness eased once (`GripHold`), so it holds through the hand-over between rest, carry and
+  raise (it dipped up to 4 cm). It lets go over 0.15 s after `ReloadAt`, takes the gun again over the 0.25 s before `ReloadUntil`, and
+  joins a draw over its last part. The pistol keeps the owner's low ready (off hand at the belt) and the game's one-hand sprint.
+- **The gun on the hand** (`VisualGunWrist`): the aim turn (up to 35 degrees) and the 20-degree low carry turned the gun alone inside
+  the palm; they now turn the wrist and the gun is placed on the hand again, eased off through a reload and back (cut at its end they
+  jumped in one frame). A pack gun sits in the hand at one hold (the pack's and the set's differed by 24.3 / 21.5 / 17.0 degrees for
+  the rifle, machine gun and pistol, which turned it in the palm on every raise). Pinned order: pose, pitch and kick, reach, wrist,
+  weapon on the hand, support hand; then the hand's fit, the PuppetMaster bend (carries the rig's hands with the drawn ones), and
+  every body poses before any model draws.
+- **Measured** (local probe in the git-ignored `ChipArenaT1Bake.cs`, every frame after the pose and the mount; cm and degrees,
+  max / p95; tolerance 2 cm while gripping): support hand to its grip point on the model, release 16
+  (`328872ec`) before, then after (`631e1c61`; the Arsenal rifle at `7737ec68`): rifle at rest 4.0 then 0.0; run, sprint
+  and strafe carries 4.0 / 4.0 then 0.0; aim walking and standing, fire, reload start 4.0 then 0.0; reload end 14.4 / 12.9 then
+  0.2 / 0.1; jump 5.9 / 4.3 then 0.0. Machine gun the same (reload end 12.0 / 10.1 then 0.1 / 0.0); the Arsenal machine gun 0.0
+  throughout; the Arsenal rifle's carries 6.1 before the shoulder reach, then 0.3. Pistol, two hands: run 9.8 / 6.8 then 1.5 / 0.1
+  (the hand-over from the low ready), strafe, aim, fire, reload start 4.6 then 0.0, a jump from the low ready 10.7 / 8.4 for its
+  first 0.15 s then 0.0; its low ready (rest, after a standing reload) and one-hand sprint leave the off hand free by design (7.8,
+  22.7). The palm on its hold 0 degrees (the pistol's wrap 14, its designed tilt). (Release 16's strafe ran into a wall, so its
+  strafe row is its rest.) The gun in the right hand: no drift in any run, before or after; its turn inside the palm up to 45.3 (machine gun
+  aimed), 32.9 (rifle firing) and 48.8 (pistol) degrees before, 0.0 after in every state; the draw's largest one-frame turn in the
+  hand 22.7 then 0.0 degrees. A PuppetMaster hit (a bot holding the rifle, two bullets): support 4.0 then 0.0, the gun's turn in the
+  hand 0.5 then 0.0; the pistol bot's gun 0.0. (Before, "4.0" is the old open hand seated by its wrist, 4 cm off the closed grip's
+  point.) Table script `t1/anchors.py`; CSVs `F:/Chip Arena Development/scratch/tp-tactical/anchor/`.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking; presentation only.
+- **Checks:** the full CoreTests the relgen5 way on `631e1c61`: 1105 PASS lines, exit 0 (also on `60c02d8a`, `ed40c9a1`,
+  `609c31ee`, `78c78ddc`: 1104, and the merge `95ebe739`: 1105); `TacticalMotionChecks` 142 checks; `check_unity_compile.py` all four
+  assemblies PASS; `git diff --check` clean; `PrototypeBuild.Validate` ok on `631e1c61` (its two edit-mode Destroy errors are in every
+  earlier Validate too); no test pin lost against shared.
+- **Stills and clips:** `F:/Chip Arena Development/scratch/tp-tactical/clips/tp-runaim-rifle-gun.mp4` (before and after side
+  by side: the gun and both hands from the right side through run, sprint, strafe, aim walking, fire) and `tp-runaim-rifle-side.mp4`
+  (the whole body); support-hand sheets in `F:/Chip Arena Development/scratch/tp-tactical/stills-final/` (a row per state, a
+  column per view; the capture's yaw +90 is the body's right side): each gun standing (at rest, aimed, after a shot, reloading, the
+  reload's end), the rifle from its support side, each gun and the Arsenal rifle and machine gun on the move (run, sprint, strafe,
+  aim walking, aim, fire, reload start and end, jump). From the right the curled fingertips show over the handguard's far face;
+  from the left the palm is under it and the thumb along it.
+- **Not run:** a Windows build, two clients. Risks: the finger pose and the knuckle offset are hand-set (one offset for every long
+  gun model; checked on the Standard and Arsenal rifle and machine gun); the Arsenal rifle was measured before the reload ease (one
+  frame 3.7 cm off at the reload's end, one 2.3 cm at a jump's take-off; the Standard rifle and both machine guns at `631e1c61` show
+  0.0 there).
+
 ## 2026-11-21 — Claude (T1): third person on the Tactical Shooter Pack's gun clips (aim, fire, reload, carry, draw)
 Owner: "Can we fix the animations to use their shooting animations and walking/running for guns?" **Branch:** `claude/tp-tactical`
 from shared `0a30de5d`, shared `8ed75305` merged in; code head `c93d7ab7` (filmed and validated at `2f39590a`; the commit after it
