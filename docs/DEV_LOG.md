@@ -7,10 +7,19 @@
   third person's grip (`NativeTacticalMotion.Grip`, reused), let go through reloads and draws. The rods were the chip modules: on
   the pack guns the view rig's hand was the Standard frame put on the pack gun's muzzle, so modules laid out along the Standard
   gun stood off the pack gun; on the model's frame they sit where third person draws them. The robe's kimono sleeve (Magica
-  cloth) ends at the elbow in first person, the forearm's skin below it.
+  cloth) is left out of first person, the arms' skin shown (cut at the elbow, its cloth still
+  draped the upper sleeve over the forearm).
 - **Shipping:** `pack_visual_body.py` no longer follows `ChipArenaViewGuns.prefab`: the next Drive-zip repack leaves the pack guns
   out (about 7 MB less); the bank stays.
 - **Animation impacts:** none on rules, timing, hitboxes or the wire; presentation only.
+- **Checks:** full CoreTests at `f5469246` (clean worktree): 1,105 groups, exit 0; `--tactical-view` 2,758 at `7f6b0b3a`;
+  `check_unity_compile.py` PASS; `git diff --check` clean. Not run: PrototypeBuild.Validate on this branch (the Editor ran
+  every capture slowly), a Windows build, two clients.
+- **Proof** (`F:/Chip Arena Development/scratch/fps-tactical/`): `stills-held/hands-std-2000x1173.jpg`,
+  `hands-ars-2000x1173.jpg`, `hands-robe-2000x1173.jpg` (2000x1173, chips on: velocity, magazine, fire rate, demolition; each gun
+  at rest, aimed, mid-reload), `clips-held/fp-pistol.mp4`, `fp-rifle.mp4`, `fp-machinegun.mp4`.
+- **Known:** in the robe the bare arm's upper end shows as a dark cut low at the screen's edge (the upper-arm skin part does not
+  show); the long guns' support forearm still crosses the lower left (our models' handguards sit further out than the pack's).
 
 ## 2026-11-22 — Claude: releases 17 and 18: the Tactical Shooter Pack in first and third person (integrator)
 Owner: "Utilize new FPS system / animations from tactical pack"; then "Use pack guns", "Fix pilot's arms", "Can we fix the animations to

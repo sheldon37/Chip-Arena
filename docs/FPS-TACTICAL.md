@@ -79,7 +79,7 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
   and a draw's own hand motion. The view rig's right hand is the model's weapon frame again, so the muzzle flash, the brass and
   the chip modules sit on the model as they do in third person (on the pack guns they had stood off it). The pack guns'
   moving parts went with them; the pack guns' prefab is no longer packed. A wide sleeve (the DEV Sheldon robe's kimono, with its
-  cloth) ends at the elbow in first person with the forearm's own skin below it; third person keeps the robe as it is.
+  cloth) is left out of first person, the arms' own skin shown; third person keeps the robe as it is.
 - **The pack's guns in hand** (second pass, retired 2026-11-22). The local bake also writes `ChipArenaViewGuns.prefab` beside the bank: the
   pack's `W_WK-11_Viper`, `W_Oryx_SRM-12` and `W_TR15` prefabs unpacked, every script, animator, particle, light and inactive
   attachment stripped, each renderer on a Built-in Standard material rebuilt from the pack's textures (albedo, normal, metal and
