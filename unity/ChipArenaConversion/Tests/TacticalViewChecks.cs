@@ -246,7 +246,7 @@ namespace ChipArena.UnityConversion
             Check(weapon.Contains("if(rig==viewRig&&TacticalPackDrawn(viewBody))return true;")&&weapon.Contains("TacticalPackAfterDraw();"),"the pack gun replaces the model for the view rig alone, and hides when not drawn");
             foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeVisualWeaponPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal))
                 Check(!File.ReadAllText(f).Contains("TacticalPackDrawn("),Path.GetFileName(f)+" never draws the pack gun");
-            Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool shoulders=on||TacticalShoulderCut&&VisualViewDrawn(viewRig);")&&pres.Contains("TacticalArmCut(shoulders);"),"the view body's arms are cut at the shoulders while the view body draws in first person");
+            Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool on=TacticalViewPosed(a,time);TacticalArmCut(on);"),"the view body's arms are cut at the shoulders only while the tactical view draws");
         }
     }
 }

@@ -211,14 +211,11 @@ namespace ChipArena.UnityConversion
         /// model stands).</summary>
         private bool TacticalViewPose(Actor a,float time)
         {
-            bool on=TacticalViewPosed(a,time);
-            // The old view model's arms too (a blade, a staff, the shield, the bow): in from the screen's edges, not cut at the elbows.
-            bool shoulders=on||TacticalShoulderCut&&VisualViewDrawn(viewRig);
-            if(shoulders&&!on&&(tacticalArms==null||tacticalArms.Body!=viewBody))tacticalArms=TacticalArmsOf(viewBody);
-            TacticalArmCut(shoulders);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
+            // (The old view model keeps its elbow cut: the body it places by the right hand alone raised whole upper arms into the
+            // air, tried 2026-11-21 on the greatsword.)
+            bool on=TacticalViewPosed(a,time);TacticalArmCut(on);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
             return on;
         }
-        private static readonly bool TacticalShoulderCut=true;
         private bool TacticalViewPosed(Actor a,float time)
         {
             if(tacticalArms!=null&&tacticalArms.Body==viewBody)tacticalArms.Rest();
