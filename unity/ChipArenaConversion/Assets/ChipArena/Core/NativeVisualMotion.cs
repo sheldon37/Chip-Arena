@@ -77,7 +77,27 @@ namespace ChipArena.UnityConversion
             public string[] All;
             /// <summary>The held set (Held): it covers a paired move's victim clip and nothing else.</summary>
             public bool HeldOnly;
+            /// <summary>A gun on the Tactical Shooter Pack's clips (Core NativeTacticalMotion; owner 2026-11-21): its aim, shot, reload and
+            /// carry on the pack, the rest its Base set's (the match idles, the strides, the jumps). Null: the gun's own set.</summary>
+            public NativeTacticalMotion.Gun Tactical; public Set Base;
+            /// <summary>A shallow copy (the tactical gun sets start from their gun's set).</summary>
+            public Set Copy()=>(Set)MemberwiseClone();
         }
+        /// <summary>The set gun `spec` plays when the bank carries the pack's clips for it (NativeTacticalMotion), else `set` itself. Made
+        /// once per gun.</summary>
+        public static Set Tactical(string spec,Set set,IClips clips)
+        {
+            var g=NativeTacticalMotion.For(spec);if(set==null||!set.Gun||g==null||!NativeTacticalMotion.Installed(g,clips))return set;
+            int i=g==NativeTacticalMotion.Pistol?0:g==NativeTacticalMotion.Rifle?1:2;
+            if(tacticalSets[i]!=null&&tacticalSets[i].Base==set)return tacticalSets[i];
+            var t=set.Copy();t.Tactical=g;t.Base=set;
+            // The aim is the pack's ready hold at every pitch (the spine pitches it); a shot the pack's own (the machine gun keeps its
+            // set's for the techniques that play a shot clip whole: its kick is procedural).
+            t.Aim=new[]{g.Idle,g.Idle,g.Idle};if(g.Fire!=null)t.Fire=new[]{g.Fire,g.Fire,g.Fire};t.FireFromHit=false;t.Reload=g.Reload;
+            var all=new System.Collections.Generic.List<string>(Every(t).All);foreach(var c in new[]{g.Walk,g.Sprint,g.Draw})if(c!=null&&!all.Contains(c))all.Add(c);t.All=all.ToArray();
+            return tacticalSets[i]=t;
+        }
+        private static readonly Set[] tacticalSets=new Set[3];
         /// <summary>A clip's length and the time of its Hit event (seconds; a clip without one: its middle).</summary>
         public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
 
@@ -359,6 +379,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>How long after a loose the bow stays up.</summary>
         public const float BowHold=.6f;
+        /// <summary>The rules' shot interval of the pilot's gun (the pistol's .42 s without one).</summary>
+        public static float Interval(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?GunRules.Get(a.Weapon).Interval:.42f;
         /// <summary>How long after a shot the gun stays up (the game's own rule: the interval and a little).</summary>
         public static float ShotHold(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f):.38f;
         /// <summary>The held guard (Runtime NativeGuard.cs; owner 2026-11-09: right click "a held block for melee"): the set's block
@@ -371,7 +393,7 @@ namespace ChipArena.UnityConversion
         /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): the
         /// pistol then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks);
         /// the long guns stay at rest (RestLow).</summary>
-        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
+        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false,float drawAge=float.NaN)
         {
             up=default;
             // Held in a paired move, the victim's clip takes the whole body: no aim, recoil, reload or cast laid over it (a gun pilot's
@@ -387,9 +409,12 @@ namespace ChipArena.UnityConversion
             if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
             {
-                float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
+                // (A pack gun: its tactical reload, back on the gun at ReloadUntil: NativeTacticalMotion.ReloadTime.)
+                float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=s.Tactical!=null?Math.Min(len,NativeTacticalMotion.ReloadTime(s.Tactical,time,a.ReloadAt,a.ReloadUntil)):len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
             }
             if(s.Spec==NativeBombs.Spec)return false;
+            // A pack gun's draw, ending on the fight's start (`drawAge`: NativeTacticalMotion.DrawClipTime).
+            if(s.Tactical?.Draw!=null&&clips.Has(s.Tactical.Draw)){float dt=NativeTacticalMotion.DrawClipTime(s.Tactical,drawAge);if(!float.IsNaN(dt)){up=new Upper{A=s.Tactical.Draw,TimeA=dt,Raised=true};return true;}}
             // A gun's Q/E: its own clip (a throw's wind-up to the release, then the throw; a flourish at its own pace), or held on
             // the aim (AbilityRaise) for its cast and a little after.
             bool casting=false;
@@ -412,6 +437,14 @@ namespace ChipArena.UnityConversion
                 bool drawing=a.BowDrawAt>0&&time>=a.BowDrawAt&&a.BowDrawAt>=a.BowReleaseAt;age=time-Math.Max(a.BowReleaseAt,a.LastShot);raised=a.Aiming||drawing||age<BowHold;
                 float pp=Math.Max(-1,Math.Min(1,a.Pitch/s.AimPitch));
                 if(drawing){up=new Upper{A=s.Pull[1],B=s.Pull[pp>=0?2:0],Mix=Math.Abs(pp),Raised=true};return clips.Has(up.A);}
+            }
+            // A pack gun (NativeTacticalMotion): its ready hold, pitched by the spine (Runtime VisualTacticalPitch); a shot its own clip from
+            // the shot, ready again on the rules' interval (the machine gun's kick is procedural).
+            if(s.Tactical!=null)
+            {
+                var g=s.Tactical;up=new Upper{A=g.Idle,Raised=raised};
+                if(g.Fire!=null&&age>=0&&clips.Has(g.Fire)){float ft=NativeTacticalMotion.FireTime(g,age,Interval(a));if(ft<clips.Length(g.Fire)){up.A=g.Fire;up.TimeA=ft;}}
+                return clips.Has(up.A);
             }
             // The pitch: level to up (positive) or down, between the grid's rows.
             float p=Math.Max(-1,Math.Min(1,a.Pitch/s.AimPitch));int b=p>=0?2:0;

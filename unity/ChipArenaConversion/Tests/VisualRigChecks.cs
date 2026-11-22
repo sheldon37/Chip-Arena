@@ -948,7 +948,7 @@ namespace ChipArena.UnityConversion
                 Check(inside&&rising&&Math.Abs(smix[NativeVisualMotionClips.Head]-.5f)<1e-5f,"a clip's curve between frames neither overshoots nor turns back");
                 string mo=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualMotionPresentation.cs")).Replace("\r\n","\n");
                 Check(mo.Contains("if(m.Weights[ti]>.02f&&(d<-.02f||d>.05f+dt*2.5f))jumped=true;")&&mo.Contains("if(upper&&m.UpA!=null&&(up.A!=m.UpA||!(Mathf.Abs(up.TimeA-m.UpTimeA-dt)<.05f+dt*2.5f)))jumped=true;")
-                    &&mo.Contains("VisualMotionInertia(m,jumped,dt,upper);")&&mo.IndexOf("VisualMotionInertia(m,jumped,dt,upper);",StringComparison.Ordinal)<mo.IndexOf("VisualMotionApply(m,m.Mix);",StringComparison.Ordinal),
+                    &&mo.Contains("VisualMotionInertia(m,jumped,dt,keepLegs);")&&mo.IndexOf("VisualMotionInertia(m,jumped,dt,keepLegs);",StringComparison.Ordinal)<mo.IndexOf("VisualMotionApply(m,m.Mix);",StringComparison.Ordinal),
                     "a pose that would jump is carried over (its difference sprung away) before it goes on the body");
                 Check(mo.Contains("NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],Ease(m.Weights[i]),m.Mix);")&&mo.Contains("if(i!=target&&m.Weights[i]>0&&!m.HeldOut[i]){var c=m.Clips[i];m.Times[i]=c.Loop?m.Times[i]+dt:Mathf.Min(m.Times[i]+dt,c.Length);}")
                     &&mo.Contains("m.HeldOut[i]=NativeBladeMotion.HeldOut(names[i]);")&&mo.Contains("Mathf.Repeat(m.Phase+m.LocoOffset[k],1)*m.LocoLength[k]"),
@@ -990,7 +990,7 @@ namespace ChipArena.UnityConversion
             string motion=R("Runtime/NativeVisualMotionPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs");
             int stride=body.IndexOf("VisualStridePose(body,rig,a,time,roll,juggle);",StringComparison.Ordinal),pose=body.IndexOf("VisualMotionPose(body,rig,a,time);",StringComparison.Ordinal),fit=body.IndexOf("VisualHandFit(body,rig,held);",StringComparison.Ordinal);
             Check(stride>0&&pose>stride&&fit>pose,"the clips go on after the game pose and the stride, before the weapon fit");
-            Check(motion.Contains("weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);"),"the weapon rides the drawn hand at any weight");
+            Check(motion.Contains("weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*heldTurn);")&&motion.Contains("var heldTurn=m.Set.Tactical!=null?Quaternion.Slerp(m.HoldRotation,m.TacHold,1-(1-m.CarryShare)*(1-m.Upper)):m.HoldRotation;"),"the weapon rides the drawn hand at any weight (a pack gun on the pack's ready hold by its share: TacticalMotionChecks)");
             Check(motion.Contains("bool pin=!(covered&&(pick.Locomotion||pick.Flight));float goal=pin?deepest:Mathf.Min(deepest,0);")&&motion.Contains("m.BodyHips.position-=origin.up*(applied*wgt);"),"the body's lowest point stands on the pilot's floor point (running or a dash attack's leaping run, only kept out of it)");
             Check(motion.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&motion.Contains("m.Handler.SetHumanPose(ref m.Pose);"),"the motion proxy draws nothing and takes the mixed pose through its avatar");
             Check(motion.Contains("var bytes=Resources.Load<TextAsset>(VisualMotionResource);")&&motion.Contains("const string VisualMotionResource=\"ChipArenaVisualMotion\";"),"the clips come from the bake's motion bank, read once");
@@ -1716,7 +1716,7 @@ namespace ChipArena.UnityConversion
                 Check(motion.Contains("if(covered&&pick.Spin)VisualSpinLegs(m,pick);")&&motion.Contains("turn+=Mathf.DeltaAngle(turn,onTip)*pick.Align*Mathf.Clamp01((flat-.3f)/.4f);")
                     &&motion.Contains("m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);")
                     &&motion.Contains("bool pin=!(covered&&(pick.Locomotion||pick.Flight));float goal=pin?deepest:Mathf.Min(deepest,0);")&&motion.Contains("m.BodyHips.position-=origin.up*(applied*wgt);")
-                    &&motion.Contains("m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
+                    &&motion.Contains("m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/(m.Set.Tactical!=null&&layered&&up.Raised?NativeTacticalMotion.RaiseTime(a,UpperEase):UpperEase));"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
             }
             // Every corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
             // model"; 2026-10-27: "Bodies aren't gibbing, they seem to still stretch"), a split body's halves too: each bone turns
