@@ -50,35 +50,18 @@ Code `8aa68815`..`38782002`. Pushed, not merged, not released.
   `clips2/third-pistol.mp4`, `third-rifle.mp4`, `third-machinegun.mp4`, `third-sword.mp4` (behind the shoulder and three-quarter
   on a studio floor; third person unchanged); `stills/hands-sheet.jpg` and nine stills (both hands at rest, aimed, mid-reload
   per gun, Brickfall); `audit-sheet-b1.jpg` (every weapon in first person at rest).
-- **Arms pass (owner: "Fix pilot's arms"):** the view model takes the pack's lens (90 at the hip; aimed 80 Viper, 70 SRM-12
-  and TR15), the skin under the garments is hidden in the tactical view (the brown patches were the body's skin through the
-  sleeves and gloves), the forearms and upper arms slimmer (82% and 90% girth on their twist bones, first person only), a fill
-  light on the view-model layer for dark stages, and the SRM-12 on its iron sights (the Phantom TAC filled the right half).
-  The floating orange squares in the Brickfall stills are Brickfall's drifting paper scraps (`NativeBrickfallFx` atmosphere),
-  on shared too (the old view model's frames show them).
-- **Next:** the owner reviews the clips; the integrator merges and re-packs the Drive zip (below, in the PR); test channel.
-
-## 2026-11-21 — Claude (F1): first person on the Tactical Shooter Pack's clips (pilot model's arms, game's guns)
-Owner: "Utilize new FPS system / animations from tactical pack." **Branch:** `claude/fps-tactical` from shared `ead0ef02`; code
-`97c780fa` (filmed: pistol and machine gun at `6db638ee`, rifle at `97c780fa`; the commits between touch the rifle alone), docs
-and LF line endings follow. Pushed, not merged, not released.
-- **What:** in first person (chosen in Settings; aiming never forces it) the pistol, rifle and machine gun are held by the pilot
-  model's own forearms and hands on the game's own models, posed by the pack's clips (`docs/FPS-TACTICAL.md`): idle, the pack's
-  walk/sprint/idle sway layer, the pistol's kick and the rifle's bolt, procedural recoil, tactical reloads, a draw on entering
-  first person, aim down the model's own sights (the rifle's scope as before) and the clips' camera motion (camera shake on).
-  Third person, the other weapons and classes, a scope, the chip select's wrist, downed and grabbed pilots keep the old view.
-- **How:** no KINEMATION code runs or is committed. A local bake (git-ignored `ChipArenaTacticalBake.cs`) samples the pack's FBX
-  clips on their own skeleton into a data bank `ChipArenaViewMotion.bytes` (LocalAssets Resources, ~1.5 MB);
-  `Core/NativeTacticalView.cs` reads it and solves the view; `Runtime/NativeTacticalViewPresentation.cs` poses the view body
-  (true size, IK arms, twist, fingers) and puts the view rig's hands on the model's frame so the muzzle flash and kit pieces
-  follow. Without the bank the old view draws. The bank rides the visual body's `.bytes` in the LocalAssets zip
-  (`pack_visual_body.py` already carries every `.bytes` beside the prefab): no tooling change.
-- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking: nothing reads or
-  writes a rule; the clips are retimed onto them (reload = `ReloadAt..ReloadUntil`; the rifle's bolt home at `ShootReady`/
-  `Interval` 1.15 s; the pistol's kick inside .42 s; aim in the gun's `Settle`). The camera motion is applied after the aim point
-  (like HitKick), so it never reaches aim. Draws have no rule (no weapon swap rule exists); a shot cuts one.
-- **Voxel dependency:** `Runtime/NativeTacticalViewPresentation.cs` reads `viewRig.Bones[` twice (the view rig's two hands, where
-  first person's effects draw); pinned at 2 in `Tests/voxel-ratchet.txt`.
+- **Arms pass (owner: "Fix pilot's arms"):** the brown patches were the visual body's hologram proxy (`ProxyMesh`, a
+  skin-coloured Standard body the dressing switches off): the tactical view's arm cut switched every renderer with arm
+  triangles back on. A cut now never turns on what the outfit switched off. Also: the view model takes the pack's lens (90 at
+  the hip; aimed 80 Viper, 70 SRM-12 and TR15), the skin under the garments is masked (a safety for outfits that leave a skin
+  part on under a sleeve or glove), the forearms and upper arms are slimmer in first person (82% and 90% girth on their twist
+  bones), a fill light lights the view-model layer for dark stages, and the SRM-12 carries its iron sights (the Phantom TAC
+  filled the right half). The floating orange squares in the Brickfall stills are Brickfall's drifting paper scraps
+  (`NativeBrickfallFx` atmosphere), not the view model.
+- **Hand anchors:** each hand bone's distance from its anchor on the pack gun, measured before each frame renders by a local
+  probe (`ArenaPresentation.TacticalAnchor`): pistol 2,815 frames through the draw, idle, walk, sprint, fire, reload, jump and
+  aim, max 0.00 mm both hands (the hands are set on the gun after the recoil and kick). The pilot's hand is about 8% longer than
+  the pack's (wrist to middle knuckle 10.3 against 9.5 cm), so the palm sits within about a centimetre of the pack's.
 - **Checks:** full CoreTests at `97c780fa` in a clean worktree (expedition_path.patch, the 14 stage banks): 1,103 groups, exit 0,
   with the new `TacticalViewChecks` (`--tactical-view`, 2,135 checks: the bank reader on a synthetic bank, every clip clock on the
   rules, the sight picture, the hands on the model, no allocation per frame, first person and presentation only, no pack code or

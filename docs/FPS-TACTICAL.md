@@ -110,6 +110,8 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
   arms 90% of their girth (their twist bones, never their length; put back every frame for the old view model); a fill light
   from over the eye lights the view-model layer alone (`TacticalFill`, .55, no shadows) so the hands and sleeves read on dark
   stages as the gun does.
+  The arm cut never turns on a renderer the outfit switched off (the dressing hides the skin parts under its garments and the
+  skin-coloured hologram proxy `ProxyMesh`; turned on, the proxy showed as brown patches on the sleeves).
 - **Sights.** The SRM-12 carries its iron sights (`A_Oryx_SRM-12_IronSights`; the Phantom TAC scope filled the right half of
   the view), the TR15 its own; aiming the rifle still brings up the game's scope.
 - **The other pack guns** (AK105, MX68, Mk14 EBR, R08, Herrington 11-87, MKR9) are not imported.
