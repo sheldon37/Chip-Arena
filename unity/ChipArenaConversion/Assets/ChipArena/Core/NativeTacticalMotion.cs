@@ -30,24 +30,31 @@ namespace ChipArena.UnityConversion
             public string Walk, Sprint;
             /// <summary>The machine gun: no shot clip in the pack (its full-auto recoil is procedural there too): a kick per shot.</summary>
             public bool Kick;
+            /// <summary>The draw (the bake puts the arms back on its gun bone: the pack keys the gun alone), its end in the clip (the pack's
+            /// OnActionEnded) and how long it plays on the game's clock, ending on the fight's start (no rule draws a gun: the round's GO).</summary>
+            public string Draw; public float DrawEnd, DrawTime;
         }
         public const string PackWalk="A_FP_Walk", PackSprint="A_FP_Sprint";
+        /// <summary>The long guns' support fist: the pack's TR15 foregrip hold, a closed left hand (its own support hands lie flat under the
+        /// handguard, fingers out: owner 2026-11-21, "no open, splayed hands"); its fingers take the left hand wherever the support fist
+        /// holds the model's handguard (Runtime VisualTacticalFist).</summary>
+        public const string SupportFist="A_FP_TR15_Idle_Pose_Grip";
         // The guns as first person pairs them (docs/FPS-TACTICAL.md): the pistol on the WK-11 Viper, the rifle on the SRM-12 (its shot
         // works the bolt), the machine gun on the TR15.
         public static readonly Gun Pistol=new Gun{Spec="pistol",Idle="A_FP_WK-11_Viper_Idle_Pose",Fire="A_FP_WK-11_Viper_Fire",Reload="A_FP_WK-11_Viper_Reload_Tactical",
-            FireReady=.42f,ReloadEnd=3.083f,Walk="A_FP_WK-11_Viper_Idle_Pose",Sprint=null};
+            FireReady=.42f,ReloadEnd=3.083f,Walk="A_FP_WK-11_Viper_Idle_Pose",Sprint=null,Draw="A_FP_WK-11_Viper_Quick_Draw",DrawEnd=.667f,DrawTime=.6f};
         public static readonly Gun Rifle=new Gun{Spec="rifle",Idle="A_FP_SRM-12_Idle_Pose",Fire="A_FP_SRM-12_Fire",Reload="A_FP_SRM-12_Reload_Tactical",
-            FireReady=1.167f,ReloadEnd=2.75f,Walk=PackWalk,Sprint=PackSprint};
+            FireReady=1.167f,ReloadEnd=2.75f,Walk=PackWalk,Sprint=PackSprint,Draw="A_FP_SRM-12_Draw",DrawEnd=1.5f,DrawTime=1.1f};
         public static readonly Gun MachineGun=new Gun{Spec="machinegun",Idle="A_FP_TR15_Idle_Pose_Non_Grip",Fire=null,Reload="A_FP_TR15_Reload_Tactical",
-            FireReady=0,ReloadEnd=3.0f,Walk=PackWalk,Sprint=PackSprint,Kick=true};
+            FireReady=0,ReloadEnd=3.0f,Walk=PackWalk,Sprint=PackSprint,Kick=true,Draw="A_FP_TR15_Draw",DrawEnd=1.833f,DrawTime=1.2f};
         /// <summary>The gun a weapon spec plays on the pack (null: not a gun the pack covers).</summary>
         public static Gun For(string spec)=>spec=="pistol"?Pistol:spec=="rifle"?Rifle:spec=="machinegun"?MachineGun:null;
         /// <summary>Every clip the guns name (the bake's list; the local bake writes them into the motion bank).</summary>
         public static readonly string[] Clips=Names();
         private static string[] Names()
         {
-            var l=new System.Collections.Generic.List<string>();
-            foreach(var g in new[]{Pistol,Rifle,MachineGun})foreach(var c in new[]{g.Idle,g.Fire,g.Reload,g.Walk,g.Sprint})if(c!=null&&!l.Contains(c))l.Add(c);
+            var l=new System.Collections.Generic.List<string>{SupportFist};
+            foreach(var g in new[]{Pistol,Rifle,MachineGun})foreach(var c in new[]{g.Idle,g.Fire,g.Reload,g.Walk,g.Sprint,g.Draw})if(c!=null&&!l.Contains(c))l.Add(c);
             return l.ToArray();
         }
         /// <summary>Whether the bank carries every clip gun `g` plays.</summary>
@@ -71,6 +78,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The reload's clip time at `time`: its start on ReloadAt, its end (ReloadEnd: back on the gun) on ReloadUntil.</summary>
         public static float ReloadTime(Gun g,float time,float at,float until)
             =>g==null?0:g.ReloadEnd*Clamp01((time-at)/Math.Max(.05f,until-at));
+        /// <summary>The draw's clip time `age` s into it (DrawEnd at DrawTime), or NaN outside it (age from DrawTime before the fight's
+        /// start: Runtime passes NativeSpawnIn.Age plus DrawTime).</summary>
+        public static float DrawClipTime(Gun g,float age)=>g?.Draw==null||float.IsNaN(age)||age<0||age>=g.DrawTime?float.NaN:g.DrawEnd*age/g.DrawTime;
         /// <summary>The raise's time (s): aiming, the gun's Settle (the rules' aim settle: pistol .15, rifle .3, machine gun .2); a shot
         /// from the hip, `quick`.</summary>
         public static float RaiseTime(Actor a,float quick)

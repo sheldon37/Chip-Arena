@@ -42,6 +42,27 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.CarryMix[k]-m.Mix[k])*w;}
             m.CarryShare=w;
         }
+        // A pack long gun's support hand closed on the model's handguard (owner 2026-11-21: "no open, splayed hands"): the left hand's
+        // finger muscles take the pack's foregrip fist (NativeTacticalMotion.SupportFist) by the support fist's eased hold (last frame's:
+        // it lets go through a reload, whose own hands play).
+        private static bool[] leftFingerMuscles;
+        private static void VisualTacticalFist(VisualMotion m)
+        {
+            if(m.Set.Tactical==null||m.Set.Tactical==NativeTacticalMotion.Pistol||m.Support<=0)return;var bank=VisualMotionBank;
+            if(bank==null||!bank.Clips.TryGetValue(NativeTacticalMotion.SupportFist,out var fist))return;
+            if(leftFingerMuscles==null){var n=HumanTrait.MuscleName;leftFingerMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)leftFingerMuscles[i]=n[i].StartsWith("LeftHand.",System.StringComparison.Ordinal);}
+            if(m.FistMix==null||m.FistMix.Length!=m.Mix.Length)m.FistMix=new float[m.Mix.Length];
+            System.Array.Clear(m.FistMix,0,m.FistMix.Length);NativeVisualMotionClips.Add(fist,0,1,m.FistMix);NativeVisualMotionClips.Finish(m.FistMix,1);
+            float w=Ease(Mathf.Clamp01(m.Support));
+            for(int i=0;i<leftFingerMuscles.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(leftFingerMuscles[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.FistMix[k]-m.Mix[k])*w;}
+        }
+        // The draw's age (NativeTacticalMotion.DrawClipTime) on an arena body: from DrawTime before the fight's start (the round's GO, as the
+        // spawn-in times it: NativeSpawnIn.Age) to it; NaN elsewhere (a menu body, no match).
+        private float VisualTacticalDrawAge(VisualMotion m,VisualBody body,float time)
+        {
+            var g=m.Set.Tactical;if(g?.Draw==null||!body.Arena)return float.NaN;var match=WeaponLoadout?.Match;if(match==null)return float.NaN;
+            float age=NativeSpawnIn.Age(match.Phase,match.PhaseEnd,match.FightAt,time);return float.IsNaN(age)?float.NaN:age+g.DrawTime;
+        }
         // A raised pack gun onto the look's pitch, by `w` (the raise and the motion's weight): its ready hold is level (the pack pitches
         // its camera, not its hands), so the spine takes the pitch from the pelvis up (TacticalPitchShare), the head and arms with it;
         // eased off through a reload (the clip's own tilt plays). The machine gun's kick climbs the same way on each shot.

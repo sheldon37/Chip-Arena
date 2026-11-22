@@ -81,6 +81,15 @@ internal static class TacticalMotionChecks
         var mg=NativeTacticalMotion.MachineGun;
         Check(NativeTacticalMotion.Kick(mg,0)==1&&NativeTacticalMotion.Kick(mg,NativeTacticalMotion.KickTime)==0&&NativeTacticalMotion.Kick(mg,-.01f)==0&&NativeTacticalMotion.Kick(r,0)==0&&NativeTacticalMotion.Kick(p,0)==0,"the machine gun's kick per shot");
         Check(NativeTacticalMotion.KickTime>GunRules.Get(WeaponId.MachineGun).Interval,"held fire keeps the kick going (it outlasts the interval)");
+        // The draw: no rule draws a gun, so it plays over the DrawTime before the fight's start (the round's GO), its end (the pack's
+        // OnActionEnded) on GO; nothing outside it.
+        foreach(var g in new[]{p,r,mg})
+        {
+            Check(g.Draw!=null&&g.DrawTime>0&&g.DrawEnd>0&&NativeTacticalMotion.DrawClipTime(g,0)==0&&Near(NativeTacticalMotion.DrawClipTime(g,g.DrawTime*.5f),g.DrawEnd*.5f),g.Spec+": the draw fitted to its time");
+            Check(float.IsNaN(NativeTacticalMotion.DrawClipTime(g,-.01f))&&float.IsNaN(NativeTacticalMotion.DrawClipTime(g,g.DrawTime))&&float.IsNaN(NativeTacticalMotion.DrawClipTime(g,float.NaN)),g.Spec+": no draw outside it");
+            Check(g.DrawEnd/g.DrawTime<=2.2f,g.Spec+": the draw at most 2.2 times its pace");
+        }
+        Check(Array.IndexOf(NativeTacticalMotion.Clips,NativeTacticalMotion.SupportFist)>=0,"the support fist is baked with the guns' clips");
     }
     private static void Layers(Book book)
     {
@@ -104,6 +113,11 @@ internal static class TacticalMotionChecks
         Check(NativeVisualMotion.Layer(pistol,thrower,120.1f,book,out up)&&up.A==pistol.AbilityStarts[0],"the pistol's grenade keeps its throw");
         var rocket=new Actor{Grounded=true,Weapon=WeaponId.MachineGun,AbilityId="rocket",AbilityAt=130,AbilityRelease=130.12f,LastShot=-100};
         Check(NativeVisualMotion.Layer(mg,rocket,130.3f,book,out up,true)&&up.Raised&&up.A==NativeTacticalMotion.MachineGun.Idle,"the rocket: held on the pack's aim");
+        // The draw on the upper layer, before the fight's start; it gives way to everything after.
+        var drawer=new Actor{Grounded=true,Weapon=WeaponId.Rifle,LastShot=-100};float half=NativeTacticalMotion.Rifle.DrawTime*.5f;
+        Check(NativeVisualMotion.Layer(rifle,drawer,3,book,out up,true,half)&&up.Raised&&up.A==NativeTacticalMotion.Rifle.Draw&&Near(up.TimeA,NativeTacticalMotion.Rifle.DrawEnd*.5f),"the draw before GO");
+        Check(NativeVisualMotion.Layer(rifle,drawer,3,book,out up,true,NativeTacticalMotion.Rifle.DrawTime+.1f)&&!up.Raised,"after GO: lowered to the match idle");
+        Check(NativeVisualMotion.Layer(NativeVisualMotion.For("rifle"),drawer,3,book,out up,true,half)&&!up.Raised,"the gun's own set has no draw");
         // Nothing here is written to the pilot.
         Check(gun.ReloadAt==60&&gun.LastShot==50&&!gun.Aiming&&gunner.LastShot==70,"the layer reads the pilot and writes nothing");
     }
@@ -128,6 +142,9 @@ internal static class TacticalMotionChecks
         int carry=motion.IndexOf("VisualTacticalCarry(m,pick,time,carryWeight);",StringComparison.Ordinal),upper=motion.IndexOf("System.Array.Clear(m.UpperMix,0,m.UpperMix.Length);",StringComparison.Ordinal);
         Check(carry>0&&upper>carry,"the carry goes on before the upper layer (an aim, a shot or a reload lays over it)");
         Check(motion.Contains("Quaternion.Slerp(m.HoldRotation,m.TacHold,1-(1-m.CarryShare)*(1-m.Upper))"),"the hand's turn on the gun: the pack's ready hold by the pack's share, the gun's own set's at rest");
+        int fist=motion.IndexOf("VisualTacticalFist(m);",StringComparison.Ordinal),inertia=motion.IndexOf("VisualMotionInertia(m,jumped,dt,keepLegs);",StringComparison.Ordinal);
+        Check(fist>0&&inertia>fist&&pres.Contains("n[i].StartsWith(\"LeftHand.\",System.StringComparison.Ordinal)")&&pres.Contains("m.Set.Tactical==NativeTacticalMotion.Pistol||m.Support<=0"),"a long gun's support hand closes on the handguard (its fingers only, by the support's hold), before the pose goes on");
+        Check(motion.Contains("NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,VisualTacticalDrawAge(m,body,time))")&&pres.Contains("NativeSpawnIn.Age(match.Phase,match.PhaseEnd,match.FightAt,time)"),"the draw on the round's GO as the spawn-in times it");
         // The bank and the clips are local (LocalAssets is git-ignored): none in the repository.
         var assets=Path.Combine(root,"Assets");
         Check(!Directory.EnumerateFiles(assets,"*.bytes",SearchOption.AllDirectories).Any(f=>Path.GetFileName(f).StartsWith("ChipArenaVisualMotion",StringComparison.Ordinal)&&!f.Replace('\\','/').Contains("/LocalAssets/")),"no motion bank outside LocalAssets");

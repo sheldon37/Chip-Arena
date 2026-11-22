@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             // The aim is the pack's ready hold at every pitch (the spine pitches it); a shot the pack's own (the machine gun keeps its
             // set's for the techniques that play a shot clip whole: its kick is procedural).
             t.Aim=new[]{g.Idle,g.Idle,g.Idle};if(g.Fire!=null)t.Fire=new[]{g.Fire,g.Fire,g.Fire};t.FireFromHit=false;t.Reload=g.Reload;
-            var all=new System.Collections.Generic.List<string>(Every(t).All);foreach(var c in new[]{g.Walk,g.Sprint})if(c!=null&&!all.Contains(c))all.Add(c);t.All=all.ToArray();
+            var all=new System.Collections.Generic.List<string>(Every(t).All);foreach(var c in new[]{g.Walk,g.Sprint,g.Draw})if(c!=null&&!all.Contains(c))all.Add(c);t.All=all.ToArray();
             return tacticalSets[i]=t;
         }
         private static readonly Set[] tacticalSets=new Set[3];
@@ -393,7 +393,7 @@ namespace ChipArena.UnityConversion
         /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): the
         /// pistol then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks);
         /// the long guns stay at rest (RestLow).</summary>
-        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
+        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false,float drawAge=float.NaN)
         {
             up=default;
             // Held in a paired move, the victim's clip takes the whole body: no aim, recoil, reload or cast laid over it (a gun pilot's
@@ -413,6 +413,8 @@ namespace ChipArena.UnityConversion
                 float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=s.Tactical!=null?Math.Min(len,NativeTacticalMotion.ReloadTime(s.Tactical,time,a.ReloadAt,a.ReloadUntil)):len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
             }
             if(s.Spec==NativeBombs.Spec)return false;
+            // A pack gun's draw, ending on the fight's start (`drawAge`: NativeTacticalMotion.DrawClipTime).
+            if(s.Tactical?.Draw!=null&&clips.Has(s.Tactical.Draw)){float dt=NativeTacticalMotion.DrawClipTime(s.Tactical,drawAge);if(!float.IsNaN(dt)){up=new Upper{A=s.Tactical.Draw,TimeA=dt,Raised=true};return true;}}
             // A gun's Q/E: its own clip (a throw's wind-up to the release, then the throw; a flourish at its own pace), or held on
             // the aim (AbilityRaise) for its cast and a little after.
             bool casting=false;

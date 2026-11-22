@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
             // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
             // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
-            public float Carry, CarrySprint, CarryShare, PitchKeep=1; public float[] CarryMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
+            public float Carry, CarrySprint, CarryShare, PitchKeep=1; public float[] CarryMix, FistMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -592,7 +592,7 @@ namespace ChipArena.UnityConversion
             // over the legs' motion by its eased weight.
             // The arms are free while the body idles, moves, rises, falls or lands (not in a roll, strike, reaction or block).
             bool ready=covered&&(pick.Locomotion||pick.Clip==m.Set.Idle||pick.Clip==m.Set.Jump||pick.Clip==m.Set.Fall||pick.Clip==m.Set.Land);
-            var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready);
+            var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,VisualTacticalDrawAge(m,body,time));
             // A long gun at rest, standing (Set.RestArms; owner 2026-11-10 "a resting pose (They're holding it downward)"): the arms
             // take the walk's low two-hand carry over the idle, eased; walking already carries it so, and a raise lays over it.
             m.Rest=Mathf.MoveTowards(m.Rest,covered&&(m.Set.RestArms!=null||m.Set.RestReady)&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
@@ -622,6 +622,7 @@ namespace ChipArena.UnityConversion
                 NativeVisualMotionClips.Finish(m.UpperMix,1);var mask=UpperMuscles;
                 for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.UpperMix[k]-m.Mix[k])*m.Upper;}
             }
+            VisualTacticalFist(m);
             VisualMotionInertia(m,jumped,dt,keepLegs);
             if(keepLegs){VisualMotionApply(m,m.Legs);hipsAt=m.ProxyHips.localPosition;hipsTurn=m.ProxyHips.localRotation;}
             VisualMotionApply(m,m.Mix);
