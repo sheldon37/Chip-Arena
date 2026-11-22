@@ -108,14 +108,14 @@ namespace ChipArena.UnityConversion
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
         // The view model's lens (vertical degrees) at the hip and fully aimed (the pack's: 90, and its aimFov).
-        public float HipFov=80,AimFov=72;
+        public float HipFov=85,AimFov=74;
         // The game's model on the pack's gun: its rear sight on the pack gun's sight line (SightHeight above the gun bone: the
         // pack weapon's AimPoint), its right wrist level with the pack's along the bore, then ModelOffset (gun frame). The left
         // hand: on the right hand as the pack's (a pistol's support), or under the model's own handguard (its Support) as the
         // pack's under its own (PackSupport below the gun bone); then LeftOffset (the pack's leftHandOffset).
         public float SightHeight,PackSupport=-.03f;public bool LeftOnRight;
-        // The Standard model's rear sight (weapon frame) where its bake entry names none (the Army pistol: its slide's rear, on the
-        // kit's bore .058 above the fist; zero: the Standard gun's sight through the model's fit).
+        // The Standard model's rear sight (weapon frame) where its bake entry names none, measured on the aimed view (the Army
+        // pistol's slide and the light machine gun's rear sight; zero: the Standard gun's sight through the model's fit).
         public Vector3 ModelSight;
         public Vector3 ModelOffset,LeftOffset;
         // Procedural recoil per shot: metres back, degrees up, yaw and roll ranges; the springs' rate and damping; the pivot
@@ -128,14 +128,14 @@ namespace ChipArena.UnityConversion
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.015f,.03f,0),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,ModelSight=new Vector3(0,.078f,-.02f),
+            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,ModelSight=new Vector3(0,-.008f,-.04f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
             DrawSeconds=.9f,WeaponOffset=new Vector3(-.03f,.05f,.025f),EyeRelief=.09f,SightHeight=.0724f,
             KickBack=.02f,KickPitch=1.5f,KickYaw=.4f,KickRoll=.8f};
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
-            DrawSeconds=1f,WeaponOffset=new Vector3(-.043f,.007f,.02f),SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=.06f,
+            DrawSeconds=1f,WeaponOffset=new Vector3(-.043f,.007f,.02f),SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
             KickBack=.014f,KickPitch=1.1f,KickYaw=.5f,KickRoll=1.1f,KickOmega=40,KickZeta=.6f};
         public static NativeTacticalGun For(WeaponId w)=>w==WeaponId.Pistol?Pistol:w==WeaponId.Rifle?Rifle:w==WeaponId.MachineGun?MachineGun:null;
     }
@@ -298,7 +298,7 @@ namespace ChipArena.UnityConversion
             NativeTacticalMath.Relative(b.Gun,b.GunTurn,b.Right,b.RightTurn,out var hrp,out var hrq);
             c.GunToWeapon=new Vector3(-sight.X,g.SightHeight-sight.Y,hrp.Z-rightGrip.Z)+g.ModelOffset;
             // The left hand: on our right as the pack's on its right, or under our handguard as the pack's under its own.
-            c.LeftShift=g.LeftOnRight?c.GunToWeapon+rightGrip-hrp:new Vector3(0,c.GunToWeapon.Y+support.Y-g.PackSupport,0);
+            c.LeftShift=g.LeftOnRight?c.GunToWeapon+rightGrip-hrp:new Vector3(g.ModelOffset.X,c.GunToWeapon.Y+support.Y-g.PackSupport,g.ModelOffset.Z);
             // Pack hand -> our hand: K = inv(pack hand in gun) * C * our grip.
             NativeTacticalMath.Compose(c.GunToWeapon,c.GunToWeaponTurn,rightGrip,rightGripTurn,out var crp,out var crq);
             NativeTacticalMath.Relative(hrp,hrq,crp,crq,out c.RightKey,out c.RightKeyTurn);
