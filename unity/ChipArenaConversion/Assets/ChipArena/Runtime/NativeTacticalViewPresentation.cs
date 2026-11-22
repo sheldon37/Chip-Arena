@@ -220,13 +220,23 @@ namespace ChipArena.UnityConversion
             }
             if(shoulders&&tacticalCuts.Exists(c=>c.Skin!=null&&!c.Made))
             {
-                foreach(var c in tacticalCuts)if(c.Skin!=null&&!c.Made){c.Shoulder=ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;}
+                // A wide sleeve (the DEV Sheldon robe's kimono; owner 2026-11-22: "the forearm thing might be cause im using 'Sheldon
+                // Robe'") is cut cleanly at mid-forearm by where its corners lie along the arm at rest (its hanging part is weighted
+                // to the upper arm, so a cut by weights kept it), the forearm's own skin below it (the dressing hides that skin under the
+                // sleeve). The view body never runs the cloth. Third person keeps the robe and its cloth.
+                tacticalWide=tacticalCuts.Exists(c=>c.Skin!=null&&c.Shown&&TacticalIsWide(c.Skin));
+                foreach(var c in tacticalCuts)if(c.Skin!=null&&!c.Made)
+                {
+                    bool wide=TacticalIsWide(c.Skin);
+                    c.Shoulder=wide?TacticalSleeveCut(c.Skin,c.Source,arm):ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;c.Owned|=wide&&c.Shoulder!=null;
+                }
                 TacticalSkinUnder();
             }
             foreach(var c in tacticalCuts)
             {
                 if(c.Skin==null)continue;
-                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null&&c.Shown;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
+                bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&c.Source.name=="lowerarms";
+                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null&&shown;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
             }
             tacticalShoulders=shoulders;
         }
@@ -286,6 +296,38 @@ namespace ChipArena.UnityConversion
             Destroy(baked);
         }
         private static bool TacticalIsSkin(SkinnedMeshRenderer r)=>r.name.StartsWith("Body",System.StringComparison.Ordinal);
+        // A top with wide or cloth sleeves (the kimono of the DEV Sheldon robe).
+        private static bool TacticalIsWide(SkinnedMeshRenderer r)=>r.name.IndexOf("Kimono",System.StringComparison.Ordinal)>=0;
+        private bool tacticalWide;
+        // Where a wide sleeve ends: this share of the way from the shoulder to the wrist at rest (mid-forearm).
+        private const float TacticalSleeveEnd=.78f;
+        private Mesh TacticalSleeveCut(SkinnedMeshRenderer skin,Mesh mesh,System.Collections.Generic.HashSet<Transform> arm)
+        {
+            if(mesh==null||!mesh.isReadable||tacticalArms==null)return null;var bones=skin.bones;var bind=mesh.bindposes;var w=mesh.boneWeights;var v=mesh.vertices;
+            if(w.Length!=v.Length||bind.Length!=bones.Length)return null;
+            var up=new int[2];var hd=new int[2];
+            for(int side=0;side<2;side++){up[side]=System.Array.IndexOf(bones,tacticalArms.Upper[side]);hd[side]=System.Array.IndexOf(bones,tacticalArms.Hand[side]);if(up[side]<0||hd[side]<0)return null;}
+            Vector3 P(int b)=>bind[b].inverse.GetColumn(3);
+            var keep=new bool[v.Length];
+            for(int i=0;i<v.Length;i++)
+            {
+                var bw=w[i];float onArm=0,bestW=0;int best=-1;
+                int[] bi={bw.boneIndex0,bw.boneIndex1,bw.boneIndex2,bw.boneIndex3};float[] wi={bw.weight0,bw.weight1,bw.weight2,bw.weight3};
+                for(int k=0;k<4;k++){int b=bi[k];if(b<0||b>=bones.Length||bones[b]==null||!arm.Contains(bones[b]))continue;onArm+=wi[k];if(wi[k]>bestW){bestW=wi[k];best=b;}}
+                if(onArm<.5f||best<0)continue;
+                int sd=bones[best].name.EndsWith("_l",System.StringComparison.Ordinal)?0:1;Vector3 s0=P(up[sd]),axis=P(hd[sd])-s0;
+                keep[i]=Vector3.Dot(v[i]-s0,axis)/Mathf.Max(1e-8f,axis.sqrMagnitude)<TacticalSleeveEnd;
+            }
+            var cut=Instantiate(mesh);cut.name=mesh.name+" (sleeve to mid-forearm)";int kept=0;
+            for(int sm=0;sm<mesh.subMeshCount;sm++)
+            {
+                var tris=mesh.GetTriangles(sm);var list=new System.Collections.Generic.List<int>(tris.Length);
+                for(int i=0;i+2<tris.Length;i+=3)if(keep[tris[i]]&&keep[tris[i+1]]&&keep[tris[i+2]]){list.Add(tris[i]);list.Add(tris[i+1]);list.Add(tris[i+2]);}
+                cut.SetTriangles(list,sm,false);kept+=list.Count;
+            }
+            cut.RecalculateBounds();if(kept>0)return cut;Destroy(cut);return null;
+        }
+
 
         // ---- First person only: the forearms and upper arms a little slimmer (their twist bones' girth, never their length),
         // so the pilot's sleeves sit at the pack's reach as its own slimmer arms do (owner 2026-11-21: the sleeves must not fill
@@ -347,7 +389,7 @@ namespace ChipArena.UnityConversion
             if(tacticalArms!=null&&tacticalArms.Body==viewBody)tacticalArms.Rest();
             if(ScopeActive){tacticalScopedFrame=Time.frameCount;return false;}
             var bank=TacticalBank;var g=NativeTacticalGun.For(a.Weapon);if(bank==null||g==null||!bank.Covers(g)||ViewCamera==null||viewRig==null)return false;
-            if(!VisualViewDrawn(viewRig))return false;bool pack=TacticalPackReady(bank,g);if(!pack&&viewBody.Held==null)return false;
+            if(!VisualViewDrawn(viewRig))return false;bool pack=false;// (owner 2026-11-22, reversing "Use pack guns": "use whatever gun we are holding": the game's own model and skin)if(!pack&&viewBody.Held==null)return false;
             string spec=HeldSpec(a);if(spec!="pistol"&&spec!="rifle"&&spec!="machinegun")return false;
             if(NativeBowWire.Is(a.SourceSpec)||a.SourceSpec==NativeBombs.Spec||a.SourceSpec=="siren"||chipView.Frame==Time.frameCount)return false;
             if(a.GrabOwner!=0&&time<a.GrabUntil||NativeSpecialPose.Down(a,time)||a.Swimming)return false;
@@ -382,10 +424,37 @@ namespace ChipArena.UnityConversion
             // The body at true size, turned with the eye, its shoulders' midpoint on the clip's.
             var parent=root.parent;float ps=parent!=null?parent.lossyScale.x:1;root.localScale=Vector3.one/Mathf.Max(1e-4f,ps);root.rotation=eyeRot;
             Vector3 ours=(arms.Upper[0].position+arms.Upper[1].position)*.5f,clip=(W(s.LeftShoulder)+W(s.RightShoulder))*.5f;root.position+=clip-ours;
+            root.position+=eyeRot*Vector3.down*(g.AimShoulderDrop*s.Ads);
             // The arms: the right hand on the model's grip (its grasp's frame, carried by the clip), the left on the clip's place and palm;
             // on the pack gun both on the clip's places and palms.
-            Vector3 rt=W(s.Right),lt=W(s.Left);Quaternion rr=pack?R(s.RightPalm)*Quaternion.Inverse(palmInHandR):R(s.RightTurn),lr=R(s.LeftPalm)*Quaternion.Inverse(palmInHandL);
+            Vector3 rt=W(s.Right),lt=W(s.Left);
+            // The support hand seated on the held model (T1's NativeTacticalMotion.Grip, the hold third person uses: the long guns'
+            // fore-end from below, the pistol's thumbs-forward wrap): its palm turned onto the hold, its anchor on the model's own
+            // measured Support, by the grip's share (let go through a reload's and a draw's own hand motion).
+            var grip=NativeTacticalMotion.For(spec)?.Support;Vector3 gripAt=Vector3.zero;Quaternion gripTurn=Quaternion.identity;float gripW=0;
+            if(!pack&&grip!=null&&held!=null&&held.Supported)
+            {
+                gripW=s.Action==g.Reload||s.Action==g.Draw?1-s.ActionWeight:1;
+                var hand=arms.Hand[0];var fist=arms.Fingers[0][6];Vector3 f=fist.position-hand.position;float len=f.magnitude;
+                Vector3 across=arms.Fingers[0][3].position-arms.Fingers[0][12].position;
+                if(len>1e-4f){f/=len;across-=Vector3.Dot(across,f)*f;}
+                Quaternion wq=R(s.WeaponTurn);Vector3 tf=wq*new Vector3(grip.Fingers.X,grip.Fingers.Y,grip.Fingers.Z),ta=wq*new Vector3(grip.Thumb.X,grip.Thumb.Y,grip.Thumb.Z);
+                if(gripW>1e-3f&&len>1e-4f&&across.sqrMagnitude>1e-8f&&tf.sqrMagnitude>1e-8f)
+                {
+                    across.Normalize();tf.Normalize();ta-=Vector3.Dot(ta,tf)*tf;
+                    if(ta.sqrMagnitude>1e-8f)
+                    {
+                        ta.Normalize();
+                        var palm=Quaternion.LookRotation(f,across);gripTurn=Quaternion.LookRotation(tf,ta)*Quaternion.Inverse(palm)*hand.rotation;
+                        Vector3 anchor=Quaternion.Inverse(hand.rotation)*(f*(len*grip.Along)+Vector3.Cross(across,f)*grip.Depth);
+                        gripAt=W(s.Weapon)+wq*(held.Support+new Vector3(grip.Offset.X,grip.Offset.Y,grip.Offset.Z-g.GripBack))-gripTurn*anchor;
+                    }
+                    else gripW=0;
+                }
+                else gripW=0;
+            }Quaternion rr=pack?R(s.RightPalm)*Quaternion.Inverse(palmInHandR):R(s.RightTurn),lr=R(s.LeftPalm)*Quaternion.Inverse(palmInHandL);
             TacticalReach(arms.Upper[1],arms.Lower[1],arms.Hand[1],rt,W(s.RightElbow));arms.Hand[1].SetPositionAndRotation(rt,rr);
+            if(gripW>0){lt=Vector3.Lerp(lt,gripAt,gripW);lr=Quaternion.Slerp(lr,gripTurn,gripW);}
             TacticalReach(arms.Upper[0],arms.Lower[0],arms.Hand[0],lt,W(s.LeftElbow));arms.Hand[0].SetPositionAndRotation(lt,lr);
             // The wrists' new roll, shared along the forearms' twist bones as the grasp shared it.
             for(int side=0;side<2;side++)

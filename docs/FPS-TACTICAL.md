@@ -71,7 +71,20 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
   The BoZo skeleton shares the pack's bone names (`upperarm_l`, `index_01_l`, `lowerarm_twist_01_l`...), so no retarget table.
   - Why not the pack's arms: its Operator arms (tactical gloves and shirt) cannot wear the pilot's outfit, robot shell or
     costumes, and a second arm rig would need its own look, cut and glow work; the pilot's arms already carry all of that.
-- **The pack's guns in hand** (second pass). The local bake also writes `ChipArenaViewGuns.prefab` beside the bank: the
+- **The held gun again** (owner 2026-11-22, reversing "Use pack guns": "Can we fix this to use whatever gun we are holding").
+  First person draws the gun the pilot holds, the game's model and its skin (Standard or Arsenal) as third person does, still
+  posed by the pack's clips. The right hand holds the model's own grip as its grasp does; the support hand sits on the model's
+  own measured handguard by third person's hold (T1's `NativeTacticalMotion.Grip`: the long guns' fore-end from below, the
+  pistol's thumbs-forward wrap; its palm turned onto the hold, its anchor on the model's `Support`), let go through a reload's
+  and a draw's own hand motion. The view rig's right hand is the model's weapon frame again, so the muzzle flash, the brass and
+  the chip modules sit on the model as they do in third person (on the pack guns they had stood off it). The pack guns'
+  moving parts went with them; the pack guns' prefab is no longer packed. A wide sleeve (the DEV Sheldon robe's kimono, with its
+  cloth) is cut cleanly at mid-forearm in first person, the forearm's own skin below it; third person keeps the robe as it
+  is. First-person framing targets (integrator review): the long guns lower right with the support hand back toward the
+  receiver (`WeaponOffset`, `GripBack`), the aimed pistol a compact hold from lower shoulders (`AimShoulderDrop`), the rifle's
+  reload turn 30% of the pack's; the view model covers about 5-13% of the screen at rest and stays out of the central 30% box
+  but for the barrel and the rifle's scope front.
+- **The pack's guns in hand** (second pass, retired 2026-11-22). The local bake also writes `ChipArenaViewGuns.prefab` beside the bank: the
   pack's `W_WK-11_Viper`, `W_Oryx_SRM-12` and `W_TR15` prefabs unpacked, every script, animator, particle, light and inactive
   attachment stripped, each renderer on a Built-in Standard material rebuilt from the pack's textures (albedo, normal, metal and
   gloss), on the view-model layer without shadows; and bank version 3 adds each gun's muzzle and sight aim point and its weapon

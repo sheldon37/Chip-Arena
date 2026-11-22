@@ -1,3 +1,38 @@
+## 2026-11-22 — Claude (F1): first person holds the gun the pilot holds (owner: "use whatever gun we are holding"), the rods, the robe
+**Branch:** `claude/fps-held-gun` from shared `134c2001` (releases 17 and 18). Pushed, not merged, not released.
+- **Owner:** "theres rods for some reason? ... Can we fix this to use whatever gun we are holding lol"; "the forearm thing might
+  be cause im using 'Sheldon Robe'".
+- **What:** first person draws the game's own model and skin again, on the pack's clips (`bool pack=false` in
+  `TacticalViewPosed`); the right hand on the model's grip as its grasp holds it; the support hand on the model's own handguard by
+  third person's grip (`NativeTacticalMotion.Grip`, reused), let go through reloads and draws. The rods were the chip modules: on
+  the pack guns the view rig's hand was the Standard frame put on the pack gun's muzzle, so modules laid out along the Standard
+  gun stood off the pack gun; on the model's frame they sit where third person draws them. The robe's kimono sleeve (Magica
+  cloth) is left out of first person, the arms' skin shown (cut at the elbow, its cloth still
+  draped the upper sleeve over the forearm).
+- **Shipping:** `pack_visual_body.py` no longer follows `ChipArenaViewGuns.prefab`: the next Drive-zip repack leaves the pack guns
+  out (about 7 MB less); the bank stays.
+- **Animation impacts:** none on rules, timing, hitboxes or the wire; presentation only.
+- **Checks:** full CoreTests at `f5469246` (clean worktree): 1,105 groups, exit 0; `--tactical-view` 2,758 at `7f6b0b3a`;
+  `check_unity_compile.py` PASS; `git diff --check` clean. Not run: PrototypeBuild.Validate on this branch (the Editor ran
+  every capture slowly), a Windows build, two clients.
+- **Proof** (`F:/Chip Arena Development/scratch/fps-tactical/`): `stills-held/hands-std-2000x1173.jpg`,
+  `hands-ars-2000x1173.jpg`, `hands-robe-2000x1173.jpg` (2000x1173, chips on: velocity, magazine, fire rate, demolition; each gun
+  at rest, aimed, mid-reload), `clips-held/fp-pistol.mp4`, `fp-rifle.mp4`, `fp-machinegun.mp4`.
+- **Framing pass (integrator review of `e0877dde`):** the robe's wide sleeve is cut cleanly at mid-forearm (by where its
+  corners lie along the arm at rest: its hanging part is weighted to the upper arm) with the forearm's skin below it, no bare
+  stumps; the long guns sit lower right (`WeaponOffset`) with the support hand 10-14 cm back toward the receiver (`GripBack`);
+  the aimed pistol's shoulders sit 16 cm lower (`AimShoulderDrop`: short arms rising to a compact hold, the sights on the eye);
+  the rifle's reload turns 30% of the pack's (`ActionTurn`: its scope no longer swings into the middle).
+- **Coverage** (the view model's pixels, where the first-person frame differs from the world camera's; 2000x1173, Brickfall,
+  `scratch/fps-tactical/stills-held/coverage-*.txt`): at rest pistol 5.7-7.9%, rifle 10.6-12.7%, machine gun 4.8-5.7%; inside
+  the central 30% box at rest 0.4-0.6% (pistol), 4.6-5.0% (rifle: its scope's front), 0.4-1.1% (machine gun). Aimed: pistol
+  11.8-13.0% (its sights and hands under the centre), machine gun 3.0-6.1%, rifle 0 (its scope). Mid-reload 5.7-12.1%.
+- **Checks:** PrototypeBuild.Validate ok at `366967ce` and `303b7f3a`; `--tactical-view` 2,759; the compile check PASS;
+  `git diff --check` clean; the full suite at `f5469246` (1,105 groups, exit 0).
+- **Known:** the machine gun at rest now sits low (its receiver at the bottom edge, dark on a night stage); the rifle at rest
+  covers 12.7% in the robe. Captures take 4-8 minutes each: every capture's domain reload is about 80 s, mostly
+  `InitializeOnLoad` processing (42 s) and restoring instances (29 s), and the capture tool reloads on every capture.
+
 ## 2026-11-22 — Claude: releases 17 and 18: the Tactical Shooter Pack in first and third person (integrator)
 Owner: "Utilize new FPS system / animations from tactical pack"; then "Use pack guns", "Fix pilot's arms", "Can we fix the animations to
 use their shooting animations and walking/running for guns?", "think we need to fix this here" and "check the hands and gun anchoring".
