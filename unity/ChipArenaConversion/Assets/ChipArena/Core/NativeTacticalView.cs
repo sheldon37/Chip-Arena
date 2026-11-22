@@ -117,6 +117,9 @@ namespace ChipArena.UnityConversion
         // The Standard model's rear sight (weapon frame) where its bake entry names none, measured on the aimed view (the Army
         // pistol's slide and the light machine gun's rear sight; zero: the Standard gun's sight through the model's fit).
         public Vector3 ModelSight;
+        // How much of an action's turn of the gun plays (1 all): the rifle's long model tips its stock into the eye at the pack's
+        // full reload tilt, so it tilts less; the hands keep their hold on it.
+        public float ActionTurn=1;
         public Vector3 ModelOffset,LeftOffset;
         // Procedural recoil per shot: metres back, degrees up, yaw and roll ranges; the springs' rate and damping; the pivot
         // (gun frame) the kick turns about.
@@ -132,7 +135,7 @@ namespace ChipArena.UnityConversion
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
-            DrawSeconds=.9f,WeaponOffset=new Vector3(-.03f,.05f,.025f),EyeRelief=.09f,SightHeight=.0724f,
+            DrawSeconds=.9f,ActionTurn=.6f,WeaponOffset=new Vector3(-.03f,.05f,.025f),EyeRelief=.09f,SightHeight=.0724f,
             KickBack=.02f,KickPitch=1.5f,KickYaw=.4f,KickRoll=.8f};
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
             DrawSeconds=1f,WeaponOffset=new Vector3(-.043f,.007f,.02f),SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
@@ -336,7 +339,8 @@ namespace ChipArena.UnityConversion
             NativeTacticalMath.Relative(f.Gun,f.GunTurn,f.Left,f.LeftTurn,out var hlp,out _);
             var gi=Quaternion.Inverse(f.GunTurn);Quaternion rpq=Quaternion.Normalize(gi*f.RightPalm),lpq=Quaternion.Normalize(gi*f.LeftPalm);
             var er=NativeTacticalMath.Rotate(Quaternion.Inverse(f.GunTurn),f.RightElbow-f.Gun);var el=NativeTacticalMath.Rotate(Quaternion.Inverse(f.GunTurn),f.LeftElbow-f.Gun);
-            Vector3 gp=f.Gun;Quaternion gq=f.GunTurn;
+            // A gun that tilts less than the clip's (ActionTurn) keeps the hands' hold on it (taken above on the clip's own turn).
+            Vector3 gp=f.Gun;Quaternion gq=g.ActionTurn!=1?NativeTacticalMath.Slerp(b.GunTurn,f.GunTurn,g.ActionTurn):f.GunTurn;
             // The pistol's additive kick (its clip from frame 0, quickened into the interval).
             if(g.Fire!=null&&!g.FireAction)
             {
