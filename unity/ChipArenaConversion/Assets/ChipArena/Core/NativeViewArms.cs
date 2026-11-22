@@ -41,6 +41,11 @@ namespace ChipArena.UnityConversion
                 case "daggers":return new Vector3(-.15f,.16f,.08f);
                 case "shield":return new Vector3(0,.15f,.05f);
                 case "greatsword":return new Vector3(0,0,.06f);
+                // The staffs' hand sat 66 degrees below the centre (y/z -2.3: the staff held low, its head framed); raised and pushed
+                // out, the hand shows near the bottom and the head rides higher.
+                case "fire":case "water":case "lightning":case "darkness":case "leet":return new Vector3(-.1f,.45f,.15f);
+                // The Bombadier's fists sat on the bottom edge (y/z -0.75).
+                case NativeBombs.Spec:return new Vector3(0,.1f,0);
                 default:return Vector3.Zero;
             }
         }
