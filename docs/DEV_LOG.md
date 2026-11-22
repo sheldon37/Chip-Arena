@@ -1,3 +1,48 @@
+## 2026-11-21 — Claude (P1): physical hit reactions on PuppetMaster (presentation only)
+Owner: "Utilize Ragdoll Asset for hit reactions" (RootMotion's PuppetMaster, bought 2026-11-21).
+**Branch:** `claude/puppet-hits` from shared `ead0ef02`. Pushed, not merged, not released. Docs: `docs/HIT-PUPPETS.md`.
+- **What:** a pilot (player or bot) or an add drawn on the model that takes a non-lethal hit has its drawn pose pushed by
+  PuppetMaster's active ragdoll (BehaviourPuppet): the muscles near the hit unpin, an impulse lands at the hit point along the
+  blow, scaled to it (Core `NativeHitPuppetRules`: greatsword heavy about 79 N·s, sword 35, rifle 26, pistol 11), and the pose
+  regains in about a second, then fades back to the drawn pose and sleeps.
+- **How:** game code has only the hook (`Runtime/NativeHitPuppets.cs`) and its policy (`Runtime/NativeHitPuppetPresentation.cs`):
+  pilot hits from the frame's events (`ObserveHits`), add hits from `HordeHit`, each landing on its body's own clock; a killing
+  hit pushes nothing. Each puppet steps right after its body is posed (`VisualBodyPose`, `ZombieModelBind`), before hats,
+  gear, cloth or effects read the bones; rotations only (hips, feet and root stay the game's); the rig's hands follow the drawn
+  hands for the frame, so the held weapon stays in the bent hand. PuppetMaster's runtime scripts and the bridge are local
+  (`Assets/LocalAssets/PrivateAddons`, never in git); the bridge registers by reflection, so it compiles on any branch.
+- **Cost:** 8 bodies at once on High, 4 on Balanced (half with Reduced effects), none on the low tier (Performance = today's
+  look); within 28/18 m of the camera; one puppet made a frame (a volley on a crowd lands body by body), 16 kept; a sleeping
+  puppet costs nothing; each puppet has its own physics scene and no collider. Measured in the Editor (Cyber City, six shamblers
+  hit together every 0.2 s, all six reacting the whole window): frame 19.25 ms mean / 20.86 p95 against 18.59 / 20.16 with the
+  bridge off (+0.66 ms); the bridge's own step 0.68-0.80 ms a frame for six (about 0.12 ms a puppet); making one 1.0-1.6 ms
+  (the session's first about 13 ms: JIT and the first scene). Performance tier: no puppet made or stepped.
+- **Death:** a pilot killed while bent falls from that drawn pose (`VisualRigFromDrawn` copies the drawn bones); gibbing,
+  bisects and severs unchanged. A dying add's puppet blends back during its fall.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the puppet reads
+  replicated events and bends only the drawn pose.
+- **Voxel dependency:** `Runtime/NativeHitPuppetPresentation.cs` read 0 -> 1 (`rig.Bones[`): the held weapon, its muzzle and
+  trails are drawn at the game rig's hand (VisualWeaponDrawn), so the puppet carries the rig's hands with the bent drawn hands
+  for its frame (VisualBodyRestore puts them back). The package that draws held weapons from the model's hand retires it.
+- **Builder path (for the integrator; no tooling change, the existing private add-on path, docs/PRIVATE-ADDONS.md):** the
+  add-on tree is in the Editor checkout's `Assets/LocalAssets/PrivateAddons` (106 paths, 49 scripts); add
+  `--addons-allowlist "F:/Chip Arena Development/scratch/puppet-hits/local/private-addons-allowlist.json"` to the usual
+  `pack_visual_body.py <Drive zip> <new> --project <Editor checkout>/unity/ChipArenaConversion --with-cloth` repack, then
+  `install_local_assets.py <new> --check --require-cloth`. The Drive zip has no `private-addons.json` yet, so nothing is replaced.
+- **For Astra (build tooling, nothing changed):** `tools/check_unity_compile.py` references every Unity module, but the project
+  enables nine; PuppetMaster's `PuppetMasterSetup.cs` (names `UnityEngine.Cloth`) passed it and failed in the Editor (P1's hold
+  rolled it back within a minute; the Editor was never left broken). The add-on set leaves that file out; local add-ons are now
+  checked against the Editor's own `Library/Bee/artifacts/*/Assembly-CSharp.rsp` references.
+- **Checks:** full CoreTests (clean LF worktree, `expedition_path.patch`, the 14 stage banks) at `7abc5703`: 1,103 groups, exit 0
+  (`HitPuppetChecks` new); `--hit-puppets` at the head; `tools/check_unity_compile.py` passed; `git diff --check` clean; the
+  Editor compiled the add-ons and the branch; captures (below).
+- **Clips:** `F:/Chip Arena Development/scratch/puppet-hits/clips/` (before | after, 3x slower). CLIPS
+- **Not run:** two clients (host and guest), a Windows player build, the builder, Medium-tier captures.
+- **Risks:** the push's feel is tuned on a few Editor captures (a greatsword blow throws the head back hard; tune `MuscleSpring`,
+  `MuscleDamper`, `MaxKick` in the bridge or the bases in `NativeHitPuppetRules`); the session's first puppet costs about 13 ms
+  once; guests land a pilot hit on the interpolated body (the hit point is taken relative to the body).
+- **Next:** the owner reviews the clips; the integrator merges and packs the add-ons into the Drive zip.
+
 ## 2026-11-21 — Claude: release 13: the shipped game is lit as the approved Editor looks were (integrator)
 The owner plays on High: the live build read 2-7 times darker than the Editor clips the owner approved.
 - **Published:** shared and the builder at `a7bda65f`. Test channel revision `639308945926123514` (build `d41b3f08`, 394.0 MiB).
