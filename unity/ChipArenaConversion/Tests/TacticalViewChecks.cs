@@ -49,6 +49,7 @@ namespace ChipArena.UnityConversion
             Solve(bank);
             Pack(bank);
             Sources(root);
+            ViewArms(root);
             Console.WriteLine("PASS tactical view: "+count+" checks: the bank's reader, every clip on the rules' clocks (reload, bolt, kick, draw, aim), the sight picture, the hands on the model, the pack guns (their clips, hands, aim point and jumps), no allocation per frame, first person and presentation only, no pack code or bank in git");
         }
         private static void Bad(Action a,string what){try{a();}catch(InvalidOperationException){count++;return;}catch(ArgumentException){count++;return;}throw new Exception("Tactical view: "+what+" was read");}
@@ -220,6 +221,22 @@ namespace ChipArena.UnityConversion
             Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"the pack solve allocates nothing per frame");
         }
 
+        // Every other weapon and class (owner 2026-11-22: "Go ahead and fix"): the eye-anchored arms on the old view model's hands.
+        private static void ViewArms(string root)
+        {
+            foreach(var g in new[]{"pistol","rifle","machinegun","siren",NativeTopDog.Spec,CyberLordSpec.Id,"",null})Check(!NativeViewArms.Eligible(g),"no eye-anchored arms for "+(g??"null")+" (the tactical view, the Siren's voxel arms, the Top Dog and the Cyber Lord keep theirs)");
+            foreach(var g in new[]{"sword","greatsword","katana","daggers","shield","glaive","fangs","bow","fire","water","lightning","darkness","leet",NativeBombs.Spec,"emperor","ansatsuken"})Check(NativeViewArms.Eligible(g),g+" takes the eye-anchored arms");
+            foreach(var g in new[]{"sword","greatsword","katana","fire","bow"}){var l=NativeViewArms.Lift(g);Check(MathUtil.Finite(l.X)&&MathUtil.Finite(l.Y)&&MathUtil.Finite(l.Z)&&l.Length()<.5f,g+"'s lift is a small finite offset");}
+            string runtime=Path.Combine(root,"Assets/ChipArena/Runtime");
+            string arms=File.ReadAllText(Path.Combine(runtime,"NativeViewArmsPresentation.cs")),pres=File.ReadAllText(Path.Combine(runtime,"NativeTacticalViewPresentation.cs")),view=File.ReadAllText(Path.Combine(runtime,"NativeViewPresentation.cs"));
+            Check(pres.Contains("bool on=TacticalViewPosed(a,time),arms=on||ViewArmsPose(a,time);TacticalArmCut(arms);TacticalFill(arms);"),"the arms come after the tactical view declines, with its cut and fill light");
+            Check(view.Contains("+ViewArmsLift(shown);"),"the class's lift raises the first-person hold only");
+            foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeViewArmsPresentation.cs",StringComparison.Ordinal))
+                Check(!File.ReadAllText(f).Contains("ViewArmsPose("),Path.GetFileName(f)+" never poses the eye-anchored arms (third person is untouched)");
+            Check(!Regex.IsMatch(arms,@"a\.[A-Z]\w*\s*(=[^=]|\+=|-=)"),"the arms write no pilot field");
+            Check(arms.Contains("arms.Hand[1].SetPositionAndRotation(hr,qr);")&&arms.Contains("arms.Hand[0].SetPositionAndRotation(hl,ql);"),"the hands stay where the old view put them (the weapon, its trails and effects stay put)");
+        }
+
         private static void Sources(string root)
         {
             string runtime=Path.Combine(root,"Assets/ChipArena/Runtime"),core=Path.Combine(root,"Assets/ChipArena/Core");
@@ -253,7 +270,7 @@ namespace ChipArena.UnityConversion
             Check(pres.Contains("c.Skin.enabled=mesh!=null&&c.Shown;")&&pres.Contains("Shown=skin.enabled"),"the arm cut never turns on a renderer the outfit switched off (the hologram proxy, the skin under the garments)");
             Check(pres.Contains("if(Twist[i][k]!=null)Twist[i][k].localScale=TwistScale[i][k];")&&pres.Contains("TacticalSlim(arms);"),"the slimmer forearms are the tactical view's alone (Rest puts them back every frame)");
             Check(pres.Contains("tacticalFill.cullingMask=1<<10;tacticalFill.shadows=LightShadows.None;"),"the fill light lights the view-model layer alone, without shadows");
-            Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool on=TacticalViewPosed(a,time);TacticalArmCut(on);"),"the view body's arms are cut at the shoulders only while the tactical view draws");
+            Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("TacticalArmCut(arms);"),"the view body's arms are cut at the clavicles only while the tactical view or the eye-anchored arms draw");
         }
     }
 }
