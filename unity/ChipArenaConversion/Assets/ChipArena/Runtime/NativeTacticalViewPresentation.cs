@@ -205,9 +205,19 @@ namespace ChipArena.UnityConversion
             {
                 if(c.Skin==null)continue;
                 if(shoulders&&!c.Made){c.Shoulder=ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;}
-                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null;if(mesh!=null)c.Skin.sharedMesh=mesh;
+                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
             }
             tacticalShoulders=shoulders;
+        }
+
+        // A cut swapped in with the skin's blend-shape weights kept (the outfit's shapes tuck the skin under its garments; a swap
+        // can reset them, and the skin showed through the sleeves).
+        private static float[] tacticalShapes=new float[0];
+        private static void TacticalSwapMesh(SkinnedMeshRenderer skin,Mesh mesh)
+        {
+            var was=skin.sharedMesh;int n=was!=null?Mathf.Min(was.blendShapeCount,mesh.blendShapeCount):0;
+            if(tacticalShapes.Length<n)tacticalShapes=new float[n];for(int i=0;i<n;i++)tacticalShapes[i]=skin.GetBlendShapeWeight(i);
+            skin.sharedMesh=mesh;for(int i=0;i<n;i++)skin.SetBlendShapeWeight(i,tacticalShapes[i]);
         }
 
         /// <summary>RenderFirstPerson, once the view body is posed (VisualViewPose): the tactical view on it, or false (the old view
