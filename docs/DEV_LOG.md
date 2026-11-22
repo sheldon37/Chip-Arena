@@ -1,3 +1,30 @@
+## 2026-11-21 — Claude (F1): first person on the Tactical Shooter Pack's clips (pilot model's arms, game's guns)
+Owner: "Utilize new FPS system / animations from tactical pack." **Branch:** `claude/fps-tactical` from shared `ead0ef02`; HEAD `HEADSHA`. Pushed, not merged, not released.
+- **What:** in first person (chosen in Settings; aiming never forces it) the pistol, rifle and machine gun are held by the pilot
+  model's own forearms and hands on the game's own models, posed by the pack's clips (`docs/FPS-TACTICAL.md`): idle, the pack's
+  walk/sprint/idle sway layer, the pistol's kick and the rifle's bolt, procedural recoil, tactical reloads, a draw on entering
+  first person, aim down the model's own sights (the rifle's scope as before) and the clips' camera motion (camera shake on).
+  Third person, the other weapons and classes, a scope, the chip select's wrist, downed and grabbed pilots keep the old view.
+- **How:** no KINEMATION code runs or is committed. A local bake (git-ignored `ChipArenaTacticalBake.cs`) samples the pack's FBX
+  clips on their own skeleton into a data bank `ChipArenaViewMotion.bytes` (LocalAssets Resources, ~1.5 MB);
+  `Core/NativeTacticalView.cs` reads it and solves the view; `Runtime/NativeTacticalViewPresentation.cs` poses the view body
+  (true size, IK arms, twist, fingers) and puts the view rig's hands on the model's frame so the muzzle flash and kit pieces
+  follow. Without the bank the old view draws. The bank rides the visual body's `.bytes` in the LocalAssets zip
+  (`pack_visual_body.py` already carries every `.bytes` beside the prefab): no tooling change.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking: nothing reads or
+  writes a rule; the clips are retimed onto them (reload = `ReloadAt..ReloadUntil`; the rifle's bolt home at `ShootReady`/
+  `Interval` 1.15 s; the pistol's kick inside .42 s; aim in the gun's `Settle`). The camera motion is applied after the aim point
+  (like HitKick), so it never reaches aim. Draws have no rule (no weapon swap rule exists); a shot cuts one.
+- **Voxel dependency:** `Runtime/NativeTacticalViewPresentation.cs` reads `viewRig.Bones[` twice (the view rig's two hands, where
+  first person's effects draw); pinned at 2 in `Tests/voxel-ratchet.txt`.
+- **Checks:** CHECKS
+- **Clips:** CLIPS
+- **Owner's calls:** (1) the pack's weapon meshes as weapon skins (9 guns, 4K TGA, URP materials to rebuild); (2) the pack's
+  149 sounds (draws, reloads, fire with tails, aim in/out, footsteps), listed in the doc; (3) the empty reloads (slide release,
+  bolt) do not fit the rules' reload spans: the tactical reloads always play.
+- **Next:** the owner reviews the clips; the integrator merges and packs `ChipArenaViewMotion.bytes` into the Drive zip
+  (the Editor checkout's `Assets/LocalAssets/ChipArenaLocal/Resources`), then a test-channel build.
+
 ## 2026-11-21 — Claude: release 13: the shipped game is lit as the approved Editor looks were (integrator)
 The owner plays on High: the live build read 2-7 times darker than the Editor clips the owner approved.
 - **Published:** shared and the builder at `a7bda65f`. Test channel revision `639308945926123514` (build `d41b3f08`, 394.0 MiB).
