@@ -43,7 +43,7 @@ Code `8aa68815`..`38782002`. Pushed, not merged, not released.
 - **Checks:** full CoreTests at the merged head `5c0f3181` in a clean worktree (expedition_path.patch, the 14 stage banks):
   1,104 groups, exit 0 (`--tactical-view` 2,746 checks: bank v3, the pack-gun solve, weapon clip clocks, jumps, no allocation,
   the gun for the view rig only, the shoulder cut for the tactical view only); `tools/check_unity_compile.py` PASS (four
-  assemblies); `git diff --check` clean; the pin scan clean; PrototypeBuild.Validate ok at `8aa68815`, `025b9fbe`, `8e84bad9`.
+  assemblies); `git diff --check` clean; the pin scan clean; PrototypeBuild.Validate ok at `8aa68815`, `025b9fbe`, `8e84bad9` and `38782002` (the code head).
   Not run: a Windows build, two clients, Low graphics and reduced effects in first person, every Arsenal skin.
 - **Clips and stills** (`F:/Chip Arena Development/scratch/fps-tactical/`): `clips2/fp-pistol.mp4`, `fp-rifle.mp4`,
   `fp-machinegun.mp4` (BEFORE shared / AFTER pack gun, idle, walk, sprint, fire, reload, jump, aim; filmed at `8e84bad9`),
