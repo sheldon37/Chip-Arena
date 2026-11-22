@@ -194,7 +194,9 @@ namespace ChipArena.UnityConversion
         private void TacticalPackAfterDraw(){if(tacticalPackShown!=Time.frameCount)TacticalGunsShown(null);}
 
         // ---- The arms' cut: the elbows for the old view model (CreateViewBody), the shoulders for the tactical view ----
-        private sealed class TacticalCut{public SkinnedMeshRenderer Skin;public Mesh Source,Elbow,Shoulder;public bool Made,Owned;}
+        // Shown: whether the outfit draws the renderer at all (the dressing switches off the skin parts under its garments and
+        // the hologram proxy); a cut never turns on what it switched off (the brown patches on the sleeves were the proxy).
+        private sealed class TacticalCut{public SkinnedMeshRenderer Skin;public Mesh Source,Elbow,Shoulder;public bool Made,Owned,Shown;}
         private readonly System.Collections.Generic.List<TacticalCut> tacticalCuts=new System.Collections.Generic.List<TacticalCut>();
         private VisualBody tacticalCutBody;private bool tacticalShoulders;
         private static readonly System.Collections.Generic.Dictionary<Mesh,Mesh> shoulderMeshes=new System.Collections.Generic.Dictionary<Mesh,Mesh>();
@@ -202,7 +204,7 @@ namespace ChipArena.UnityConversion
         private void TacticalViewSkin(VisualBody body,SkinnedMeshRenderer skin,Mesh source,Mesh elbow)
         {
             if(tacticalCutBody!=body){foreach(var old in tacticalCuts)if(old.Owned&&old.Shoulder!=null)Destroy(old.Shoulder);tacticalCuts.Clear();tacticalCutBody=body;tacticalShoulders=false;}
-            tacticalCuts.Add(new TacticalCut{Skin=skin,Source=source,Elbow=elbow});
+            tacticalCuts.Add(new TacticalCut{Skin=skin,Source=source,Elbow=elbow,Shown=skin.enabled});
         }
         private void TacticalArmCut(bool shoulders)
         {
@@ -224,7 +226,7 @@ namespace ChipArena.UnityConversion
             foreach(var c in tacticalCuts)
             {
                 if(c.Skin==null)continue;
-                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
+                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null&&c.Shown;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
             }
             tacticalShoulders=shoulders;
         }
@@ -246,7 +248,7 @@ namespace ChipArena.UnityConversion
             bool any=false;
             foreach(var c in tacticalCuts)
             {
-                if(c.Skin==null||c.Shoulder==null||TacticalIsSkin(c.Skin))continue;
+                if(c.Skin==null||c.Shoulder==null||!c.Shown||TacticalIsSkin(c.Skin))continue;
                 // The garment's drawn surface, sampled no sparser than the gap (a plate's few corners leave its middle bare).
                 var w=World(c);
                 void Add(Vector3 v){var k=Key(v);if(!grid.TryGetValue(k,out var l))grid[k]=l=new System.Collections.Generic.List<Vector3>();l.Add(v);any=true;}
@@ -263,7 +265,7 @@ namespace ChipArena.UnityConversion
             }
             if(any)foreach(var c in tacticalCuts)
             {
-                if(c.Skin==null||c.Shoulder==null||!TacticalIsSkin(c.Skin))continue;
+                if(c.Skin==null||c.Shoulder==null||!c.Shown||!TacticalIsSkin(c.Skin))continue;
                 var w=World(c);var under=new bool[w.Count];float gap2=TacticalSkinGap*TacticalSkinGap;
                 for(int i=0;i<w.Count;i++)
                 {

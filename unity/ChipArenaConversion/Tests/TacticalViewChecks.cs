@@ -250,6 +250,7 @@ namespace ChipArena.UnityConversion
                 Check(!File.ReadAllText(f).Contains("TacticalPackDrawn("),Path.GetFileName(f)+" never draws the pack gun");
             // The pilot's arms: the skin under the garments hidden, the girth put back every frame, the fill light on the view model alone.
             Check(pres.Contains("if(!(under[tris[i]]&&under[tris[i+1]]&&under[tris[i+2]]))")&&pres.Contains("TacticalIsSkin(SkinnedMeshRenderer r)=>r.name.StartsWith(\"Body\""),"the body's skin under a garment is hidden in the tactical view");
+            Check(pres.Contains("c.Skin.enabled=mesh!=null&&c.Shown;")&&pres.Contains("Shown=skin.enabled"),"the arm cut never turns on a renderer the outfit switched off (the hologram proxy, the skin under the garments)");
             Check(pres.Contains("if(Twist[i][k]!=null)Twist[i][k].localScale=TwistScale[i][k];")&&pres.Contains("TacticalSlim(arms);"),"the slimmer forearms are the tactical view's alone (Rest puts them back every frame)");
             Check(pres.Contains("tacticalFill.cullingMask=1<<10;tacticalFill.shadows=LightShadows.None;"),"the fill light lights the view-model layer alone, without shadows");
             Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool on=TacticalViewPosed(a,time);TacticalArmCut(on);"),"the view body's arms are cut at the shoulders only while the tactical view draws");
