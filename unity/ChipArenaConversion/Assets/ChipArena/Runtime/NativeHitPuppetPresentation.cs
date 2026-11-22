@@ -77,6 +77,8 @@ namespace ChipArena.UnityConversion
                 var attacker=e.Source>0?HitPuppetActor(s.Actors,e.Source):null;string spec=e.Source==0?null:attacker?.SourceSpec;
                 var w=NativeStaggerRules.Classify(spec,string.IsNullOrEmpty(e.DamageKind)?e.Detail??"direct":e.DamageKind,e.Amount);
                 bool melee=NativeHitRules.Melee(e.Source,e.Detail,spec,false,Math.Abs(target.ReactionAt-e.Time)<.004f);
+                // A blade class's cutting move (the Katana's, the Fangs', the Glaive's: Core NativeBladeCuts) is a blade's blow, its detail the move.
+                melee|=NativeBladeCuts.Cuts(e,attacker);
                 if(!NativeHitPuppetRules.Felt(e.Detail,melee))continue;
                 bool head=e.Kind==EventKind.Headshot;
                 if(!NativeHitPuppetRules.Push(w,NativeStaggerRules.Scale(w,e.Amount),melee,NativeHitRules.Heft(spec,e.Amount),head,out float impulse,out float unpin))continue;

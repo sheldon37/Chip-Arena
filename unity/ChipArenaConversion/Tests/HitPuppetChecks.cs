@@ -105,6 +105,7 @@ namespace ChipArena.UnityConversion
             Check(observe.Contains("lethal=events[k].Kind==EventKind.Death&&events[k].Target==e.Target")&&observe.Contains("if(lethal)continue;")&&observe.Contains("if(target==null||!target.Alive)continue;"),"a killing hit pushes nothing (the death's own presentation takes the body)");
             Check(observe.Contains("e.Target>=10000")&&observe.Contains("if(newest>0&&newest<hitPuppetEvent){hitPuppetEvent=0;hitPuppetHitCount=0;}"),"pilot hits only (adds come from HordeHit), each once, starting over with a new arena or replay");
             Check(Body(pres,"private void HitPuppetAdd(").Contains("!(m.Hp>0)"),"an add's killing hit pushes nothing");
+            Check(observe.Contains("melee|=NativeBladeCuts.Cuts(e,attacker);")&&horde.Contains("melee|=blade;"),"a blade class's cut (the Katana's, the Fangs', the Glaive's: its detail names the move) pushes as a blade's blow, on pilots and adds");
             var land=Body(pres,"private bool HitPuppetPose(");
             Check(land.Contains("time-h.At>NativeHitPuppetRules.Stale")&&land.Contains("h.At<time+NativeHitPuppetRules.Ahead"),"a hit lands on its body's own clock (it waits for its moment, a stale one is dropped)");
             Check(land.Contains("slot.PosedFrame<frame-1||slot.Owner!=owner")&&land.Contains("NativeHitPuppetRules.Jump"),"a gap, another owner or a jump puts the drawn pose back first");
