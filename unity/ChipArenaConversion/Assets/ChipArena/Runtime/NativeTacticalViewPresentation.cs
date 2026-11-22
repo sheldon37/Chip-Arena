@@ -50,9 +50,18 @@ namespace ChipArena.UnityConversion
             public VisualBody Body;public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2];
             public readonly Transform[][] Fingers={new Transform[15],new Transform[15]};public readonly Vector3[][] Axis={new Vector3[15],new Vector3[15]};
             public readonly Transform[][] Twist={new Transform[2],new Transform[2]};public readonly float[][] Share={new float[2],new float[2]};
+            public readonly Transform[][] UpperTwist={new Transform[2],new Transform[2]};
+            public readonly Vector3[][] TwistScale={new Vector3[2],new Vector3[2]},UpperTwistScale={new Vector3[2],new Vector3[2]};
             // The places the binding never writes (it turns bones only): put back every frame before the arms are posed again.
             public readonly Vector3[] UpperAt=new Vector3[2],HandAt=new Vector3[2];
-            public void Rest(){for(int i=0;i<2;i++){if(Upper[i]!=null)Upper[i].localPosition=UpperAt[i];if(Hand[i]!=null)Hand[i].localPosition=HandAt[i];}}
+            public void Rest()
+            {
+                for(int i=0;i<2;i++)
+                {
+                    if(Upper[i]!=null)Upper[i].localPosition=UpperAt[i];if(Hand[i]!=null)Hand[i].localPosition=HandAt[i];
+                    for(int k=0;k<2;k++){if(Twist[i][k]!=null)Twist[i][k].localScale=TwistScale[i][k];if(UpperTwist[i][k]!=null)UpperTwist[i][k].localScale=UpperTwistScale[i][k];}
+                }
+            }
         }
         private static readonly string[] TacticalDigits={"thumb","index","middle","ring","pinky"};
         private static TacticalArms TacticalArmsOf(VisualBody body)
@@ -79,7 +88,8 @@ namespace ChipArena.UnityConversion
                 float length=Vector3.Distance(arms.Lower[side].position,arms.Hand[side].position);
                 for(int i=0;i<2;i++)
                 {
-                    var t=Find("lowerarm_twist_0"+(i+1)+s);arms.Twist[side][i]=t;
+                    var t=Find("lowerarm_twist_0"+(i+1)+s);arms.Twist[side][i]=t;if(t!=null)arms.TwistScale[side][i]=t.localScale;
+                    var u=Find("upperarm_twist_0"+(i+1)+s);arms.UpperTwist[side][i]=u;if(u!=null)arms.UpperTwistScale[side][i]=u.localScale;
                     if(t!=null&&length>1e-4f)arms.Share[side][i]=Mathf.Clamp01(Vector3.Dot(t.position-arms.Lower[side].position,(arms.Hand[side].position-arms.Lower[side].position).normalized)/length);
                 }
             }
@@ -179,14 +189,14 @@ namespace ChipArena.UnityConversion
         private void TacticalPackAfterDraw(){if(tacticalPackShown!=Time.frameCount)TacticalGunsShown(null);}
 
         // ---- The arms' cut: the elbows for the old view model (CreateViewBody), the shoulders for the tactical view ----
-        private sealed class TacticalCut{public SkinnedMeshRenderer Skin;public Mesh Source,Elbow,Shoulder;public bool Made;}
+        private sealed class TacticalCut{public SkinnedMeshRenderer Skin;public Mesh Source,Elbow,Shoulder;public bool Made,Owned;}
         private readonly System.Collections.Generic.List<TacticalCut> tacticalCuts=new System.Collections.Generic.List<TacticalCut>();
         private VisualBody tacticalCutBody;private bool tacticalShoulders;
         private static readonly System.Collections.Generic.Dictionary<Mesh,Mesh> shoulderMeshes=new System.Collections.Generic.Dictionary<Mesh,Mesh>();
         /// <summary>CreateViewBody: a skinned mesh of the new view body, its source and its elbow cut (null: none).</summary>
         private void TacticalViewSkin(VisualBody body,SkinnedMeshRenderer skin,Mesh source,Mesh elbow)
         {
-            if(tacticalCutBody!=body){tacticalCuts.Clear();tacticalCutBody=body;tacticalShoulders=false;}
+            if(tacticalCutBody!=body){foreach(var old in tacticalCuts)if(old.Owned&&old.Shoulder!=null)Destroy(old.Shoulder);tacticalCuts.Clear();tacticalCutBody=body;tacticalShoulders=false;}
             tacticalCuts.Add(new TacticalCut{Skin=skin,Source=source,Elbow=elbow});
         }
         private void TacticalArmCut(bool shoulders)
@@ -201,14 +211,99 @@ namespace ChipArena.UnityConversion
                 arm=new System.Collections.Generic.HashSet<Transform>();
                 for(int side=0;side<2;side++){var top=arms.Upper[side].parent!=null&&arms.Upper[side].parent.name.StartsWith("clavicle",System.StringComparison.Ordinal)?arms.Upper[side].parent:arms.Upper[side];foreach(var t in top.GetComponentsInChildren<Transform>(true))arm.Add(t);}
             }
+            if(shoulders&&tacticalCuts.Exists(c=>c.Skin!=null&&!c.Made))
+            {
+                foreach(var c in tacticalCuts)if(c.Skin!=null&&!c.Made){c.Shoulder=ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;}
+                TacticalSkinUnder();
+            }
             foreach(var c in tacticalCuts)
             {
                 if(c.Skin==null)continue;
-                if(shoulders&&!c.Made){c.Shoulder=ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;}
                 var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
             }
             tacticalShoulders=shoulders;
         }
+        // The body's skin under the garments (owner 2026-11-21: "Fix pilot's arms"; no skin may show through a sleeve): every skin
+        // triangle whose three corners lie within TacticalSkinGap of a drawn garment vertex goes from the skin's cut, so a sleeve
+        // or glove is the only surface there, and bare arms, bare hands and a short sleeve's hem keep the skin they show. Made
+        // once per view body (its outfit), on the posed arms; the skin is the body's "Body" renderer.
+        private const float TacticalSkinGap=.035f;
+        private void TacticalSkinUnder()
+        {
+            var grid=new System.Collections.Generic.Dictionary<Vector3Int,System.Collections.Generic.List<Vector3>>();float cell=TacticalSkinGap;
+            Vector3Int Key(Vector3 v)=>new Vector3Int(Mathf.FloorToInt(v.x/cell),Mathf.FloorToInt(v.y/cell),Mathf.FloorToInt(v.z/cell));
+            var baked=new Mesh();var verts=new System.Collections.Generic.List<Vector3>();
+            System.Collections.Generic.List<Vector3> World(TacticalCut c)
+            {
+                c.Skin.BakeMesh(baked,true);baked.GetVertices(verts);var m=c.Skin.transform.localToWorldMatrix;var w=new System.Collections.Generic.List<Vector3>(verts.Count);
+                foreach(var v in verts)w.Add(m.MultiplyPoint3x4(v));return w;
+            }
+            bool any=false;
+            foreach(var c in tacticalCuts)
+            {
+                if(c.Skin==null||c.Shoulder==null||TacticalIsSkin(c.Skin))continue;
+                var w=World(c);var used=new bool[w.Count];
+                for(int sm=0;sm<c.Shoulder.subMeshCount;sm++)foreach(int i in c.Shoulder.GetTriangles(sm))if(i<used.Length)used[i]=true;
+                for(int i=0;i<w.Count;i++){if(!used[i])continue;var k=Key(w[i]);if(!grid.TryGetValue(k,out var l))grid[k]=l=new System.Collections.Generic.List<Vector3>();l.Add(w[i]);any=true;}
+            }
+            if(any)foreach(var c in tacticalCuts)
+            {
+                if(c.Skin==null||c.Shoulder==null||!TacticalIsSkin(c.Skin))continue;
+                var w=World(c);var under=new bool[w.Count];float gap2=TacticalSkinGap*TacticalSkinGap;
+                for(int i=0;i<w.Count;i++)
+                {
+                    var k=Key(w[i]);
+                    for(int dx=-1;dx<=1&&!under[i];dx++)for(int dy=-1;dy<=1&&!under[i];dy++)for(int dz=-1;dz<=1&&!under[i];dz++)
+                        if(grid.TryGetValue(new Vector3Int(k.x+dx,k.y+dy,k.z+dz),out var l))foreach(var g in l)if((g-w[i]).sqrMagnitude<gap2){under[i]=true;break;}
+                }
+                var cut=Instantiate(c.Shoulder);cut.name=c.Source.name+" (arms, skin under garments hidden)";int kept=0;
+                for(int sm=0;sm<cut.subMeshCount;sm++)
+                {
+                    var tris=c.Shoulder.GetTriangles(sm);var list=new System.Collections.Generic.List<int>(tris.Length);
+                    for(int i=0;i+2<tris.Length;i+=3)if(!(under[tris[i]]&&under[tris[i+1]]&&under[tris[i+2]])){list.Add(tris[i]);list.Add(tris[i+1]);list.Add(tris[i+2]);}
+                    cut.SetTriangles(list,sm,false);kept+=list.Count;
+                }
+                cut.RecalculateBounds();
+                if(kept>0){c.Shoulder=cut;c.Owned=true;}else{Destroy(cut);c.Shoulder=null;}
+            }
+            Destroy(baked);
+        }
+        private static bool TacticalIsSkin(SkinnedMeshRenderer r)=>r.name.StartsWith("Body",System.StringComparison.Ordinal);
+
+        // ---- First person only: the forearms and upper arms a little slimmer (their twist bones' girth, never their length),
+        // so the pilot's sleeves sit at the pack's reach as its own slimmer arms do (owner 2026-11-21: the sleeves must not fill
+        // the middle of the view). The twist bones are leaves: nothing else rides them. Put back by Rest every frame.
+        private const float TacticalForearmGirth=.82f,TacticalUpperGirth=.9f;
+        private static void TacticalSlim(TacticalArms arms)
+        {
+            for(int side=0;side<2;side++)for(int i=0;i<4;i++)
+            {
+                var t=i<2?arms.Twist[side][i]:arms.UpperTwist[side][i-2];if(t==null)continue;
+                Vector3 along=i<2?arms.Hand[side].position-arms.Lower[side].position:arms.Lower[side].position-arms.Upper[side].position;if(along.sqrMagnitude<1e-8f)continue;
+                along=Quaternion.Inverse(t.rotation)*along.normalized;float g=i<2?TacticalForearmGirth:TacticalUpperGirth;
+                float ax=Mathf.Abs(along.x),ay=Mathf.Abs(along.y),az=Mathf.Abs(along.z);
+                var rest=i<2?arms.TwistScale[side][i]:arms.UpperTwistScale[side][i-2];
+                t.localScale=Vector3.Scale(rest,ax>=ay&&ax>=az?new Vector3(1,g,g):ay>=az?new Vector3(g,1,g):new Vector3(g,g,1));
+            }
+        }
+
+        // ---- The view model's fill light (owner 2026-11-21: both hands and the sleeves must read on dark stages, as the gun
+        // does): one directional light from over the eye that lights the view-model layer alone, no shadows, while the tactical
+        // view draws.
+        private Light tacticalFill;
+        private void TacticalFill(bool on)
+        {
+            if(!on){if(tacticalFill!=null&&tacticalFill.enabled)tacticalFill.enabled=false;return;}
+            if(tacticalFill==null)
+            {
+                var go=new GameObject("Tactical view fill");go.transform.SetParent(transform,false);tacticalFill=go.AddComponent<Light>();
+                tacticalFill.type=LightType.Directional;tacticalFill.cullingMask=1<<10;tacticalFill.shadows=LightShadows.None;tacticalFill.renderMode=LightRenderMode.ForcePixel;
+                tacticalFill.color=new Color(1,.97f,.93f);tacticalFill.intensity=TacticalFillIntensity;
+            }
+            if(!tacticalFill.enabled)tacticalFill.enabled=true;
+            if(ViewCamera!=null)tacticalFill.transform.rotation=ViewCamera.transform.rotation*Quaternion.Euler(28,-18,0);
+        }
+        private const float TacticalFillIntensity=.55f;
 
         // A cut swapped in with the skin's blend-shape weights kept (the outfit's shapes tuck the skin under its garments; a swap
         // can reset them, and the skin showed through the sleeves).
@@ -226,7 +321,7 @@ namespace ChipArena.UnityConversion
         {
             // (The old view model keeps its elbow cut: the body it places by the right hand alone raised whole upper arms into the
             // air, tried 2026-11-21 on the greatsword.)
-            bool on=TacticalViewPosed(a,time);TacticalArmCut(on);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
+            bool on=TacticalViewPosed(a,time);TacticalArmCut(on);TacticalFill(on);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
             return on;
         }
         private bool TacticalViewPosed(Actor a,float time)
@@ -282,6 +377,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<2;i++){var t=arms.Twist[side][i];if(t!=null&&arms.Share[side][i]>0)t.rotation=Quaternion.AngleAxis(delta*arms.Share[side][i]*Mathf.Rad2Deg,axis)*t.rotation;}
                 // The hand keeps its target turn (the twist bones are its siblings, not its parents).
             }
+            TacticalSlim(arms);
             // The fingers: each segment turned onto the clip's direction in the palm, by the clip's weight over the grasp's.
             for(int side=0;side<2;side++)
             {

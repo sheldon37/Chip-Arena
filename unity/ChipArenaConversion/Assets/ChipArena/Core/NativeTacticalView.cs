@@ -164,8 +164,9 @@ namespace ChipArena.UnityConversion
         public Vector3 SprintCarry;public Vector3 SprintCarryDegrees;
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
-        // The view model's lens (vertical degrees) at the hip and fully aimed (the pack's: 90, and its aimFov).
-        public float HipFov=85,AimFov=74;
+        // The view model's lens (vertical degrees) at the hip and fully aimed: the pack's own (its FPCamera's 90, each gun's
+        // TacAnimSettings aimFov: the Viper 80, the SRM-12 and the TR15 70), so the arms and gun frame as its demo does.
+        public float HipFov=90,AimFov=70;
         // The game's model on the pack's gun: its rear sight on the pack gun's sight line (SightHeight above the gun bone: the
         // pack weapon's AimPoint), its right wrist level with the pack's along the bore, then ModelOffset (gun frame). The left
         // hand: on the right hand as the pack's (a pistol's support), or under the model's own handguard (its Support) as the
@@ -188,7 +189,7 @@ namespace ChipArena.UnityConversion
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.015f,.03f,0),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,ModelSight=new Vector3(0,-.008f,-.04f),
+            EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.008f,-.04f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
