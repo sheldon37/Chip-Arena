@@ -226,11 +226,40 @@ namespace ChipArena.UnityConversion
         {
             foreach(var g in new[]{"pistol","rifle","machinegun","siren",NativeTopDog.Spec,CyberLordSpec.Id,"",null})Check(!NativeViewArms.Eligible(g),"no eye-anchored arms for "+(g??"null")+" (the tactical view, the Siren's voxel arms, the Top Dog and the Cyber Lord keep theirs)");
             foreach(var g in new[]{"sword","greatsword","katana","daggers","shield","glaive","fangs","bow","fire","water","lightning","darkness","leet",NativeBombs.Spec,"emperor","ansatsuken"})Check(NativeViewArms.Eligible(g),g+" takes the eye-anchored arms");
-            foreach(var g in new[]{"sword","greatsword","katana","fire","bow"}){var l=NativeViewArms.Lift(g);Check(MathUtil.Finite(l.X)&&MathUtil.Finite(l.Y)&&MathUtil.Finite(l.Z)&&l.Length()<.5f,g+"'s lift is a small finite offset");}
             string runtime=Path.Combine(root,"Assets/ChipArena/Runtime");
             string arms=File.ReadAllText(Path.Combine(runtime,"NativeViewArmsPresentation.cs")),pres=File.ReadAllText(Path.Combine(runtime,"NativeTacticalViewPresentation.cs")),view=File.ReadAllText(Path.Combine(runtime,"NativeViewPresentation.cs"));
             Check(pres.Contains("bool on=TacticalViewPosed(a,time),arms=on||ViewArmsPose(a,time);TacticalArmCut(arms);TacticalFill(arms);"),"the arms come after the tactical view declines, with its cut and fill light");
-            Check(view.Contains("+ViewArmsLift(shown);"),"the class's lift raises the first-person hold only");
+            Check(view.Contains("+ViewArmsLift(shown,time);"),"the class's lift raises the first-person hold only");
+            // Each class's own hold (F2 2026-11-22): finite and small, shoulders and elbow poles under the eye, a free hand only where
+            // the class's other hand holds nothing, tucked downward.
+            var specs=new[]{"sword","greatsword","katana","daggers","shield","glaive","fangs","bow","fire","water","lightning","darkness","leet",NativeBombs.Spec,"emperor","ansatsuken",NativeDevMotions.Greatsword,NativeDevMotions.Katana};
+            bool Fin(Vector3 v)=>MathUtil.Finite(v.X)&&MathUtil.Finite(v.Y)&&MathUtil.Finite(v.Z);
+            foreach(var g in specs)
+            {
+                var h=NativeViewArms.Of(g);Check(h!=NativeViewArms.Default&&h.Spec==g,g+" has its own hold");
+                Check(Fin(h.Lift)&&h.Lift.Length()<.7f&&Fin(h.CarryLift)&&h.CarryLift.Length()<.7f,g+"'s lift is a small finite offset");
+                Check(Fin(h.Shoulder)&&h.Shoulder.Y<-.1f&&Math.Abs(h.Shoulder.X)<.05f&&h.PoleRight.Y<0&&h.PoleLeft.Y<0&&h.PoleRight.X>0&&h.PoleLeft.X<0,g+"'s shoulders and elbows hang under the eye, the elbows out to their sides");
+                Check(h.Free>=-1&&h.Free<=1&&(h.Free==0?h.Tuck==Vector3.Zero:h.Tuck.Y<-.2f),g+"'s free hand, if any, tucks downward");
+            }
+            Check(NativeViewArms.Of("greatsword").Free==0&&NativeViewArms.Of("daggers").Free==0&&NativeViewArms.Of(NativeFangs.Spec).Free==0&&NativeViewArms.Of(NativeBombs.Spec).Free==0&&NativeViewArms.Of("emperor").Free==0&&NativeViewArms.Of("ansatsuken").Free==0,"two-handed and dual holds tuck no hand");
+            Check(NativeViewArms.Of("sword").Free==-1&&NativeViewArms.Of("fire").Free==1&&NativeViewArms.Of("leet").Free==1&&NativeViewArms.Of("bow").Free==1,"the sword's left, the staffs' right and the bow's string hand are free");
+            Check(NativeViewArms.Of("no-such-class")==NativeViewArms.Default&&NativeViewArms.Lift("sword")==NativeViewArms.Of("sword").Lift,"an unknown class takes the default hold");
+            {
+                var bow=NativeViewArms.Of("bow");Check(NativeViewArms.LiftOf(bow,0)==bow.Lift+bow.CarryLift&&NativeViewArms.LiftOf(bow,1)==bow.Lift&&NativeViewArms.LiftOf(bow,float.NaN)==bow.Lift+bow.CarryLift&&Vector3.Distance(NativeViewArms.LiftOf(bow,.5f),bow.Lift+bow.CarryLift*.5f)<1e-5f,"a bow's carry lift fades out as it is raised onto the arrow line");
+                var sw=NativeViewArms.Of("sword");Check(NativeViewArms.LiftOf(sw,0)==sw.Lift&&NativeViewArms.LiftOf(sw,1)==sw.Lift,"no carry lift but the bow's");
+                Check(NativeViewArms.TuckWeight(new Vector3(0,0,.5f))==0&&NativeViewArms.TuckWeight(new Vector3(.2f,-.3f,.5f))==1&&NativeViewArms.TuckWeight(new Vector3(0,-.1f,0))==1&&NativeViewArms.TuckWeight(new Vector3(0,-.1f,-.2f))==1,"a free hand raised into view stays; one hanging low, at or behind the eye tucks away");
+                float mid=NativeViewArms.TuckWeight(new Vector3(0,-.0875f,.5f));Check(mid>.2f&&mid<.8f,"the tuck eases in between ("+mid+")");
+                Check(NativeViewArms.TuckWeight(new Vector3(float.NaN,float.NaN,float.NaN))==1,"a bad place tucks the hand away");
+                var c=NativeViewArms.Look.Cloth;Check(c.X>0&&c.Y>0&&c.Z>0&&c.X<=.1f&&c.Y<=.1f&&c.Z<=.1f,"the dark cloth's lift is a small linear colour");
+            }
+            string res=Path.Combine(root,"Assets/ChipArena/Resources");
+            string fx=File.ReadAllText(Path.Combine(res,"NativeVisualBodyFx.cginc")),toon=File.ReadAllText(Path.Combine(res,"NativeVisualBodyToon.shader"));
+            Check(fx.Contains("if(_ViewCloth.w<0.5)return c;")&&fx.Contains("return c+_ViewCloth.rgb*(1.0-smoothstep(0.01,0.08,l));"),"the dark cloth's lift is off unless set, and only on near-black colours");
+            Check(toon.Contains("  if(_VertexAlbedo<=0)o.Albedo=ViewCloth(o.Albedo);")&&toon.Contains("   if(_VertexAlbedo<=0)albedo=ViewCloth(albedo);"),"the body and its outline take the dark cloth's lift alike");
+            Check(arms.Contains("ViewArmsCloth(bool on)")&&arms.Contains("Vector4 want=on?new Vector4(c.X,c.Y,c.Z,1):Vector4.zero;")&&pres.Contains("TacticalFill(arms);ViewArmsCloth(arms&&!on);"),"the view body's cloth is lifted while the eye-anchored arms draw, put back for the guns' tactical view");
+            foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeViewArmsPresentation.cs",StringComparison.Ordinal))Check(!File.ReadAllText(f).Contains("_ViewCloth"),Path.GetFileName(f)+" never sets the view body's cloth lift (third person and the guns keep their look)");
+            Check(arms.Contains("if(d>reach){upper.position=a+to/d*(d-reach);a=upper.position;b=lower.position;to=target-a;d=to.magnitude;}"),"the arms' reach reads the elbow again once the shoulder moves (no hand left off its wrist)");
+            Check(pres.Contains("if(d>reach){upper.position=a+to/d*(d-reach);a=upper.position;to=target-a;d=to.magnitude;}"),"the guns' own reach is as it was");
             foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeViewArmsPresentation.cs",StringComparison.Ordinal))
                 Check(!File.ReadAllText(f).Contains("ViewArmsPose("),Path.GetFileName(f)+" never poses the eye-anchored arms (third person is untouched)");
             Check(!Regex.IsMatch(arms,@"a\.[A-Z]\w*\s*(=[^=]|\+=|-=)"),"the arms write no pilot field");

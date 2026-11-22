@@ -99,6 +99,8 @@ Shader "ChipArena/VisualBodyToon" {
   // (A vertex-coloured piece given a zombie's tint takes its tint and wear too: its garments, Runtime NativeZombieGarments.cs; the gear and a cut's cap, untinted, keep their colours.)
   if(_VertexAlbedo>0&&_ZombieTint.w>0)o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,0,0);
   if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv_Texture2D);if(_ZombieEye.w>1)o.Emission+=_ZombieEye.rgb*(_ZombieEye.w-1);o.Emission+=ZombieTapeShine(band,normalize(i.worldNormal),normalize(i.viewDir));}
+  // First person's dark cloth lifted (the view body alone, NativeVisualBodyFx.cginc ViewCloth).
+  if(_VertexAlbedo<=0)o.Albedo=ViewCloth(o.Albedo);
   if(_VertexAlbedo>0)o.Emission+=i.color.rgb*_VertexAlbedo*i.color.a;else if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
   // The blood round an open wound soaks the skin and clothes about its hole (not the caps or the skeleton).
   if(_VertexAlbedo<=0){float soak=WoundSoak(i.worldPos);o.Albedo=WoundSoaked(o.Albedo,soak);o.Emission*=1.0-soak*0.8;}
@@ -189,6 +191,7 @@ Shader "ChipArena/VisualBodyToon" {
    float3 albedo=SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.world.y);float3 n=normalize(i.normal);
    // (A vertex-coloured part, a zombie's gear or a cut's cap, lines in its own colour.)
    albedo=_VertexAlbedo>0?(_ZombieTint.w>0?ZombieLook(i.color.rgb,i.uv,0,0):i.color.rgb):ZombieLook(albedo,i.uv,ZombieBand(i.rest),ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv);
+   if(_VertexAlbedo<=0)albedo=ViewCloth(albedo);
    UNITY_LIGHT_ATTENUATION(atten,i,i.world);float ndl=dot(n,_WorldSpaceLightPos0.xyz);float3 sh=ShadeSH9(float4(n,1));
    // As NativeToonSurface's ArenaToon lights the body: Lambert while the style is off, the ramp over the flattened SH on.
    float3 light=_ArenaToon.x<.5?sh+_LightColor0.rgb*(saturate(ndl)*atten):ToonDiffuse(ToonAmbient(sh,ShadeSH9(float4(0,1,0,1)),ShadeSH9(float4(0,-1,0,1)),n.y),_LightColor0.rgb,ndl,atten);
