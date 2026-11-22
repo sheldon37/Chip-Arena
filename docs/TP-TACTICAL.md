@@ -77,7 +77,9 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
   bent up the handguard's far side and the middle and end joints curled over its top edge, the pistol's fingers curled round the
   grip's front, together, the thumbs straight along the gun. (The pack's own support hands, the TR15 foregrip fist included, retarget
   open and splayed on this body: their finger spreads run up to six times the game's own hands'.) Half the wrist's new twist goes into
-  the forearm. Before, the pack's carry left the support hand open on the near face (its own support hands lie flat, fingers out),
+  the forearm. A fore-end past the straight arm's reach (the carry's low arm; an Arsenal rifle's fore-end, 5.6 cm further forward,
+  was 6 cm short) turns the shoulder (the clavicle) forward first, the least turn that reaches, at most 30 degrees
+  (`VisualShoulderReach`). Before, the pack's carry left the support hand open on the near face (its own support hands lie flat, fingers out),
   and the old reach let go beyond 0.40 m.
 - **A long gun grips at rest too, and between states.** Its match idle's low carry closes the hand on the handguard like the carry
   and the raise do; the grip's share is at least the body's readiness (`GripHold`, eased once over 0.12 s), not only the product of

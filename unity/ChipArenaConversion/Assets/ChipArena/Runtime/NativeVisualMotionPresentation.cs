@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
             // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
             // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
-            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip, GripHold; public float[] CarryMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
+            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip, GripHold; public float[] CarryMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest, LeftShoulder;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
             Transform Body(HumanBodyBones b){var t=animator.GetBoneTransform(b);return t!=null?Twin(proxy.transform,skeleton,t):null;}
             m.RightHand=Body(HumanBodyBones.RightHand);m.LeftHand=Body(HumanBodyBones.LeftHand);m.LeftArm=Body(HumanBodyBones.LeftUpperArm);m.LeftForearm=Body(HumanBodyBones.LeftLowerArm);
             m.LeftIndex=Body(HumanBodyBones.LeftIndexProximal);m.LeftLittle=Body(HumanBodyBones.LeftLittleProximal);
-            m.LeftFist=Body(HumanBodyBones.LeftMiddleProximal);
+            m.LeftFist=Body(HumanBodyBones.LeftMiddleProximal);m.LeftShoulder=Body(HumanBodyBones.LeftShoulder);
             m.RightArm=Body(HumanBodyBones.RightUpperArm);m.RightForearm=Body(HumanBodyBones.RightLowerArm);m.RightFist=Body(HumanBodyBones.RightMiddleProximal);
             m.Spine=Body(HumanBodyBones.Spine);m.Chest=Body(HumanBodyBones.Chest);m.Head=Body(HumanBodyBones.Head);m.UpperChest=Body(HumanBodyBones.UpperChest);
             m.LegUpper[0]=Body(HumanBodyBones.LeftUpperLeg);m.LegLower[0]=Body(HumanBodyBones.LeftLowerLeg);m.LegFoot[0]=Body(HumanBodyBones.LeftFoot);

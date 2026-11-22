@@ -72,7 +72,8 @@ namespace ChipArena.UnityConversion
             var onto=Quaternion.LookRotation(tf,ta)*Quaternion.Inverse(Quaternion.LookRotation(f,across));
             var anchor=hand.position+f*(len*g.Along)+Vector3.Cross(across,f)*g.Depth;var local=Quaternion.Inverse(hand.rotation)*(anchor-hand.position);
             var goal=Quaternion.Slerp(hand.rotation,onto*hand.rotation,w);var at=weapon.position+weapon.rotation*support;
-            ArmReachTo(m.LeftArm,m.LeftForearm,hand,Vector3.Lerp(hand.position,at-goal*local,w),-root.up-root.right*.8f);
+            var target=Vector3.Lerp(hand.position,at-goal*local,w);VisualShoulderReach(m.LeftShoulder,m.LeftArm,m.LeftForearm,hand,target);
+            ArmReachTo(m.LeftArm,m.LeftForearm,hand,target,-root.up-root.right*.8f);
             // Half the wrist's twist about the forearm into the forearm (no wrung wrist), then the hand on its hold.
             var bone=hand.position-m.LeftForearm.position;
             if(bone.sqrMagnitude>1e-8f)
@@ -83,6 +84,22 @@ namespace ChipArena.UnityConversion
                     if(!float.IsNaN(deg))m.LeftForearm.rotation=Quaternion.AngleAxis(deg*.5f,bone)*m.LeftForearm.rotation;}
             }
             hand.rotation=goal;
+        }
+        // A support hand's target past the arm's reach (a carry's low arm, an Arsenal model's longer fore-end: up to 6 cm short with the
+        // arm straight): the shoulder (the clavicle) turned toward it, the least turn that lets the arm reach it, at most ShoulderReachMax
+        // degrees, as a reaching shoulder comes forward.
+        public const float ShoulderReachMax=30f;
+        private static void VisualShoulderReach(Transform shoulder,Transform upper,Transform lower,Transform hand,Vector3 target)
+        {
+            if(shoulder==null||upper==null||lower==null||hand==null)return;
+            float reach=((lower.position-upper.position).magnitude+(hand.position-lower.position).magnitude)*.99f;
+            Vector3 pivot=shoulder.position,arm=upper.position-pivot,want=target-pivot;
+            if((target-upper.position).magnitude<=reach||arm.sqrMagnitude<1e-8f||want.sqrMagnitude<1e-8f)return;
+            Quaternion.FromToRotation(arm,want).ToAngleAxis(out float deg,out var axis);if(deg>180)deg-=360;if(float.IsNaN(deg)||Mathf.Abs(deg)<.01f)return;
+            float most=Mathf.Clamp(deg,-ShoulderReachMax,ShoulderReachMax),lo=0,hi=1;
+            bool Short(float t)=>(target-(pivot+Quaternion.AngleAxis(most*t,axis)*arm)).magnitude>reach;
+            if(!Short(1))for(int i=0;i<10;i++){float mid=(lo+hi)*.5f;if(Short(mid))lo=mid;else hi=mid;}
+            shoulder.rotation=Quaternion.AngleAxis(most*hi,axis)*shoulder.rotation;
         }
         // The draw's age (NativeTacticalMotion.DrawClipTime) on an arena body: from DrawTime before the fight's start (the round's GO, as the
         // spawn-in times it: NativeSpawnIn.Age) to it; NaN elsewhere (a menu body, no match).
