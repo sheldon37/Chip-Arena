@@ -220,22 +220,22 @@ namespace ChipArena.UnityConversion
             }
             if(shoulders&&tacticalCuts.Exists(c=>c.Skin!=null&&!c.Made))
             {
-                // A wide or cloth sleeve (the DEV Sheldon robe's kimono sleeves; owner 2026-11-22: "the forearm thing might be cause
-                // im using 'Sheldon Robe'") is left out of first person, the arms' own skin shown instead (the dressing hides it under
-                // the sleeve): cut at the elbow, its cloth still draped the upper sleeve down over the forearm. Third person keeps the
-                // robe and its cloth.
+                // A wide sleeve (the DEV Sheldon robe's kimono; owner 2026-11-22: "the forearm thing might be cause im using 'Sheldon
+                // Robe'") is cut cleanly at mid-forearm by where its corners lie along the arm at rest (its hanging part is weighted
+                // to the upper arm, so a cut by weights kept it), the forearm's own skin below it (the dressing hides that skin under the
+                // sleeve). The view body never runs the cloth. Third person keeps the robe and its cloth.
                 tacticalWide=tacticalCuts.Exists(c=>c.Skin!=null&&c.Shown&&TacticalIsWide(c.Skin));
                 foreach(var c in tacticalCuts)if(c.Skin!=null&&!c.Made)
                 {
                     bool wide=TacticalIsWide(c.Skin);
-                    c.Shoulder=wide?null:ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;
+                    c.Shoulder=wide?TacticalSleeveCut(c.Skin,c.Source,arm):ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;c.Owned|=wide&&c.Shoulder!=null;
                 }
                 TacticalSkinUnder();
             }
             foreach(var c in tacticalCuts)
             {
                 if(c.Skin==null)continue;
-                bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&(c.Source.name=="lowerarms"||c.Source.name=="upperarms");
+                bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&c.Source.name=="lowerarms";
                 var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null&&shown;if(mesh!=null&&c.Skin.sharedMesh!=mesh)TacticalSwapMesh(c.Skin,mesh);
             }
             tacticalShoulders=shoulders;
@@ -299,6 +299,34 @@ namespace ChipArena.UnityConversion
         // A top with wide or cloth sleeves (the kimono of the DEV Sheldon robe).
         private static bool TacticalIsWide(SkinnedMeshRenderer r)=>r.name.IndexOf("Kimono",System.StringComparison.Ordinal)>=0;
         private bool tacticalWide;
+        // Where a wide sleeve ends: this share of the way from the shoulder to the wrist at rest (mid-forearm).
+        private const float TacticalSleeveEnd=.78f;
+        private Mesh TacticalSleeveCut(SkinnedMeshRenderer skin,Mesh mesh,System.Collections.Generic.HashSet<Transform> arm)
+        {
+            if(mesh==null||!mesh.isReadable||tacticalArms==null)return null;var bones=skin.bones;var bind=mesh.bindposes;var w=mesh.boneWeights;var v=mesh.vertices;
+            if(w.Length!=v.Length||bind.Length!=bones.Length)return null;
+            var up=new int[2];var hd=new int[2];
+            for(int side=0;side<2;side++){up[side]=System.Array.IndexOf(bones,tacticalArms.Upper[side]);hd[side]=System.Array.IndexOf(bones,tacticalArms.Hand[side]);if(up[side]<0||hd[side]<0)return null;}
+            Vector3 P(int b)=>bind[b].inverse.GetColumn(3);
+            var keep=new bool[v.Length];
+            for(int i=0;i<v.Length;i++)
+            {
+                var bw=w[i];float onArm=0,bestW=0;int best=-1;
+                int[] bi={bw.boneIndex0,bw.boneIndex1,bw.boneIndex2,bw.boneIndex3};float[] wi={bw.weight0,bw.weight1,bw.weight2,bw.weight3};
+                for(int k=0;k<4;k++){int b=bi[k];if(b<0||b>=bones.Length||bones[b]==null||!arm.Contains(bones[b]))continue;onArm+=wi[k];if(wi[k]>bestW){bestW=wi[k];best=b;}}
+                if(onArm<.5f||best<0)continue;
+                int sd=bones[best].name.EndsWith("_l",System.StringComparison.Ordinal)?0:1;Vector3 s0=P(up[sd]),axis=P(hd[sd])-s0;
+                keep[i]=Vector3.Dot(v[i]-s0,axis)/Mathf.Max(1e-8f,axis.sqrMagnitude)<TacticalSleeveEnd;
+            }
+            var cut=Instantiate(mesh);cut.name=mesh.name+" (sleeve to mid-forearm)";int kept=0;
+            for(int sm=0;sm<mesh.subMeshCount;sm++)
+            {
+                var tris=mesh.GetTriangles(sm);var list=new System.Collections.Generic.List<int>(tris.Length);
+                for(int i=0;i+2<tris.Length;i+=3)if(keep[tris[i]]&&keep[tris[i+1]]&&keep[tris[i+2]]){list.Add(tris[i]);list.Add(tris[i+1]);list.Add(tris[i+2]);}
+                cut.SetTriangles(list,sm,false);kept+=list.Count;
+            }
+            cut.RecalculateBounds();if(kept>0)return cut;Destroy(cut);return null;
+        }
 
 
         // ---- First person only: the forearms and upper arms a little slimmer (their twist bones' girth, never their length),
@@ -417,7 +445,7 @@ namespace ChipArena.UnityConversion
                         ta.Normalize();
                         var palm=Quaternion.LookRotation(f,across);gripTurn=Quaternion.LookRotation(tf,ta)*Quaternion.Inverse(palm)*hand.rotation;
                         Vector3 anchor=Quaternion.Inverse(hand.rotation)*(f*(len*grip.Along)+Vector3.Cross(across,f)*grip.Depth);
-                        gripAt=W(s.Weapon)+wq*(held.Support+new Vector3(grip.Offset.X,grip.Offset.Y,grip.Offset.Z))-gripTurn*anchor;
+                        gripAt=W(s.Weapon)+wq*(held.Support+new Vector3(grip.Offset.X,grip.Offset.Y,grip.Offset.Z-g.GripBack))-gripTurn*anchor;
                     }
                     else gripW=0;
                 }
