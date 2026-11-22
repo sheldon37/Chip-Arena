@@ -365,4 +365,16 @@ float CutKeep(uint vid)
 }
 #endif
 #endif
+// First person's dark cloth (Runtime/NativeViewArmsPresentation.cs ViewArmsCloth; owner 2026-11-22 review: the default suit's
+// sleeves read as flat black silhouettes at night): set on the view body alone while the eye-anchored arms draw, 0 on every
+// other body (and on the view body for the guns). A near-black colour (the robot suit's sweater is .07 in sRGB, .006 linear)
+// is lifted by rgb (the project's colour space: linear), all of it under .01 luminance and none past .08, so a black sleeve
+// takes the view layer's light as dark cloth and skin, gloves and trims keep theirs; w on.
+float4 _ViewCloth;
+float3 ViewCloth(float3 c)
+{
+ if(_ViewCloth.w<0.5)return c;
+ float l=dot(c,float3(0.299,0.587,0.114));
+ return c+_ViewCloth.rgb*(1.0-smoothstep(0.01,0.08,l));
+}
 #endif

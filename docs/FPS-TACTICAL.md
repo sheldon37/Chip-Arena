@@ -30,8 +30,9 @@ procedural recoil plus the TR15's own bolt clip each shot.
 
 Plus the look sway, jump hop and landing from the game's own view layer, procedural recoil on every shot, aiming down the
 sights onto the model's own rear sight (the rifle's scope as before), and the clips' camera motion (camera shake on).
-Third person is untouched. Every other weapon and class, a scope, the chip select's raised wrist and a downed or grabbed pilot
-keep the old view model.
+Third person is untouched. Every other weapon and class (but the Siren, the Top Dog and the Cyber Lord) is held by the pilot's
+own arms on the old view model's hands ("Every other weapon and class" below); a scope, the chip select's raised wrist and a
+downed or grabbed pilot keep the old view model.
 
 ## Timing: clips on the game's rules (AGENTS.md animation impacts)
 
@@ -135,6 +136,37 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
 - **Camera motion**: `TacticalCameraKick` turns the camera by the playing clip's `camera_bone` after the aim point is taken
   (as `HitKick` does), first person with camera shake on, .4 with reduced effects; the arms are placed in the camera without
   it, as the pack's arms are on the body.
+
+## Every other weapon and class: the pilot's own arms (owner 2026-11-22: "Go ahead and fix")
+
+Claude F1 then F2, branch `claude/fps-melee`. The sword, Katana, daggers, Fangs, glaive, greatsword, shield, bow, the four
+staffs and L33t, the Bombadier, the Emperor, Ansatsuken and the DEV Greatsword and Katana (`Core/NativeViewArms.cs`,
+`Runtime/NativeViewArmsPresentation.cs`); the guns keep the tactical view, the Siren, the Top Dog and the Cyber Lord their own.
+
+- **The old view model stays the motion.** Its clips, hands, weapon, trails and effects are placed as before; the view body
+  then turns with the eye at true size, its shoulders on an eye-anchored place (24 cm under the eye, level with it), and each
+  arm reaches its hand by two-bone IK with the elbow hung under the frame, cut at the clavicles, so the arms run in from the
+  screen's edges. The tactical view's girth, proxy rule and fill light come with it.
+- **Each class's hold** (`NativeViewArms.Holds`): a lift of the whole old view rig (weapon, hands and effects together), measured
+  on the view at rest at 2000x1173 with the view-body probe, so the weapon hand sits near x .8, y .8 of the screen, the
+  greatsword's hilt low right with its blade at the right edge, the shield's hand within the arm's reach, the staff low left
+  with its head clear of the centre, the fighters' fists either side of the centre at the bottom. A bow adds a carry lift
+  while lowered (times 1 - Raised): its carry under the eye comes into view low left, its draw stays on the arrow line.
+- **The free hand.** The one-hand blades' left hand, the staffs' right and a lowered bow's string hand hold nothing: each is
+  tucked under the frame while it hangs low (`TuckWeight`, by how far under the view's centre line it is) and comes back as it
+  rises into a cast or a draw (the lightning and L33t specials reach out). Nothing rides it.
+- **The reach.** An arm too short for its hand reaches from its shoulder first; the arms' own IK reads the elbow again after the
+  shoulder moves (read before it, the forearm fell short and the hand floated up to 30 cm off its wrist: the greatsword and the
+  shield). The guns' `TacticalReach` is unchanged.
+- **The dark cloth.** The default suit's sweater is .07 sRGB (.006 linear) and read as flat black in any light. While these arms
+  draw, every view-body renderer takes `_ViewCloth` (`Resources/NativeVisualBodyFx.cginc` `ViewCloth`): a near-black colour
+  (under .01 linear luminance, fading out by .08) lifted by `NativeViewArms.Look.Cloth` (.06 linear), so the sleeves take the
+  view layer's light as dark cloth; skin, gloves and trims are unchanged; the guns' view and third person never set it.
+- **Rules.** Presentation only: no hit timing, hitbox, damage, cooldown, movement value or network message is read or written;
+  the lifts and the tuck move first-person drawing only. Aiming never forces first person.
+- **Checks.** `--tactical-view` holds the table (every class its own finite hold, the free hands, the tuck and carry curves), the
+  shader's off-unless-set lift, the reach fix and that nothing else sets `_ViewCloth`. Editor: F2's runs switch every class in
+  one capture by the DEV weapon command (rest, attack, guard, special) with the probe.
 
 ## Import and disk
 

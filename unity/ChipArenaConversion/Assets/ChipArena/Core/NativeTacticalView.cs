@@ -204,7 +204,7 @@ namespace ChipArena.UnityConversion
             DrawSeconds=.9f,ActionTurn=.3f,WeaponOffset=new Vector3(.03f,.01f,.025f),GripBack=.1f,EyeRelief=.09f,SightHeight=.0724f,
             KickBack=.02f,KickPitch=1.5f,KickYaw=.4f,KickRoll=.8f};
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
-            DrawSeconds=1f,WeaponOffset=new Vector3(.07f,-.01f,.02f),GripBack=.14f,SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
+            DrawSeconds=1f,WeaponOffset=new Vector3(.07f,.02f,.02f),GripBack=.14f,SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
             KickBack=.014f,KickPitch=1.1f,KickYaw=.5f,KickRoll=1.1f,KickOmega=40,KickZeta=.6f};
         static NativeTacticalGun()
         {

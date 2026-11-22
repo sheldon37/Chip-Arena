@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
             float ads=aimMotion.Sample(time,gun&&AimHeld&&!bomb);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
             // The visual body's view model holds its weapon higher (NativeFirstPersonPose.ModelLift).
-            offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec));
+            offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec))+ViewArmsLift(shown,time);
             float scale=bow?NativeBowPose.ViewScale:gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
             offset+=HitViewDip(source,time,out float dip);
             viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation*Quaternion.Euler(dip,0,0));

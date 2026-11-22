@@ -1685,7 +1685,7 @@ namespace ChipArena.UnityConversion
             Check(venlarge>vapply&&vroot>venlarge&&vplace>vroot&&body.IndexOf("left.SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);left.localScale=viewBody.LeftScale*enlarge;",vp,StringComparison.Ordinal)>vplace,
                 "first person: a model in hand draws larger about the right hand's weapon frame, the body placed at that size and both view hands scaled with it");
             Check(body.Contains("bone.localRotation=viewBody.HandRotation[0];bone.localScale=viewBody.LeftScale;"),"the view rig's left hand gets its own scale back before it poses again");
-            Check(weapons.Contains("rear*=NativeFirstPersonPose.ModelScale(VisualViewGun(a));")&&R("Runtime/NativeViewPresentation.cs").Contains("offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec));"),
+            Check(weapons.Contains("rear*=NativeFirstPersonPose.ModelScale(VisualViewGun(a));")&&R("Runtime/NativeViewPresentation.cs").Contains("offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec))+ViewArmsLift(shown,time);"),
                 "first person: the sight scales with the model and the view rig's hold rises for it");
             Check(NativeFirstPersonPose.ModelScale(true)==NativeFirstPersonPose.ModelView&&NativeFirstPersonPose.ModelScale(false)==NativeFirstPersonPose.ModelBlade&&
                 NativeFirstPersonPose.ModelView>NativeFirstPersonPose.ModelBlade&&NativeFirstPersonPose.ModelBlade>1&&NativeFirstPersonPose.ModelView<=2,"first person: guns draw larger than blades, both above life size and at most twice it");
