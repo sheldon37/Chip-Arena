@@ -1,5 +1,7 @@
 ## 2026-11-21 — Claude (F1): first person on the Tactical Shooter Pack's clips (pilot model's arms, game's guns)
-Owner: "Utilize new FPS system / animations from tactical pack." **Branch:** `claude/fps-tactical` from shared `ead0ef02`; HEAD `HEADSHA`. Pushed, not merged, not released.
+Owner: "Utilize new FPS system / animations from tactical pack." **Branch:** `claude/fps-tactical` from shared `ead0ef02`; code
+`97c780fa` (filmed: pistol and machine gun at `6db638ee`, rifle at `97c780fa`; the commits between touch the rifle alone), docs
+and LF line endings follow. Pushed, not merged, not released.
 - **What:** in first person (chosen in Settings; aiming never forces it) the pistol, rifle and machine gun are held by the pilot
   model's own forearms and hands on the game's own models, posed by the pack's clips (`docs/FPS-TACTICAL.md`): idle, the pack's
   walk/sprint/idle sway layer, the pistol's kick and the rifle's bolt, procedural recoil, tactical reloads, a draw on entering
@@ -17,8 +19,20 @@ Owner: "Utilize new FPS system / animations from tactical pack." **Branch:** `cl
   (like HitKick), so it never reaches aim. Draws have no rule (no weapon swap rule exists); a shot cuts one.
 - **Voxel dependency:** `Runtime/NativeTacticalViewPresentation.cs` reads `viewRig.Bones[` twice (the view rig's two hands, where
   first person's effects draw); pinned at 2 in `Tests/voxel-ratchet.txt`.
-- **Checks:** CHECKS
-- **Clips:** CLIPS
+- **Checks:** full CoreTests at `97c780fa` in a clean worktree (expedition_path.patch, the 14 stage banks): 1,103 groups, exit 0,
+  with the new `TacticalViewChecks` (`--tactical-view`, 2,135 checks: the bank reader on a synthetic bank, every clip clock on the
+  rules, the sight picture, the hands on the model, no allocation per frame, first person and presentation only, no pack code or
+  bank in git) and the voxel ratchet; `tools/check_unity_compile.py` PASS (all four assemblies); `git diff --check` clean; the pin
+  scan clean; Editor play captures on the shared Editor (no exceptions logged). The later commits change line endings and docs
+  only. Not run: PrototypeBuild.Validate, a Windows build, two clients (a guest's view reads the same replicated fields), the
+  Arsenal skins in first person, Low graphics and reduced effects in first person.
+- **Clips:** before (shared `ead0ef02`) and after side by side, real time, frames every 1/30 s, both panes brightened alike (Cyber
+  City at night): `F:/Chip Arena Development/scratch/fps-tactical/clips/fp-pistol.mp4`, `fp-rifle.mp4`, `fp-machinegun.mp4` (10.5
+  s each: idle, walk, sprint, fire, reload, aim) and `third-pistol.mp4` (3.5 s; third-person frames differ from shared by under
+  0.6/255 a channel).
+- **Known limits:** the rifle's tactical reload still tips its long stock across the right of the view (60% of the pack's
+  tilt); the Arsenal pistol and machine gun without a bake `Sight` take the Standard models' measured sights; the draw plays on
+  entering first person (spawn, V, after a fallback), not after the rifle's scope; jumps keep the game's hop, no pack jump clips.
 - **Owner's calls:** (1) the pack's weapon meshes as weapon skins (9 guns, 4K TGA, URP materials to rebuild); (2) the pack's
   149 sounds (draws, reloads, fire with tails, aim in/out, footsteps), listed in the doc; (3) the empty reloads (slide release,
   bolt) do not fit the rules' reload spans: the tactical reloads always play.
