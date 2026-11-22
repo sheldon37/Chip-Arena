@@ -44,19 +44,47 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.CarryMix[k]-m.Mix[k])*w;}
             m.CarryShare=w;
         }
-        // A pack long gun's support hand closed on the model's handguard (owner 2026-11-21: "no open, splayed hands"): the left hand's
-        // finger muscles take the pack's foregrip fist (NativeTacticalMotion.SupportFist) by the support fist's eased hold (last frame's:
-        // it lets go through a reload, whose own hands play).
+        // A pack gun's support hand closed (owner 2026-11-21: "no open, splayed hands"; 11-22: "fingers closed and wrapping it"): the left
+        // hand's finger muscles take the pack's foregrip fist (NativeTacticalMotion.SupportFist) by the grip's weight (Grip: the pack's share,
+        // let go through a reload's free hand), the long guns' and the pistol's alike; VisualTacticalGrip then seats the hand on the model.
         private static bool[] leftFingerMuscles;
         private static void VisualTacticalFist(VisualMotion m)
         {
-            if(m.Set.Tactical==null||m.Set.Tactical==NativeTacticalMotion.Pistol||m.Support<=0)return;var bank=VisualMotionBank;
+            if(m.Set.Tactical==null||m.Grip<=0)return;var bank=VisualMotionBank;
             if(bank==null||!bank.Clips.TryGetValue(NativeTacticalMotion.SupportFist,out var fist))return;
             if(leftFingerMuscles==null){var n=HumanTrait.MuscleName;leftFingerMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)leftFingerMuscles[i]=n[i].StartsWith("LeftHand.",System.StringComparison.Ordinal);}
             if(m.FistMix==null||m.FistMix.Length!=m.Mix.Length)m.FistMix=new float[m.Mix.Length];
             System.Array.Clear(m.FistMix,0,m.FistMix.Length);NativeVisualMotionClips.Add(fist,0,1,m.FistMix);NativeVisualMotionClips.Finish(m.FistMix,1);
-            float w=Ease(Mathf.Clamp01(m.Support));
+            float w=Ease(Mathf.Clamp01(m.Grip));
             for(int i=0;i<leftFingerMuscles.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(leftFingerMuscles[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.FistMix[k]-m.Mix[k])*w;}
+        }
+        // The support hand seated on the model (owner 2026-11-22: "think we need to fix this here"; the pack's carry left it open on the near
+        // face): by `w`, the palm's frame (wrist to the middle knuckle; pinky to index) turned onto the gun's hold (NativeTacticalMotion.Grip in
+        // the weapon frame: a long gun's fore-end from below, the pistol's thumbs-forward wrap), the hand's anchor point on the model's
+        // measured Support (each model's and each Arsenal model's own), the arm reaching it (elbow down and out), half the wrist's new twist
+        // taken by the forearm.
+        private static void VisualTacticalGrip(VisualMotion m,Transform weapon,Vector3 support,Transform root,float w)
+        {
+            var g=m.Set.Tactical?.Support;
+            if(g==null||w<=1e-4f||m.LeftHand==null||m.LeftArm==null||m.LeftForearm==null||m.LeftFist==null||m.LeftIndex==null||m.LeftLittle==null)return;
+            var hand=m.LeftHand;Vector3 f=m.LeftFist.position-hand.position;float len=f.magnitude;if(len<1e-4f)return;f/=len;
+            Vector3 across=m.LeftIndex.position-m.LeftLittle.position;across-=Vector3.Dot(across,f)*f;if(across.sqrMagnitude<1e-8f)return;across.Normalize();
+            Vector3 tf=weapon.rotation*new Vector3(g.Fingers.X,g.Fingers.Y,g.Fingers.Z),ta=weapon.rotation*new Vector3(g.Thumb.X,g.Thumb.Y,g.Thumb.Z);
+            tf.Normalize();ta-=Vector3.Dot(ta,tf)*tf;if(ta.sqrMagnitude<1e-8f)return;ta.Normalize();
+            var onto=Quaternion.LookRotation(tf,ta)*Quaternion.Inverse(Quaternion.LookRotation(f,across));
+            var anchor=hand.position+f*(len*g.Along)+Vector3.Cross(across,f)*g.Depth;var local=Quaternion.Inverse(hand.rotation)*(anchor-hand.position);
+            var goal=Quaternion.Slerp(hand.rotation,onto*hand.rotation,w);var at=weapon.position+weapon.rotation*support;
+            ArmReachTo(m.LeftArm,m.LeftForearm,hand,Vector3.Lerp(hand.position,at-goal*local,w),-root.up-root.right*.8f);
+            // Half the wrist's twist about the forearm into the forearm (no wrung wrist), then the hand on its hold.
+            var bone=hand.position-m.LeftForearm.position;
+            if(bone.sqrMagnitude>1e-8f)
+            {
+                bone.Normalize();var d=goal*Quaternion.Inverse(hand.rotation);var v=new Vector3(d.x,d.y,d.z);var p=Vector3.Dot(v,bone)*bone;
+                var twist=new Quaternion(p.x,p.y,p.z,d.w);float mag=Mathf.Sqrt(twist.x*twist.x+twist.y*twist.y+twist.z*twist.z+twist.w*twist.w);
+                if(mag>1e-6f){twist=new Quaternion(twist.x/mag,twist.y/mag,twist.z/mag,twist.w/mag);twist.ToAngleAxis(out float deg,out var ax);if(deg>180)deg-=360;if(Vector3.Dot(ax,bone)<0)deg=-deg;
+                    if(!float.IsNaN(deg))m.LeftForearm.rotation=Quaternion.AngleAxis(deg*.5f,bone)*m.LeftForearm.rotation;}
+            }
+            hand.rotation=goal;
         }
         // The draw's age (NativeTacticalMotion.DrawClipTime) on an arena body: from DrawTime before the fight's start (the round's GO, as the
         // spawn-in times it: NativeSpawnIn.Age) to it; NaN elsewhere (a menu body, no match).

@@ -33,7 +33,19 @@ namespace ChipArena.UnityConversion
             /// <summary>The draw (the bake puts the arms back on its gun bone: the pack keys the gun alone), its end in the clip (the pack's
             /// OnActionEnded) and how long it plays on the game's clock, ending on the fight's start (no rule draws a gun: the round's GO).</summary>
             public string Draw; public float DrawEnd, DrawTime;
+            /// <summary>How the support hand holds the model (Runtime VisualTacticalGrip; owner 2026-11-22: "think we need to fix this here").</summary>
+            public Grip Support;
         }
+        /// <summary>The support hand's hold in the weapon frame (+z the bore, +y its top, +x its right): the palm frame's finger line
+        /// (wrist to the middle knuckle) and its thumb side (pinky to index), and the hand's point that sits on the model's measured
+        /// Support (a share of the way from the wrist to the middle knuckle, then Depth m out of the palm).</summary>
+        public sealed class Grip { public System.Numerics.Vector3 Fingers, Thumb; public float Along, Depth; }
+        /// <summary>A long gun's fore-end, held from below: the palm under the handguard facing up, the fingers across under it and closed up
+        /// its far (right) side, the thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis.</summary>
+        public static readonly Grip ForeEnd=new Grip{Fingers=new System.Numerics.Vector3(1,0,.35f),Thumb=new System.Numerics.Vector3(0,0,1),Along=1,Depth=.025f};
+        /// <summary>The pistol's thumbs-forward wrap: the support palm on the grip's left side facing it, the fingers wrapped round the front
+        /// over the gun hand's, the thumb up along the frame pointing forward.</summary>
+        public static readonly Grip Wrap=new Grip{Fingers=new System.Numerics.Vector3(.25f,-.35f,1),Thumb=new System.Numerics.Vector3(0,1,0),Along=.55f,Depth=.015f};
         public const string PackWalk="A_FP_Walk", PackSprint="A_FP_Sprint";
         /// <summary>The long guns' support fist: the pack's TR15 foregrip hold, a closed left hand (its own support hands lie flat under the
         /// handguard, fingers out: owner 2026-11-21, "no open, splayed hands"); its fingers take the left hand wherever the support fist
@@ -42,11 +54,11 @@ namespace ChipArena.UnityConversion
         // The guns as first person pairs them (docs/FPS-TACTICAL.md): the pistol on the WK-11 Viper, the rifle on the SRM-12 (its shot
         // works the bolt), the machine gun on the TR15.
         public static readonly Gun Pistol=new Gun{Spec="pistol",Idle="A_FP_WK-11_Viper_Idle_Pose",Fire="A_FP_WK-11_Viper_Fire",Reload="A_FP_WK-11_Viper_Reload_Tactical",
-            FireReady=.42f,ReloadEnd=3.083f,Walk="A_FP_WK-11_Viper_Idle_Pose",Sprint=null,Draw="A_FP_WK-11_Viper_Quick_Draw",DrawEnd=.667f,DrawTime=.6f};
+            FireReady=.42f,ReloadEnd=3.083f,Walk="A_FP_WK-11_Viper_Idle_Pose",Sprint=null,Draw="A_FP_WK-11_Viper_Quick_Draw",DrawEnd=.667f,DrawTime=.6f,Support=Wrap};
         public static readonly Gun Rifle=new Gun{Spec="rifle",Idle="A_FP_SRM-12_Idle_Pose",Fire="A_FP_SRM-12_Fire",Reload="A_FP_SRM-12_Reload_Tactical",
-            FireReady=1.167f,ReloadEnd=2.75f,Walk=PackWalk,Sprint=PackSprint,Draw="A_FP_SRM-12_Draw",DrawEnd=1.5f,DrawTime=1.1f};
+            FireReady=1.167f,ReloadEnd=2.75f,Walk=PackWalk,Sprint=PackSprint,Draw="A_FP_SRM-12_Draw",DrawEnd=1.5f,DrawTime=1.1f,Support=ForeEnd};
         public static readonly Gun MachineGun=new Gun{Spec="machinegun",Idle="A_FP_TR15_Idle_Pose_Non_Grip",Fire=null,Reload="A_FP_TR15_Reload_Tactical",
-            FireReady=0,ReloadEnd=3.0f,Walk=PackWalk,Sprint=PackSprint,Kick=true,Draw="A_FP_TR15_Draw",DrawEnd=1.833f,DrawTime=1.2f};
+            FireReady=0,ReloadEnd=3.0f,Walk=PackWalk,Sprint=PackSprint,Kick=true,Draw="A_FP_TR15_Draw",DrawEnd=1.833f,DrawTime=1.2f,Support=ForeEnd};
         /// <summary>The gun a weapon spec plays on the pack (null: not a gun the pack covers).</summary>
         public static Gun For(string spec)=>spec=="pistol"?Pistol:spec=="rifle"?Rifle:spec=="machinegun"?MachineGun:null;
         /// <summary>Every clip the guns name (the bake's list; the local bake writes them into the motion bank).</summary>
@@ -92,6 +104,23 @@ namespace ChipArena.UnityConversion
         /// shaking while the trigger is held).</summary>
         public const float KickTime=.11f, KickPitch=2.4f;
         public static float Kick(Gun g,float age)=>g==null||!g.Kick||age<0||age>=KickTime?0:1-age/KickTime;
+
+        // ---- the support hand ----
+        /// <summary>The support hand lets go of the model over ReloadLetGo s after ReloadAt (the reload's free hand), takes it again over the
+        /// ReloadRegrip s before ReloadUntil (the clip is back on the gun there), and joins a draw over DrawJoin of it.</summary>
+        public const float ReloadLetGo=.15f, ReloadRegrip=.25f, DrawJoinFrom=.55f, DrawJoinTo=.9f;
+        /// <summary>The support hand's hold on the model (0..1): the pack's share of the upper body (`packShare`: its carry, its raise), less
+        /// the reload's free hand and a draw's first part (`drawAge`: s into the draw, NaN outside one). Every state the pack's layers hold
+        /// the gun in (the aim standing or walking, the run's and sprint's carries, a jump, a shot, a reload's start and end) grips it.</summary>
+        public static float GripWeight(Gun g,float packShare,Actor a,float time,float drawAge)
+        {
+            if(g?.Support==null||a==null)return 0;float w=Clamp01(packShare);
+            if(a.ReloadUntil>a.ReloadAt&&time>=a.ReloadAt&&time<a.ReloadUntil)
+                w*=1-Math.Min(Smooth((time-a.ReloadAt)/ReloadLetGo),Smooth((a.ReloadUntil-time)/ReloadRegrip));
+            if(!float.IsNaN(drawAge)&&drawAge>=0&&drawAge<g.DrawTime&&g.DrawTime>0)w*=Smooth((drawAge/g.DrawTime-DrawJoinFrom)/(DrawJoinTo-DrawJoinFrom));
+            return w;
+        }
+        private static float Smooth(float x){x=Clamp01(x);return x*x*(3-2*x);}
 
         // ---- the carry on the move ----
         /// <summary>The carry's clips and their shares at `time`: the walk's ready hold on its own clock (A), the sprint's port carry by

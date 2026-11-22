@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
             // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
             // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
-            public float Carry, CarrySprint, CarryShare, PitchKeep=1; public float[] CarryMix, FistMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
+            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip; public float[] CarryMix, FistMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -223,6 +223,23 @@ namespace ChipArena.UnityConversion
             Quaternion ra=m.RightArm!=null?m.RightArm.rotation:default,la=m.LeftArm!=null?m.LeftArm.rotation:default,head=m.Head.rotation;
             m.Spine.rotation=Quaternion.AngleAxis(-back,r)*m.Spine.rotation;
             if(m.RightArm!=null)m.RightArm.rotation=ra;if(m.LeftArm!=null)m.LeftArm.rotation=la;m.Head.rotation=head;
+        }
+        // A gun's aim turn and low carry on the hand that holds it (owner 2026-11-22: "the gun and hand aren't connected"): raised, the barrel
+        // turned onto the look (at most AimTurnLimit degrees, by the raise); lowered, tipped CarryTilt degrees down about its right axis (the
+        // pistol's low ready seats its own grip: none at rest). Both turn the gun hand at the wrist, and the gun is placed on the hand again
+        // (its hold, HoldPosition and `held`), so the grip never slides or turns in the palm.
+        private static void VisualGunWrist(VisualMotion m,Transform weapon,Actor a,float wgt,Quaternion held)
+        {
+            var wrist=Quaternion.identity;
+            if(m.Upper>0)
+            {
+                var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;var turn=Quaternion.FromToRotation(weapon.rotation*Vector3.forward,aim);
+                turn.ToAngleAxis(out float angle,out var axis);if(angle>180)angle-=360;
+                if(axis.sqrMagnitude>1e-8f&&!float.IsNaN(angle))wrist=Quaternion.AngleAxis(Mathf.Clamp(angle,-AimTurnLimit,AimTurnLimit)*m.Upper*wgt,axis);
+            }
+            if(m.Upper<1)wrist=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt*(m.Set.RestReady?1-Ease(m.Rest):1),wrist*weapon.rotation*Vector3.right)*wrist;
+            m.RightHand.rotation=wrist*m.RightHand.rotation;
+            weapon.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*held);
         }
         // The pistol's low ready (Set.RestReady; owner 2026-11-10, from their reference picture), by `w`: the grip before the right hip
         // just under the belt (ReadyGrip: right, up, forward of the hips, metres), the bore angled to the floor a little ahead and in
@@ -592,7 +609,8 @@ namespace ChipArena.UnityConversion
             // over the legs' motion by its eased weight.
             // The arms are free while the body idles, moves, rises, falls or lands (not in a roll, strike, reaction or block).
             bool ready=covered&&(pick.Locomotion||pick.Clip==m.Set.Idle||pick.Clip==m.Set.Jump||pick.Clip==m.Set.Fall||pick.Clip==m.Set.Land);
-            var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,VisualTacticalDrawAge(m,body,time));
+            float drawAge=VisualTacticalDrawAge(m,body,time);
+            var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,drawAge);
             // A long gun at rest, standing (Set.RestArms; owner 2026-11-10 "a resting pose (They're holding it downward)"): the arms
             // take the walk's low two-hand carry over the idle, eased; walking already carries it so, and a raise lays over it.
             m.Rest=Mathf.MoveTowards(m.Rest,covered&&(m.Set.RestArms!=null||m.Set.RestReady)&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
@@ -622,6 +640,8 @@ namespace ChipArena.UnityConversion
                 NativeVisualMotionClips.Finish(m.UpperMix,1);var mask=UpperMuscles;
                 for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.UpperMix[k]-m.Mix[k])*m.Upper;}
             }
+            // A pack gun's support hand on the model by the pack's share (NativeTacticalMotion.GripWeight; let go in a paired move's hold).
+            m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight(m.Set.Tactical,1-(1-m.CarryShare)*(1-m.Upper),a,time,drawAge)*(1-Mathf.Clamp01(m.VictimShare)):0;
             VisualTacticalFist(m);
             VisualMotionInertia(m,jumped,dt,keepLegs);
             if(keepLegs){VisualMotionApply(m,m.Legs);hipsAt=m.ProxyHips.localPosition;hipsTurn=m.ProxyHips.localRotation;}
@@ -721,15 +741,18 @@ namespace ChipArena.UnityConversion
                 // likewise, about its riser: its arrow line on the aim.
                 bool reloading=time>=a.ReloadAt&&time<a.ReloadUntil;
                 var aimed=m.Set.Gun&&!reloading?weaponHand:m.Set.Pull!=null?offHand:null;
-                if(aimed!=null&&m.Upper>0)
+                // (A gun's turns go on its hand's wrist and the gun follows the hand, below: VisualGunWrist.)
+                if(aimed!=null&&m.Upper>0&&!m.Set.Gun)
                 {
                     var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;var turn=Quaternion.FromToRotation(aimed.rotation*Vector3.forward,aim);
                     turn.ToAngleAxis(out float angle,out var axis);if(angle>180)angle-=360;
                     aimed.rotation=Quaternion.AngleAxis(Mathf.Clamp(angle,-AimTurnLimit,AimTurnLimit)*m.Upper*wgt,axis)*aimed.rotation;
                 }
-                // A lowered gun (a long gun at rest, any gun sprinting): the muzzle tipped down about the grip (the low ready carry;
-                // owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest).
-                if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt*(m.Set.RestReady?1-Ease(m.Rest):1),weaponHand.rotation*Vector3.right)*weaponHand.rotation;
+                // A raised gun's barrel turned onto the aim, and a lowered gun (a long gun at rest, any gun sprinting) tipped down to the low
+                // ready carry (owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest): both turns of the gun hand's wrist, the
+                // gun placed on the hand again after them (owner 2026-11-22: "sometimes it appears the gun and hand aren't connected"; they
+                // used to turn the gun alone about its grip, up to 35 and 20 degrees inside the palm).
+                if(m.Set.Gun&&!reloading)VisualGunWrist(m,weaponHand,a,wgt,heldTurn);
                 // Held in a paired move's victim clip: the weapon hangs head-down from the grip, and the support hand lets it go (below).
                 float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));
                 // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
@@ -743,6 +766,8 @@ namespace ChipArena.UnityConversion
                     m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);
                     if(m.Support>0){var turnHand=m.LeftHand.rotation;var origin=body.Root.transform;ArmReachTo(m.LeftArm,m.LeftForearm,m.LeftHand,m.LeftHand.position+(grip-fist)*m.Support*wgt,-origin.up-origin.right);m.LeftHand.rotation=turnHand;}
                 }
+                // A pack gun's support hand closed on the model at its measured Support (the long guns' fore-end, the pistol's wrap), last of all.
+                if(m.Set.Tactical!=null&&body.Held!=null&&body.Held.Supported)VisualTacticalGrip(m,weaponHand,body.Held.Support,body.Root.transform,m.Grip*wgt);
             }
         }
     }

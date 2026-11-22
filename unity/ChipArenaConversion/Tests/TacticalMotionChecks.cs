@@ -28,7 +28,7 @@ internal static class TacticalMotionChecks
     public static void Run(string root)
     {
         count=0;var book=new Book();
-        Sets(book);Timing(book);Layers(book);Carry(book);Sources(root);
+        Sets(book);Timing(book);Layers(book);Carry(book);Grips();Sources(root);
         Console.WriteLine("PASS tactical motion (third person): "+count+" checks: the old sets without the pack's clips, each gun's pack clips over its own idles and strides, the clips on the rules' clocks (reload, shot, bolt, settle, kick), the carry, presentation only, no pack code or bank in git");
     }
     private static void Sets(Book book)
@@ -131,6 +131,26 @@ internal static class TacticalMotionChecks
         Check(a==NativeTacticalMotion.Pistol.Idle&&b==null&&Near(w,.4f),"the pistol carries on its ready hold, its own sprint carry taking over as it sprints");
         book.Pack=false;NativeTacticalMotion.Carry(NativeTacticalMotion.Rifle,1,0,book,out a,out ta,out b,out tb,out mix,out w);Check(a==null&&w==0,"no carry without the clips");book.Pack=true;
     }
+    // The support hand (owner 2026-11-22: "think we need to fix this here"): it grips the model in every state the pack's layers hold the gun
+    // in, lets go only for the reload's free hand and a draw's first part, and its hold frames are sound.
+    private static void Grips()
+    {
+        foreach(var g in new[]{NativeTacticalMotion.Pistol,NativeTacticalMotion.Rifle,NativeTacticalMotion.MachineGun})
+        {
+            var s=g.Support;Check(s!=null&&s.Fingers.Length()>.5f&&s.Thumb.Length()>.5f&&Math.Abs(System.Numerics.Vector3.Dot(System.Numerics.Vector3.Normalize(s.Fingers),System.Numerics.Vector3.Normalize(s.Thumb)))<.8f&&s.Along>0&&s.Along<=1&&s.Depth>0&&s.Depth<.05f,g.Spec+": a sound hold frame");
+            var a=new Actor{Weapon=WeaponId.Rifle,ReloadAt=-100,ReloadUntil=-99};
+            Check(Near(NativeTacticalMotion.GripWeight(g,1,a,10,float.NaN),1)&&Near(NativeTacticalMotion.GripWeight(g,.4f,a,10,float.NaN),.4f)&&NativeTacticalMotion.GripWeight(g,0,a,10,float.NaN)==0,g.Spec+": gripped by the pack's share (aim, shot, carry, jump)");
+            a.ReloadAt=20;a.ReloadUntil=21.1f;
+            Check(Near(NativeTacticalMotion.GripWeight(g,1,a,20,float.NaN),1)&&NativeTacticalMotion.GripWeight(g,1,a,20+NativeTacticalMotion.ReloadLetGo,float.NaN)<1e-4f&&NativeTacticalMotion.GripWeight(g,1,a,20.55f,float.NaN)<1e-4f,g.Spec+": the reload's start lets go over ReloadLetGo");
+            float back=NativeTacticalMotion.GripWeight(g,1,a,21.1f-NativeTacticalMotion.ReloadRegrip*.5f,float.NaN);
+            Check(back>.2f&&back<.8f&&Near(NativeTacticalMotion.GripWeight(g,1,a,21.1f,float.NaN),1)&&Near(NativeTacticalMotion.GripWeight(g,1,a,21.3f,float.NaN),1),g.Spec+": the reload's end takes it again by ReloadUntil");
+            a.ReloadAt=-100;a.ReloadUntil=-99;
+            Check(NativeTacticalMotion.GripWeight(g,1,a,10,0)==0&&NativeTacticalMotion.GripWeight(g,1,a,10,g.DrawTime*NativeTacticalMotion.DrawJoinFrom)==0&&Near(NativeTacticalMotion.GripWeight(g,1,a,10,g.DrawTime*NativeTacticalMotion.DrawJoinTo),1),g.Spec+": the draw's support hand joins late");
+            Check(NativeTacticalMotion.GripWeight(null,1,a,10,float.NaN)==0,"no grip without a gun");
+        }
+        Check(NativeTacticalMotion.Rifle.Support==NativeTacticalMotion.ForeEnd&&NativeTacticalMotion.MachineGun.Support==NativeTacticalMotion.ForeEnd&&NativeTacticalMotion.Pistol.Support==NativeTacticalMotion.Wrap,"the long guns hold the fore-end, the pistol wraps");
+        Check(NativeTacticalMotion.ForeEnd.Thumb.Z>.9f&&NativeTacticalMotion.ForeEnd.Fingers.X>.9f&&NativeTacticalMotion.Wrap.Thumb.Y>.9f&&NativeTacticalMotion.Wrap.Fingers.Z>.9f,"the fore-end from below (fingers across to the far side, thumb forward); the pistol thumbs-forward (fingers round the front, thumb up the frame)");
+    }
     private static void Sources(string root)
     {
         string core=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeTacticalMotion.cs")),pres=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTacticalMotionPresentation.cs"));
@@ -143,8 +163,21 @@ internal static class TacticalMotionChecks
         Check(carry>0&&upper>carry,"the carry goes on before the upper layer (an aim, a shot or a reload lays over it)");
         Check(motion.Contains("Quaternion.Slerp(m.HoldRotation,m.TacHold,1-(1-m.CarryShare)*(1-m.Upper))"),"the hand's turn on the gun: the pack's ready hold by the pack's share, the gun's own set's at rest");
         int fist=motion.IndexOf("VisualTacticalFist(m);",StringComparison.Ordinal),inertia=motion.IndexOf("VisualMotionInertia(m,jumped,dt,keepLegs);",StringComparison.Ordinal);
-        Check(fist>0&&inertia>fist&&pres.Contains("n[i].StartsWith(\"LeftHand.\",System.StringComparison.Ordinal)")&&pres.Contains("m.Set.Tactical==NativeTacticalMotion.Pistol||m.Support<=0"),"a long gun's support hand closes on the handguard (its fingers only, by the support's hold), before the pose goes on");
-        Check(motion.Contains("NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,VisualTacticalDrawAge(m,body,time))")&&pres.Contains("NativeSpawnIn.Age(match.Phase,match.PhaseEnd,match.FightAt,time)"),"the draw on the round's GO as the spawn-in times it");
+        Check(fist>0&&inertia>fist&&pres.Contains("n[i].StartsWith(\"LeftHand.\",System.StringComparison.Ordinal)")&&pres.Contains("if(m.Set.Tactical==null||m.Grip<=0)return;")&&motion.Contains("m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight("),"the support hand closes (its fingers only, by the grip's weight), before the pose goes on");
+        Check(motion.Contains("float drawAge=VisualTacticalDrawAge(m,body,time);")&&motion.Contains("NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,drawAge)")&&pres.Contains("NativeSpawnIn.Age(match.Phase,match.PhaseEnd,match.FightAt,time)"),"the draw on the round's GO as the spawn-in times it");
+        // The anchoring (owner 2026-11-22: "sometimes it appears the gun and hand aren't connected"): the gun's aim turn and low carry turn the
+        // hand's wrist and the gun is placed on the hand again after them; the support hand is seated last, after the weapon; the hit
+        // puppet's bend comes after the motion and carries the rig's hands with the drawn ones; the model draws after every pose.
+        int wrist=motion.IndexOf("if(m.Set.Gun&&!reloading)VisualGunWrist(m,weaponHand,a,wgt,heldTurn);",StringComparison.Ordinal),hang=motion.IndexOf("VisualVictimHang(weaponHand,",StringComparison.Ordinal),seat=motion.IndexOf("VisualTacticalGrip(m,weaponHand,body.Held.Support,body.Root.transform,m.Grip*wgt);",StringComparison.Ordinal),support=motion.IndexOf("ArmReachTo(m.LeftArm,m.LeftForearm,m.LeftHand,m.LeftHand.position+(grip-fist)*m.Support*wgt",StringComparison.Ordinal);
+        Check(wrist>0&&hang>wrist&&support>hang&&seat>support,"the wrist's turns, then the hang, the old support reach and the pack's grip last");
+        Check(motion.Contains("m.RightHand.rotation=wrist*m.RightHand.rotation;")&&motion.Contains("weapon.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*held);")&&!motion.Contains("weaponHand.rotation=Quaternion.AngleAxis(CarryTilt"),"the gun's turns are the wrist's: no turn of the gun alone inside the palm");
+        string bodyPres=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeVisualBodyPresentation.cs")).Replace("\r\n","\n");
+        int pose=bodyPres.IndexOf("VisualMotionPose(body,rig,a,time);",StringComparison.Ordinal),fit=bodyPres.IndexOf("VisualHandFit(body,rig,held);",StringComparison.Ordinal),puppet=bodyPres.IndexOf("HitPuppetPilot(body,rig,a,time);",StringComparison.Ordinal);
+        Check(pose>0&&fit>pose&&puppet>fit,"the motion, then the hand's fit, then the hit puppet's bend (which moves the rig's hands with the drawn ones)");
+        string hitPres=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHitPuppetPresentation.cs"));
+        Check(hitPres.Contains("hand.SetPositionAndRotation(drawn.position+turn*(hand.position-hitPuppetHandAt[side]),turn*hand.rotation);"),"a bent hand carries its weapon frame");
+        string arenaPres=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ArenaPresentation.cs"));
+        Check(arenaPres.Contains("VisualBodyRestore(a.Id);PrepareCapturedPose(a,p,renderTime);VisualBodyPose(a,renderTime);")&&arenaPres.Contains("// Pose everyone before drawing"),"every body poses before any model draws (the same frame, no lag)");
         // The bank and the clips are local (LocalAssets is git-ignored): none in the repository.
         var assets=Path.Combine(root,"Assets");
         Check(!Directory.EnumerateFiles(assets,"*.bytes",SearchOption.AllDirectories).Any(f=>Path.GetFileName(f).StartsWith("ChipArenaVisualMotion",StringComparison.Ordinal)&&!f.Replace('\\','/').Contains("/LocalAssets/")),"no motion bank outside LocalAssets");
