@@ -1,3 +1,83 @@
+## 2026-11-21 — Claude: releases 14 and 15: Belvedere Camp on A1, and PuppetMaster hit reactions (integrator)
+- **Release 14:** Belvedere Camp lives in the Expedition hub on Astra's A1 rules (owner: the hub "life" update; awning "Move to 1 m").
+  - Merged `claude/camp-a1` `5d4ff955`: Astra's `codex/belvedere-camp-a1` `fe75f109` plus C1's camp art, the survivors, the pod climb-out and the awning posts at 1.05 m.
+  - Published: shared and the builder at `0a30de5d`. Test channel revision `639309062854679254` (build `c597d92d`, 394.0 MiB).
+  - Drive zip: camp bank `7aab4f8d`. The previous zip is kept as `LocalAssets-2026-11-21-before-camp-a1.zip`.
+  - Checks:
+    - PrototypeBuild.Validate (C1, all three code commits) and seven live Expedition starts;
+    - the full suite at `5d4ff955` (1,102 groups, exit 0);
+    - the Unity compile and the build.
+    - The pin scan's 6 hits were punctuation fragments.
+  - Not run: a guest/two-peer view, a multi-pod party, the Low tier.
+- **Release 15:** non-lethal hits bend pilots and zombies through PuppetMaster (owner: "Utilize Ragdoll Asset for hit reactions").
+  - Merged `claude/puppet-hits` `04a8d5c3` (P1).
+  - Published: shared and the builder at `0fc73383`. Test channel revision `639309092387737040` (build `da50af7e`, 394.1 MiB).
+  - Drive zip: 106 private add-on paths (PuppetMaster runtime and `ChipArenaPuppetBridge`) through `tools/private_addons.py`. The builder log shows them imported and compiled. The previous zip is kept as `LocalAssets-2026-11-21-before-puppet-hits.zip`.
+  - Checks: the full suite at `73890694` (1,103 groups, exit 0), the Unity compile and the build.
+  - Not run: two clients, a Windows player outside the builder.
+- **Editor:** rests on `0fc73383` with the camp bank `7aab4f8d` and the PuppetMaster add-ons installed.
+  - F1's unshipped `ChipArenaViewMotion.bytes` sits in its Resources. Hold it out of any zip pack until first person ships.
+- **In flight:**
+  - F1 `claude/fps-tactical`: first person on the pack's guns (owner: "Use pack guns"), with the pistol support-hand grip, the arms fix and the pack's own walk/sprint/jump/fire.
+  - T1 `claude/tp-tactical`: the pack's full-body clips for guns in third person.
+
+## 2026-11-21 — Claude (P1): physical hit reactions on PuppetMaster (presentation only)
+Owner: "Utilize Ragdoll Asset for hit reactions" (RootMotion's PuppetMaster, bought 2026-11-21).
+**Branch:** `claude/puppet-hits` from shared `ead0ef02`. Pushed, not merged, not released. Docs: `docs/HIT-PUPPETS.md`.
+- **What:** a pilot (player or bot) or an add drawn on the model that takes a non-lethal hit has its drawn pose pushed by
+  PuppetMaster's active ragdoll (BehaviourPuppet): the muscles near the hit unpin, an impulse lands at the hit point along the
+  blow, scaled to it (Core `NativeHitPuppetRules`: greatsword heavy about 79 N·s, sword 35, rifle 26, pistol 11), and the pose
+  regains in about a second, then fades back to the drawn pose and sleeps.
+- **How:** game code has only the hook (`Runtime/NativeHitPuppets.cs`) and its policy (`Runtime/NativeHitPuppetPresentation.cs`):
+  pilot hits from the frame's events (`ObserveHits`), add hits from `HordeHit`, each landing on its body's own clock; a killing
+  hit pushes nothing. Each puppet steps right after its body is posed (`VisualBodyPose`, `ZombieModelBind`), before hats,
+  gear, cloth or effects read the bones; rotations only (hips, feet and root stay the game's); the rig's hands follow the drawn
+  hands for the frame, so the held weapon stays in the bent hand. PuppetMaster's runtime scripts and the bridge are local
+  (`Assets/LocalAssets/PrivateAddons`, never in git); the bridge registers by reflection, so it compiles on any branch.
+- **Cost:** 8 bodies at once on High, 4 on Balanced (half with Reduced effects), none on the low tier (Performance = today's
+  look); within 28/18 m of the camera; one puppet made a frame (a volley on a crowd lands body by body), 16 kept; a sleeping
+  puppet costs nothing; each puppet has its own physics scene and no collider. Measured in the Editor (Cyber City, six shamblers
+  hit together every 0.2 s, all six reacting the whole window, three AFTER/BEFORE pairs): frame means 19.25/18.59, 19.51/19.15
+  and 19.81/20.64 ms (p95 20.86/20.16, 21.47/20.87, 21.47/22.59): within the Editor's run-to-run noise; the bridge's own step
+  0.68-0.80 ms a frame for six (about 0.12 ms a puppet); making one 1.0-1.9 ms (the session's first 12-14 ms: JIT and the first
+  scene). Performance tier (`pref=graphics:performance`, twice): no puppet made or stepped.
+- **Death:** a pilot killed while bent falls from that drawn pose (`VisualRigFromDrawn` copies the drawn bones); gibbing,
+  bisects and severs unchanged. A dying add's puppet blends back during its fall.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the puppet reads
+  replicated events and bends only the drawn pose.
+- **Voxel dependency:** `Runtime/NativeHitPuppetPresentation.cs` read 0 -> 1 (`rig.Bones[`): the held weapon, its muzzle and
+  trails are drawn at the game rig's hand (VisualWeaponDrawn), so the puppet carries the rig's hands with the bent drawn hands
+  for its frame (VisualBodyRestore puts them back). The package that draws held weapons from the model's hand retires it.
+- **Builder path (for the integrator; no tooling change, the existing private add-on path, docs/PRIVATE-ADDONS.md):** the
+  add-on tree is in the Editor checkout's `Assets/LocalAssets/PrivateAddons` (106 paths, 49 scripts); add
+  `--addons-allowlist "F:/Chip Arena Development/scratch/puppet-hits/local/private-addons-allowlist.json"` to the usual
+  `pack_visual_body.py <Drive zip> <new> --project <Editor checkout>/unity/ChipArenaConversion --with-cloth` repack, then
+  `install_local_assets.py <new> --check --require-cloth`. The Drive zip has no `private-addons.json` yet, so nothing is replaced.
+  Dry run on a copy of the current Drive zip (19:40): packed, the check passed (cloth 414 files, 106 add-on paths listed); the
+  output was deleted and the Drive zip was not touched.
+- **For Astra (build tooling, nothing changed):** `tools/check_unity_compile.py` references every Unity module, but the project
+  enables nine; PuppetMaster's `PuppetMasterSetup.cs` (names `UnityEngine.Cloth`) passed it and failed in the Editor (P1's hold
+  rolled it back within a minute; the Editor was never left broken). The add-on set leaves that file out; local add-ons are now
+  checked against the Editor's own `Library/Bee/artifacts/*/Assembly-CSharp.rsp` references.
+- **Checks:** full CoreTests (clean LF worktree, `expedition_path.patch`, the 14 stage banks) at `7abc5703`: 1,103 groups, exit 0
+  (`HitPuppetChecks` new), and at `738fbd14` (code as pushed): 1,103 groups, exit 0; `--hit-puppets` at the head; `tools/check_unity_compile.py` passed; `git diff --check` clean; the
+  Editor compiled the add-ons and the branch; captures (below).
+- **Clips:** `F:/Chip Arena Development/scratch/puppet-hits/clips/` (before | after on the same build, the bridge off by
+  `Temp/hitpuppets-off.flag`; 1/30 s frames at 10 fps, 3x slower): `greatsword-bot.mp4`, `katana-bot.mp4`,
+  `rifle-bot-shot-to-death.mp4` (the local pilot's AI fires; only the AFTER run's bot died in the window: the corpse continues
+  from the bent pose), `greatsword-hit-then-kill.mp4` (the second swing's bisect, both runs at the same frame: the halves start
+  from the drawn pose, gibbing intact), `zombies-rifle.mp4` (five shamblers from a fixed side camera; the push is modest at a
+  rifle's weight and the zombies' own stagger dominates). Captures in `.../puppet-hits/cap/` (h2, h3).
+- **Fixed on the way (found in the captures):** a hit at the neck flung the 1.5 kg neck and head (the bridge now never strikes
+  the neck and caps a push at 3.2 m/s over what the struck part carries); a volley on a crowd made one puppet and dropped the
+  other hits (they now wait for the next frame's making); blade-class cuts (Katana, Fangs, Glaive) pushed nothing on pilots
+  (their detail names the move: now counted as blows, as HordeHit already did).
+- **Not run:** two clients (host and guest), a Windows player build, the builder, Medium-tier captures.
+- **Risks:** the push's feel is tuned on a few Editor captures (a greatsword blow throws the head back hard; tune `MuscleSpring`,
+  `MuscleDamper`, `MaxKick` in the bridge or the bases in `NativeHitPuppetRules`); the session's first puppet costs about 13 ms
+  once; guests land a pilot hit on the interpolated body (the hit point is taken relative to the body).
+- **Next:** the owner reviews the clips; the integrator merges and packs the add-ons into the Drive zip.
+
 ## 2026-11-21 — Claude (C1): Belvedere Camp on A1: the camp's art and survivors live on Astra's blocks, the ramp climb-out, the awning at 1 m (owner: go ahead if Astra hasn't shipped it; presentation, plus one owner-decided table row)
 
 **Branch:** `claude/camp-a1`, from Astra's draft `codex/belvedere-camp-a1` (`fe75f109`: A1's rules, unchanged) merged with shared `ead0ef02` (`78b3d898`; DEV_LOG kept both sides). Implementation head `56f2bdb2` (after `ebf3bd6b` and `3026737c`). Pushed; not merged, not released.

@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
             var eye=WorldEye;float distance=eye==null?0:(t.position-eye.transform.position).sqrMagnitude;ZombieGarmentCloth(z,distance);if(NativeStationKinds.Is(z.Kind))ZombieFarDetail(z,distance>(z.Far?ZombieFarFrom-ZombieFarSlack:ZombieFarFrom));
             // Conservative bounds include the complete gait, long arms and Hulk scale; close shadows stay full-rate.
             bool visible=eye==null||!crowdFrustumReady||GeometryUtility.TestPlanesAABB(crowdFrustum,new Bounds(t.position+Vector3.up*2*rt.lossyScale.y,Vector3.one*8*Mathf.Max(1,rt.lossyScale.y)));
-            bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden);
+            bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden)||HitPuppetAwake(z.Body);
             if(!z.PoseClock.Due(Time.unscaledTimeAsDouble,distance,visible,urgent,z.Id))
             {z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;ZombieCarry(z,t,flash);ZombieSuit(z,flash);return;}
             long poseAt=System.Diagnostics.Stopwatch.GetTimestamp();
@@ -131,6 +131,8 @@ namespace ChipArena.UnityConversion
             {var of=z.Body.Binding.Rig.Of;var at=z.Body.Binding.State.Position;for(int b=0;b<z.Shift.Length;b++)z.Shift[b]=of[b]<0?NVector3.Zero:at[of[b]]-minionPose.WorldPosition[b];}
             ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);ZombieFusedSway(z);ZombieBeastJaw(z);
             if(z.Variant.Carry!=null){z.Body.Binding.WeaponFrame(pose,out var cp,out var cq);z.Carry=Matrix4x4.TRS(cp,cq,Vector3.one);z.CarryKnown=true;}
+            // The physical hit reactions bend the pose just drawn (NativeHitPuppetPresentation.cs), before its gear and suit read it.
+            HitPuppetZombie(z);
             ZombieCarry(z,t,flash);ZombieSuit(z,flash);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);

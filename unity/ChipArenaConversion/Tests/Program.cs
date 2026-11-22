@@ -101,6 +101,9 @@ internal static class Program
             // Editor parity (2026-11-21, owner: the shipped build reads much darker than what he approved): the rig's Editor-parity key and the default sky reflection.
             if(args.Length==0||args.Length==1&&args[0]=="--render-parity")RenderParityChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--render-parity")return 0;
+            // Physical hit reactions (owner 2026-11-21: "Utilize Ragdoll Asset for hit reactions"): the push, the caps, the hook and its wiring.
+            if(args.Length==0||args.Length==1&&args[0]=="--hit-puppets")HitPuppetChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--hit-puppets")return 0;
             if(args.Length==5&&args[0]=="--meridian-lamps-probe"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianLampChecks.Probe(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv));return 0;}
             if((args.Length==6||args.Length==7)&&args[0]=="--meridian-stairs-export"){var inv=System.Globalization.CultureInfo.InvariantCulture;MeridianStairsChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],inv),float.Parse(args[3],inv),float.Parse(args[4],inv),args[5],args.Length==7&&args[6]=="roles");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}

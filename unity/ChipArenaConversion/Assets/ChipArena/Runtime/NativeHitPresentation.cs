@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         // The local pilot's recent staggering hits (Core/NativeStagger): bullets, magic and blasts kick the view too.
         private readonly StaggerHit[] kickHits=new StaggerHit[NativeHitLedger.StaggerSlots];
         /// <summary>Reads this frame's events (once per event id); Render calls it before posing, the camera kick may call it first.</summary>
-        public void ObserveHits(Snapshot s)=>hitLedger.Observe(s);
+        public void ObserveHits(Snapshot s){hitLedger.Observe(s);HitPuppetsObserve(s);}
         /// <summary>
         /// The local pilot's first-person camera kick for a melee hit or a blocked melee blow, applied to the camera after the
         /// aim point was taken (the view is rebuilt from the look angles every frame, so the kick never accumulates or reaches
