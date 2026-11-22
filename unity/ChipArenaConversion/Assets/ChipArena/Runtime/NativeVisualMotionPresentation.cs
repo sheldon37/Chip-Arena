@@ -694,6 +694,7 @@ namespace ChipArena.UnityConversion
             if(m.Set.Gun&&m.Upper>0&&covered)VisualGunUpright(m,body.Root.transform,m.Upper*wgt);
             // A pack gun raised: the spine pitched onto the look (its ready hold is level), the machine gun's kick on each shot.
             if(m.Set.Tactical!=null&&m.Upper>0&&covered)VisualTacticalPitch(m,body.Root.transform,a,time,m.Upper*wgt);
+            if(m.Set.Tactical!=null&&covered)VisualTacticalReach(m,body.Root.transform,a,(1-(1-m.CarryShare)*(1-m.Upper))*wgt);
             // A pistol at rest: its low ready (Set.RestReady), before the weapon follows the hand.
             if(m.Set.RestReady&&m.Rest>0&&m.HasHold)VisualPistolReady(m,body.Root.transform,Ease(m.Rest)*wgt);
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).

@@ -10,6 +10,9 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The carry's ease in and out (s), the most the spine pitches the aim (degrees) and the pitch's ease off for a reload.</summary>
         private const float CarryEase=.18f, TacticalPitchMax=60f, TacticalPitchEase=.15f;
+        /// <summary>How far (m) the pistol's hands reach out past the pack's hold: its first-person ready hold keeps the pistol a hand's
+        /// breadth before the eye (framed for its camera), which in third person read as the gun at the visor.</summary>
+        public const float PistolReach=.17f;
         // The spine's share of the pitch from the pelvis up (Spine, Chest, UpperChest).
         private static readonly float[] TacticalPitchShare={.3f,.35f,.35f};
 
@@ -50,6 +53,17 @@ namespace ChipArena.UnityConversion
             if(Mathf.Abs(deg)<1e-3f)return;
             var right=root.right;Transform[] chain={m.Spine,m.Chest,m.UpperChest};
             for(int i=0;i<chain.Length;i++)if(chain[i]!=null)chain[i].rotation=Quaternion.AngleAxis(-deg*TacticalPitchShare[i],right)*chain[i].rotation;
+        }
+        // The pistol held out (PistolReach) while the pack's hold has it (raised or carried), both hands together along the look (raised) or
+        // the body's facing (carried), the elbows down and out; eased off through a reload (its hands go to the belt). By `w`.
+        private static void VisualTacticalReach(VisualMotion m,Transform root,Actor a,float w)
+        {
+            if(m.Set.Tactical!=NativeTacticalMotion.Pistol||w<=1e-4f||m.RightArm==null||m.RightForearm==null||m.LeftArm==null||m.LeftForearm==null||m.LeftHand==null)return;
+            float raised=Mathf.Clamp01(m.Upper);var along=Vector3.Slerp(root.forward,Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward,raised);
+            var push=along.normalized*(PistolReach*w*m.PitchKeep);if(push.sqrMagnitude<1e-8f)return;var up=root.up;var side=root.right;
+            Quaternion rh=m.RightHand.rotation,lh=m.LeftHand.rotation;
+            ArmReachTo(m.RightArm,m.RightForearm,m.RightHand,m.RightHand.position+push,-up+side*.6f);m.RightHand.rotation=rh;
+            ArmReachTo(m.LeftArm,m.LeftForearm,m.LeftHand,m.LeftHand.position+push,-up-side*.6f);m.LeftHand.rotation=lh;
         }
     }
 }
