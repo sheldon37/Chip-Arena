@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
             tf.Normalize();ta-=Vector3.Dot(ta,tf)*tf;if(ta.sqrMagnitude<1e-8f)return;ta.Normalize();
             var onto=Quaternion.LookRotation(tf,ta)*Quaternion.Inverse(Quaternion.LookRotation(f,across));
             var anchor=hand.position+f*(len*g.Along)+Vector3.Cross(across,f)*g.Depth;var local=Quaternion.Inverse(hand.rotation)*(anchor-hand.position);
-            var goal=Quaternion.Slerp(hand.rotation,onto*hand.rotation,w);var at=weapon.position+weapon.rotation*support;
+            var goal=Quaternion.Slerp(hand.rotation,onto*hand.rotation,w);var at=weapon.position+weapon.rotation*(support+new Vector3(g.Offset.X,g.Offset.Y,g.Offset.Z));
             var target=Vector3.Lerp(hand.position,at-goal*local,w);VisualShoulderReach(m.LeftShoulder,m.LeftArm,m.LeftForearm,hand,target);
             ArmReachTo(m.LeftArm,m.LeftForearm,hand,target,-root.up-root.right*.8f);
             // Half the wrist's twist about the forearm into the forearm (no wrung wrist), then the hand on its hold.

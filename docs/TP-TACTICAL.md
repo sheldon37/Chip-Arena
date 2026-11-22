@@ -70,7 +70,9 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
   draw over its last part). `VisualTacticalGrip` turns the palm's frame (wrist to the middle knuckle, pinky to index) onto the gun's
   hold and reaches the arm so the hand's anchor sits on the model's measured `Support` (each Standard and Arsenal model's own):
   - the long guns' fore-end (`ForeEnd`): the palm under the handguard, the fingers across under it and closed up its far side, the
-    thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis;
+    thumb along its near side pointing forward, the middle knuckle under the far edge (`Offset`: 2.5 cm right of the measured
+    `Support`, 3.3 cm below it; with the knuckle under the handguard's middle the curled fingers rose through it and came out on
+    the near side);
   - the pistol's thumbs-forward wrap (`Wrap`): the support palm on the grip's left side, the fingers round the front over the gun
     hand's, the thumb up the frame pointing forward.
   The fingers close by the same weight on the grip's own finger pose (`Grip.Hand`, `VisualTacticalFist`): the long guns' knuckles

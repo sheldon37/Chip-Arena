@@ -38,16 +38,18 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The support hand's hold in the weapon frame (+z the bore, +y its top, +x its right): the palm frame's finger line
         /// (wrist to the middle knuckle) and its thumb side (pinky to index), and the hand's point that sits on the model's measured
-        /// Support (a share of the way from the wrist to the middle knuckle, then Depth m out of the palm).</summary>
-        public sealed class Grip { public System.Numerics.Vector3 Fingers, Thumb; public float Along, Depth; public float[] Hand; }
+        /// Support (a share of the way from the wrist to the middle knuckle, then Depth m out of the palm), moved by Offset (weapon frame, m).
+        /// The long guns put the middle knuckle under the handguard's far edge (its fingers rise up the far side and curl over the top; on
+        /// the handguard's middle they rose through it and came out on the near side).</summary>
+        public sealed class Grip { public System.Numerics.Vector3 Fingers, Thumb, Offset; public float Along, Depth; public float[] Hand; }
         /// <summary>The left hand's finger muscles a Grip's Hand gives, in its order (each "LeftHand." + name, Unity's humanoid muscles:
         /// negative curls a joint, positive stretches it; a spread near the game's own open hand keeps the fingers together).</summary>
         public static readonly string[] HandMuscles={"Thumb.1 Stretched","Thumb.Spread","Thumb.2 Stretched","Thumb.3 Stretched","Index.1 Stretched","Index.Spread","Index.2 Stretched","Index.3 Stretched",
             "Middle.1 Stretched","Middle.Spread","Middle.2 Stretched","Middle.3 Stretched","Ring.1 Stretched","Ring.Spread","Ring.2 Stretched","Ring.3 Stretched","Little.1 Stretched","Little.Spread","Little.2 Stretched","Little.3 Stretched"};
         /// <summary>A long gun's fore-end, held from below: the palm under the handguard facing up, the fingers across under it and closed up
-        /// its far (right) side, the thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis. Its fingers
+        /// its far (right) side, the thumb along its near side pointing forward, the middle knuckle under the far edge. Its fingers
         /// (Hand): the knuckles bent up the far side, the middle and end joints curled over its top edge, together; the thumb straight.</summary>
-        public static readonly Grip ForeEnd=new Grip{Fingers=new System.Numerics.Vector3(1,0,.35f),Thumb=new System.Numerics.Vector3(0,0,1),Along=1,Depth=.025f,
+        public static readonly Grip ForeEnd=new Grip{Fingers=new System.Numerics.Vector3(1,0,.35f),Thumb=new System.Numerics.Vector3(0,0,1),Along=1,Depth=0,Offset=new System.Numerics.Vector3(.025f,-.033f,0),
             Hand=new[]{-.3f,0,.2f,.3f, -.9f,-.05f,-1f,-.7f, -1f,-.45f,-1f,-.7f, -1.05f,-.05f,-1f,-.7f, -1.1f,.17f,-.95f,-.6f}};
         /// <summary>The pistol's thumbs-forward wrap: the support palm on the grip's left side facing it, the fingers wrapped round the front
         /// over the gun hand's, the thumb up along the frame pointing forward. Its fingers (Hand): curled round the grip's front, together;

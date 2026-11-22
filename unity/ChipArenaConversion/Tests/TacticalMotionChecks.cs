@@ -137,13 +137,14 @@ internal static class TacticalMotionChecks
     {
         foreach(var g in new[]{NativeTacticalMotion.Pistol,NativeTacticalMotion.Rifle,NativeTacticalMotion.MachineGun})
         {
-            var s=g.Support;Check(s!=null&&s.Fingers.Length()>.5f&&s.Thumb.Length()>.5f&&Math.Abs(System.Numerics.Vector3.Dot(System.Numerics.Vector3.Normalize(s.Fingers),System.Numerics.Vector3.Normalize(s.Thumb)))<.8f&&s.Along>0&&s.Along<=1&&s.Depth>0&&s.Depth<.05f,g.Spec+": a sound hold frame");
+            var s=g.Support;Check(s!=null&&s.Fingers.Length()>.5f&&s.Thumb.Length()>.5f&&Math.Abs(System.Numerics.Vector3.Dot(System.Numerics.Vector3.Normalize(s.Fingers),System.Numerics.Vector3.Normalize(s.Thumb)))<.8f&&s.Along>0&&s.Along<=1&&s.Depth>=0&&s.Depth<.05f&&s.Offset.Length()<.05f,g.Spec+": a sound hold frame");
             var h=s?.Hand;Check(h!=null&&h.Length==NativeTacticalMotion.HandMuscles.Length,g.Spec+": the support hand's own finger pose, one value a muscle");
             if(h!=null&&h.Length==20)
             {
                 bool curled=true,together=true;for(int f=1;f<5;f++){curled&=h[f*4]<-.4f&&h[f*4+2]<-.6f&&h[f*4+3]<-.3f;together&=Math.Abs(h[f*4+1])<=.5f;}
                 Check(curled&&together,g.Spec+": the support hand's fingers curled round the gun at every joint, together (no open, splayed hand)");
                 Check(h[2]>=0&&h[3]>=0,g.Spec+": the support thumb straight along the gun");
+                if(s==NativeTacticalMotion.ForeEnd)Check(s.Along==1&&s.Offset.X>.015f&&s.Offset.Y<-.02f,g.Spec+": the support hand's middle knuckle under the handguard's far edge (the fingers up the far side)");
             }
             var a=new Actor{Weapon=WeaponId.Rifle,ReloadAt=-100,ReloadUntil=-99};
             Check(Near(NativeTacticalMotion.GripWeight(g,1,a,10,float.NaN),1)&&Near(NativeTacticalMotion.GripWeight(g,.4f,a,10,float.NaN),.4f)&&NativeTacticalMotion.GripWeight(g,0,a,10,float.NaN)==0,g.Spec+": gripped by the pack's share (aim, shot, carry, jump)");
@@ -179,6 +180,7 @@ internal static class TacticalMotionChecks
         Check(wrist>0&&hang>wrist&&support>hang&&seat>support,"the wrist's turns, then the hang, the old support reach and the pack's grip last");
         Check(motion.Contains("if(m.Set.Tactical!=null){m.RightHand.rotation=m.RightHand.rotation*heldTurn*Quaternion.Inverse(m.TacHold);heldTurn=m.TacHold;}")&&motion.IndexOf("heldTurn=m.TacHold;}",StringComparison.Ordinal)<wrist,"a pack gun sits in the hand at one hold (the pack's); the two holds' difference is the wrist's");
         Check(motion.Contains("(1-(m.Set.RestArms!=null?Ease(m.Rest):0))"),"a long gun at rest grips its handguard too");
+        Check(pres.Contains("var at=weapon.position+weapon.rotation*(support+new Vector3(g.Offset.X,g.Offset.Y,g.Offset.Z));"),"the support hand's anchor on the model's measured Support, moved by its grip's offset");
         int reachAt=pres.IndexOf("VisualShoulderReach(m.LeftShoulder,m.LeftArm,m.LeftForearm,hand,target);",StringComparison.Ordinal),armAt=pres.IndexOf("ArmReachTo(m.LeftArm,m.LeftForearm,hand,target,-root.up-root.right*.8f);",StringComparison.Ordinal);
         Check(reachAt>0&&armAt>reachAt&&pres.Contains("public const float ShoulderReachMax=30f;")&&motion.Contains("m.LeftShoulder=Body(HumanBodyBones.LeftShoulder);"),"a fore-end past the arm's reach brings the shoulder forward (at most 30 degrees) before the arm reaches");
         Check(motion.Contains("m.GripHold=m.Set.Tactical!=null&&m.Set.RestArms!=null?Mathf.MoveTowards(m.GripHold,ready?1:0,dt>0?dt/UpperEase:1):0;")&&motion.Contains("GripWeight(m.Set.Tactical,Mathf.Max(packShare,Ease(m.GripHold)),"),"a long gun grips through the hand-over between its rest, carry and raise (the body's readiness, eased once)");
