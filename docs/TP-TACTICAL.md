@@ -16,7 +16,9 @@ the upper body, on the game's own gun models and Arsenal skins:
 | Shot | `Fire` (the kick) | `Fire` (shot and bolt) | procedural kick per shot (the pack has no TR15 fire clip either) |
 | Reload | `Reload_Tactical` | `Reload_Tactical` | `Reload_Tactical` |
 | Carry on the move and in the air | `Idle_Pose` (held out) | `A_FP_Walk`'s ready hold, `A_FP_Sprint`'s port carry by the sprint's share | the same |
+| Draw (no rule draws a gun: on the round's GO, as the spawn-in times it) | `Quick_Draw`, 0.6 s | `Draw`, 1.1 s | `Draw`, 1.2 s |
 | Pitch | the spine (`VisualTacticalPitch`), the barrel's own small turn as before | | |
+| Support hand | wraps the right (the clip's) | closed on the model's handguard: the pack's TR15 foregrip fist (`SupportFist`) | the same |
 
 Unchanged: the standing match idles (the long guns' low carry, the pistol's low ready; owner 2026-11-10 and `match-idles-keep`),
 the legs (the game's 8-way runs, walks and sprint, jumps and landings), the guns' Q/E clips, techniques, reactions, knockdowns,
@@ -32,9 +34,15 @@ hold at rest, so the idles do not move).
   ready hold with a small sway, the port carry); the jumps and the loops only drive the pack's additive gun bone and leave the
   body at rest. So the legs stay the game's strides and jumps, and the pack supplies the carry over them. There is no strafe or
   backward set; the carry is the same whichever way the legs go, so the 8-way blend is unchanged.
-- **The draws and holsters key the gun bone alone.** In `A_FP_WK-11_Viper_Quick_Draw`, `A_FP_SRM-12_Draw` and `A_FP_TR15_Draw`
-  the arms hang at rest while `ik_hand_gun` travels (the pack's runtime IK carries the hands to it), so on the body they show
-  empty hanging arms and a gun moving by itself. They are not played (the game also has no weapon swap: nothing to draw for).
+- **The draws do not carry the gun in the hands.** In `A_FP_WK-11_Viper_Quick_Draw`, `A_FP_SRM-12_Draw` and `A_FP_TR15_Draw` the arm
+  bones are keyed but stay low while `ik_hand_gun` travels up (the pack's runtime IK carries the hands to the gun), so baked plainly
+  they show hanging arms and a gun moving by itself. The bake puts the arms back on the gun bone (`ikgun=`: each hand at its place
+  on the gun in that gun's idle pose, its fingers the idle's; the right hand throughout, the left ramping in over the draw's last
+  part), which is what the pack's runtime does. The game has no weapon swap, so the draw plays once a round, ending on GO; the
+  holsters are not played (nothing in the rules puts a gun away).
+- **The pack's support hands lie flat** under the handguard with the fingers out (SRM-12, TR15 non-grip, the walk and sprint), which
+  read as open, splayed hands on the model; the long guns' left fingers take the TR15 foregrip's closed fist while the support
+  fist holds the model's handguard (`VisualTacticalFist`), and the clip's own while it lets go (a reload).
 - The aim, fire and reload clips pose the whole upper body with the hands on the pack's gun; their legs are a still stance (the
   legs' clip shows instead).
 
@@ -53,6 +61,7 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
 | Machine gun reload | back on the gun at 3.0 s | 2.4 s | 1.25x |
 | Raise onto the aim | | `Settle` (pistol .15, rifle .3, machine gun .2 s) | the raise eases in over the Settle when aiming; a hip shot raises at once (0.12 s) |
 | Carry | walk loop 4.05 s, sprint loop 2.7 s | | on their own clocks (their sway is not stepped); the legs keep the stride's rate |
+| Draw | Viper quick draw 0.667 s, SRM-12 1.5 s, TR15 1.833 s to `OnActionEnded` | none (no weapon swap); the round's GO | 0.6, 1.1, 1.2 s ending on GO (1.1x, 1.36x, 1.53x) |
 
 ## How it is built
 
@@ -67,7 +76,8 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
 - `Runtime/NativeTacticalMotionPresentation.cs`: the carry (upper-body muscles over the stride, the legs' hips kept), the spine's
   pitch and the machine gun's kick, the pistol held out.
 - **Rebaking the bank:** the BoZo tool's full motion rebake (`MotionSpecs`) does not know the pack's clips (it reads humanoid clips
-  only). After any full rebake, append the 28 pack records again with `ChipArenaT1Bake.cs` (base bank = the new one).
+  only). After any full rebake, append the 31 pack records again with `ChipArenaT1Bake.cs` (base bank = the new one; the draws with
+  `ikgun=`).
 
 ## Checks
 

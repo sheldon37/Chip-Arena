@@ -18,8 +18,10 @@ namespace ChipArena.UnityConversion
 
         // The carry's eased weight this frame: a pack gun on the move or in the air (the arms free: the stride, a jump's rise or fall, a
         // landing); not standing at rest (the match idles keep their own carry: owner 2026-11-10, 11-21).
-        private static float VisualTacticalCarryWeight(VisualMotion m,in NativeVisualMotion.Pick pick,bool covered,bool ready,float dt)
+        // (Also the aim's pitch and the pistol's reach easing off through a reload and back: PitchKeep.)
+        private static float VisualTacticalCarryWeight(VisualMotion m,Actor a,float time,in NativeVisualMotion.Pick pick,bool covered,bool ready,float dt)
         {
+            m.PitchKeep=Mathf.MoveTowards(m.PitchKeep,time>=a.ReloadAt&&time<a.ReloadUntil?0:1,dt>0?dt/TacticalPitchEase:1);
             bool on=m.Set.Tactical!=null&&covered&&ready&&(pick.Locomotion||pick.Clip!=m.Set.Idle);
             m.Carry=Mathf.MoveTowards(m.Carry,on?1:0,dt/CarryEase);
             if(m.Set.Tactical==null||m.Carry<=0){m.CarryShare=0;return 0;}
@@ -68,8 +70,6 @@ namespace ChipArena.UnityConversion
         // eased off through a reload (the clip's own tilt plays). The machine gun's kick climbs the same way on each shot.
         private static void VisualTacticalPitch(VisualMotion m,Transform root,Actor a,float time,float w)
         {
-            bool reloading=time>=a.ReloadAt&&time<a.ReloadUntil;float dt=Time.deltaTime;
-            m.PitchKeep=Mathf.MoveTowards(m.PitchKeep,reloading?0:1,dt>0?dt/TacticalPitchEase:1);
             float deg=Mathf.Clamp(a.Pitch,-TacticalPitchMax,TacticalPitchMax)*m.PitchKeep*w+NativeTacticalMotion.Kick(m.Set.Tactical,time-a.LastShot)*NativeTacticalMotion.KickPitch*w;
             if(Mathf.Abs(deg)<1e-3f)return;
             var right=root.right;Transform[] chain={m.Spine,m.Chest,m.UpperChest};

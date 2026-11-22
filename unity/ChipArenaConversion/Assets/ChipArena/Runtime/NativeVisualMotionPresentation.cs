@@ -612,7 +612,7 @@ namespace ChipArena.UnityConversion
             // A human pose places the body by its centre of mass: a raised upper body would swing the hips (and the legs with
             // them). The legs' motion is posed first and its hips kept.
             Vector3 hipsAt=default;Quaternion hipsTurn=default;
-            float carryWeight=VisualTacticalCarryWeight(m,pick,covered,ready,dt);bool keepLegs=upper||carryWeight>0;
+            float carryWeight=VisualTacticalCarryWeight(m,a,time,pick,covered,ready,dt);bool keepLegs=upper||carryWeight>0;
             if(keepLegs){if(m.Legs==null||m.Legs.Length!=m.Mix.Length)m.Legs=new float[m.Mix.Length];System.Array.Copy(m.Mix,m.Legs,m.Mix.Length);}
             VisualTacticalCarry(m,pick,time,carryWeight);
             if(upper)
