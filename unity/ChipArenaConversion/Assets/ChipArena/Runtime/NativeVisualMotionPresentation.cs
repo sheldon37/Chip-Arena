@@ -50,6 +50,9 @@ namespace ChipArena.UnityConversion
             // The clips' own turn put back (VisualMotionTurn): per clip, whether it showed last frame and the whole turns it came in with;
             // the locomotion's likewise; whether the set has any such clip; the turn shown and a jump's difference being carried off.
             public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
+            // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
+            // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
+            public float Carry, CarrySprint, CarryShare, PitchKeep=1; public float[] CarryMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -94,7 +97,8 @@ namespace ChipArena.UnityConversion
         private static string visualMotionWhy;
 
         // A body's motion for `spec` (made once per set the body plays; null without the set or its clips in the bake).
-        private static VisualMotion VisualMotionFor(VisualBody body,string spec)=>VisualMotionFor(body,NativeVisualMotion.For(spec));
+        // (A gun whose pack clips the bank carries plays them: Core NativeVisualMotion.Tactical, NativeTacticalMotion.)
+        private static VisualMotion VisualMotionFor(VisualBody body,string spec)=>VisualMotionFor(body,NativeVisualMotion.Tactical(spec,NativeVisualMotion.For(spec),VisualMotionBank));
         private static VisualMotion VisualMotionFor(VisualBody body,NativeVisualMotion.Set set)
         {
             if(set==null)return null;
@@ -128,7 +132,7 @@ namespace ChipArena.UnityConversion
             m.LeftIndex=Body(HumanBodyBones.LeftIndexProximal);m.LeftLittle=Body(HumanBodyBones.LeftLittleProximal);
             m.LeftFist=Body(HumanBodyBones.LeftMiddleProximal);
             m.RightArm=Body(HumanBodyBones.RightUpperArm);m.RightForearm=Body(HumanBodyBones.RightLowerArm);m.RightFist=Body(HumanBodyBones.RightMiddleProximal);
-            m.Spine=Body(HumanBodyBones.Spine);m.Chest=Body(HumanBodyBones.Chest);m.Head=Body(HumanBodyBones.Head);
+            m.Spine=Body(HumanBodyBones.Spine);m.Chest=Body(HumanBodyBones.Chest);m.Head=Body(HumanBodyBones.Head);m.UpperChest=Body(HumanBodyBones.UpperChest);
             m.LegUpper[0]=Body(HumanBodyBones.LeftUpperLeg);m.LegLower[0]=Body(HumanBodyBones.LeftLowerLeg);m.LegFoot[0]=Body(HumanBodyBones.LeftFoot);
             m.LegUpper[1]=Body(HumanBodyBones.RightUpperLeg);m.LegLower[1]=Body(HumanBodyBones.RightLowerLeg);m.LegFoot[1]=Body(HumanBodyBones.RightFoot);
             // Each stride's offset, so the mixed runs, walks and sprint put the same foot down together.
@@ -497,7 +501,12 @@ namespace ChipArena.UnityConversion
                     if(grip.sqrMagnitude>1e-8f)m.LeftHoldRotation=Quaternion.FromToRotation(m.LeftHoldRotation*shaft,grip)*m.LeftHoldRotation;
                 }
                 // A gun's turn in the hand from the pack's own level aim: there its barrel points straight ahead, upright.
-                if(m.Set.Gun&&VisualMotionBank.Clips.TryGetValue(m.Set.Aim[1],out var level))VisualMotionCalibrate(m,level,body.Root.transform);
+                if(m.Set.Gun&&VisualMotionBank.Clips.TryGetValue((m.Set.Base??m.Set).Aim[1],out var level))
+                {
+                    VisualMotionCalibrate(m,level,body.Root.transform);
+                    // A pack gun: the hand's turn on the pack's ready hold as well (its barrel ahead, upright), its own set's kept.
+                    if(m.Set.Tactical!=null&&VisualMotionBank.Clips.TryGetValue(m.Set.Tactical.Idle,out var packReady)){var own=m.HoldRotation;VisualMotionCalibrate(m,packReady,body.Root.transform);m.TacHold=m.HoldRotation;m.HoldRotation=own;}
+                }
                 // A bow's likewise, in the left fist: upright (its limbs the frame's up), its arrow line ahead.
                 else if(m.Set.Pull!=null&&VisualMotionBank.Clips.TryGetValue(m.Set.Aim[1],out var drawn))VisualMotionCalibrate(m,drawn,body.Root.transform,true);
             }
@@ -593,7 +602,8 @@ namespace ChipArena.UnityConversion
                 var arms=ArmMuscles;float rw=Ease(m.Rest);
                 for(int i=0;i<arms.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(arms[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.RestMix[k]-m.Mix[k])*rw;}
             }
-            m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);
+            // (A pack gun rises onto its aim over the rules' Settle: NativeTacticalMotion.RaiseTime.)
+            m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/(m.Set.Tactical!=null&&layered&&up.Raised?NativeTacticalMotion.RaiseTime(a,UpperEase):UpperEase));
             NativeVisualMotionClips.Clip ua=default;bool upper=layered&&m.Upper>0&&VisualMotionBank.Clips.TryGetValue(up.A,out ua);
             // An upper layer that switches clips or jumps in time (a throw into the aim, a cast's start into its end, a shot's
             // recoil begun again) is carried over likewise.
@@ -602,18 +612,20 @@ namespace ChipArena.UnityConversion
             // A human pose places the body by its centre of mass: a raised upper body would swing the hips (and the legs with
             // them). The legs' motion is posed first and its hips kept.
             Vector3 hipsAt=default;Quaternion hipsTurn=default;
+            float carryWeight=VisualTacticalCarryWeight(m,pick,covered,ready,dt);bool keepLegs=upper||carryWeight>0;
+            if(keepLegs){if(m.Legs==null||m.Legs.Length!=m.Mix.Length)m.Legs=new float[m.Mix.Length];System.Array.Copy(m.Mix,m.Legs,m.Mix.Length);}
+            VisualTacticalCarry(m,pick,time,carryWeight);
             if(upper)
             {
-                if(m.Legs==null||m.Legs.Length!=m.Mix.Length)m.Legs=new float[m.Mix.Length];System.Array.Copy(m.Mix,m.Legs,m.Mix.Length);
                 System.Array.Clear(m.UpperMix,0,m.UpperMix.Length);NativeVisualMotionClips.Add(ua,up.TimeA,1-up.Mix,m.UpperMix);
                 if(up.B!=null&&up.Mix>0&&VisualMotionBank.Clips.TryGetValue(up.B,out var ub))NativeVisualMotionClips.Add(ub,up.TimeB,up.Mix,m.UpperMix);
                 NativeVisualMotionClips.Finish(m.UpperMix,1);var mask=UpperMuscles;
                 for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.UpperMix[k]-m.Mix[k])*m.Upper;}
             }
-            VisualMotionInertia(m,jumped,dt,upper);
-            if(upper){VisualMotionApply(m,m.Legs);hipsAt=m.ProxyHips.localPosition;hipsTurn=m.ProxyHips.localRotation;}
+            VisualMotionInertia(m,jumped,dt,keepLegs);
+            if(keepLegs){VisualMotionApply(m,m.Legs);hipsAt=m.ProxyHips.localPosition;hipsTurn=m.ProxyHips.localRotation;}
             VisualMotionApply(m,m.Mix);
-            if(upper)m.ProxyHips.SetLocalPositionAndRotation(hipsAt,hipsTurn);
+            if(keepLegs)m.ProxyHips.SetLocalPositionAndRotation(hipsAt,hipsTurn);
             // The proxy's pose onto the body by the motion's weight.
             float wgt=m.Weight;
             for(int i=0;i<m.BodyBones.Length;i++)
@@ -669,7 +681,7 @@ namespace ChipArena.UnityConversion
             // The free arm's run (NativeRunArm): the pack's runs and sprint fling it up and out; lowered in the chest's frontal
             // plane by the running share of the blend, not under a raised upper layer (an aim, a cast).
             {
-                float run=covered&&pick.Locomotion?NativeRunArm.RunShare(m.LocoWeights)*loco*wgt*(1-m.Upper):0;
+                float run=covered&&pick.Locomotion?NativeRunArm.RunShare(m.LocoWeights)*loco*wgt*(1-m.Upper)*(1-m.CarryShare):0;
                 if(run>0){VisualRunArm(m,true,run);VisualRunArm(m,false,run);}
             }
             // The sword's run: the arm swept back, the blade trailing past the hip, the chest leaning in (NativeSwordTrail). Only
@@ -680,13 +692,17 @@ namespace ChipArena.UnityConversion
             if(m.HasHold&&(a.SourceSpec==NativeTopDog.Spec||a.SourceSpec==NativeGlaive.Spec||dogLimbs.TryGetValue(body,out var dl)&&dl!=null&&dl.Held))DogMalletLayer(body,a,time,m.HoldRotation,wgt);
             // A raised gun stands upright (VisualGunUpright), before the weapon follows the hand.
             if(m.Set.Gun&&m.Upper>0&&covered)VisualGunUpright(m,body.Root.transform,m.Upper*wgt);
+            // A pack gun raised: the spine pitched onto the look (its ready hold is level), the machine gun's kick on each shot.
+            if(m.Set.Tactical!=null&&m.Upper>0&&covered)VisualTacticalPitch(m,body.Root.transform,a,time,m.Upper*wgt);
             // A pistol at rest: its low ready (Set.RestReady), before the weapon follows the hand.
             if(m.Set.RestReady&&m.Rest>0&&m.HasHold)VisualPistolReady(m,body.Root.transform,Ease(m.Rest)*wgt);
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).
             if(m.HasHold)
             {
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
-                weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
+                // (A pack gun: the hand's turn on the pack's ready hold by the pack's share of the upper body: its carry, then its raise.)
+                var heldTurn=m.Set.Tactical!=null?Quaternion.Slerp(m.HoldRotation,m.TacHold,1-(1-m.CarryShare)*(1-m.Upper)):m.HoldRotation;
+                weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*heldTurn);
                 // The Katana's blade turned over for the sheathing as the pack turns it, in the hand's frame (Core NativeKatanaSaya.Turn).
                 if(body.SayaFrame==Time.frameCount&&body.SayaTurn>0){var q=NativeKatanaSaya.SheatheTurn;weaponHand.rotation=m.RightHand.rotation*Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*m.HoldRotation;}
                 // A DEV entrance whose clip carries the weapon off the hand (the DEV Katana's Intro opens with it across the back: Core
