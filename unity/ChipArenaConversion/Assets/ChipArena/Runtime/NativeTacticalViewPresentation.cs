@@ -124,6 +124,11 @@ namespace ChipArena.UnityConversion
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,target-b)*lower.rotation;
         }
 
+        /// <summary>The pack gun's hand anchors this frame (each hand bone's target in the gun's frame, the gun, both hand bones,
+        /// the action and weapon clip): a diagnosis read by a local Editor probe (the hands on the gun through every clip). Written
+        /// by the tactical view only; nothing in the game reads it.</summary>
+        public static class TacticalAnchor{public static Transform Gun,HandR,HandL;public static Vector3 Right,Left;public static string State="";public static int Frame=-1;}
+
         // ---- The pack guns (ChipArenaViewGuns, made by the local bake: the pack's weapon prefabs on Built-in materials) ----
         private sealed class TacticalGunView
         {
@@ -410,6 +415,10 @@ namespace ChipArena.UnityConversion
                 {
                     v.Root.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));float gs=v.Root.parent!=null?v.Root.parent.lossyScale.x:1;v.Root.localScale=Vector3.one/Mathf.Max(1e-4f,gs);
                     TacticalGunPose(v,bank,s.WeaponClip,s.WeaponTime);TacticalGunsShown(v);tacticalPackFrame=Time.frameCount;
+                    // Where each hand bone should be on the gun (its frame), read back before the frame renders by a local probe.
+                    TacticalAnchor.Gun=v.Root;TacticalAnchor.HandR=arms.Hand[1];TacticalAnchor.HandL=arms.Hand[0];
+                    TacticalAnchor.Right=v.Root.InverseTransformPoint(rt);TacticalAnchor.Left=v.Root.InverseTransformPoint(lt);
+                    TacticalAnchor.State=s.Action+"/"+s.WeaponClip;TacticalAnchor.Frame=Time.frameCount;
                 }
                 float mz=NativeWeaponDressing.MuzzleZ(spec),k=tacticalView.PackScale(g,mz);Quaternion gr=R(s.WeaponTurn);
                 rh.rotation=gr;rh.localScale=viewBody.RightScale;float ks=rh.lossyScale.x;if(ks>1e-5f)rh.localScale=viewBody.RightScale*(k/ks);
