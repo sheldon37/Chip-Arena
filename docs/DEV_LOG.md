@@ -1,3 +1,44 @@
+## 2026-11-22 — Claude (F2): first-person arms for every other weapon and class (takes over F1's entry below)
+Owner: "Go ahead and fix". **Branch:** `claude/fps-melee` (F1's head `b434147b`, from shared `134c2001` with `d058426d` merged).
+Pushed, not merged, not released. Presentation only.
+- **Measured first** (F2's runs switch all 18 classes in one capture by the DEV weapon command, rest/attack/guard/special, the
+  view-body probe every 3 frames, 2000x1173): the sleeves were pure black because the default suit's sweater is .07 sRGB (.006
+  linear): the fill reaches the view layer, but at twice its strength (F2's lab) the sleeves rose only to 6-13 of 255; and the arms'
+  IK, reaching from shoulders 12 cm behind the eye, dragged the shoulder forward for most holds but turned the elbow toward its
+  stale place, so the forearm fell short and the hand floated up to 30 cm off its wrist (the greatsword's and the shield's
+  "big black blocks").
+- **Changes** (`Core/NativeViewArms.cs`, `Runtime/NativeViewArmsPresentation.cs`, one hook line in `NativeVisualBodyPresentation.cs`,
+  `NativeTacticalViewPresentation.cs` and `NativeViewPresentation.cs`, `Resources/NativeVisualBodyFx.cginc` and
+  `NativeVisualBodyToon.shader`): a table of holds (each class's lift measured at rest; shoulders 24 cm under the eye and level
+  with it, elbows hung under the frame); the arms' own reach (the elbow read again after the shoulder moves; the guns'
+  TacticalReach unchanged); the free hand (one-hand blades' left, staffs' right, a lowered bow's string hand) tucked under the
+  frame while it hangs low, back as it rises into a cast or draw; a bow's carry lift (times 1 - Raised); the left fist closed on
+  the staff, the bow's riser and the Fangs' left blade in first person (third person's VisualLeftSeat rule); the view body's
+  near-black cloth lifted (`_ViewCloth`, .06 linear, on near-black colours only) while these arms draw. Guns, third person, the
+  Siren, the Top Dog and the Cyber Lord unchanged.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or the wire; the lifts, tuck and seat move the
+  first-person drawing only (the weapon, its trails and effects move with the old view rig, as before).
+- **Coverage** (view model share of the screen, central 30% box in brackets, at rest; Brickfall night F1's difference method,
+  Skyframe the graded mask): at rest, night / bright / bright in the robe: sword 3.9/5.5/6.9, Katana 3.2/3.6/4.8, daggers 5.1/5.3/6.9,
+  Fangs 3.9/5.9/7.5, glaive 9.0/10.7/11.8, greatsword 8.5/11.4/13.0, DEV Greatsword 5.4/4.9/6.0, DEV Katana 3.1/3.8/5.2, shield
+  7.3/11.5/11.8, bow 4.5/5.7/5.4 (its limb crosses the centre box, 7.6-8.9), fire 5.5/6.4/6.9, water 6.1/7.0/7.6, lightning
+  5.5/7.1/7.6, darkness 5.4/7.1/7.7, L33t 5.7/6.5/6.3, Bombadier 5.4/6.4/7.3, Emperor 7.6/9.4/9.9, Ansatsuken 8.5/8.8/8.9; the
+  centre box at rest under 3.4% but the bow. Mid-attack and specials sweep through the centre briefly (the daggers 12.2, the
+  shield's bash 16.4, the lightning special 13.9 with half the centre box, the greatsword's second swing up to 30). The sleeves'
+  darkest third at rest 4-29 of 255 (0-3 before, where the arms showed). The bright stage is measured with a graded mask (F1's plain difference counts
+  the post grade on Skyframe as view model); the table is in `F:/Chip Arena Development/scratch/fps-melee-f2/sheets/coverage.md`.
+- **Checks:** `--tactical-view` 4,043 PASS; `--visual-rig` and `--model-poses` PASS after updating two stale pins (F1's ViewArmsLift had
+  broken the visual rig's, the seat hook the model pose's); the full CoreTests suite the relgen5 way (a clean worktree, expedition_path.patch, the 14 stage banks) on `e51ff323`: 1,105 PASS groups, exit 0;
+  `tools/check_unity_compile.py` PASS (Assembly-CSharp, -Editor, ChipArena.Player); `git diff --check` clean;
+  PrototypeBuild.Validate on `52c64f0e`: ok, 400 PASS (the same two edit-mode Destroy errors as earlier validates). Not run: a
+  Windows build or playtest, multiplayer, the guns (unchanged).
+- **Proof:** sheets `F:/Chip Arena Development/scratch/fps-melee-f2/` `sheets/final-night-a.jpg`, `final-night-b.jpg` (every class at rest, attack, guard, special), `bright-skyframe-*.jpg`, `final-bright-*.jpg`, `before-f1-b434147b-night-*.jpg`; clips `F:/Chip Arena Development/scratch/fps-melee-f2/clips/fp-arms-{greatsword,katana,fire,bow,shield}.mp4` (before 134c2001 beside after, real time, brightened alike; the before frames are deleted).
+- **Risks / next:** the Fangs' left hand seats its blade (no longer an open palm) but its fist shows mostly the cuff at night; the
+  bow's carry puts its upper limb across the centre box's lower left; a staff run straight after the L33t special once kept the
+  darkness staff's right hand raised (a capture order effect, not seen in the full run); the guns' view does not take the
+  cloth lift (by the brief) so their sleeves stay black. No Drive zip change: code and shader only. Ship: merge into shared, then
+  the builder; the test channel by the standing instruction. Next: owner review.
+
 ## 2026-11-22 — Claude (F1): first-person arms for every other weapon and class (in progress)
 Owner: "Go ahead and fix" (after F1's first-person audit). **Branch:** `claude/fps-melee` from shared `134c2001`, shared
 `d058426d` (release 19) merged in. Pushed, not merged, not released.
