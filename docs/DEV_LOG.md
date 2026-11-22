@@ -1,3 +1,26 @@
+## 2026-11-21 — Claude: releases 14 and 15: Belvedere Camp on A1, and PuppetMaster hit reactions (integrator)
+- **Release 14:** Belvedere Camp lives in the Expedition hub on Astra's A1 rules (owner: the hub "life" update; awning "Move to 1 m").
+  - Merged `claude/camp-a1` `5d4ff955`: Astra's `codex/belvedere-camp-a1` `fe75f109` plus C1's camp art, the survivors, the pod climb-out and the awning posts at 1.05 m.
+  - Published: shared and the builder at `0a30de5d`. Test channel revision `639309062854679254` (build `c597d92d`, 394.0 MiB).
+  - Drive zip: camp bank `7aab4f8d`. The previous zip is kept as `LocalAssets-2026-11-21-before-camp-a1.zip`.
+  - Checks:
+    - PrototypeBuild.Validate (C1, all three code commits) and seven live Expedition starts;
+    - the full suite at `5d4ff955` (1,102 groups, exit 0);
+    - the Unity compile and the build.
+    - The pin scan's 6 hits were punctuation fragments.
+  - Not run: a guest/two-peer view, a multi-pod party, the Low tier.
+- **Release 15:** non-lethal hits bend pilots and zombies through PuppetMaster (owner: "Utilize Ragdoll Asset for hit reactions").
+  - Merged `claude/puppet-hits` `04a8d5c3` (P1).
+  - Published: shared and the builder at `0fc73383`. Test channel revision `639309092387737040` (build `da50af7e`, 394.1 MiB).
+  - Drive zip: 106 private add-on paths (PuppetMaster runtime and `ChipArenaPuppetBridge`) through `tools/private_addons.py`. The builder log shows them imported and compiled. The previous zip is kept as `LocalAssets-2026-11-21-before-puppet-hits.zip`.
+  - Checks: the full suite at `73890694` (1,103 groups, exit 0), the Unity compile and the build.
+  - Not run: two clients, a Windows player outside the builder.
+- **Editor:** rests on `0fc73383` with the camp bank `7aab4f8d` and the PuppetMaster add-ons installed.
+  - F1's unshipped `ChipArenaViewMotion.bytes` sits in its Resources. Hold it out of any zip pack until first person ships.
+- **In flight:**
+  - F1 `claude/fps-tactical`: first person on the pack's guns (owner: "Use pack guns"), with the pistol support-hand grip, the arms fix and the pack's own walk/sprint/jump/fire.
+  - T1 `claude/tp-tactical`: the pack's full-body clips for guns in third person.
+
 ## 2026-11-21 — Claude (P1): physical hit reactions on PuppetMaster (presentation only)
 Owner: "Utilize Ragdoll Asset for hit reactions" (RootMotion's PuppetMaster, bought 2026-11-21).
 **Branch:** `claude/puppet-hits` from shared `ead0ef02`. Pushed, not merged, not released. Docs: `docs/HIT-PUPPETS.md`.
