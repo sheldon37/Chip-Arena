@@ -30,8 +30,16 @@ namespace ChipArena.UnityConversion
         /// so both hands and the grip show; zero where the hold already shows.</summary>
         public static Vector3 Lift(string spec)
         {
+            // Measured on the first-person view at rest (Brickfall, 75 degrees, the view-body probe): the one-hand blades' right hand
+            // sat 46-51 degrees below the centre and out past the right edge (y/z -1.0 to -1.25, x/z 1.5-1.6), the left at the
+            // bottom edge; these bring the right hand to about y/z -0.5, x/z 0.9 and the left to about -0.55.
             switch(spec)
             {
+                case "sword":return new Vector3(-.15f,.15f,.08f);
+                case "katana":case "glaive":return new Vector3(-.15f,.18f,.08f);
+                case "daggers":return new Vector3(-.15f,.16f,.08f);
+                case "shield":return new Vector3(0,.15f,.05f);
+                case "greatsword":return new Vector3(0,0,.06f);
                 default:return Vector3.Zero;
             }
         }
