@@ -166,6 +166,9 @@ namespace ChipArena.UnityConversion
         // How far back along the bore the support hand sits in first person from third person's hold on the model's handguard
         // (m): the long guns' handguards reach past the pack's, and the support forearm crossed the lower view.
         public float GripBack;
+        // How far the shoulders sit lower in first person when fully aimed (m): the aimed pistol's two arms came in long from
+        // both lower corners; from lower shoulders they rise short to a compact hold under the sights.
+        public float AimShoulderDrop;
         public Vector3 SprintCarry;public Vector3 SprintCarryDegrees;
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
@@ -194,14 +197,14 @@ namespace ChipArena.UnityConversion
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.09f,-.032f,.047f),HipTurn=new Quaternion(0,-.04361939f,0,.99904822f),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            EyeRelief=.40f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.008f,-.04f),
+            EyeRelief=.34f,AimShoulderDrop=.16f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.008f,-.04f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
-            DrawSeconds=.9f,ActionTurn=.3f,WeaponOffset=new Vector3(0,.02f,.025f),GripBack=.1f,EyeRelief=.09f,SightHeight=.0724f,
+            DrawSeconds=.9f,ActionTurn=.3f,WeaponOffset=new Vector3(.03f,.01f,.025f),GripBack=.1f,EyeRelief=.09f,SightHeight=.0724f,
             KickBack=.02f,KickPitch=1.5f,KickYaw=.4f,KickRoll=.8f};
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
-            DrawSeconds=1f,WeaponOffset=new Vector3(-.013f,-.028f,.02f),GripBack=.14f,SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
+            DrawSeconds=1f,WeaponOffset=new Vector3(.07f,-.01f,.02f),GripBack=.14f,SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
             KickBack=.014f,KickPitch=1.1f,KickYaw=.5f,KickRoll=1.1f,KickOmega=40,KickZeta=.6f};
         static NativeTacticalGun()
         {

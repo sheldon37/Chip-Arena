@@ -423,6 +423,7 @@ namespace ChipArena.UnityConversion
             // The body at true size, turned with the eye, its shoulders' midpoint on the clip's.
             var parent=root.parent;float ps=parent!=null?parent.lossyScale.x:1;root.localScale=Vector3.one/Mathf.Max(1e-4f,ps);root.rotation=eyeRot;
             Vector3 ours=(arms.Upper[0].position+arms.Upper[1].position)*.5f,clip=(W(s.LeftShoulder)+W(s.RightShoulder))*.5f;root.position+=clip-ours;
+            root.position+=eyeRot*Vector3.down*(g.AimShoulderDrop*s.Ads);
             // The arms: the right hand on the model's grip (its grasp's frame, carried by the clip), the left on the clip's place and palm;
             // on the pack gun both on the clip's places and palms.
             Vector3 rt=W(s.Right),lt=W(s.Left);
