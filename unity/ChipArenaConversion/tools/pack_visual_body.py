@@ -6,7 +6,9 @@ Reads Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualBody.prefab (th
 GUID references through the text assets and every .meta under Assets/LocalAssets: the meshes, materials and textures it
 uses, each with its .meta, every folder's .meta, the data files (.bytes, the model's motion bank) beside the prefab in its
 Resources folder and the textures (.png) in that folder and the ones under it (the wardrobe's own colour maps, the cloth's paint
-maps), which the game loads by name. Assets outside LocalAssets (the tracked shaders) are left to the source;
+maps), which the game loads by name; and the same for the first-person pack guns' prefab beside it
+(ChipArenaViewGuns*.prefab, the tactical view's local bake: the guns' meshes, Built-in materials and textures), which the
+game also loads by name. Assets outside LocalAssets (the tracked shaders) are left to the source;
 anything that is not a mesh, material, texture, prefab or animator controller (shaders, shader graphs, scripts) is left out
 and listed. It writes OUTPUT_ZIP as BASE_ZIP's members (the effects audio and the rest, unchanged) plus those files and
 visual-body.json, which lists each with its SHA-256, then checks the result as tools/install_local_assets.py does. BASE_ZIP
@@ -55,7 +57,9 @@ def dependencies(project):
     if not start.is_file():
         raise installer.Problem('no bake at ' + str(start))
     by_guid = guids(project)
-    seen, queue, skipped = set(), [start], set()
+    # The first-person pack guns (docs/FPS-TACTICAL.md) are loaded by name from the same Resources folder: their prefab's
+    # dependencies go too.
+    seen, queue, skipped = set(), [start] + sorted(start.parent.glob('ChipArenaViewGuns*.prefab')), set()
     while queue:
         path = queue.pop()
         if path in seen:

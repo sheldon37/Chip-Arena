@@ -57,6 +57,97 @@ moves one Core comment and a test's file list). Pushed, not merged, not released
   Editor's `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes` and repack the Drive zip with
   `tools/pack_visual_body.py` (F1's `ChipArenaViewMotion.bytes` rides the same folder). Without the new bank every gun keeps
   its old set. A later full BoZo motion rebake drops the 14 pack records: re-append them with `ChipArenaT1Bake.cs`.
+## 2026-11-21 — Claude (F1): first person on the pack's own guns (second pass: pack guns, both hands, arms, the pack's motion)
+Owner (through the integrator): "Use pack guns"; the pistol's support hand ("the hand in front"); "Seems they disappear on
+certain weapons in first person"; "Can we fix the animations to use their shooting animations and walking/running for guns?";
+"I'd like to see how third person is looking as well". **Branch:** `claude/fps-tactical`; shared `0a30de5d` (camp A1) merged
+first (`5078329f`), then shared `8ed75305` (PuppetMaster hits; `5c0f3181`), DEV_LOG and PROJECT_STATE keeping both sides.
+Code `8aa68815`..`38782002`. Pushed, not merged, not released.
+- **What:** first person draws the KINEMATION pack's own gun in place of the game's model, whatever the skin: pistol -> WK-11
+  Viper, rifle -> Oryx SRM-12 on its iron sights, machine gun -> TR15 on its iron sights (the owner's mapping; the
+  TR15 is the gun the machine gun's clip set was made for). The gun rides the clip's gun bone; its slide, bolt, hammer, trigger,
+  magazine and release move by its own weapon clips; both hands take the pack's places and palms on its grips, magazine and bolt,
+  every finger the clip's (the pistol's support hand is the pack's thumbs-forward wrap); aiming puts the gun's aim point on the
+  eye (the rifle keeps its scope overlay); the muzzle flash, brass and chip kit sit on the pack gun's muzzle. Third person, the
+  menus and every other rig keep the game's guns and skins. Arsenal skins: the pack gun draws as it is in first person (a skin's
+  look is its model's materials and parts, not one tint). Without the local guns prefab the first pass (the game's models) draws.
+- **Arms:** the tactical view's arms are cut from the clavicles, not the elbows, so they run in from the screen's edges (the
+  flat black blocks were the elbow cut's open sleeves on screen). The old view model keeps its elbow cut (tried at the shoulders
+  on the greatsword: its body, placed by the right hand alone, raised whole upper arms into the air).
+- **The pack's motion:** the pack has walk, sprint, jump and fire clips. The sprint carry and walk sway were already its own at
+  full strength: `A_FP_Sprint` moves the gun exactly as the idle pose plus `A_FP_Idle_Sprint_Loop` on the additive bone (compared
+  frame by frame), `A_FP_Walk` as the walk pose plus `A_FP_Walk_Loop`; each loop steps with the pilot's stride. New: the jumps
+  (`Jump_Start`/`_Loop`/`_End` on the additive bone, on the pilot's grounded state); the fire clips at full strength on the pack
+  guns (the Viper's kick with its slide, the SRM-12's full bolt tilt with its bolt); the TR15 has no character fire clip in the
+  pack: procedural recoil plus its bolt clip each shot.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking; nothing reads or
+  writes a rule. The weapon clips follow their arms clips (reload on `ReloadAt..ReloadUntil`, the bolt home at `ShootReady`);
+  a shot's weapon clip fits the interval (the TR15's .117 s bolt into the machine gun's .085 s); jumps play at the pack's pace on
+  the grounded state. The rounds' origin and aim are the game's.
+- **Shipping:** the bake also writes `ChipArenaViewGuns.prefab` beside `ChipArenaViewMotion.bytes` (Editor checkout's
+  `Assets/LocalAssets/ChipArenaLocal/Resources`); `tools/pack_visual_body.py` now follows `ChipArenaViewGuns*.prefab` too (a
+  one-line change in Astra's packer). About 8.2 MB on the Drive zip's 469.9 MB visual body (480 MB cap, kept per
+  EXPEDITION-OVERHAUL Q10): textures cut to bodies 1024 / their metal-gloss 512 / magazines 512 and 256 to fit. Dry run of the
+  usual repack (`--with-cloth`, P1's add-on allowlist) from the Editor checkout on a copy: visual body 1,315 files, 478.09 MB,
+  `install_local_assets.py --check --require-cloth` passed; output deleted, Drive zip untouched. The integrator, after merging:
+  under the Editor lock with the Editor on the merged commit, `python -I tools/pack_visual_body.py <Drive zip> <new zip>
+  --project "<Editor checkout>/unity/ChipArenaConversion" --with-cloth --addons-allowlist <P1's allowlist>`, then
+  `install_local_assets.py <new zip> --check --require-cloth`, keep the old zip as `LocalAssets-2026-11-21-before-pack-guns.zip`,
+  replace. The bank and the guns prefab are already in the Editor checkout's LocalAssets (bake B7/B8).
+- **Audit (first person at rest, old view model):** the hands sit below the frame for the sword, katana, daggers, fangs, bow,
+  shield, glaive, the four staffs, L33t and the Bombadier; the greatsword's left forearm ends in its cut sleeve; the Siren
+  (voxel arms by design), Top Dog and Cyber Lord read fine; Emperor, Ansatsuken and the DEV Greatsword/Katana not filmed (time).
+  Not fixed here: the old view model's framing per class is its own task (a lift per class, or the tactical view's eye-anchored
+  arms for melee with melee clips).
+- **Checks:** full CoreTests at the merged head `5c0f3181` in a clean worktree (expedition_path.patch, the 14 stage banks):
+  1,104 groups, exit 0 (`--tactical-view` 2,746 checks: bank v3, the pack-gun solve, weapon clip clocks, jumps, no allocation,
+  the gun for the view rig only, the shoulder cut for the tactical view only); `tools/check_unity_compile.py` PASS (four
+  assemblies); `git diff --check` clean; the pin scan clean; PrototypeBuild.Validate ok at `8aa68815`, `025b9fbe`, `8e84bad9` and `38782002` (the code head).
+  Not run: a Windows build, two clients, Low graphics and reduced effects in first person, every Arsenal skin.
+- **Clips and stills** (`F:/Chip Arena Development/scratch/fps-tactical/`): `clips2/fp-pistol.mp4`, `fp-rifle.mp4`,
+  `fp-machinegun.mp4` (BEFORE shared / AFTER pack gun, idle, walk, sprint, fire, reload, jump, aim; filmed at `8e84bad9`),
+  `clips2/third-pistol.mp4`, `third-rifle.mp4`, `third-machinegun.mp4`, `third-sword.mp4` (behind the shoulder and three-quarter
+  on a studio floor; third person unchanged); `stills/hands-sheet.jpg` and nine stills (both hands at rest, aimed, mid-reload
+  per gun, Brickfall); `audit-sheet-b1.jpg` (every weapon in first person at rest).
+- **Arms pass (owner: "Fix pilot's arms"):** the brown patches were the visual body's hologram proxy (`ProxyMesh`, a
+  skin-coloured Standard body the dressing switches off): the tactical view's arm cut switched every renderer with arm
+  triangles back on. A cut now never turns on what the outfit switched off. Also: the view model takes the pack's lens (90 at
+  the hip; aimed 80 Viper, 70 SRM-12 and TR15), the skin under the garments is masked (a safety for outfits that leave a skin
+  part on under a sleeve or glove), the forearms and upper arms are slimmer in first person (82% and 90% girth on their twist
+  bones), a fill light lights the view-model layer for dark stages, and the SRM-12 carries its iron sights (the Phantom TAC
+  filled the right half). The floating orange squares in the Brickfall stills are Brickfall's drifting paper scraps
+  (`NativeBrickfallFx` atmosphere), not the view model.
+- **Hand anchors:** each hand bone's distance from its anchor on the pack gun, measured before each frame renders by a local
+  probe (`ArenaPresentation.TacticalAnchor`): pistol 2,815 frames through the draw, idle, walk, sprint, fire, reload, jump and
+  aim, max 0.00 mm both hands (the hands are set on the gun after the recoil and kick). The pilot's hand is about 8% longer than
+  the pack's (wrist to middle knuckle 10.3 against 9.5 cm), so the palm sits within about a centimetre of the pack's.
+  Rifle 3,230 and machine gun 3,323 frames (draw, bolt, reload, idle, walk, sprint, jump, aim): max 0.00 mm. The anchor is the
+  hand bone on its target, true by construction; the stills are the visual proof (the support hand on the handguard).
+- **Pistol (integrator review 2026-11-22):** at the hip the Viper sits lower right, 7.5 cm further right, 6 cm lower, 5 cm
+  further out and turned 5 degrees in; aimed, the sight picture is unchanged. The "pistol rest" frame with no gun or hands
+  (hold B11) did not happen again at the same moment and look in B13: B11 ran just after the Editor's package restore, while
+  its shaders recompiled (its gloves were also untinted). Rifle and machine gun at rest: the visible hand is the support hand
+  on the handguard (the pack poses it 12-20 degrees right and 20-33 below the centre); the firing hand is below the frame
+  (65 degrees down in the pack's pose).
+- **Checks:** full CoreTests at `97c780fa` in a clean worktree (expedition_path.patch, the 14 stage banks): 1,103 groups, exit 0,
+  with the new `TacticalViewChecks` (`--tactical-view`, 2,135 checks: the bank reader on a synthetic bank, every clip clock on the
+  rules, the sight picture, the hands on the model, no allocation per frame, first person and presentation only, no pack code or
+  bank in git) and the voxel ratchet; `tools/check_unity_compile.py` PASS (all four assemblies); `git diff --check` clean; the pin
+  scan clean; Editor play captures on the shared Editor (no exceptions logged). The later commits change line endings and docs
+  only. Not run: PrototypeBuild.Validate, a Windows build, two clients (a guest's view reads the same replicated fields), the
+  Arsenal skins in first person, Low graphics and reduced effects in first person.
+- **Clips:** before (shared `ead0ef02`) and after side by side, real time, frames every 1/30 s, both panes brightened alike (Cyber
+  City at night): `F:/Chip Arena Development/scratch/fps-tactical/clips/fp-pistol.mp4`, `fp-rifle.mp4`, `fp-machinegun.mp4` (10.5
+  s each: idle, walk, sprint, fire, reload, aim) and `third-pistol.mp4` (3.5 s; third-person frames differ from shared by under
+  0.6/255 a channel).
+- **Known limits:** the rifle's tactical reload still tips its long stock across the right of the view (60% of the pack's
+  tilt); the Arsenal pistol and machine gun without a bake `Sight` take the Standard models' measured sights; the draw plays on
+  entering first person (spawn, V, after a fallback), not after the rifle's scope; jumps keep the game's hop, no pack jump clips.
+- **Owner's calls:** (1) the pack's weapon meshes as weapon skins (9 guns, 4K TGA, URP materials to rebuild); (2) the pack's
+  149 sounds (draws, reloads, fire with tails, aim in/out, footsteps), listed in the doc; (3) the empty reloads (slide release,
+  bolt) do not fit the rules' reload spans: the tactical reloads always play.
+- **Next:** the owner reviews the clips; the integrator merges and packs `ChipArenaViewMotion.bytes` into the Drive zip
+  (the Editor checkout's `Assets/LocalAssets/ChipArenaLocal/Resources`), then a test-channel build.
 
 ## 2026-11-21 — Claude: releases 14 and 15: Belvedere Camp on A1, and PuppetMaster hit reactions (integrator)
 - **Release 14:** Belvedere Camp lives in the Expedition hub on Astra's A1 rules (owner: the hub "life" update; awning "Move to 1 m").

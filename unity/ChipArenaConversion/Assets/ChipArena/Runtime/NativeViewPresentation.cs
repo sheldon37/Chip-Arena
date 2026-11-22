@@ -94,6 +94,8 @@ namespace ChipArena.UnityConversion
             ChipSelectView(viewRig,source,time);
             // The visual body's forearms and hands in place of the voxel arms (NativeVisualBodyPresentation.cs).
             VisualViewPose(viewRig,shown,time,ScopeActive);
+            // The tactical view's arms, hands and weapon frame on the view body, when its bank is installed (NativeTacticalViewPresentation.cs).
+            TacticalViewPose(shown,time);
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.
             if(!ScopeActive&&!SourceCharacter(viewRig,shown,time,true))

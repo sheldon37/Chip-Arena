@@ -117,6 +117,8 @@ namespace ChipArena.UnityConversion
         // model draws.
         private bool VisualWeaponDrawn(CapturedAnimation.Player rig,Matrix4x4 frame,Matrix4x4? left=null)
         {
+            // The tactical view's pack gun drew in its place (NativeTacticalViewPresentation.cs).
+            if(rig==viewRig&&TacticalPackDrawn(viewBody))return true;
             var body=VisualHolder(rig);if(body==null||body.Held==null||body.PosedFrame!=Time.frameCount)return false;
             var w=body.Held;
             if(w.LeftMount!=null&&(!left.HasValue||!VisualWeaponMount(w.LeftMount,left.Value)))return false;
@@ -173,6 +175,7 @@ namespace ChipArena.UnityConversion
         // RenderFirstPerson, after the draw: the view body's model hides the frame it is not drawn (put away, stowed, thrown).
         private void VisualViewWeaponShown()
         {
+            TacticalPackAfterDraw();
             if(viewBody?.Shown==null||viewBody.ShownFrame==Time.frameCount)return;
             viewBody.Shown.Hide();viewBody.Shown=null;
         }
