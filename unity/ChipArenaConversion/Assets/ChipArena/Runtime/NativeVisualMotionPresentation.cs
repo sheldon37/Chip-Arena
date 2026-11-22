@@ -641,7 +641,8 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.UpperMix[k]-m.Mix[k])*m.Upper;}
             }
             // A pack gun's support hand on the model by the pack's share (NativeTacticalMotion.GripWeight; let go in a paired move's hold).
-            m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight(m.Set.Tactical,1-(1-m.CarryShare)*(1-m.Upper),a,time,drawAge)*(1-Mathf.Clamp01(m.VictimShare)):0;
+            // (A long gun at rest grips too: its match idle's low carry with the support hand closed on the handguard.)
+            m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight(m.Set.Tactical,1-(1-m.CarryShare)*(1-m.Upper)*(1-(m.Set.RestArms!=null?Ease(m.Rest):0)),a,time,drawAge)*(1-Mathf.Clamp01(m.VictimShare)):0;
             VisualTacticalFist(m);
             VisualMotionInertia(m,jumped,dt,keepLegs);
             if(keepLegs){VisualMotionApply(m,m.Legs);hipsAt=m.ProxyHips.localPosition;hipsTurn=m.ProxyHips.localRotation;}
@@ -722,8 +723,11 @@ namespace ChipArena.UnityConversion
             if(m.HasHold)
             {
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
-                // (A pack gun: the hand's turn on the pack's ready hold by the pack's share of the upper body: its carry, then its raise.)
+                // (A pack gun: the gun's turn as the pack's ready hold has it by the pack's share of the upper body, its carry, then its raise,
+                // and its own set's at rest. The gun itself sits in the hand at one hold, the pack's (TacHold): the difference between the two
+                // holds, up to 24 degrees, is the wrist's, so the grip never turns in the palm between rest and the pack's poses.)
                 var heldTurn=m.Set.Tactical!=null?Quaternion.Slerp(m.HoldRotation,m.TacHold,1-(1-m.CarryShare)*(1-m.Upper)):m.HoldRotation;
+                if(m.Set.Tactical!=null){m.RightHand.rotation=m.RightHand.rotation*heldTurn*Quaternion.Inverse(m.TacHold);heldTurn=m.TacHold;}
                 weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*heldTurn);
                 // The Katana's blade turned over for the sheathing as the pack turns it, in the hand's frame (Core NativeKatanaSaya.Turn).
                 if(body.SayaFrame==Time.frameCount&&body.SayaTurn>0){var q=NativeKatanaSaya.SheatheTurn;weaponHand.rotation=m.RightHand.rotation*Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*m.HoldRotation;}

@@ -62,6 +62,28 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
 | Carry | walk loop 4.05 s, sprint loop 2.7 s | | on their own clocks (their sway is not stepped); the legs keep the stride's rate |
 | Draw | Viper quick draw 0.667 s, SRM-12 1.5 s, TR15 1.833 s to `OnActionEnded` | none (no weapon swap); the round's GO | 0.6, 1.1, 1.2 s ending on GO (1.1x, 1.36x, 1.53x) |
 
+## The hands on the gun (owner 2026-11-22: "think we need to fix this here"; "sometimes it appears the gun and hand aren't connected")
+
+- **The support hand grips the model in every state the pack's layers hold the gun in**: the aim standing and walking, the run's and
+  sprint's carries, a jump, each shot, and a reload's start and end (`NativeTacticalMotion.GripWeight`: the pack's share of the upper
+  body, let go over `ReloadLetGo` 0.15 s after `ReloadAt` and taken again over `ReloadRegrip` 0.25 s before `ReloadUntil`, joining a
+  draw over its last part). `VisualTacticalGrip` turns the palm's frame (wrist to the middle knuckle, pinky to index) onto the gun's
+  hold and reaches the arm so the hand's anchor sits on the model's measured `Support` (each Standard and Arsenal model's own):
+  - the long guns' fore-end (`ForeEnd`): the palm under the handguard, the fingers across under it and closed up its far side, the
+    thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis;
+  - the pistol's thumbs-forward wrap (`Wrap`): the support palm on the grip's left side, the fingers round the front over the gun
+    hand's, the thumb up the frame pointing forward.
+  The fingers close to the pack's TR15 foregrip fist by the same weight (`VisualTacticalFist`); half the wrist's new twist goes into
+  the forearm. Before, the pack's carry left the support hand open on the near face (its own support hands lie flat, fingers out),
+  and the old reach let go beyond 0.40 m.
+- **The gun follows the hand.** A raised gun's barrel turn onto the aim (at most 35 degrees) and a lowered gun's 20-degree low carry
+  used to turn the gun alone about its grip, inside the palm. They now turn the gun hand at the wrist and the gun is placed on the
+  hand again (`VisualGunWrist`), so the grip never slides or turns in the palm. This holds for every gun, with or without the pack's
+  bank; at rest the long gun's low carry is now a 20-degree wrist bend, the gun's own angle unchanged.
+- **The order** (pinned in `TacticalMotionChecks`): the motion's pose, the spine's pitch and kick, the pistol's reach, the wrist's
+  turns, the weapon on the hand, the support hand last; then the hand's fit, then the PuppetMaster hit bend (which carries the rig's
+  hand frames with the drawn hands); every body poses before any model draws, in the same frame.
+
 ## How it is built
 
 - **No pack code runs or is committed.** A local bake (git-ignored `Assets/LocalAssets/ChipArenaLocalTools/Editor/ChipArenaT1Bake.cs`,
