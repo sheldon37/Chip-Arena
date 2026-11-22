@@ -2,7 +2,8 @@
 Owner (through the integrator): "Use pack guns"; the pistol's support hand ("the hand in front"); "Seems they disappear on
 certain weapons in first person"; "Can we fix the animations to use their shooting animations and walking/running for guns?";
 "I'd like to see how third person is looking as well". **Branch:** `claude/fps-tactical`; shared `0a30de5d` (camp A1) merged
-first (`5078329f`, DEV_LOG and PROJECT_STATE kept both sides). Code `8aa68815`..`8e84bad9`. Pushed, not merged, not released.
+first (`5078329f`), then shared `8ed75305` (PuppetMaster hits; `5c0f3181`), DEV_LOG and PROJECT_STATE keeping both sides.
+Code `8aa68815`..`38782002`. Pushed, not merged, not released.
 - **What:** first person draws the KINEMATION pack's own gun in place of the game's model, whatever the skin: pistol -> WK-11
   Viper, rifle -> Oryx SRM-12 with its Phantom TAC scope, machine gun -> TR15 with its iron sights (the owner's mapping; the
   TR15 is the gun the machine gun's clip set was made for). The gun rides the clip's gun bone; its slide, bolt, hammer, trigger,
@@ -27,15 +28,32 @@ first (`5078329f`, DEV_LOG and PROJECT_STATE kept both sides). Code `8aa68815`..
 - **Shipping:** the bake also writes `ChipArenaViewGuns.prefab` beside `ChipArenaViewMotion.bytes` (Editor checkout's
   `Assets/LocalAssets/ChipArenaLocal/Resources`); `tools/pack_visual_body.py` now follows `ChipArenaViewGuns*.prefab` too (a
   one-line change in Astra's packer). About 8.2 MB on the Drive zip's 469.9 MB visual body (480 MB cap, kept per
-  EXPEDITION-OVERHAUL Q10): textures cut to bodies 1024 / their metal-gloss 512 / magazines 512 and 256 to fit.
+  EXPEDITION-OVERHAUL Q10): textures cut to bodies 1024 / their metal-gloss 512 / magazines 512 and 256 to fit. Dry run of the
+  usual repack (`--with-cloth`, P1's add-on allowlist) from the Editor checkout on a copy: visual body 1,315 files, 478.09 MB,
+  `install_local_assets.py --check --require-cloth` passed; output deleted, Drive zip untouched. The integrator, after merging:
+  under the Editor lock with the Editor on the merged commit, `python -I tools/pack_visual_body.py <Drive zip> <new zip>
+  --project "<Editor checkout>/unity/ChipArenaConversion" --with-cloth --addons-allowlist <P1's allowlist>`, then
+  `install_local_assets.py <new zip> --check --require-cloth`, keep the old zip as `LocalAssets-2026-11-21-before-pack-guns.zip`,
+  replace. The bank and the guns prefab are already in the Editor checkout's LocalAssets (bake B7/B8).
 - **Audit (first person at rest, old view model):** the hands sit below the frame for the sword, katana, daggers, fangs, bow,
   shield, glaive, the four staffs, L33t and the Bombadier; the greatsword's left forearm ends in its cut sleeve; the Siren
   (voxel arms by design), Top Dog and Cyber Lord read fine; Emperor, Ansatsuken and the DEV Greatsword/Katana not filmed (time).
   Not fixed here: the old view model's framing per class is its own task (a lift per class, or the tactical view's eye-anchored
   arms for melee with melee clips).
-- **Checks:** full CoreTests at `025b9fbe` in a clean worktree (expedition_path.patch, the 14 stage banks): 1,103 groups,
-  exit 0 (`--tactical-view` 2,739 checks); `tools/check_unity_compile.py` PASS (four assemblies); `git diff --check` clean;
-  the pin scan clean; PrototypeBuild.Validate ok at `8aa68815` and `025b9fbe`.
+- **Checks:** full CoreTests at the merged head `5c0f3181` in a clean worktree (expedition_path.patch, the 14 stage banks):
+  1,104 groups, exit 0 (`--tactical-view` 2,746 checks: bank v3, the pack-gun solve, weapon clip clocks, jumps, no allocation,
+  the gun for the view rig only, the shoulder cut for the tactical view only); `tools/check_unity_compile.py` PASS (four
+  assemblies); `git diff --check` clean; the pin scan clean; PrototypeBuild.Validate ok at `8aa68815`, `025b9fbe`, `8e84bad9`.
+  Not run: a Windows build, two clients, Low graphics and reduced effects in first person, every Arsenal skin.
+- **Clips and stills** (`F:/Chip Arena Development/scratch/fps-tactical/`): `clips2/fp-pistol.mp4`, `fp-rifle.mp4`,
+  `fp-machinegun.mp4` (BEFORE shared / AFTER pack gun, idle, walk, sprint, fire, reload, jump, aim; filmed at `8e84bad9`),
+  `clips2/third-pistol.mp4`, `third-rifle.mp4`, `third-machinegun.mp4`, `third-sword.mp4` (behind the shoulder and three-quarter
+  on a studio floor; third person unchanged); `stills/hands-sheet.jpg` and nine stills (both hands at rest, aimed, mid-reload
+  per gun, Brickfall); `audit-sheet-b1.jpg` (every weapon in first person at rest).
+- **Known issues:** brown patches on the upper arms in the tactical view (skin colour showing on the sleeves near the screen
+  edge; not the cut's bones nor the blend shapes, both tried); likely the skin poking through where the arm stretches to the
+  pack's reach, next to fix. The pistol's two-hand wrap reads dark from behind at night. The SRM-12's Phantom TAC scope is large
+  in the view (the pack's own).
 - **Next:** the owner reviews the clips; the integrator merges and re-packs the Drive zip (below, in the PR); test channel.
 
 ## 2026-11-21 — Claude (F1): first person on the Tactical Shooter Pack's clips (pilot model's arms, game's guns)
