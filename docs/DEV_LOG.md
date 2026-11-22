@@ -1,3 +1,17 @@
+## 2026-11-22 — Claude (F1): first person holds the gun the pilot holds (owner: "use whatever gun we are holding"), the rods, the robe
+**Branch:** `claude/fps-held-gun` from shared `134c2001` (releases 17 and 18). Pushed, not merged, not released.
+- **Owner:** "theres rods for some reason? ... Can we fix this to use whatever gun we are holding lol"; "the forearm thing might
+  be cause im using 'Sheldon Robe'".
+- **What:** first person draws the game's own model and skin again, on the pack's clips (`bool pack=false` in
+  `TacticalViewPosed`); the right hand on the model's grip as its grasp holds it; the support hand on the model's own handguard by
+  third person's grip (`NativeTacticalMotion.Grip`, reused), let go through reloads and draws. The rods were the chip modules: on
+  the pack guns the view rig's hand was the Standard frame put on the pack gun's muzzle, so modules laid out along the Standard
+  gun stood off the pack gun; on the model's frame they sit where third person draws them. The robe's kimono sleeve (Magica
+  cloth) ends at the elbow in first person, the forearm's skin below it.
+- **Shipping:** `pack_visual_body.py` no longer follows `ChipArenaViewGuns.prefab`: the next Drive-zip repack leaves the pack guns
+  out (about 7 MB less); the bank stays.
+- **Animation impacts:** none on rules, timing, hitboxes or the wire; presentation only.
+
 ## 2026-11-22 — Claude: releases 17 and 18: the Tactical Shooter Pack in first and third person (integrator)
 Owner: "Utilize new FPS system / animations from tactical pack"; then "Use pack guns", "Fix pilot's arms", "Can we fix the animations to
 use their shooting animations and walking/running for guns?", "think we need to fix this here" and "check the hands and gun anchoring".
