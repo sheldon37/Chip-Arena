@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 TuckLeft=new Vector3(.05f,-.3f,-.1f),TuckRight=new Vector3(-.05f,-.3f,-.1f);
 
         /// <summary>The arms' look (one instance: a local Editor probe may try values on it in play).</summary>
-        public static readonly NativeViewArmsLook Look=new NativeViewArmsLook{Cloth=new Vector3(.04f,.042f,.05f),TuckLow=.1f,TuckHigh=.25f};
+        public static readonly NativeViewArmsLook Look=new NativeViewArmsLook{Cloth=new Vector3(.06f,.063f,.075f),TuckLow=.1f,TuckHigh=.25f};
 
         /// <summary>A class without its own hold: as the old view holds it, from the anchored shoulders.</summary>
         public static readonly NativeViewArmsHold Default=new NativeViewArmsHold{Spec="",Lift=Vector3.Zero,Shoulder=ShoulderAnchor,PoleRight=PoleRight,PoleLeft=PoleLeft};
@@ -70,11 +70,11 @@ namespace ChipArena.UnityConversion
             NativeViewArmsHold H(string spec,Vector3 lift,int free=0)=>new NativeViewArmsHold{Spec=spec,Lift=lift,Shoulder=ShoulderAnchor,PoleRight=PoleRight,PoleLeft=PoleLeft,
                 Free=free,Tuck=free<0?TuckLeft:free>0?TuckRight:Vector3.Zero};
             var staff=new Vector3(-.2f,.43f,.15f);
-            var bow=H(NativeBowWire.Spec,Vector3.Zero,1);bow.CarryLift=new Vector3(-.14f,.1f,.42f);bow.Tuck=new Vector3(0,-.4f,-.1f);
+            var bow=H(NativeBowWire.Spec,Vector3.Zero,1);bow.CarryLift=new Vector3(-.22f,.1f,.42f);bow.Tuck=new Vector3(0,-.4f,-.1f);
             return new[]{
                 H("sword",new Vector3(-.15f,.15f,.08f),-1),
                 H("katana",new Vector3(-.15f,.22f,.08f),-1),
-                H(NativeDevMotions.Katana,new Vector3(-.39f,.45f,.08f),-1),
+                H(NativeDevMotions.Katana,new Vector3(-.17f,.23f,.08f),-1),
                 H("glaive",new Vector3(-.15f,.24f,.08f),-1),
                 H("daggers",new Vector3(-.15f,.16f,.08f)),
                 H(NativeFangs.Spec,new Vector3(-.18f,.25f,0)),
@@ -84,8 +84,8 @@ namespace ChipArena.UnityConversion
                 bow,
                 H("fire",staff,1),H("water",staff,1),H("lightning",staff,1),H("darkness",staff,1),H("leet",staff,1),
                 H(NativeBombs.Spec,new Vector3(0,.1f,0)),
-                H("emperor",new Vector3(0,.1f,0)),
-                H("ansatsuken",new Vector3(0,.09f,0))};
+                H("emperor",new Vector3(-.1f,.1f,0)),
+                H("ansatsuken",new Vector3(-.1f,.09f,0))};
         }
 
         /// <summary>Whether `spec` takes the eye-anchored arms: every melee, magic, bow, bomb and fighter class, but not the guns
