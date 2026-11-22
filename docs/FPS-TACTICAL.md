@@ -104,6 +104,10 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
   FPCamera), aimed each gun's `TacAnimSettings` aimFov (Viper 80, SRM-12 and TR15 70); the world camera keeps the game's (first
   person 75, the aim row's sight FOV, the rifle's scope). The pack's own idle poses put the Viper 6 degrees right and 21 below
   the centre, the SRM-12 and TR15 25 right and 19-31 below.
+  The pistol is the one exception (integrator review 2026-11-22): the pack's two-hand Viper sat near the centre and low, and
+  on the pilot's thicker arms read as a block over the view, so at the hip it sits 7.5 cm further right, 6 cm lower and 5 cm
+  further out, turned 5 degrees in (`WeaponOffset`, `HipTurn`); the clips' motion plays on it as before, and aimed the sight
+  picture is the eye's as before.
 - **The pilot's arms** (owner: "Fix pilot's arms"). In the tactical view the body's skin under its garments is hidden (every
   skin triangle within 3.5 cm of a drawn sleeve or glove vertex, `TacticalSkinUnder`, made once per outfit), so only the
   garment draws there and bare arms, bare hands and a short sleeve's hem keep their skin; the forearms are 82% and the upper

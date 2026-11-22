@@ -161,6 +161,8 @@ namespace ChipArena.UnityConversion
         // The pack's weaponOffset and sprintPoseOffset (root space); SprintCarry and SprintCarryDegrees add to its sprint (none:
         // the pack's own sprint loop already swings the gun across the body).
         public Vector3 WeaponOffset,SprintOffset;public Quaternion SprintTurn=Quaternion.Identity;
+        // A turn of the gun at the hip only (gone fully aimed): the pistol's, set lower right and turned in a little.
+        public Quaternion HipTurn=Quaternion.Identity;
         public Vector3 SprintCarry;public Vector3 SprintCarryDegrees;
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
@@ -188,7 +190,7 @@ namespace ChipArena.UnityConversion
         // The pack's idle/walk intensities (standing, aiming).
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
-            DrawSeconds=.5f,WeaponOffset=new Vector3(.015f,.03f,0),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
+            DrawSeconds=.5f,WeaponOffset=new Vector3(.09f,-.032f,.047f),HipTurn=new Quaternion(0,-.04361939f,0,.99904822f),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
             EyeRelief=.30f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.008f,-.04f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
@@ -441,6 +443,7 @@ namespace ChipArena.UnityConversion
             float sprint=MathUtil.Clamp(i.Sprint,0,1)*(1-ads),walk=MathUtil.Clamp(i.Walk,0,1)*(1-sprint);
             gp+=g.WeaponOffset+g.SprintOffset*sprint+g.SprintCarry*sprint;
             gq=Quaternion.Normalize(NativeTacticalMath.Slerp(Quaternion.Identity,Quaternion.Normalize(g.SprintTurn*NativeTacticalMath.Euler(g.SprintCarryDegrees)),sprint)*gq);
+            gq=Quaternion.Normalize(g.HipTurn*gq);
             // Aiming down the sights: the model's rear sight onto the eye's axis, EyeRelief ahead, the bore along the view.
             {
                 var wq=Quaternion.Identity;var wp=new Vector3(0,0,cal.PackGun?PackEyeRelief:g.EyeRelief)-cal.Sight;var aq=Quaternion.Normalize(wq*Quaternion.Inverse(cal.GunToWeaponTurn));var ap=wp-NativeTacticalMath.Rotate(aq,cal.GunToWeapon);
