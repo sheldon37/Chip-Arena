@@ -196,7 +196,10 @@ namespace ChipArena.UnityConversion
             if(shoulders)
             {
                 var arms=tacticalArms;if(arms==null||arms.Body!=viewBody)return;
-                arm=new System.Collections.Generic.HashSet<Transform>();for(int side=0;side<2;side++)foreach(var t in arms.Upper[side].GetComponentsInChildren<Transform>(true))arm.Add(t);
+                // From the clavicles down: a garment's upper sleeve leans on the clavicle more than the skin under it does, and cut at the
+                // upper arm alone the sleeve went while the skin stayed (bare upper arms in a long-sleeved top).
+                arm=new System.Collections.Generic.HashSet<Transform>();
+                for(int side=0;side<2;side++){var top=arms.Upper[side].parent!=null&&arms.Upper[side].parent.name.StartsWith("clavicle",System.StringComparison.Ordinal)?arms.Upper[side].parent:arms.Upper[side];foreach(var t in top.GetComponentsInChildren<Transform>(true))arm.Add(t);}
             }
             foreach(var c in tacticalCuts)
             {
