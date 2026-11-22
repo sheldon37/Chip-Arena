@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
                 H("glaive",new Vector3(-.15f,.24f,.08f),-1),
                 H("daggers",new Vector3(-.15f,.16f,.08f)),
                 H(NativeFangs.Spec,new Vector3(-.18f,.25f,0)),
-                H("shield",new Vector3(0,.05f,-.25f)),
+                H("shield",new Vector3(.04f,-.01f,-.25f)),
                 H("greatsword",new Vector3(.04f,-.13f,.01f)),
                 H(NativeDevMotions.Greatsword,new Vector3(-.25f,.26f,.06f),-1),
                 bow,
