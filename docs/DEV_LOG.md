@@ -14,9 +14,10 @@ Owner: "Utilize Ragdoll Asset for hit reactions" (RootMotion's PuppetMaster, bou
 - **Cost:** 8 bodies at once on High, 4 on Balanced (half with Reduced effects), none on the low tier (Performance = today's
   look); within 28/18 m of the camera; one puppet made a frame (a volley on a crowd lands body by body), 16 kept; a sleeping
   puppet costs nothing; each puppet has its own physics scene and no collider. Measured in the Editor (Cyber City, six shamblers
-  hit together every 0.2 s, all six reacting the whole window): frame 19.25 ms mean / 20.86 p95 against 18.59 / 20.16 with the
-  bridge off (+0.66 ms); the bridge's own step 0.68-0.80 ms a frame for six (about 0.12 ms a puppet); making one 1.0-1.6 ms
-  (the session's first about 13 ms: JIT and the first scene). Performance tier: no puppet made or stepped.
+  hit together every 0.2 s, all six reacting the whole window, three AFTER/BEFORE pairs): frame means 19.25/18.59, 19.51/19.15
+  and 19.81/20.64 ms (p95 20.86/20.16, 21.47/20.87, 21.47/22.59): within the Editor's run-to-run noise; the bridge's own step
+  0.68-0.80 ms a frame for six (about 0.12 ms a puppet); making one 1.0-1.9 ms (the session's first 12-14 ms: JIT and the first
+  scene). Performance tier (`pref=graphics:performance`, twice): no puppet made or stepped.
 - **Death:** a pilot killed while bent falls from that drawn pose (`VisualRigFromDrawn` copies the drawn bones); gibbing,
   bisects and severs unchanged. A dying add's puppet blends back during its fall.
 - **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the puppet reads
@@ -34,9 +35,18 @@ Owner: "Utilize Ragdoll Asset for hit reactions" (RootMotion's PuppetMaster, bou
   rolled it back within a minute; the Editor was never left broken). The add-on set leaves that file out; local add-ons are now
   checked against the Editor's own `Library/Bee/artifacts/*/Assembly-CSharp.rsp` references.
 - **Checks:** full CoreTests (clean LF worktree, `expedition_path.patch`, the 14 stage banks) at `7abc5703`: 1,103 groups, exit 0
-  (`HitPuppetChecks` new); `--hit-puppets` at the head; `tools/check_unity_compile.py` passed; `git diff --check` clean; the
+  (`HitPuppetChecks` new), and at the head (FINALSUITE); `--hit-puppets` at the head; `tools/check_unity_compile.py` passed; `git diff --check` clean; the
   Editor compiled the add-ons and the branch; captures (below).
-- **Clips:** `F:/Chip Arena Development/scratch/puppet-hits/clips/` (before | after, 3x slower). CLIPS
+- **Clips:** `F:/Chip Arena Development/scratch/puppet-hits/clips/` (before | after on the same build, the bridge off by
+  `Temp/hitpuppets-off.flag`; 1/30 s frames at 10 fps, 3x slower): `greatsword-bot.mp4`, `katana-bot.mp4`,
+  `rifle-bot-shot-to-death.mp4` (the local pilot's AI fires; only the AFTER run's bot died in the window: the corpse continues
+  from the bent pose), `greatsword-hit-then-kill.mp4` (the second swing's bisect, both runs at the same frame: the halves start
+  from the drawn pose, gibbing intact), `zombies-rifle.mp4` (five shamblers from a fixed side camera; the push is modest at a
+  rifle's weight and the zombies' own stagger dominates). Captures in `.../puppet-hits/cap/` (h2, h3).
+- **Fixed on the way (found in the captures):** a hit at the neck flung the 1.5 kg neck and head (the bridge now never strikes
+  the neck and caps a push at 3.2 m/s over what the struck part carries); a volley on a crowd made one puppet and dropped the
+  other hits (they now wait for the next frame's making); blade-class cuts (Katana, Fangs, Glaive) pushed nothing on pilots
+  (their detail names the move: now counted as blows, as HordeHit already did).
 - **Not run:** two clients (host and guest), a Windows player build, the builder, Medium-tier captures.
 - **Risks:** the push's feel is tuned on a few Editor captures (a greatsword blow throws the head back hard; tune `MuscleSpring`,
   `MuscleDamper`, `MaxKick` in the bridge or the bases in `NativeHitPuppetRules`); the session's first puppet costs about 13 ms
