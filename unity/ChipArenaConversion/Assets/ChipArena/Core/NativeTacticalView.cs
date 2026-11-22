@@ -56,15 +56,50 @@ namespace ChipArena.UnityConversion
         private Vector3 Dir(int o0,int o1,int at,float a){var d=V(o0,o1,at,a);float l=d.Length();return l>1e-6f?d/l:Vector3.UnitZ;}
     }
 
+    /// <summary>A pack gun the view draws in first person (owner 2026-11-21: "Use pack guns"): its prefab child's key, the path of
+    /// its animated model under it, its muzzle and its sight's aim point (the eye's place at full aim) in the gun's frame.</summary>
+    public sealed class NativeTacticalGunModel { public string Key,Model;public Vector3 Muzzle,Aim; }
+
+    /// <summary>A weapon clip (the pack gun's own: slide, bolt, magazine, trigger): its moving bones' paths under the gun and
+    /// their local place and turn per frame.</summary>
+    public sealed class NativeTacticalWeaponClip
+    {
+        public readonly string Key,Gun;public readonly int Frames;public readonly float Length,Fps;public readonly string[] Paths;private readonly float[] data;
+        public NativeTacticalWeaponClip(string key,string gun,int frames,float length,float fps,string[] paths,float[] data)
+        {
+            if(frames<1||paths==null||data==null||data.Length!=frames*paths.Length*7||!(fps>0))throw new ArgumentException("bad weapon clip "+key);
+            Key=key;Gun=gun;Frames=frames;Length=length;Fps=fps;Paths=paths;this.data=data;
+        }
+        public int Bones=>Paths.Length;
+        public void Sample(float time,Vector3[] pos,Quaternion[] rot)
+        {
+            float x=MathUtil.Clamp(MathUtil.Finite(time)?time:0,0,Length)*Fps;int k0=Math.Min(Frames-1,(int)Math.Floor(x)),k1=Math.Min(Frames-1,k0+1);float a=MathUtil.Clamp(x-k0,0,1);
+            int n=Paths.Length;
+            for(int i=0;i<n&&i<pos.Length&&i<rot.Length;i++)
+            {
+                int o0=(k0*n+i)*7,o1=(k1*n+i)*7;
+                pos[i]=Vector3.Lerp(new Vector3(data[o0],data[o0+1],data[o0+2]),new Vector3(data[o1],data[o1+1],data[o1+2]),a);
+                rot[i]=NativeTacticalMath.Slerp(new Quaternion(data[o0+3],data[o0+4],data[o0+5],data[o0+6]),new Quaternion(data[o1+3],data[o1+4],data[o1+5],data[o1+6]),a);
+            }
+        }
+    }
+
     /// <summary>The bank (ChipArenaViewMotion.bytes): "CAVM", version, fps, clip count, stride; per clip its UTF-8 key, frames,
-    /// length, action start and end (shares of the length, -1 without), then frames x stride little-endian floats.</summary>
+    /// length, action start and end (shares of the length, -1 without), then frames x stride little-endian floats. Version 3
+    /// follows with the pack guns (count; key, model path, muzzle, aim point) and their weapon clips (count; key, gun, frames,
+    /// length, bone count, the bones' paths, frames x bones x 7 floats).</summary>
     public sealed class NativeTacticalBank
     {
-        public const string Resource="ChipArenaViewMotion";public const int Version=2;
+        public const string Resource="ChipArenaViewMotion",GunsResource="ChipArenaViewGuns";public const int Version=3;
         public readonly float Fps;private readonly Dictionary<string,NativeTacticalClip> clips=new Dictionary<string,NativeTacticalClip>(StringComparer.Ordinal);
         public int Count=>clips.Count;
         private NativeTacticalBank(float fps){Fps=fps;}
         public NativeTacticalClip Clip(string key)=>key!=null&&clips.TryGetValue(key,out var c)?c:null;
+        private readonly Dictionary<string,NativeTacticalGunModel> guns=new Dictionary<string,NativeTacticalGunModel>(StringComparer.Ordinal);
+        private readonly Dictionary<string,NativeTacticalWeaponClip> weaponClips=new Dictionary<string,NativeTacticalWeaponClip>(StringComparer.Ordinal);
+        public NativeTacticalGunModel Gun(string key)=>key!=null&&guns.TryGetValue(key,out var g)?g:null;
+        public NativeTacticalWeaponClip WeaponClip(string key)=>key!=null&&weaponClips.TryGetValue(key,out var c)?c:null;
+        public IEnumerable<NativeTacticalWeaponClip> WeaponClips=>weaponClips.Values;
         public static NativeTacticalBank Parse(byte[] b)
         {
             if(b==null||b.Length<20||b[0]!='C'||b[1]!='A'||b[2]!='V'||b[3]!='M')throw new InvalidOperationException("not a view-motion bank");
@@ -80,9 +115,28 @@ namespace ChipArena.UnityConversion
                 var data=new float[frames*stride];for(int i=0;i<data.Length;i++){data[i]=BitConverter.ToSingle(b,o);o+=4;if(!MathUtil.Finite(data[i]))throw new InvalidOperationException("non-finite value in "+key);}
                 bank.clips[key]=new NativeTacticalClip(key,frames,length,a0,a1,fps,data);
             }
+            int gunCount=I(b,ref o);if(gunCount<0||gunCount>64)throw new InvalidOperationException("bad gun count");
+            for(int g=0;g<gunCount;g++)
+            {
+                var m=new NativeTacticalGunModel{Key=S(b,ref o),Model=S(b,ref o)};m.Muzzle=new Vector3(F(b,ref o),F(b,ref o),F(b,ref o));m.Aim=new Vector3(F(b,ref o),F(b,ref o),F(b,ref o));
+                if(!Fin(m.Muzzle)||!Fin(m.Aim))throw new InvalidOperationException("non-finite value in gun "+m.Key);
+                bank.guns[m.Key]=m;
+            }
+            int wcount=I(b,ref o);if(wcount<0||wcount>256)throw new InvalidOperationException("bad weapon clip count");
+            for(int c=0;c<wcount;c++)
+            {
+                string key=S(b,ref o),gun=S(b,ref o);int frames=I(b,ref o);float length=F(b,ref o);int bones=I(b,ref o);
+                if(frames<1||frames>100000||bones<0||bones>512)throw new InvalidOperationException("bad weapon clip "+key);
+                var paths=new string[bones];for(int i=0;i<bones;i++)paths[i]=S(b,ref o);
+                if((long)o+(long)frames*bones*28>b.Length)throw new InvalidOperationException("truncated weapon clip "+key);
+                var data=new float[frames*bones*7];for(int i=0;i<data.Length;i++){data[i]=BitConverter.ToSingle(b,o);o+=4;if(!MathUtil.Finite(data[i]))throw new InvalidOperationException("non-finite value in "+key);}
+                bank.weaponClips[key]=new NativeTacticalWeaponClip(key,gun,frames,length,fps,paths,data);
+            }
             return bank;
         }
+        private static bool Fin(Vector3 v)=>MathUtil.Finite(v.X)&&MathUtil.Finite(v.Y)&&MathUtil.Finite(v.Z);
         private static int I(byte[] b,ref int o){if(o+4>b.Length)throw new InvalidOperationException("truncated bank");int v=BitConverter.ToInt32(b,o);o+=4;return v;}
+        private static string S(byte[] b,ref int o){int len=I(b,ref o);if(len<0||len>1024||o+len>b.Length)throw new InvalidOperationException("bad string");string v=Encoding.UTF8.GetString(b,o,len);o+=len;return v;}
         private static float F(byte[] b,ref int o){if(o+4>b.Length)throw new InvalidOperationException("truncated bank");float v=BitConverter.ToSingle(b,o);o+=4;return v;}
         /// <summary>Whether every clip the gun's set and the locomotion layer need is in the bank.</summary>
         public bool Covers(NativeTacticalGun g)
@@ -95,7 +149,10 @@ namespace ChipArena.UnityConversion
     /// <summary>One gun's clip set and its look (the pack's TacAnimSettings where it has one; its recoil, sway and aim tuned here).</summary>
     public sealed class NativeTacticalGun
     {
-        public const string IdlePose="general.idlepose",IdleLoop="general.idleloop",WalkPose="general.walkpose",WalkLoop="general.walkloop",SprintLoop="general.sprintloop";
+        public const string IdlePose="general.idlepose",IdleLoop="general.idleloop",WalkPose="general.walkpose",WalkLoop="general.walkloop",SprintLoop="general.sprintloop",
+            JumpStart="general.jumpstart",JumpLoop="general.jumploop",JumpEnd="general.jumpend";
+        // The pack gun drawn in first person (its ChipArenaViewGuns child) and its weapon clips (rest, fire, reload).
+        public string PackGun,WeaponIdle,WeaponFire,WeaponReload;
         public WeaponId Weapon;public string Family,Idle,Fire,Reload,Draw;
         // The fire clip is an action (the rifle's bolt, played to ShootReady) or an additive kick (the pistol); none: recoil alone.
         public bool FireAction;
@@ -140,6 +197,10 @@ namespace ChipArena.UnityConversion
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
             DrawSeconds=1f,WeaponOffset=new Vector3(-.043f,.007f,.02f),SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
             KickBack=.014f,KickPitch=1.1f,KickYaw=.5f,KickRoll=1.1f,KickOmega=40,KickZeta=.6f};
+        static NativeTacticalGun()
+        {
+            foreach(var g in new[]{Pistol,Rifle,MachineGun}){g.PackGun=g.Weapon==WeaponId.MachineGun?"machinegun":g.Weapon==WeaponId.Rifle?"rifle":"pistol";g.WeaponIdle=g.PackGun+".w.idle";g.WeaponFire=g.PackGun+".w.fire";g.WeaponReload=g.PackGun+".w.reload";}
+        }
         public static NativeTacticalGun For(WeaponId w)=>w==WeaponId.Pistol?Pistol:w==WeaponId.Rifle?Rifle:w==WeaponId.MachineGun?MachineGun:null;
     }
 
@@ -269,6 +330,8 @@ namespace ChipArena.UnityConversion
         // The pack's right hand frame -> the view body's right hand bone (constant per gun and body). The left hand takes the
         // pack's own place and palm (its support on the pack's gun reads true on the game's models, whose grip the wrists share).
         public Vector3 RightKey;public Quaternion RightKeyTurn;
+        // The pack's own gun in hand: no fit (the model is the pack gun), both hands on the pack's places and palms, the sight its aim point.
+        public bool PackGun;
     }
 
     /// <summary>One solved frame, camera frame: the model's weapon frame, the right hand bone's target, the left wrist and both
@@ -279,6 +342,8 @@ namespace ChipArena.UnityConversion
         public Vector3 Weapon,Right,Left,RightElbow,LeftElbow,RightShoulder,LeftShoulder;public Quaternion WeaponTurn,RightTurn,Camera,RightPalm,LeftPalm;
         public readonly Vector3[] RightFingers=new Vector3[15],LeftFingers=new Vector3[15];public float RightFingerWeight,LeftFingerWeight;
         public float Ads,ActionWeight;public string Action="";public float ActionTime;
+        // The pack gun's own clip this frame (its slide, bolt and magazine) and its time.
+        public string WeaponClip="";public float WeaponTime;
     }
 
     /// <summary>The view's state between frames (the draw, the aim's progress, the recoil and the last shot seen) and its solve.</summary>
@@ -286,10 +351,14 @@ namespace ChipArena.UnityConversion
     {
         public readonly NativeTacticalBank Bank;
         private WeaponId gun=WeaponId.Sword;private float at=float.NaN,drawAt=-100,aim,lastShot=float.NaN;
+        // The jump's moments (the pack's Jump_Start, Jump_Loop and Jump_End on the additive bone).
+        private bool grounded=true;private float airAt=-100,landAt=-100;
         public readonly NativeTacticalRecoil Recoil=new NativeTacticalRecoil();
         private readonly Vector3[] fr=new Vector3[15],fl=new Vector3[15],fr2=new Vector3[15],fl2=new Vector3[15];
         public NativeTacticalView(NativeTacticalBank bank){Bank=bank??throw new ArgumentNullException(nameof(bank));}
         public float AimProgress=>aim;public float DrawAt=>drawAt;
+        // The pack gun's aim point is the eye's own place at full aim (its sight picture as KINEMATION's demo frames it).
+        public const float PackEyeRelief=0;
 
         /// <summary>The calibration from the gun's idle and the view body's grasp (hand bones in its weapon frame) and sight: the
         /// model's bore and up on the pack gun's, its right wrist on the pack's right wrist.</summary>
@@ -308,6 +377,23 @@ namespace ChipArena.UnityConversion
             return c;
         }
 
+        /// <summary>The pack gun's calibration: the gun is the clip's own, both hands take the pack's places and palms and the
+        /// aim brings its aim point (the eye's place at full aim) onto the eye.</summary>
+        public NativeTacticalCalibration CalibratePack(NativeTacticalGun g)
+        {
+            var m=Bank.Gun(g?.PackGun);if(m==null)return default;
+            return new NativeTacticalCalibration{Set=true,PackGun=true,GunToWeaponTurn=Quaternion.Identity,RightGripTurn=Quaternion.Identity,RightKeyTurn=Quaternion.Identity,Sight=m.Aim};
+        }
+
+        /// <summary>The pack gun's share of the Standard gun's frame for what the game draws on it (the flash, the brass, the chip
+        /// kit): its muzzle's reach ahead of the right wrist at rest over the Standard gun's muzzle depth (`muzzleZ`); 1 without it.</summary>
+        public float PackScale(NativeTacticalGun g,float muzzleZ)
+        {
+            var m=Bank.Gun(g?.PackGun);var idle=Bank.Clip(g?.Idle);if(m==null||idle==null||!(muzzleZ>0))return 1;
+            idle.Sample(0,out var f);NativeTacticalMath.Relative(f.Gun,f.GunTurn,f.Right,f.RightTurn,out var hrp,out _);
+            return MathUtil.Clamp((m.Muzzle.Z-hrp.Z)/muzzleZ,.1f,1);
+        }
+
         /// <summary>Solves the frame into `s`; false when the bank lacks the gun's clips.</summary>
         public bool Solve(in NativeTacticalInput i,in NativeTacticalCalibration cal,NativeTacticalSolution s)
         {
@@ -317,6 +403,7 @@ namespace ChipArena.UnityConversion
             // A new shot: the recoil's kick (the pistol's and rifle's clips carry most of theirs).
             if(!float.IsNaN(lastShot)&&i.LastShot>lastShot+1e-4f&&i.LastShot<=i.Time+1e-3f)Recoil.Kick(g,i.LastShot,g.Fire==null?1:g.FireAction?.45f:.6f);
             lastShot=i.LastShot;Recoil.Step(g,dt);
+            if(grounded&&!i.Grounded)airAt=i.Time;else if(!grounded&&i.Grounded)landAt=i.Time;grounded=i.Grounded;
             float interval=NativeTacticalTiming.Interval(i.Weapon,i.LastShot,i.ShootReady);
             bool reloading=NativeTacticalTiming.Reloading(i.Time,i.ReloadAt,i.ReloadUntil);
             var idle=Bank.Clip(g.Idle);idle.Sample(0,out var b,fr,fl);
@@ -340,7 +427,8 @@ namespace ChipArena.UnityConversion
             var gi=Quaternion.Inverse(f.GunTurn);Quaternion rpq=Quaternion.Normalize(gi*f.RightPalm),lpq=Quaternion.Normalize(gi*f.LeftPalm);
             var er=NativeTacticalMath.Rotate(Quaternion.Inverse(f.GunTurn),f.RightElbow-f.Gun);var el=NativeTacticalMath.Rotate(Quaternion.Inverse(f.GunTurn),f.LeftElbow-f.Gun);
             // A gun that tilts less than the clip's (ActionTurn) keeps the hands' hold on it (taken above on the clip's own turn).
-            Vector3 gp=f.Gun;Quaternion gq=g.ActionTurn!=1?NativeTacticalMath.Slerp(b.GunTurn,f.GunTurn,g.ActionTurn):f.GunTurn;
+            float turnShare=cal.PackGun?1:g.ActionTurn;
+            Vector3 gp=f.Gun;Quaternion gq=turnShare!=1?NativeTacticalMath.Slerp(b.GunTurn,f.GunTurn,turnShare):f.GunTurn;
             // The pistol's additive kick (its clip from frame 0, quickened into the interval).
             if(g.Fire!=null&&!g.FireAction)
             {
@@ -354,7 +442,7 @@ namespace ChipArena.UnityConversion
             gq=Quaternion.Normalize(NativeTacticalMath.Slerp(Quaternion.Identity,Quaternion.Normalize(g.SprintTurn*NativeTacticalMath.Euler(g.SprintCarryDegrees)),sprint)*gq);
             // Aiming down the sights: the model's rear sight onto the eye's axis, EyeRelief ahead, the bore along the view.
             {
-                var wq=Quaternion.Identity;var wp=new Vector3(0,0,g.EyeRelief)-cal.Sight;var aq=Quaternion.Normalize(wq*Quaternion.Inverse(cal.GunToWeaponTurn));var ap=wp-NativeTacticalMath.Rotate(aq,cal.GunToWeapon);
+                var wq=Quaternion.Identity;var wp=new Vector3(0,0,cal.PackGun?PackEyeRelief:g.EyeRelief)-cal.Sight;var aq=Quaternion.Normalize(wq*Quaternion.Inverse(cal.GunToWeaponTurn));var ap=wp-NativeTacticalMath.Rotate(aq,cal.GunToWeapon);
                 gp=Vector3.Lerp(gp,ap,ads);gq=NativeTacticalMath.Slerp(gq,aq,ads);
             }
             // The pack's procedural layer on top (its intensities lower while aimed).
@@ -369,12 +457,19 @@ namespace ChipArena.UnityConversion
             // The model's weapon frame and the hand bones' targets (pack hand x key), elbows along.
             NativeTacticalMath.Compose(gp,gq,cal.GunToWeapon,cal.GunToWeaponTurn,out s.Weapon,out s.WeaponTurn);
             NativeTacticalMath.Compose(gp,gq,hrp,hrq,out var prp,out var prq);NativeTacticalMath.Compose(prp,prq,cal.RightKey,cal.RightKeyTurn,out s.Right,out s.RightTurn);
-            s.Left=gp+NativeTacticalMath.Rotate(gq,hlp+cal.LeftShift+g.LeftOffset);s.LeftPalm=Quaternion.Normalize(gq*lpq);s.RightPalm=Quaternion.Normalize(gq*rpq);
+            s.Left=gp+NativeTacticalMath.Rotate(gq,hlp+(cal.PackGun?Vector3.Zero:cal.LeftShift+g.LeftOffset));s.LeftPalm=Quaternion.Normalize(gq*lpq);s.RightPalm=Quaternion.Normalize(gq*rpq);
+            // The pack gun: the right hand too on the pack's own place (its wrist; the palm turns it), the gun the clip's own.
+            if(cal.PackGun)s.Right=prp;
             s.RightElbow=gp+NativeTacticalMath.Rotate(gq,er);s.LeftElbow=gp+NativeTacticalMath.Rotate(gq,el);
             s.RightShoulder=f.RightShoulder;s.LeftShoulder=f.LeftShoulder;
             for(int k=0;k<15;k++){s.RightFingers[k]=fr[k];s.LeftFingers[k]=fl[k];}
             // The clip's fingers replace the grasp's while an action moves the hands (a reload, the bolt, the draw).
-            s.RightFingerWeight=w;s.LeftFingerWeight=1;
+            s.RightFingerWeight=cal.PackGun?1:w;s.LeftFingerWeight=1;
+            // The pack gun's own clip: the reload's and the bolt's on their action's share, a shot's from the shot (quickened into
+            // the interval), else its rest.
+            s.WeaponClip=g.WeaponIdle;s.WeaponTime=0;
+            if(act!=null&&w>0&&(act.Key==g.Reload||act.Key==g.Fire)){var wc=Bank.WeaponClip(act.Key==g.Reload?g.WeaponReload:g.WeaponFire);if(wc!=null){s.WeaponClip=wc.Key;s.WeaponTime=act.Length>0?t/act.Length*wc.Length:0;}}
+            else{var wf=Bank.WeaponClip(g.WeaponFire);float ft=wf!=null?NativeTacticalTiming.FireKickTime(i.Time,i.LastShot,interval,wf.Length):-1;if(ft>=0){s.WeaponClip=wf.Key;s.WeaponTime=ft;}}
             return true;
         }
 
@@ -391,6 +486,15 @@ namespace ChipArena.UnityConversion
             Vector3 idleP=Vector3.Lerp(a0.Add,a1.Add,idleK),walkP=Vector3.Lerp(b0.Add,b1.Add,walkK);
             Quaternion idleQ=NativeTacticalMath.Slerp(a0.AddTurn,a1.AddTurn,idleK),walkQ=NativeTacticalMath.Slerp(b0.AddTurn,b1.AddTurn,walkK);
             p=Vector3.Lerp(Vector3.Lerp(idleP,walkP,walk),c1.Add,sprint);q=NativeTacticalMath.Slerp(NativeTacticalMath.Slerp(idleQ,walkQ,walk),c1.AddTurn,sprint);
+            // The jump: Jump_Start from the take-off, Jump_Loop while airborne, Jump_End from the landing (eased in and out).
+            var js=Bank.Clip(NativeTacticalGun.JumpStart);var jl=Bank.Clip(NativeTacticalGun.JumpLoop);var je=Bank.Clip(NativeTacticalGun.JumpEnd);
+            if(js!=null&&jl!=null&&je!=null)
+            {
+                float jw=0;NativeTacticalFrame jf=default;
+                if(!i.Grounded){float air=i.Time-airAt;if(air<js.Length)js.Sample(air,out jf);else jl.Sample(Loop(air-js.Length,jl.Length),out jf);jw=MathUtil.Smooth(air/.1f);}
+                else{float after=i.Time-landAt;if(after>=0&&after<je.Length){je.Sample(after,out jf);jw=MathUtil.Smooth((je.Length-after)/.15f);}}
+                if(jw>0){jw*=1-ads*.6f;p=Vector3.Lerp(p,jf.Add,jw);q=NativeTacticalMath.Slerp(q,jf.AddTurn,jw);}
+            }
         }
         private static float Loop(float t,float length)=>length>0?(float)(t-Math.Floor(t/length)*length):0;
         private static float Phase(float turns)=>MathUtil.Finite(turns)?turns-(float)Math.Floor(turns):0;

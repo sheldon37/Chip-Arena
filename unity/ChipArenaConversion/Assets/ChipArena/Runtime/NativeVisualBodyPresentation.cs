@@ -1071,17 +1071,20 @@ namespace ChipArena.UnityConversion
             {
                 if(r==null)continue;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;
                 var skin=r as SkinnedMeshRenderer;var cut=skin!=null?ArmMesh(skin,arm):null;
+                // The tactical view cuts the same meshes at the shoulders instead (NativeTacticalViewPresentation.cs TacticalArmCut).
+                if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);
                 if(cut==null){r.enabled=false;continue;}
                 skin.sharedMesh=cut;skin.updateWhenOffscreen=true;
             }
             body.Root.SetActive(false);return body;
         }
-        // The triangles of a skinned mesh whose three corners are weighted half or more to the given bones (below the elbows);
-        // null when none are, or the mesh cannot be read (its import keeps it readable).
-        private static Mesh ArmMesh(SkinnedMeshRenderer skin,HashSet<Transform> arm)
+        // The triangles of a skinned mesh (its own, or `source` on its bones) whose three corners are weighted half or more to the
+        // given bones (below the elbows; the tactical view's below the shoulders, in its own `cache`); null when none are, or the
+        // mesh cannot be read (its import keeps it readable).
+        private static Mesh ArmMesh(SkinnedMeshRenderer skin,HashSet<Transform> arm,Mesh source=null,Dictionary<Mesh,Mesh> cache=null,string part=" (forearms)")
         {
-            var mesh=skin.sharedMesh;if(mesh==null||!mesh.isReadable)return null;
-            if(armMeshes.TryGetValue(mesh,out var made))return made;
+            var mesh=source!=null?source:skin.sharedMesh;if(mesh==null||!mesh.isReadable)return null;cache??=armMeshes;
+            if(cache.TryGetValue(mesh,out var made))return made;
             var bones=skin.bones;var weights=mesh.boneWeights;Mesh cut=null;
             if(weights.Length==mesh.vertexCount)
             {
@@ -1096,9 +1099,9 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i+2<tris.Length;i+=3)if(keep[tris[i]]&&keep[tris[i+1]]&&keep[tris[i+2]]){list.Add(tris[i]);list.Add(tris[i+1]);list.Add(tris[i+2]);}
                     parts.Add(list.ToArray());kept+=list.Count;
                 }
-                if(kept>0){cut=Instantiate(mesh);cut.name=mesh.name+" (forearms)";for(int s=0;s<parts.Count;s++)cut.SetTriangles(parts[s],s,false);cut.RecalculateBounds();}
+                if(kept>0){cut=Instantiate(mesh);cut.name=mesh.name+part;for(int s=0;s<parts.Count;s++)cut.SetTriangles(parts[s],s,false);cut.RecalculateBounds();}
             }
-            armMeshes[mesh]=cut;return cut;
+            cache[mesh]=cut;return cut;
         }
 
         // ---- Death (owner 2026-10-23: "Death turns model into voxel") ----

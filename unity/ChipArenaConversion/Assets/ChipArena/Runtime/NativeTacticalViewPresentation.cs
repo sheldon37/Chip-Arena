@@ -11,6 +11,12 @@ namespace ChipArena.UnityConversion
     // weapon frame (fitted, as VisualViewPose leaves it), so the muzzle flash, the rounds' origin and the kit pieces stay on the
     // model. Without the bank, for another weapon or class, the chip select's raised wrist, a scope or a downed pilot, the old
     // view model draws as before. Third person never reads any of it. Presentation only: aim, muzzle, shots and rules are the game's.
+    // With the local pack guns installed too (ChipArenaViewGuns; owner 2026-11-21: "Use pack guns"), first person draws the pack's
+    // own gun for each (the WK-11 Viper, the SRM-12, the TR15) in place of the game's model, whatever the skin: it rides the clip's
+    // gun bone, its slide, bolt, magazine and trigger move by its own weapon clips, both hands take the pack's places and palms
+    // and every finger the clip's, and the view rig's right hand takes the Standard gun's frame on the pack gun's muzzle (the
+    // flash, the brass and the chip kit there). The tactical view's arms are cut at the shoulders, not the elbows, so they run in
+    // from the screen's edges ("Seems they disappear on certain weapons in first person").
     public sealed partial class ArenaPresentation
     {
         private static NativeTacticalBank tacticalBank;private static bool tacticalTried;
@@ -27,6 +33,11 @@ namespace ChipArena.UnityConversion
         private int tacticalFrame=-10,tacticalScopedFrame=-10,tacticalKickFrame=-1;
         private Quaternion tacticalCamera=Quaternion.identity,tacticalKick=Quaternion.identity;
         private TacticalArms tacticalArms;
+        // The pack guns under the view body (a child per gun key, the one in hand shown) and the frame one drew.
+        private static GameObject tacticalGunsPrefab;private static bool tacticalGunsTried;
+        private GameObject tacticalGuns;private VisualBody tacticalGunsBody;private int tacticalPackFrame=-10,tacticalPackShown=-10;
+        private readonly System.Collections.Generic.Dictionary<string,TacticalGunView> tacticalGunViews=new System.Collections.Generic.Dictionary<string,TacticalGunView>();
+        private bool tacticalCalPack;
         /// <summary>Whether the tactical view drew the local pilot's first person this frame.</summary>
         public bool TacticalViewDrawn=>tacticalFrame==Time.frameCount;
         // The walk share of the view's gait (NativeViewSway.Motion, speed over 6.8 m/s) at which the pack's walk is whole.
@@ -103,14 +114,117 @@ namespace ChipArena.UnityConversion
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,target-b)*lower.rotation;
         }
 
+        // ---- The pack guns (ChipArenaViewGuns, made by the local bake: the pack's weapon prefabs on Built-in materials) ----
+        private sealed class TacticalGunView
+        {
+            public string Key;public Transform Root;
+            // Each weapon clip's bones under the gun (null where one is missing), and every bone any of them moves with its rest.
+            public readonly System.Collections.Generic.Dictionary<string,Transform[]> Bones=new System.Collections.Generic.Dictionary<string,Transform[]>();
+            public readonly System.Collections.Generic.List<Transform> Touched=new System.Collections.Generic.List<Transform>();
+            public readonly System.Collections.Generic.List<Vector3> RestP=new System.Collections.Generic.List<Vector3>();
+            public readonly System.Collections.Generic.List<Quaternion> RestR=new System.Collections.Generic.List<Quaternion>();
+            public System.Numerics.Vector3[] P=new System.Numerics.Vector3[0];public System.Numerics.Quaternion[] Q=new System.Numerics.Quaternion[0];
+        }
+        private static GameObject TacticalGunsPrefab{get{if(!tacticalGunsTried){tacticalGunsTried=true;tacticalGunsPrefab=Resources.Load<GameObject>(NativeTacticalBank.GunsResource);}return tacticalGunsPrefab;}}
+        /// <summary>Whether first person draws the pack's own gun for `g` (the guns prefab and the bank's entry installed).</summary>
+        private static bool TacticalPackReady(NativeTacticalBank bank,NativeTacticalGun g)=>bank?.Gun(g?.PackGun)!=null&&TacticalGunsPrefab!=null;
+        private TacticalGunView TacticalGunOf(NativeTacticalBank bank,NativeTacticalGun g)
+        {
+            var prefab=TacticalGunsPrefab;if(prefab==null||viewBody?.Root==null||bank.Gun(g.PackGun)==null)return null;
+            if(tacticalGuns==null||tacticalGunsBody!=viewBody)
+            {
+                if(tacticalGuns!=null)Destroy(tacticalGuns);tacticalGunViews.Clear();
+                tacticalGuns=Instantiate(prefab,viewBody.Root.transform,false);tacticalGuns.name="Tactical view guns";tacticalGunsBody=viewBody;
+                foreach(var t in tacticalGuns.GetComponentsInChildren<Transform>(true))t.gameObject.layer=10;
+                for(int c=0;c<tacticalGuns.transform.childCount;c++)tacticalGuns.transform.GetChild(c).gameObject.SetActive(false);
+            }
+            if(tacticalGunViews.TryGetValue(g.PackGun,out var v))return v;
+            var root=tacticalGuns.transform.Find(g.PackGun);v=root==null?null:new TacticalGunView{Key=g.PackGun,Root=root};
+            if(v!=null)foreach(var wc in bank.WeaponClips)
+            {
+                if(wc.Gun!=g.PackGun)continue;var bones=new Transform[wc.Bones];
+                for(int i=0;i<wc.Bones;i++)
+                {
+                    var b=bones[i]=root.Find(wc.Paths[i]);if(b==null||v.Touched.Contains(b))continue;
+                    v.Touched.Add(b);v.RestP.Add(b.localPosition);v.RestR.Add(b.localRotation);
+                }
+                v.Bones[wc.Key]=bones;
+            }
+            tacticalGunViews[g.PackGun]=v;return v;
+        }
+        // The gun's moving parts: back to rest, then the clip's frame at `time`.
+        private static void TacticalGunPose(TacticalGunView v,NativeTacticalBank bank,string clip,float time)
+        {
+            for(int i=0;i<v.Touched.Count;i++)v.Touched[i].SetLocalPositionAndRotation(v.RestP[i],v.RestR[i]);
+            var wc=bank.WeaponClip(clip);if(wc==null||!v.Bones.TryGetValue(wc.Key,out var bones))return;
+            if(v.P.Length<wc.Bones){v.P=new System.Numerics.Vector3[wc.Bones];v.Q=new System.Numerics.Quaternion[wc.Bones];}
+            wc.Sample(time,v.P,v.Q);
+            for(int i=0;i<wc.Bones;i++)if(bones[i]!=null)bones[i].SetLocalPositionAndRotation(CapturedAnimation.Vec(v.P[i]),CapturedAnimation.Quat(v.Q[i]));
+        }
+        // Only `on` shown (none: all hidden).
+        private void TacticalGunsShown(TacticalGunView on)
+        {
+            if(tacticalGuns==null)return;var t=tacticalGuns.transform;
+            for(int c=0;c<t.childCount;c++){var child=t.GetChild(c).gameObject;bool show=on!=null&&child.transform==on.Root;if(child.activeSelf!=show)child.SetActive(show);}
+        }
+        /// <summary>VisualWeaponDrawn, for the view rig: the pack gun drew in the game model's place this frame (SourceCharacter's
+        /// own gate: not put away, stowed or spawning); its body's model hides.</summary>
+        private bool TacticalPackDrawn(VisualBody body)
+        {
+            if(tacticalPackFrame!=Time.frameCount)return false;
+            if(body?.Shown!=null){body.Shown.Hide();body.Shown=null;}
+            tacticalPackShown=Time.frameCount;return true;
+        }
+        /// <summary>VisualViewWeaponShown: the pack gun hides the frame SourceCharacter did not draw it.</summary>
+        private void TacticalPackAfterDraw(){if(tacticalPackShown!=Time.frameCount)TacticalGunsShown(null);}
+
+        // ---- The arms' cut: the elbows for the old view model (CreateViewBody), the shoulders for the tactical view ----
+        private sealed class TacticalCut{public SkinnedMeshRenderer Skin;public Mesh Source,Elbow,Shoulder;public bool Made;}
+        private readonly System.Collections.Generic.List<TacticalCut> tacticalCuts=new System.Collections.Generic.List<TacticalCut>();
+        private VisualBody tacticalCutBody;private bool tacticalShoulders;
+        private static readonly System.Collections.Generic.Dictionary<Mesh,Mesh> shoulderMeshes=new System.Collections.Generic.Dictionary<Mesh,Mesh>();
+        /// <summary>CreateViewBody: a skinned mesh of the new view body, its source and its elbow cut (null: none).</summary>
+        private void TacticalViewSkin(VisualBody body,SkinnedMeshRenderer skin,Mesh source,Mesh elbow)
+        {
+            if(tacticalCutBody!=body){tacticalCuts.Clear();tacticalCutBody=body;tacticalShoulders=false;}
+            tacticalCuts.Add(new TacticalCut{Skin=skin,Source=source,Elbow=elbow});
+        }
+        private void TacticalArmCut(bool shoulders)
+        {
+            if(viewBody==null||tacticalCutBody!=viewBody||shoulders==tacticalShoulders)return;
+            System.Collections.Generic.HashSet<Transform> arm=null;
+            if(shoulders)
+            {
+                var arms=tacticalArms;if(arms==null||arms.Body!=viewBody)return;
+                arm=new System.Collections.Generic.HashSet<Transform>();for(int side=0;side<2;side++)foreach(var t in arms.Upper[side].GetComponentsInChildren<Transform>(true))arm.Add(t);
+            }
+            foreach(var c in tacticalCuts)
+            {
+                if(c.Skin==null)continue;
+                if(shoulders&&!c.Made){c.Shoulder=ArmMesh(c.Skin,arm,c.Source,shoulderMeshes," (arms)");c.Made=true;}
+                var mesh=shoulders?c.Shoulder:c.Elbow;c.Skin.enabled=mesh!=null;if(mesh!=null)c.Skin.sharedMesh=mesh;
+            }
+            tacticalShoulders=shoulders;
+        }
+
         /// <summary>RenderFirstPerson, once the view body is posed (VisualViewPose): the tactical view on it, or false (the old view
         /// model stands).</summary>
         private bool TacticalViewPose(Actor a,float time)
         {
+            bool on=TacticalViewPosed(a,time);
+            // The old view model's arms too (a blade, a staff, the shield, the bow): in from the screen's edges, not cut at the elbows.
+            bool shoulders=on||TacticalShoulderCut&&VisualViewDrawn(viewRig);
+            if(shoulders&&!on&&(tacticalArms==null||tacticalArms.Body!=viewBody))tacticalArms=TacticalArmsOf(viewBody);
+            TacticalArmCut(shoulders);if(!on||tacticalPackFrame!=Time.frameCount)TacticalGunsShown(null);
+            return on;
+        }
+        private static readonly bool TacticalShoulderCut=true;
+        private bool TacticalViewPosed(Actor a,float time)
+        {
             if(tacticalArms!=null&&tacticalArms.Body==viewBody)tacticalArms.Rest();
             if(ScopeActive){tacticalScopedFrame=Time.frameCount;return false;}
             var bank=TacticalBank;var g=NativeTacticalGun.For(a.Weapon);if(bank==null||g==null||!bank.Covers(g)||ViewCamera==null||viewRig==null)return false;
-            if(!VisualViewDrawn(viewRig)||viewBody.Held==null)return false;
+            if(!VisualViewDrawn(viewRig))return false;bool pack=TacticalPackReady(bank,g);if(!pack&&viewBody.Held==null)return false;
             string spec=HeldSpec(a);if(spec!="pistol"&&spec!="rifle"&&spec!="machinegun")return false;
             if(NativeBowWire.Is(a.SourceSpec)||a.SourceSpec==NativeBombs.Spec||a.SourceSpec=="siren"||chipView.Frame==Time.frameCount)return false;
             if(a.GrabOwner!=0&&time<a.GrabUntil||NativeSpecialPose.Down(a,time)||a.Swimming)return false;
@@ -120,13 +234,14 @@ namespace ChipArena.UnityConversion
             // Calibration: the body's right hand bone in its weapon frame as its grasp holds the model (VisualViewPose's Apply, this
             // frame), taken again once the pilot is calm (not shooting, reloading, sprinting, rolling or airborne).
             bool calm=time-a.LastShot>.35f&&!NativeTacticalTiming.Reloading(time,a.ReloadAt,a.ReloadUntil)&&!a.Sprinting&&a.Grounded&&!a.Rolling(time);
-            if(!tacticalCal.Set||tacticalCalBody!=viewBody||tacticalCalHeld!=held||tacticalCalGun!=a.Weapon||calm&&!tacticalCalCalm)
+            if(pack){if(!tacticalCal.Set||!tacticalCalPack||tacticalCalGun!=a.Weapon){tacticalCal=tacticalView.CalibratePack(g);tacticalCalGun=a.Weapon;tacticalCalPack=true;tacticalCalBody=viewBody;}}
+            else if(!tacticalCal.Set||tacticalCalPack||tacticalCalBody!=viewBody||tacticalCalHeld!=held||tacticalCalGun!=a.Weapon||calm&&!tacticalCalCalm)
             {
                 var pose=viewRig.Pose;viewBody.Binding.WeaponFrame(pose,out var rp,out var rq);
                 Vector3 hp=root.InverseTransformPoint(arms.Hand[1].position);Quaternion hq=Quaternion.Inverse(root.rotation)*arms.Hand[1].rotation;
                 var iq=Quaternion.Inverse(rq);
                 tacticalCal=tacticalView.Calibrate(g,CapturedAnimation.Num(iq*(hp-rp)),CapturedAnimation.Num(iq*hq),CapturedAnimation.Num(TacticalSight(a,held)),held.Supported?CapturedAnimation.Num(held.Support):default);
-                tacticalCalBody=viewBody;tacticalCalHeld=held;tacticalCalGun=a.Weapon;tacticalCalCalm=calm;
+                tacticalCalBody=viewBody;tacticalCalHeld=held;tacticalCalGun=a.Weapon;tacticalCalCalm=calm;tacticalCalPack=false;
             }
             bool fresh=tacticalFrame<Time.frameCount-1&&tacticalScopedFrame<Time.frameCount-1;
             var input=new NativeTacticalInput{Time=time,Weapon=a.Weapon,LastShot=a.LastShot,ShootReady=a.ShootReady,ReloadAt=a.ReloadAt,ReloadUntil=a.ReloadUntil,Aim=AimHeld,
@@ -140,12 +255,13 @@ namespace ChipArena.UnityConversion
             // What rides the left hand (its item frame, VisualViewPose's) and each wrist's roll as the grasp left it.
             var lh=viewRig.Bones[CapturedRig.LHand];Matrix4x4 leftItem=arms.Hand[0].worldToLocalMatrix*lh.localToWorldMatrix;
             float twistL=TacticalTwist(arms.Lower[0],arms.Hand[0]),twistR=TacticalTwist(arms.Lower[1],arms.Hand[1]);
-            Quaternion palmInHandL=Quaternion.Inverse(arms.Hand[0].rotation)*TacticalPalm(arms,0);
+            Quaternion palmInHandL=Quaternion.Inverse(arms.Hand[0].rotation)*TacticalPalm(arms,0),palmInHandR=Quaternion.Inverse(arms.Hand[1].rotation)*TacticalPalm(arms,1);
             // The body at true size, turned with the eye, its shoulders' midpoint on the clip's.
             var parent=root.parent;float ps=parent!=null?parent.lossyScale.x:1;root.localScale=Vector3.one/Mathf.Max(1e-4f,ps);root.rotation=eyeRot;
             Vector3 ours=(arms.Upper[0].position+arms.Upper[1].position)*.5f,clip=(W(s.LeftShoulder)+W(s.RightShoulder))*.5f;root.position+=clip-ours;
-            // The arms: the right hand on the model's grip (its grasp's frame, carried by the clip), the left on the clip's place and palm.
-            Vector3 rt=W(s.Right),lt=W(s.Left);Quaternion rr=R(s.RightTurn),lr=R(s.LeftPalm)*Quaternion.Inverse(palmInHandL);
+            // The arms: the right hand on the model's grip (its grasp's frame, carried by the clip), the left on the clip's place and palm;
+            // on the pack gun both on the clip's places and palms.
+            Vector3 rt=W(s.Right),lt=W(s.Left);Quaternion rr=pack?R(s.RightPalm)*Quaternion.Inverse(palmInHandR):R(s.RightTurn),lr=R(s.LeftPalm)*Quaternion.Inverse(palmInHandL);
             TacticalReach(arms.Upper[1],arms.Lower[1],arms.Hand[1],rt,W(s.RightElbow));arms.Hand[1].SetPositionAndRotation(rt,rr);
             TacticalReach(arms.Upper[0],arms.Lower[0],arms.Hand[0],lt,W(s.LeftElbow));arms.Hand[0].SetPositionAndRotation(lt,lr);
             // The wrists' new roll, shared along the forearms' twist bones as the grasp shared it.
@@ -168,9 +284,22 @@ namespace ChipArena.UnityConversion
                 }
             }
             // The view rig's hands: the right on the model's weapon frame at true size, fitted (the effects' frame); the left's item
-            // back on the new left hand.
-            var rh=viewRig.Bones[CapturedRig.RHand];rh.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));
-            rh.localScale=viewBody.RightScale;float rs=rh.lossyScale.x;if(rs>1e-5f)rh.localScale=viewBody.RightScale/rs;VisualWeaponFit(rh,held);
+            // back on the new left hand. The pack gun: drawn on the clip's gun bone, its parts on its own clip; the right hand the
+            // Standard gun's frame with its muzzle on the pack gun's, at the pack gun's share of the Standard's reach.
+            var rh=viewRig.Bones[CapturedRig.RHand];
+            if(pack)
+            {
+                var v=TacticalGunOf(bank,g);var model=bank.Gun(g.PackGun);
+                if(v!=null)
+                {
+                    v.Root.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));float gs=v.Root.parent!=null?v.Root.parent.lossyScale.x:1;v.Root.localScale=Vector3.one/Mathf.Max(1e-4f,gs);
+                    TacticalGunPose(v,bank,s.WeaponClip,s.WeaponTime);TacticalGunsShown(v);tacticalPackFrame=Time.frameCount;
+                }
+                float mz=NativeWeaponDressing.MuzzleZ(spec),k=tacticalView.PackScale(g,mz);Quaternion gr=R(s.WeaponTurn);
+                rh.rotation=gr;rh.localScale=viewBody.RightScale;float ks=rh.lossyScale.x;if(ks>1e-5f)rh.localScale=viewBody.RightScale*(k/ks);
+                rh.position=W(s.Weapon)+gr*(CapturedAnimation.Vec(model.Muzzle)-new Vector3(0,0,mz*k));
+            }
+            else{rh.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));rh.localScale=viewBody.RightScale;float rs=rh.lossyScale.x;if(rs>1e-5f)rh.localScale=viewBody.RightScale/rs;VisualWeaponFit(rh,held);}
             var lm=arms.Hand[0].localToWorldMatrix*leftItem;lh.SetPositionAndRotation(lm.GetColumn(3),lm.rotation);
             // The view model's lens: the pack's own framing (its first-person camera's 90 degrees, its aim's 70-80) instead of the
             // world's, eased with the aim; the sights stay on the axis whatever the lens.

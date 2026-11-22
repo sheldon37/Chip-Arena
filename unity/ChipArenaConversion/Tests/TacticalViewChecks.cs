@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
     // Held here without the licensed bank (a synthetic one stands in): the bank's reader, every clip clock on the game's rules (a
     // reload fills ReloadAt..ReloadUntil exactly, the rifle's bolt is home at ShootReady, aiming settles in the gun's Settle), the
     // solve's sight picture, its hands on the model, no allocation per frame, and the runtime's boundaries: first person only,
-    // presentation only (it writes no pilot state), no pack code or bank in git.
+    // presentation only (it writes no pilot state), no pack code or bank in git. Version 3: the pack guns (owner 2026-11-21: "Use
+    // pack guns"): their entries and weapon clips read back, the pack-gun solve (both hands on the pack's places, the aim point
+    // on the eye, the gun's own clips on the rules' clocks), the jumps, and the runtime's boundaries for the gun and the arms.
     internal static class TacticalViewChecks
     {
         private static int count;
@@ -32,18 +34,29 @@ namespace ChipArena.UnityConversion
             Bad(()=>NativeTacticalBank.Parse(bytes.Take(bytes.Length-5).ToArray()),"a truncated bank");
             Bad(()=>{var b=(byte[])bytes.Clone();BitConverter.GetBytes(NativeTacticalBank.Version+1).CopyTo(b,4);NativeTacticalBank.Parse(b);},"another version");
             Bad(()=>{var b=(byte[])bytes.Clone();BitConverter.GetBytes(float.NaN).CopyTo(b,b.Length-4);NativeTacticalBank.Parse(b);},"a non-finite value");
+            Bad(()=>{var b=SyntheticBank(gunNaN:true);NativeTacticalBank.Parse(b);},"a non-finite gun");
+            Check(bank.Gun("pistol")!=null&&bank.Gun("rifle")!=null&&bank.Gun("machinegun")!=null&&bank.Gun("sword")==null,"the pack guns read back");
+            Check(bank.WeaponClip("pistol.w.fire")?.Bones==1&&bank.WeaponClip("pistol.w.fire").Paths[0]=="Model/slide","a weapon clip's bones read back");
+            {
+                var wc=bank.WeaponClip("pistol.w.fire");var p=new Vector3[1];var q=new Quaternion[1];wc.Sample(wc.Length*.5f,p,q);
+                Check(Near(p[0].Z,-.04f,2e-3f)&&Near(q[0].W,1,1e-4f),"a weapon clip samples its bone's place and turn ("+p[0]+")");
+                wc.Sample(float.NaN,p,q);Check(Near(p[0].Z,0),"a weapon clip clamps a bad time to its start");
+            }
+            var old=NativeTacticalBank.Parse(SyntheticBank(guns:false));Check(old.Gun("pistol")==null&&!old.WeaponClips.Any(),"a bank without pack guns reads (the game's models stay)");
             Timing();
             Solve(bank);
+            Pack(bank);
             Sources(root);
-            Console.WriteLine("PASS tactical view: "+count+" checks: the bank's reader, every clip on the rules' clocks (reload, bolt, kick, draw, aim), the sight picture, the hands on the model, no allocation per frame, first person and presentation only, no pack code or bank in git");
+            Console.WriteLine("PASS tactical view: "+count+" checks: the bank's reader, every clip on the rules' clocks (reload, bolt, kick, draw, aim), the sight picture, the hands on the model, the pack guns (their clips, hands, aim point and jumps), no allocation per frame, first person and presentation only, no pack code or bank in git");
         }
         private static void Bad(Action a,string what){try{a();}catch(InvalidOperationException){count++;return;}catch(ArgumentException){count++;return;}throw new Exception("Tactical view: "+what+" was read");}
 
         private static readonly string[] Keys={"general.idlepose","general.idleloop","general.walkpose","general.walkloop","general.sprintloop",
-            "pistol.idle","pistol.fire","pistol.reload","pistol.quickdraw","rifle.idle","rifle.fire","rifle.reload","rifle.draw","ar.idle","ar.reload","ar.draw"};
+            "pistol.idle","pistol.fire","pistol.reload","pistol.quickdraw","rifle.idle","rifle.fire","rifle.reload","rifle.draw","ar.idle","ar.reload","ar.draw",
+            "general.jumpstart","general.jumploop","general.jumpend"};
         // A bank in the bake's format: the gun 30 cm ahead, the right wrist on it, the left 20 cm ahead of that; the action clips
         // move the gun down and back (so they show), the fire clips kick it; the additive bone at the weapon offset's rest.
-        private static byte[] SyntheticBank()
+        private static byte[] SyntheticBank(bool guns=true,bool gunNaN=false)
         {
             var ms=new MemoryStream();var w=new BinaryWriter(ms);
             w.Write(Encoding.ASCII.GetBytes("CAVM"));w.Write(NativeTacticalBank.Version);w.Write(60f);w.Write(Keys.Length);w.Write(NativeTacticalClip.Stride);
@@ -59,9 +72,21 @@ namespace ChipArena.UnityConversion
                     void P(int at,Vector3 v){f[at]=v.X;f[at+1]=v.Y;f[at+2]=v.Z;}void Q(int at,Quaternion q){f[at]=q.X;f[at+1]=q.Y;f[at+2]=q.Z;f[at+3]=q.W;}
                     P(0,gun);Q(3,Quaternion.Identity);P(7,gun+new Vector3(0,-.03f,-.12f));Q(10,Quaternion.Identity);P(14,gun+new Vector3(-.05f,-.06f,.08f)+(action?new Vector3(0,-.1f,0)*arc:Vector3.Zero));Q(17,Quaternion.Identity);
                     P(21,new Vector3(.25f,-.35f,.05f));P(24,new Vector3(-.2f,-.35f,.1f));P(27,new Vector3(.2f,-.2f,-.1f));P(30,new Vector3(-.2f,-.2f,-.1f));
-                    for(int i=0;i<30;i++)P(33+i*3,Vector3.UnitZ);Q(123,Quaternion.Identity);P(127,Vector3.Zero);Q(130,Quaternion.Identity);Q(134,Quaternion.Identity);Q(138,Quaternion.Identity);
+                    for(int i=0;i<30;i++)P(33+i*3,Vector3.UnitZ);Q(123,Quaternion.Identity);P(127,key.StartsWith("general.jump")?new Vector3(0,-.04f,0):Vector3.Zero);Q(130,Quaternion.Identity);Q(134,Quaternion.Identity);Q(138,Quaternion.Identity);
                     foreach(var v in f)w.Write(v);
                 }
+            }
+            // Version 3: the pack guns (their muzzle 20 cm ahead, the aim point 20 cm behind and 4 cm up) and their weapon clips (a
+            // slide back 4 cm at the middle of the shot's, the reload's long, the rest one frame).
+            void Str(string v){var b=Encoding.UTF8.GetBytes(v);w.Write(b.Length);w.Write(b);}
+            if(!guns){w.Write(0);w.Write(0);return ms.ToArray();}
+            var packs=new[]{"pistol","rifle","machinegun"};w.Write(packs.Length);
+            foreach(var gk in packs){Str(gk);Str("Model");w.Write(0f);w.Write(0f);w.Write(.2f);w.Write(0f);w.Write(gunNaN&&gk=="rifle"?float.NaN:.04f);w.Write(-.2f);}
+            w.Write(packs.Length*3);
+            foreach(var gk in packs)foreach(var kind in new[]{"idle","fire","reload"})
+            {
+                int frames=kind=="idle"?1:kind=="fire"?41:121;Str(gk+".w."+kind);Str(gk);w.Write(frames);w.Write((frames-1)/60f);w.Write(1);Str("Model/slide");
+                for(int k=0;k<frames;k++){float u=frames>1?k/(float)(frames-1):0,arc=(float)Math.Sin(Math.PI*u);w.Write(0f);w.Write(0f);w.Write(-.04f*arc);w.Write(0f);w.Write(0f);w.Write(0f);w.Write(1f);}
             }
             return ms.ToArray();
         }
@@ -144,6 +169,55 @@ namespace ChipArena.UnityConversion
             Check(Vector3.Distance(Mg(false),Mg(true))>1e-3f,"the machine gun's shot kicks it (procedural recoil)");
         }
 
+        // The pack guns: both hands on the pack's own places, the aim point on the eye, the gun's own clips on the rules' clocks, the jumps.
+        private static void Pack(NativeTacticalBank bank)
+        {
+            var s=new NativeTacticalSolution();var g=NativeTacticalGun.Pistol;var gun=GunRules.Get(WeaponId.Pistol);
+            var view=new NativeTacticalView(bank);var cal=view.CalibratePack(g);
+            Check(cal.Set&&cal.PackGun&&Near(cal.Sight,new Vector3(0,.04f,-.2f)),"the pack calibration takes the gun's aim point");
+            Check(!new NativeTacticalView(NativeTacticalBank.Parse(SyntheticBank(guns:false))).CalibratePack(g).Set,"no pack calibration without the pack gun");
+            NativeTacticalInput I(float t,bool aim=false,float lastShot=-100,float reloadAt=-100,float reloadUntil=-100,bool fresh=false,bool grounded=true)
+                =>new NativeTacticalInput{Time=t,Weapon=WeaponId.Pistol,LastShot=lastShot,ReloadAt=reloadAt,ReloadUntil=reloadUntil,Aim=aim,Grounded=grounded,Shake=1,Fresh=fresh};
+            view.Solve(I(0,fresh:true),cal,s);for(float t=0;t<2;t+=1/60f)view.Solve(I(t),cal,s);
+            // At rest: the right wrist and the left hand on the pack's own places on its gun (the synthetic clip's), the fingers the clip's.
+            var inv=Quaternion.Inverse(s.WeaponTurn);
+            Check(Near(Vector3.Transform(s.Right-s.Weapon,inv),new Vector3(0,-.03f,-.12f),2e-3f),"the pack gun: the right hand on the pack's own grip");
+            Check(Near(Vector3.Transform(s.Left-s.Weapon,inv),new Vector3(-.05f,-.06f,.08f),2e-3f),"the pack gun: the left hand on the pack's own place");
+            Check(s.RightFingerWeight==1&&s.LeftFingerWeight==1,"the pack gun: both hands take the clip's fingers");
+            Check(s.WeaponClip=="pistol.w.idle","the pack gun rests on its idle clip");
+            float k=view.PackScale(g,NativeWeaponDressing.MuzzleZ("pistol"));Check(k>=.1f&&k<=1&&Near(k,(.2f+.12f)/NativeWeaponDressing.MuzzleZ("pistol"),1e-3f),"the effects' frame takes the pack gun's reach ("+k+")");
+            // Fully aimed: the aim point on the eye, the bore along the view.
+            for(float t=2;t<3;t+=1/60f)view.Solve(I(t,aim:true),cal,s);
+            var aimAt=s.Weapon+Vector3.Transform(cal.Sight,s.WeaponTurn);
+            Check(aimAt.Length()<.02f&&Vector3.Transform(Vector3.UnitZ,s.WeaponTurn).Z>.995f,"aimed, the pack gun's aim point is on the eye ("+aimAt+")");
+            // A shot: the weapon's fire clip from the shot, within the interval; a reload: its reload clip on the reload's share.
+            view.Solve(I(3.2f,lastShot:3.2f-gun.Interval*.4f),cal,s);var wf=bank.WeaponClip("pistol.w.fire");
+            Check(s.WeaponClip=="pistol.w.fire"&&s.WeaponTime>0&&s.WeaponTime<wf.Length,"a shot plays the gun's own fire clip");
+            Check(NativeTacticalTiming.FireKickTime(30+gun.Interval,30,gun.Interval,wf.Length)<0,"the gun's fire clip ends within the interval");
+            view.Solve(I(3.4f+gun.Reload*.5f,reloadAt:3.4f,reloadUntil:3.4f+gun.Reload),cal,s);var wr=bank.WeaponClip("pistol.w.reload");var ar=bank.Clip("pistol.reload");
+            Check(s.WeaponClip=="pistol.w.reload"&&Near(s.WeaponTime/wr.Length,s.ActionTime/ar.Length,1e-3f),"a reload plays the gun's own reload clip with the arms'");
+            view.Solve(I(3.4f+gun.Reload,reloadAt:3.4f,reloadUntil:3.4f+gun.Reload),cal,s);Check(s.WeaponClip!="pistol.w.reload","the gun's reload clip ends with the reload");
+            // The rifle's bolt on the pack gun: its weapon clip with the arms' action (home when the next shot is allowed).
+            var rv=new NativeTacticalView(bank);var rc=rv.CalibratePack(NativeTacticalGun.Rifle);float ri=GunRules.Get(WeaponId.Rifle).Interval;
+            rv.Solve(new NativeTacticalInput{Time=4,Weapon=WeaponId.Rifle,LastShot=3.9f,ShootReady=3.9f+ri,Grounded=true,Shake=1},rc,s);
+            Check(s.Action=="rifle.fire"&&s.WeaponClip=="rifle.w.fire","the rifle's shot plays its bolt on the pack gun");
+            // The machine gun: every shot's weapon clip fits its interval (the automatic's recoil is procedural).
+            var mv=new NativeTacticalView(bank);var mc=mv.CalibratePack(NativeTacticalGun.MachineGun);float mi=GunRules.Get(WeaponId.MachineGun).Interval;
+            mv.Solve(new NativeTacticalInput{Time=5,Weapon=WeaponId.MachineGun,LastShot=5-mi*.5f,Grounded=true,Shake=1},mc,s);
+            Check(s.WeaponClip=="machinegun.w.fire"&&NativeTacticalTiming.FireKickTime(5+mi,5,mi,bank.WeaponClip("machinegun.w.fire").Length)<0,"the machine gun's fire clip fits each interval ("+mi+" s)");
+            // The jump: the gun moves while airborne, and is back once the landing has played.
+            var jv=new NativeTacticalView(bank);var jc=jv.CalibratePack(g);
+            jv.Solve(I(10,fresh:true),jc,s);for(float t=10;t<11;t+=1/60f)jv.Solve(I(t),jc,s);var ground=s.Weapon;
+            for(float t=11;t<11.5f;t+=1/60f)jv.Solve(I(t,grounded:false),jc,s);var air=s.Weapon;
+            for(float t=11.5f;t<13;t+=1/60f)jv.Solve(I(t),jc,s);
+            Check(Vector3.Distance(ground,air)>.01f&&Vector3.Distance(ground,s.Weapon)<2e-3f,"the jump plays airborne and is gone after the landing");
+            // No allocation per frame on the pack gun either.
+            for(int i=0;i<100;i++)view.Solve(I(20+i/60f,lastShot:20+(i/30)*.5f),cal,s);
+            long before=GC.GetAllocatedBytesForCurrentThread();
+            for(int i=0;i<600;i++)view.Solve(I(30+i/60f,aim:i%50<25,lastShot:30+(i/30)*.5f,reloadAt:33,reloadUntil:33+gun.Reload,grounded:i%120>20),cal,s);
+            Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"the pack solve allocates nothing per frame");
+        }
+
         private static void Sources(string root)
         {
             string runtime=Path.Combine(root,"Assets/ChipArena/Runtime"),core=Path.Combine(root,"Assets/ChipArena/Core");
@@ -163,7 +237,16 @@ namespace ChipArena.UnityConversion
             foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
                 Check(!Regex.IsMatch(File.ReadAllText(f),@"KINEMATION\.[A-Z]|using\s+KINEMATION|KShooter|RecoilAnimation|TacticalShooter(Player|Weapon)"),Path.GetFileName(f)+" references no KINEMATION code");
             Check(Directory.GetFiles(Path.Combine(root,"Assets"),"ChipArenaViewMotion*",SearchOption.AllDirectories).All(f=>f.Replace('\\','/').Contains("/Assets/LocalAssets/")),"the view-motion bank is only ever a local asset");
-            Check(pres.Contains("Resources.Load<TextAsset>(NativeTacticalBank.Resource)")&&File.ReadAllText(Path.Combine(core,"NativeTacticalView.cs")).Contains("public const string Resource=\"ChipArenaViewMotion\";"),"the bank is read by its resource name");
+            Check(pres.Contains("Resources.Load<TextAsset>(NativeTacticalBank.Resource)")&&File.ReadAllText(Path.Combine(core,"NativeTacticalView.cs")).Contains("public const string Resource=\"ChipArenaViewMotion\",GunsResource=\"ChipArenaViewGuns\";"),"the bank is read by its resource name");
+            // The pack guns: a local asset read by name, drawn for the view rig alone (the game's model in third person and on every
+            // other rig), hidden the frame SourceCharacter does not draw them; the arms cut at the shoulders only for the tactical view.
+            Check(pres.Contains("Resources.Load<GameObject>(NativeTacticalBank.GunsResource)"),"the pack guns are read by their resource name");
+            Check(Directory.GetFiles(Path.Combine(root,"Assets"),"ChipArenaViewGuns*",SearchOption.AllDirectories).All(f=>f.Replace('\\','/').Contains("/Assets/LocalAssets/")),"the pack guns are only ever a local asset");
+            string weapon=File.ReadAllText(Path.Combine(runtime,"NativeVisualWeaponPresentation.cs")),bodyFile=File.ReadAllText(Path.Combine(runtime,"NativeVisualBodyPresentation.cs"));
+            Check(weapon.Contains("if(rig==viewRig&&TacticalPackDrawn(viewBody))return true;")&&weapon.Contains("TacticalPackAfterDraw();"),"the pack gun replaces the model for the view rig alone, and hides when not drawn");
+            foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeVisualWeaponPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal))
+                Check(!File.ReadAllText(f).Contains("TacticalPackDrawn("),Path.GetFileName(f)+" never draws the pack gun");
+            Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("bool shoulders=on||TacticalShoulderCut&&VisualViewDrawn(viewRig);")&&pres.Contains("TacticalArmCut(shoulders);"),"the view body's arms are cut at the shoulders while the view body draws in first person");
         }
     }
 }
