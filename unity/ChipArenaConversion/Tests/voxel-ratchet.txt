@@ -148,6 +148,7 @@ Runtime/NativeDraftPresentation.cs                         0   0  20   0   3
 Runtime/NativeFootfallPresentation.cs                      0   0   4   0   0
 Runtime/NativeGlaivePresentation.cs                        0   0   0   0   2
 Runtime/NativeGunKitPresentation.cs                        0   0   1   0   0
+Runtime/NativeHitPuppetPresentation.cs                     0   0   1   0   0   # Voxel dependency: the held weapon, its muzzle and its trails are drawn at the game rig's hand (VisualWeaponDrawn), so a hit puppet carries the rig's hands with the bent drawn hands for its frame (VisualBodyRestore puts them back); the package that draws held weapons from the model's hand retires it
 Runtime/NativeHordeGoreGallery.cs                          0   0   9   0   0
 Runtime/NativeHordeGorePresentation.cs                     0   0  10   0   0
 Runtime/NativeHordeHulkGallery.cs                          0   0   4   0   0
