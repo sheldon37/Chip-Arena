@@ -243,6 +243,8 @@ namespace ChipArena.UnityConversion
             VisualBigHead(body);
             HotDogJiggle(body);
             TopDogBody(body,a,time);
+            // The physical hit reactions bend the pose just drawn, before anything reads its bones (NativeHitPuppetPresentation.cs).
+            HitPuppetPilot(body,rig,a,time);
             body.Moved=true;
         }
 
@@ -1976,6 +1978,7 @@ namespace ChipArena.UnityConversion
         // The bodies live under their rigs' roots, so disposing a rig destroys its body; this drops the records.
         private void ClearVisualBodies()
         {
+            HitPuppetsClear();
             foreach(var body in visualBodies.Values){VisualStrideRelease(body);VisualMotionRelease(body);if(body.Root!=null)Destroy(body.Root);}visualBodies.Clear();
             if(viewBody?.Root!=null)Destroy(viewBody.Root);viewBody=null;
             if(visualGhosts!=null)foreach(var m in visualGhosts)if(m!=null)Destroy(m);visualGhosts=null;

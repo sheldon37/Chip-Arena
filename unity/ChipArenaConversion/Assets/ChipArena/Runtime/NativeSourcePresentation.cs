@@ -173,6 +173,6 @@ namespace ChipArena.UnityConversion
         // look and an install without the bake keep its blocks).
         private string SummonModelOf(string model)=>model=="summon-toy"&&ModelLook(null)&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model;
         private void ClearSourceActors(){ClearRevives();ClearRigDressing();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();ClearHordeKinds(null);ClearHordeGallery();sourceModels?.Begin();}
-        public void FinishSourceFrame(){long at=System.Diagnostics.Stopwatch.GetTimestamp();sourceModels?.Flush(UsesInstancing);DiagnosticSourceFlushMs+=PresentationElapsed(at);}
+        public void FinishSourceFrame(){HitPuppetsSweep();long at=System.Diagnostics.Stopwatch.GetTimestamp();sourceModels?.Flush(UsesInstancing);DiagnosticSourceFlushMs+=PresentationElapsed(at);}
     }
 }
