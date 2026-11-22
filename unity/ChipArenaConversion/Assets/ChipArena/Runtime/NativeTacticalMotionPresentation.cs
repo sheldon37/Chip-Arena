@@ -45,18 +45,16 @@ namespace ChipArena.UnityConversion
             m.CarryShare=w;
         }
         // A pack gun's support hand closed (owner 2026-11-21: "no open, splayed hands"; 11-22: "fingers closed and wrapping it"): the left
-        // hand's finger muscles take the pack's foregrip fist (NativeTacticalMotion.SupportFist) by the grip's weight (Grip: the pack's share,
-        // let go through a reload's free hand), the long guns' and the pistol's alike; VisualTacticalGrip then seats the hand on the model.
-        private static bool[] leftFingerMuscles;
+        // hand's finger muscles take its grip's own (NativeTacticalMotion.Grip.Hand: the long guns' fore-end wrap, the pistol's) by the grip's
+        // weight (Grip: the pack's share, let go through a reload's free hand); VisualTacticalGrip then seats the hand on the model. (The
+        // pack's own support hands retarget open and splayed on this body: their finger spreads run far past the game's own hands'.)
+        private static int[] leftHandMuscles;
         private static void VisualTacticalFist(VisualMotion m)
         {
-            if(m.Set.Tactical==null||m.Grip<=0)return;var bank=VisualMotionBank;
-            if(bank==null||!bank.Clips.TryGetValue(NativeTacticalMotion.SupportFist,out var fist))return;
-            if(leftFingerMuscles==null){var n=HumanTrait.MuscleName;leftFingerMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)leftFingerMuscles[i]=n[i].StartsWith("LeftHand.",System.StringComparison.Ordinal);}
-            if(m.FistMix==null||m.FistMix.Length!=m.Mix.Length)m.FistMix=new float[m.Mix.Length];
-            System.Array.Clear(m.FistMix,0,m.FistMix.Length);NativeVisualMotionClips.Add(fist,0,1,m.FistMix);NativeVisualMotionClips.Finish(m.FistMix,1);
+            if(m.Set.Tactical==null||m.Grip<=0)return;var hand=m.Set.Tactical.Support?.Hand;if(hand==null)return;
+            if(leftHandMuscles==null){var n=HumanTrait.MuscleName;var names=NativeTacticalMotion.HandMuscles;leftHandMuscles=new int[names.Length];for(int i=0;i<names.Length;i++)leftHandMuscles[i]=System.Array.IndexOf(n,"LeftHand."+names[i]);}
             float w=Ease(Mathf.Clamp01(m.Grip));
-            for(int i=0;i<leftFingerMuscles.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(leftFingerMuscles[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.FistMix[k]-m.Mix[k])*w;}
+            for(int i=0;i<leftHandMuscles.Length&&i<hand.Length;i++){int k=leftHandMuscles[i];if(k<0)continue;k+=NativeVisualMotionClips.Head;if(k<m.Mix.Length)m.Mix[k]+=(hand[i]-m.Mix[k])*w;}
         }
         // The support hand seated on the model (owner 2026-11-22: "think we need to fix this here"; the pack's carry left it open on the near
         // face): by `w`, the palm's frame (wrist to the middle knuckle; pinky to index) turned onto the gun's hold (NativeTacticalMotion.Grip in

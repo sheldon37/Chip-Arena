@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
             // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
             // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
-            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip, GripHold; public float[] CarryMix, FistMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
+            public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip, GripHold; public float[] CarryMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;

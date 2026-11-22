@@ -89,7 +89,7 @@ internal static class TacticalMotionChecks
             Check(float.IsNaN(NativeTacticalMotion.DrawClipTime(g,-.01f))&&float.IsNaN(NativeTacticalMotion.DrawClipTime(g,g.DrawTime))&&float.IsNaN(NativeTacticalMotion.DrawClipTime(g,float.NaN)),g.Spec+": no draw outside it");
             Check(g.DrawEnd/g.DrawTime<=2.2f,g.Spec+": the draw at most 2.2 times its pace");
         }
-        Check(Array.IndexOf(NativeTacticalMotion.Clips,NativeTacticalMotion.SupportFist)>=0,"the support fist is baked with the guns' clips");
+        Check(Array.IndexOf(NativeTacticalMotion.Clips,"A_FP_TR15_Idle_Pose_Grip")<0,"no pack clip baked for the support hand's fingers (its own retarget open and splayed)");
     }
     private static void Layers(Book book)
     {
@@ -138,6 +138,13 @@ internal static class TacticalMotionChecks
         foreach(var g in new[]{NativeTacticalMotion.Pistol,NativeTacticalMotion.Rifle,NativeTacticalMotion.MachineGun})
         {
             var s=g.Support;Check(s!=null&&s.Fingers.Length()>.5f&&s.Thumb.Length()>.5f&&Math.Abs(System.Numerics.Vector3.Dot(System.Numerics.Vector3.Normalize(s.Fingers),System.Numerics.Vector3.Normalize(s.Thumb)))<.8f&&s.Along>0&&s.Along<=1&&s.Depth>0&&s.Depth<.05f,g.Spec+": a sound hold frame");
+            var h=s?.Hand;Check(h!=null&&h.Length==NativeTacticalMotion.HandMuscles.Length,g.Spec+": the support hand's own finger pose, one value a muscle");
+            if(h!=null&&h.Length==20)
+            {
+                bool curled=true,together=true;for(int f=1;f<5;f++){curled&=h[f*4]<-.4f&&h[f*4+2]<-.6f&&h[f*4+3]<-.3f;together&=Math.Abs(h[f*4+1])<=.5f;}
+                Check(curled&&together,g.Spec+": the support hand's fingers curled round the gun at every joint, together (no open, splayed hand)");
+                Check(h[2]>=0&&h[3]>=0,g.Spec+": the support thumb straight along the gun");
+            }
             var a=new Actor{Weapon=WeaponId.Rifle,ReloadAt=-100,ReloadUntil=-99};
             Check(Near(NativeTacticalMotion.GripWeight(g,1,a,10,float.NaN),1)&&Near(NativeTacticalMotion.GripWeight(g,.4f,a,10,float.NaN),.4f)&&NativeTacticalMotion.GripWeight(g,0,a,10,float.NaN)==0,g.Spec+": gripped by the pack's share (aim, shot, carry, jump)");
             a.ReloadAt=20;a.ReloadUntil=21.1f;
@@ -163,7 +170,7 @@ internal static class TacticalMotionChecks
         Check(carry>0&&upper>carry,"the carry goes on before the upper layer (an aim, a shot or a reload lays over it)");
         Check(motion.Contains("Quaternion.Slerp(m.HoldRotation,m.TacHold,1-(1-m.CarryShare)*(1-m.Upper))"),"the hand's turn on the gun: the pack's ready hold by the pack's share, the gun's own set's at rest");
         int fist=motion.IndexOf("VisualTacticalFist(m);",StringComparison.Ordinal),inertia=motion.IndexOf("VisualMotionInertia(m,jumped,dt,keepLegs);",StringComparison.Ordinal);
-        Check(fist>0&&inertia>fist&&pres.Contains("n[i].StartsWith(\"LeftHand.\",System.StringComparison.Ordinal)")&&pres.Contains("if(m.Set.Tactical==null||m.Grip<=0)return;")&&motion.Contains("m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight("),"the support hand closes (its fingers only, by the grip's weight), before the pose goes on");
+        Check(fist>0&&inertia>fist&&pres.Contains("leftHandMuscles[i]=System.Array.IndexOf(n,\"LeftHand.\"+names[i]);")&&pres.Contains("var hand=m.Set.Tactical.Support?.Hand;")&&!pres.Contains("SupportFist")&&pres.Contains("if(m.Set.Tactical==null||m.Grip<=0)return;")&&motion.Contains("m.Grip=m.Set.Tactical!=null?NativeTacticalMotion.GripWeight("),"the support hand closes on its grip's own finger pose (its fingers only, by the grip's weight), before the pose goes on");
         Check(motion.Contains("float drawAge=VisualTacticalDrawAge(m,body,time);")&&motion.Contains("NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready,drawAge)")&&pres.Contains("NativeSpawnIn.Age(match.Phase,match.PhaseEnd,match.FightAt,time)"),"the draw on the round's GO as the spawn-in times it");
         // The anchoring (owner 2026-11-22: "sometimes it appears the gun and hand aren't connected"): the gun's aim turn and low carry turn the
         // hand's wrist and the gun is placed on the hand again after them; the support hand is seated last, after the weapon; the hit

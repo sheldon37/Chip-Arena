@@ -18,7 +18,7 @@ the upper body, on the game's own gun models and Arsenal skins:
 | Carry on the move and in the air | `Idle_Pose` (held out) | `A_FP_Walk`'s ready hold, `A_FP_Sprint`'s port carry by the sprint's share | the same |
 | Draw (no rule draws a gun: on the round's GO, as the spawn-in times it) | `Quick_Draw`, 0.6 s | `Draw`, 1.1 s | `Draw`, 1.2 s |
 | Pitch | the spine (`VisualTacticalPitch`), the barrel's own small turn as before | | |
-| Support hand | wraps the right (the clip's) | closed on the model's handguard: the pack's TR15 foregrip fist (`SupportFist`) | the same |
+| Support hand | wraps the right (the clip's) | closed on the model's handguard: the grip's own finger pose (`Grip.Hand`) | the same |
 
 Unchanged: the standing match idles (the long guns' low carry, the pistol's low ready; owner 2026-11-10 and `match-idles-keep`),
 the legs (the game's 8-way runs, walks and sprint, jumps and landings), the guns' Q/E clips, techniques, reactions, knockdowns,
@@ -73,7 +73,10 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
     thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis;
   - the pistol's thumbs-forward wrap (`Wrap`): the support palm on the grip's left side, the fingers round the front over the gun
     hand's, the thumb up the frame pointing forward.
-  The fingers close to the pack's TR15 foregrip fist by the same weight (`VisualTacticalFist`); half the wrist's new twist goes into
+  The fingers close by the same weight on the grip's own finger pose (`Grip.Hand`, `VisualTacticalFist`): the long guns' knuckles
+  bent up the handguard's far side and the middle and end joints curled over its top edge, the pistol's fingers curled round the
+  grip's front, together, the thumbs straight along the gun. (The pack's own support hands, the TR15 foregrip fist included, retarget
+  open and splayed on this body: their finger spreads run up to six times the game's own hands'.) Half the wrist's new twist goes into
   the forearm. Before, the pack's carry left the support hand open on the near face (its own support hands lie flat, fingers out),
   and the old reach let go beyond 0.40 m.
 - **A long gun grips at rest too, and between states.** Its match idle's low carry closes the hand on the handguard like the carry

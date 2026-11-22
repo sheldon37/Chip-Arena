@@ -39,18 +39,22 @@ namespace ChipArena.UnityConversion
         /// <summary>The support hand's hold in the weapon frame (+z the bore, +y its top, +x its right): the palm frame's finger line
         /// (wrist to the middle knuckle) and its thumb side (pinky to index), and the hand's point that sits on the model's measured
         /// Support (a share of the way from the wrist to the middle knuckle, then Depth m out of the palm).</summary>
-        public sealed class Grip { public System.Numerics.Vector3 Fingers, Thumb; public float Along, Depth; }
+        public sealed class Grip { public System.Numerics.Vector3 Fingers, Thumb; public float Along, Depth; public float[] Hand; }
+        /// <summary>The left hand's finger muscles a Grip's Hand gives, in its order (each "LeftHand." + name, Unity's humanoid muscles:
+        /// negative curls a joint, positive stretches it; a spread near the game's own open hand keeps the fingers together).</summary>
+        public static readonly string[] HandMuscles={"Thumb.1 Stretched","Thumb.Spread","Thumb.2 Stretched","Thumb.3 Stretched","Index.1 Stretched","Index.Spread","Index.2 Stretched","Index.3 Stretched",
+            "Middle.1 Stretched","Middle.Spread","Middle.2 Stretched","Middle.3 Stretched","Ring.1 Stretched","Ring.Spread","Ring.2 Stretched","Ring.3 Stretched","Little.1 Stretched","Little.Spread","Little.2 Stretched","Little.3 Stretched"};
         /// <summary>A long gun's fore-end, held from below: the palm under the handguard facing up, the fingers across under it and closed up
-        /// its far (right) side, the thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis.</summary>
-        public static readonly Grip ForeEnd=new Grip{Fingers=new System.Numerics.Vector3(1,0,.35f),Thumb=new System.Numerics.Vector3(0,0,1),Along=1,Depth=.025f};
+        /// its far (right) side, the thumb along its near side pointing forward, the closed fist's hollow on the handguard's axis. Its fingers
+        /// (Hand): the knuckles bent up the far side, the middle and end joints curled over its top edge, together; the thumb straight.</summary>
+        public static readonly Grip ForeEnd=new Grip{Fingers=new System.Numerics.Vector3(1,0,.35f),Thumb=new System.Numerics.Vector3(0,0,1),Along=1,Depth=.025f,
+            Hand=new[]{-.3f,0,.2f,.3f, -.9f,-.05f,-1f,-.7f, -1f,-.45f,-1f,-.7f, -1.05f,-.05f,-1f,-.7f, -1.1f,.17f,-.95f,-.6f}};
         /// <summary>The pistol's thumbs-forward wrap: the support palm on the grip's left side facing it, the fingers wrapped round the front
-        /// over the gun hand's, the thumb up along the frame pointing forward.</summary>
-        public static readonly Grip Wrap=new Grip{Fingers=new System.Numerics.Vector3(.25f,-.35f,1),Thumb=new System.Numerics.Vector3(0,1,0),Along=.55f,Depth=.015f};
+        /// over the gun hand's, the thumb up along the frame pointing forward. Its fingers (Hand): curled round the grip's front, together;
+        /// the thumb straight.</summary>
+        public static readonly Grip Wrap=new Grip{Fingers=new System.Numerics.Vector3(.25f,-.35f,1),Thumb=new System.Numerics.Vector3(0,1,0),Along=.55f,Depth=.015f,
+            Hand=new[]{.2f,.2f,.4f,.4f, -.6f,-.05f,-.9f,-.6f, -.65f,-.45f,-.95f,-.6f, -.7f,-.05f,-.95f,-.6f, -.75f,.17f,-.9f,-.5f}};
         public const string PackWalk="A_FP_Walk", PackSprint="A_FP_Sprint";
-        /// <summary>The long guns' support fist: the pack's TR15 foregrip hold, a closed left hand (its own support hands lie flat under the
-        /// handguard, fingers out: owner 2026-11-21, "no open, splayed hands"); its fingers take the left hand wherever the support fist
-        /// holds the model's handguard (Runtime VisualTacticalFist).</summary>
-        public const string SupportFist="A_FP_TR15_Idle_Pose_Grip";
         // The guns as first person pairs them (docs/FPS-TACTICAL.md): the pistol on the WK-11 Viper, the rifle on the SRM-12 (its shot
         // works the bolt), the machine gun on the TR15.
         public static readonly Gun Pistol=new Gun{Spec="pistol",Idle="A_FP_WK-11_Viper_Idle_Pose",Fire="A_FP_WK-11_Viper_Fire",Reload="A_FP_WK-11_Viper_Reload_Tactical",
@@ -65,7 +69,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Clips=Names();
         private static string[] Names()
         {
-            var l=new System.Collections.Generic.List<string>{SupportFist};
+            var l=new System.Collections.Generic.List<string>();
             foreach(var g in new[]{Pistol,Rifle,MachineGun})foreach(var c in new[]{g.Idle,g.Fire,g.Reload,g.Walk,g.Sprint,g.Draw})if(c!=null&&!l.Contains(c))l.Add(c);
             return l.ToArray();
         }
