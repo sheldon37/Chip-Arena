@@ -1033,6 +1033,7 @@ namespace ChipArena.UnityConversion
             // Its own model of the weapon in hand, as the arena body's: the grasp on its handguard and stock, a staff's shaft.
             var held=viewBody.Held=VisualWeaponFor(viewBody,a);if(held!=null&&!held.ViewReady)VisualViewWeaponReady(held);
             var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            ViewArmsSeat(ref grasp,a);
             viewBody.Binding.Apply(pose,grasp,false,false);
             if(viewBody.Accent!=a.AccentColor)VisualAccent(viewBody,a.AccentColor);
             CostumeTint(viewBody.Root,a.BodyColor,a.AccentColor,CostumeSkinIn(viewBody.Look),a.Hat,a.HatColor);

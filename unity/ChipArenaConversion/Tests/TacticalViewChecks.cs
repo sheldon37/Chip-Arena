@@ -260,6 +260,8 @@ namespace ChipArena.UnityConversion
             foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeViewArmsPresentation.cs",StringComparison.Ordinal))Check(!File.ReadAllText(f).Contains("_ViewCloth"),Path.GetFileName(f)+" never sets the view body's cloth lift (third person and the guns keep their look)");
             Check(arms.Contains("if(d>reach){upper.position=a+to/d*(d-reach);a=upper.position;b=lower.position;to=target-a;d=to.magnitude;}"),"the arms' reach reads the elbow again once the shoulder moves (no hand left off its wrist)");
             Check(pres.Contains("if(d>reach){upper.position=a+to/d*(d-reach);a=upper.position;to=target-a;d=to.magnitude;}"),"the guns' own reach is as it was");
+            string body=File.ReadAllText(Path.Combine(runtime,"NativeVisualBodyPresentation.cs"));
+            Check(body.Replace("\r\n","\n").Contains("if(held!=null)VisualWeaponGrasp(ref grasp,held);\n            ViewArmsSeat(ref grasp,a);")&&arms.Contains("if(viewArmsFrame<Time.frameCount-1||ScopeActive||a.WeaponAway||chipView.Frame==Time.frameCount||!NativeViewArms.Eligible(a.SourceSpec))return;"),"the left fist closes on what it carries only while the eye-anchored arms draw (not the guns, a scope or the chip select's wrist)");
             foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeViewArmsPresentation.cs",StringComparison.Ordinal))
                 Check(!File.ReadAllText(f).Contains("ViewArmsPose("),Path.GetFileName(f)+" never poses the eye-anchored arms (third person is untouched)");
             Check(!Regex.IsMatch(arms,@"a\.[A-Z]\w*\s*(=[^=]|\+=|-=)"),"the arms write no pilot field");

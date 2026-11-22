@@ -63,6 +63,18 @@ namespace ChipArena.UnityConversion
             viewArmsFrame=Time.frameCount;return true;
         }
 
+        /// <summary>VisualViewPose, while the eye-anchored arms draw (as they did last frame): the left fist closed on what the
+        /// left hand carries, as third person's VisualLeftSeat closes it (a staff's shaft, the bow's riser) and a held off-hand blade
+        /// seats (the Fangs' left blade): with the hands in view, an open palm under the riser or beside the blade read as dropped.
+        /// The item moves onto the fist; the arm keeps the old view's place.</summary>
+        private void ViewArmsSeat(ref NativeVisualRig.Grasp g,Actor a)
+        {
+            if(viewArmsFrame<Time.frameCount-1||ScopeActive||a.WeaponAway||chipView.Frame==Time.frameCount||!NativeViewArms.Eligible(a.SourceSpec))return;
+            if(NativeLobbyPoses.Magic(a.SourceSpec)){g.LeftGrip=1;g.Left=NativeVisualRig.StaffShaft;g.Support=0;}
+            else if(NativeBowWire.Is(a.SourceSpec)){g.LeftGrip=1;g.Left=NativeVisualRig.BowRiser;g.Support=0;}
+            else if(a.SourceSpec==NativeFangs.Spec&&!g.Left.Seated){g.LeftGrip=1;g.Left=NativeVisualRig.Blade(System.Numerics.Quaternion.Identity);}
+        }
+
         // Two-bone IK as the tactical view's TacticalReach (the elbow on the side of the pole, the hand on the target; an arm too
         // short reaches from its shoulder first), but with the elbow read again once the shoulder has moved: read before it, the
         // elbow was turned toward its old place and the forearm fell short, the hand left floating up to 30 cm off its wrist
