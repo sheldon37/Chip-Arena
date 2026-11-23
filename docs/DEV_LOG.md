@@ -1,3 +1,84 @@
+## 2026-11-23 — Claude (P2): hit reactions show the hit's direction, where it struck and its weight (PuppetMaster, presentation only)
+Owner: "Currently; we have essentially the same hit reaction for all hits. I want to really use the new ragdoll asset ... I want
+the animation to actually display hit direction (Like reactively)".
+**Branch:** `claude/puppet-hits-2` from shared `0c99ffd5`. Pushed, not merged, not released. Docs: `docs/HIT-PUPPETS.md`.
+- **Why every hit read the same** (step 1, measured on release 15 with its bridge plus a per-hit log; captures in
+  `F:/Chip Arena Development/scratch/puppet-hits-2/cap/b-*`, `c-*`):
+  - the model's directional GetHit clip was picked by `Actor.ReactionYaw`, which is the struck pilot's own facing, not the blow.
+    A bot facing yaw 0 played the front clip for all 16 hits of the sheet, and that whole-body clip is most of what is seen;
+  - every pilot hit point rose .865 m (the offset was taken from the feet and applied from the rig root): chest and arm rounds
+    struck the upper chest from above the head, leg rounds the gun hand (capped to 2-7 N·s), a headshot the head's pivot;
+  - a blade's hit carries only the hit volume's point nearest the attacker's waist and a push straight from the attacker (the
+    greatsword's, sword's, Katana's and Glaive's events alike), so opposite cuts were the same push at the same point;
+  - the puppet had no hips or legs and its unpin stayed local whatever the weight. Adds' points were already right; a DEV
+    monster's hit event carries no direction (the push falls back to the attacker's side; live PvE adds carry it).
+- **What changed, game code (presentation only):** the hit clip's side from `Actor.ReactionDir` (`NativeVisualMotion.HitSide`),
+  and the clip only for a heavy blow off the head (`HitClip`, `ReactionStrength` 1: about 38+ damage); pilot points from the body
+  centre; a blade's push along the swing the attacker played (`NativeMeleeSlice.Plan` as a kill's cut reads it,
+  `NativeHitPuppetRules.Swing`), adds too; a headshot on the head's struck side; reach by weight (`Spread`) and adds' give
+  (`Loose`); optional hooks `Strike`, `Bounds`, `Trace` (the first bridge still works through `Hit`).
+- **What changed, local bridge version 2 (never in git; master and allowlist in `scratch/puppet-hits-2/local/`):**
+  - the part struck is picked along the shot's line;
+  - zone answers: head snap; shoulder turn and arm swing; gut fold; lurch from behind; lean and shoulder turn from a side;
+    hips drop and roll on a leg hit with the spine turned back over it;
+  - whole-body unpin for heavy blows; per-bone turn caps;
+  - the drawn hips moved by a spring (drop <= 11 cm, shift <= 6 cm, turn <= 14 degrees, never up);
+  - feet re-planted by a two-bone solve; the trunk and each arm kept in the hitbox;
+  - Editor diagnostics (`Temp/hitpuppets-log.flag`).
+  - Tuned in five rounds on the integrator's reads: tune 2 lunged and folded a greatsword victim 160 degrees, tune 3 was a flinch.
+- **Measured (peaks 0.07-0.17 s after the hit; bridge log `HPS`; capture `f-sheet` unless named):**
+  - rifle round on the chest: the trunk rocks 8-14 degrees away from it, the head 12-35;
+  - headshot: 44-47 degrees (23 from the front);
+  - arm from behind: shoulder 19 degrees, arm 33; from the front: 9 and 16;
+  - leg: hip dips 8.3 cm and rolls 8.6 degrees, chest 2 degrees, feet slip under 1 mm;
+  - pistol: trunk 4, head 9-16, hip 3 cm;
+  - machine-gun burst (15 rounds in 1.2 s, `g-mg`): builds to 12-25 degrees (release 15: up to 87, the clip restarting every round);
+  - greatsword: a whole-body stagger with its clip, trunk 33-52 degrees, hips down 11 cm;
+  - Katana: trunk 14-17 degrees, along its cuts' alternating travel;
+  - shamblers (`e2-zb`): trunk 19-38 degrees (release 15: 2-19).
+- **Kills:** two rifle rounds, then a lethal one while still reacting (`g-handover`). The corpse starts from the bent pose with
+  no snap, and the head gib plays. A greatsword's lethal blade blow (`g-handblade`) cuts from the bent pose and the part flies.
+- **Perf** (Editor, Cyber City, six shamblers all reacting, hit every .2 s, diagnostics off): before frame mean 18.26 ms, p95
+  20.60; after 18.40, p95 20.97. The bridge's own step for six: 0.66-0.75 ms before, 0.70-0.85 after. Making a puppet: about
+  15-21 ms for the session's first (JIT), about 1 ms after. The tier and distance caps are unchanged.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+  - The model's hit clip plays only for heavy blows; its timing is unchanged.
+  - The drawn pelvis may dip, shift and turn within the limits above, while the feet stay planted and the root stays where the
+    game put it.
+  - The held weapon follows the bent hands as before. The local first-person body is not drawn.
+- **Checks:**
+  - full CoreTests the relgen5 way (clean worktree, `expedition_path.patch`, the 14 stage banks) at `2080d45e`: 1,105 groups,
+    exit 0 (and at `c1ac5c26`);
+  - `--hit-puppets` (2,040 checks) and `--visual-rig`;
+  - `tools/check_unity_compile.py`: PASS;
+  - `git diff --check`: clean;
+  - bridge 2 compiled against the Editor's own Assembly-CSharp references, with this branch and with shared;
+  - PrototypeBuild.Validate: ok on `916fd96f` (the code as pushed) with bridge 2 installed (the Editor went back to shared and release 15's bridge after);
+  - `pins.py` lists three removed literals, which are this branch's own negative pins (`Side(a.ReactionYaw)`, the feet-measured
+    offset, the head-pivot point).
+- **Review material** (`F:/Chip Arena Development/scratch/puppet-hits-2/`):
+  - direction x location sheets: `sheet-after.jpg`, `sheet-before.jpg`, and `sheet-after-over-before.jpg` (each cell: after over
+    before);
+  - clips in `clips/`, before | after side by side, each `-real` (real time) and `-3x` (3x slower): `rifle-four-sides`,
+    `headshot`, `leg-shots`, `mg-burst`, `greatsword`, `katana`, `zombies-side`.
+  - The BoZo tool gained `phit=` (a forced directional hit on a bot or an add, through the arena's own Damage or HitMinion),
+    `pheal=` and `hitlog=1`.
+- **Not run:** two clients (guests react from the same replicated events; not filmed), a Windows player build, the builder, the
+  Balanced/Low tiers, a live PvE zombie (DEV monsters only). Zombie hits on a pilot were not filmed (the hunting runner did not
+  reach the pilot in time); their event carries the zombie's push direction, which the pilot's puppet uses.
+- **Ship steps (integrator):** after merging, copy the bridge master over the Editor checkout's
+  `Assets/LocalAssets/PrivateAddons/ChipArenaPuppetBridge/ChipArenaPuppetBridge.cs` (under the lock, then refresh). Repack:
+  `python -I tools/pack_visual_body.py <Drive zip> <new zip> --project "F:/Chip Arena Development/Chip-Arena-Unity/unity/ChipArenaConversion" --with-cloth --addons-allowlist "F:/Chip Arena Development/scratch/puppet-hits-2/local/private-addons-allowlist.json"`.
+  Check: `python -I tools/install_local_assets.py <new zip> --check --require-cloth`. The allowlist is unchanged (same 106 paths;
+  only the bridge's content changed). Until the repack the build reacts through the first bridge (points, swings and clips fixed,
+  no hips, legs or bounds).
+- **Risks:**
+  - tuned on Editor captures stepped at 30 Hz, not at play frame rates or on a guest's interpolated bodies;
+  - zombie caps are a third looser (an arm can swing about 90 degrees);
+  - an arm round from the front often strikes the forearm held out with the gun (a smaller reaction);
+  - forced test hits on DEV monsters carry no direction; live PvE adds do.
+- **Next:** the owner reviews the sheet and clips; the integrator merges, repacks the add-ons and publishes to the test channel.
+
 ## 2026-11-22 — Claude: releases 19 and 20: first person holds the held gun, and arms for every other class (integrator)
 - **Release 19:** merged `claude/fps-held-gun` `4c33700e` (F1).
   - Owner: "use whatever gun we are holding", "theres rods for some reason?", "the forearm thing might be cause im using 'Sheldon Robe'".

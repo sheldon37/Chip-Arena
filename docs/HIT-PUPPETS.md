@@ -45,8 +45,11 @@ want the animation to actually display hit direction (Like reactively)". Branch 
   full 1, 38 damage or more: a greatsword's blow, the Siren's claws, a heavy fighter strike; `NativeVisualMotion.HitClip`).
   Rounds, cuts and headshots play no clip: the physical reaction shows them, so the struck part leads, a rifle round is a jolt
   rather than the clip's lunge, and a burst's rounds add up on the body instead of restarting one clip a round.
-- The part struck is picked along the shot's line through the point (the trunk wins a line that crosses it), and the push lands
-  on its surface facing the shot. A headshot's point is on the head's side the shot came from.
+- The part struck is the first of the trunk, an upper arm or a leg that the shot's line passes through, nearest the shooter. A
+  forearm or hand (held out with a gun) is struck only when the line passes through nothing else. The push lands on the part's
+  surface facing the shot. A headshot's point is on the head's side the shot came from.
+- A round within .15 s of the last (a machine-gun burst) pushes half, so a burst shudders and builds to about one chest
+  round's rock instead of folding the trunk.
 - Each zone adds the body's answer in the same simulation: the head snaps away with the chest a little behind; an arm swings
   back and turns its shoulder; a gut hit from the front folds the chest over and pushes the hips back; a hit from behind
   lurches the trunk forward; a side hit leans the trunk away and turns the struck shoulder back; a leg hit drops and rolls the
