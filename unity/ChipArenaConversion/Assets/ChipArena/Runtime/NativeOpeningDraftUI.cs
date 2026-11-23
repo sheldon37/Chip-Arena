@@ -33,9 +33,12 @@ namespace ChipArena.UnityConversion
             bool chips=prefs.deathmatch&&!prefs.pve&&prefs.deathmatchChips!=1;
             if(!pick.Blind&&(prefs.pve||!prefs.deathmatch))return false;
             bool dealt=pick.Dealt;
+            var pool=pick.Mode==NativeRoomPick.Mode.Expedition?NativeTilesets.Selected(DeploymentState).WeaponPool:
+                pick.Blind?NativeWeaponPools.Normalize(prefs.blindWeaponPool):WeaponPool.All;
+            bool fullPool=pick.Blind&&!dealt&&pool!=WeaponPool.All;
             int protocol=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)
                 .Select(p=>p.LoadoutProtocol).DefaultIfEmpty(NativeOpeningDraft.DealtProtocol).Min();
-            string refusal=NativeOpeningDraft.ProtocolRefusal(protocol,dealt);
+            string refusal=NativeOpeningDraft.ProtocolRefusal(protocol,dealt||fullPool);
             if(refusal!=null)
             {
                 networkStatus=refusal;
@@ -50,7 +53,7 @@ namespace ChipArena.UnityConversion
             openingRun=new NativeOpeningDraft(seats,pick.Blind,chips,Time.unscaledTimeAsDouble,
                 p=>NativeContentRules.Offers(content,p.Weapon,new Dictionary<string,int>(),rng.Next,prefs.choices,
                     NativeArena.ImplementedChip,abilityLoadout:p.Seat.weaponTechniques??"").ToArray(),OpeningWeaponAllowed,
-                dealt?pick.Choices:0,dealt?content.weapons.Select(w=>w.id).ToArray():null,rng.Next);
+                dealt?pick.Choices:0,(dealt||fullPool)?content.weapons.Where(w=>NativeWeaponPools.Allows(pool,w)).Select(w=>w.id).ToArray():null,rng.Next,fullPool);
             openingLaunch=launch;
             nextOpeningView=0;
             openingRevealUntil=0;

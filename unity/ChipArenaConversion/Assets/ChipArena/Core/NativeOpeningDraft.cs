@@ -37,12 +37,12 @@ namespace ChipArena.UnityConversion
         private readonly Func<NativeSeat,string,bool> allowed;
         public NativeOpeningDraft(IEnumerable<NativeSeat> seats, bool blind, bool chips, double now,
             Func<OpeningPilot,string[]> offer, Func<NativeSeat,string,bool> allowed,
-            int blindChoices=0, string[] weapons=null, Func<double> random=null)
+            int blindChoices=0, string[] weapons=null, Func<double> random=null,bool fullPool=false)
         {
             this.offer = offer; this.allowed = allowed; startingChips = chips;
             var roster=seats.ToArray();
             Dictionary<int,string[]> pools=null;
-            if(blind && blindChoices!=0)
+            if(blind && (blindChoices!=0||fullPool))
             {
                 this.random=random??new SourceRandom(NativeMatch.NewSeed()).Next;
                 var ids=(weapons??Array.Empty<string>()).Distinct(StringComparer.Ordinal).ToArray();
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
                 if (pools!=null)
                 {
                     var pool=pools[seat.id];
-                    int n=blindChoices;
+                    int n=fullPool?pool.Length:blindChoices;
                     for(int i=0;i<n;i++)
                     {
                         int j=i+(int)(this.random()*(pool.Length-i));

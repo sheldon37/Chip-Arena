@@ -15,12 +15,12 @@ namespace ChipArena.UnityConversion
     // (NativeLobbyLogic.cs), which re-broadcasts a host's room; the player's own team goes through ChangeTeam. UI only.
     public sealed partial class ConversionGame
     {
-        private enum RoomOpt{Blind,BlindChoices,Deathmatch,KillTarget,DeathChips,Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection}
+        private enum RoomOpt{Blind,BlindChoices,Deathmatch,KillTarget,DeathChips,Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection,BlindPool}
         private enum RulesPart{All,Essential,Advanced}
         private static readonly string[] KillLabels=new[]{"Default (15 solo / 30 teams)"}.Concat(Numbered(100,0)).ToArray(), DeathChipLabels={"One starting chip","Off","Comeback chips (3 / 6 deaths)"};
         private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test","Expedition"},ConnectionLabels={"Online","Local network (LAN)"};
         private static readonly string[] SetLabels=Numbered(10,5),RoundLabels=Numbered(10,2),ChoiceLabels=Numbered(12,6);
-        private static readonly string[] DifficultyIds={"dummy","easy","normal","hard"},DifficultyLabels={"Dummy","Easy","Normal","Hard"};
+        private static readonly string[] DifficultyIds={"dummy","easy","normal","hard","godlike"},DifficultyLabels={"Dummy","Easy","Normal","Hard","Godlike"};
         private static readonly string[] BetweenSetsLabels={"Players who lost the set draft","All players draft"},PartyBotLabels={"0","1","2","3"};
         private static readonly string[] BotSlots={"01","02","03","04","05","06","07"},BotNames={"Bot 1","Bot 2","Bot 3","Bot 4","Bot 5","Bot 6","Bot 7"};
         private static readonly string[] BotTeamLabels={"Bot 1 team","Bot 2 team","Bot 3 team","Bot 4 team","Bot 5 team","Bot 6 team","Bot 7 team"};
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         private NativeRoomOptions RulesNow()
         {
             if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
-            m.blindPick=prefs.blindPick;m.blindChoices=prefs.blindChoices;m.deathmatch=prefs.deathmatch;m.killTarget=prefs.killTarget;m.deathmatchChips=prefs.deathmatchChips;m.map=prefs.map;m.cooperative=prefs.pve;m.expedition=prefs.pve&&prefs.expedition;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
+            m.blindWeaponPool=NativeWeaponPools.Normalize(prefs.blindWeaponPool);m.blindPick=prefs.blindPick;m.blindChoices=prefs.blindChoices;m.deathmatch=prefs.deathmatch;m.killTarget=prefs.killTarget;m.deathmatchChips=prefs.deathmatchChips;m.map=prefs.map;m.cooperative=prefs.pve;m.expedition=prefs.pve&&prefs.expedition;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
             m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;
             NativeRoomPick.Apply(m,expeditionChoices);return m;
@@ -100,6 +100,7 @@ namespace ChipArena.UnityConversion
                     o.blindPick=v!=0;
                     o.blindChoices=v==2?(o.blindChoices>0?o.blindChoices:NativeOpeningDraft.DefaultBlindChoices):0;
                     break;
+                case RoomOpt.BlindPool:o.blindWeaponPool=(WeaponPool)v;break;
                 case RoomOpt.BlindChoices:o.blindChoices=Math.Max(2,v);break;
                 case RoomOpt.Deathmatch:o.deathmatch=v==1;break;
                 case RoomOpt.KillTarget:o.killTarget=v;break;
@@ -113,7 +114,7 @@ namespace ChipArena.UnityConversion
                 case RoomOpt.RandomMap:o.randomizeMap=v==1;break;
                 case RoomOpt.Bots:o.bots=v;break;
                 // One BOT DIFFICULTY for every bot, as the source has: per-bot entries follow it.
-                case RoomOpt.Difficulty:o.botDifficulty=DifficultyIds[Mathf.Clamp(v,0,3)];o.botOptions=CopyBots(o.botOptions,0,o.botDifficulty);foreach(var b in o.botOptions)b.difficulty=o.botDifficulty;break;
+                case RoomOpt.Difficulty:o.botDifficulty=DifficultyIds[Mathf.Clamp(v,0,DifficultyIds.Length-1)];o.botOptions=CopyBots(o.botOptions,0,o.botDifficulty);foreach(var b in o.botOptions)b.difficulty=o.botDifficulty;break;
                 case RoomOpt.SkipBotDrafts:o.skipBotDrafts=v==1;break;
                 case RoomOpt.SkipIntros:o.skipPlayerIntros=v==1;break;
                 case RoomOpt.BothDraft:o.bothDraft=v==1;break;
@@ -340,6 +341,7 @@ namespace ChipArena.UnityConversion
         private void BlindPickRows(NativeRoomOptions o)
         {
             int choices=BlindChoicesOf(o),mode=!o.blindPick?0:choices>=NativeBlindChoices.Min?2:1;RuleSelect(18740,RoomOpt.Blind,"Weapon pick",NativeBlindChoices.ModeLabels,mode);
+            if(mode!=0)RuleSelect(18824,RoomOpt.BlindPool,"Weapon pool",NativeWeaponPools.Labels,(int)o.blindWeaponPool);
             if(mode!=2)return;blindCountLabels??=NativeBlindChoices.CountLabels(botWeaponIds.Length);
             RuleSelect(18756,RoomOpt.BlindChoices,"Weapon choices",blindCountLabels,Mathf.Clamp(choices-NativeBlindChoices.Min,0,blindCountLabels.Length-1),0,NativeBlindChoices.Min);
             RuleFine(18760,"Each pilot is dealt this many different weapons and picks one. Picks stay hidden until every pilot locks in.",0,8);

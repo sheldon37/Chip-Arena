@@ -11,6 +11,27 @@ namespace ChipArena.UnityConversion
     // the lobby loadouts its screen offers. A change made in one mode is stored for that mode only, and switching modes stores
     // nothing. The deal, its privacy, the checks and the timer are Astra's rules (NativeOpeningDraft), unchanged: this only says which
     // pick a mode's opening asks them for, and how players read it. Presentation and wiring; no new field, message or save.
+    public enum WeaponPool { All, Ranged, Melee, Magic, RangedAndMagic }
+
+    public static class NativeWeaponPools
+    {
+        public static readonly string[] Labels = { "All Weapons", "Ranged Only", "Melee Only", "Magic Only", "Ranged and Magic" };
+        public static WeaponPool Normalize(WeaponPool pool) =>
+            (uint)pool < Labels.Length ? pool : WeaponPool.All;
+
+        public static bool Allows(WeaponPool pool, ContentWeapon weapon)
+        {
+            switch (pool)
+            {
+                case WeaponPool.Ranged: return weapon.@class == "ranged";
+                case WeaponPool.Melee: return weapon.@class == "melee";
+                case WeaponPool.Magic: return weapon.@class == "magic";
+                case WeaponPool.RangedAndMagic: return weapon.@class == "ranged" || weapon.@class == "magic";
+                default: return true;
+            }
+        }
+    }
+
     public static class NativeRoomPick
     {
         /// <summary>An expedition's dealt choices until its host changes them.</summary>
@@ -62,7 +83,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A squad card's line under the pilot's name.</summary>
         public static string CardLine(int choices)=>"BLIND PICK · "+choices;
         /// <summary>The drawer's and the room options' note.</summary>
-        public static string Note(int choices)=>"An expedition is always Blind Pick. When the host presses Deploy at the Deployment Station, each pilot is dealt "+
+        public static string Note(int choices)=>"An expedition is always Blind Pick. When the host presses Deploy at the Deployment Station, each pilot is dealt up to "+
             choices+" different weapons and classes and picks one for the run; the picks stay hidden until every pilot locks in.";
     }
 }

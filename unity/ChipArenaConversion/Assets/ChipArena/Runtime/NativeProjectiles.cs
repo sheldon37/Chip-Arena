@@ -47,7 +47,8 @@ namespace ChipArena.UnityConversion
             float yaw=Mathf.Atan2(offset.x,offset.z)*Mathf.Rad2Deg,distance=new Vector2(offset.x,offset.z).magnitude;
             bool returning=p.Stats["boomerang"]>0&&!pong;float speed=(float)((bow?.Speed??(float)w.speed)*p.Stats["projectileSpeed"]),gravity=pong||returning?0:bow!=null?(float)(bow.Gravity*p.Stats["projectileGravity"]):NativeProjectileRules.Gravity(w,p.Stats);
             if(pong)speed=Mathf.Clamp(speed,30,80);
-            float pitch=p.Aiming&&gravity>0?GunRules.BallisticPitch(distance,offset.y,speed,gravity):Mathf.Atan2(offset.y,distance)*Mathf.Rad2Deg;
+            bool perfectAim=p.Seat.bot&&p.Seat.difficulty=="godlike";
+            float pitch=(p.Aiming||perfectAim)&&gravity>0?GunRules.BallisticPitch(distance,offset.y,speed,gravity):Mathf.Atan2(offset.y,distance)*Mathf.Rad2Deg;
             bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread((double?)bow?.Spread??w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
             // The cone (owner 2026-11-10, Core NativeSpread): the pistol, the machine gun and the rifle fire inside their hip cone, opened by moving, by
             // the air and by their bloom, narrowed by the aim as it settles; each shot kicks the bloom (overdrive's rounds neither aim nor bloom). The
@@ -55,6 +56,7 @@ namespace ChipArena.UnityConversion
             var coneOf=NativeSpread.Of(p.Seat.spec);bool coned=!fan&&bow==null&&NativeSpread.Has(p.Seat.spec);
             if(coned){float bloom=NativeSpread.Decay(p.SpreadBloom,Time-p.SpreadBloomAt,coneOf),aimNarrow=overdrive||!p.Aiming||ads==null?1:NativeSpread.Aim(true,ads.spread,ads.settle,Time-p.AimAt);spread=NativeSpread.Value(NativeSpread.Cone(coneOf,new Vector2(p.MoveVelocity.x,p.MoveVelocity.z).magnitude/NativeSpread.RunSpeed,!p.Grounded,bloom,aimNarrow));p.SpreadBloom=overdrive?bloom:NativeSpread.Kick(bloom,coneOf);p.SpreadBloomAt=Time;}
             if(Has(p,"wild-bullet-hose"))spread+=Math.Tan(12*Math.PI/180);if(ChannelLive(p,"bipod"))spread*=.3;if(ChannelLive(p,"slide-shot")&&p.Technique.Phase=="slide")spread*=.5;
+            if(perfectAim)spread=0;
             p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(bow==null&&w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             int count=NativeProjectileRules.Volley(p.Stats,pong),attack=nextAttack++;float empowerment=Time<p.EmpowerUntil&&p.EmpowerShots>0?1+(float)p.Stats["qEmpower"]:1;if(empowerment>1)p.EmpowerShots--;
             int firstProjectile=nextBullet;var volley=new List<NativeBullet>();
@@ -233,6 +235,7 @@ namespace ChipArena.UnityConversion
             b.Position=hit.Point;var minion=hit.Collider.GetComponent<NativeMinionBody>()?.Minion;var target=hit.Collider.GetComponent<NativePilotBody>()?.Pilot;var prop=hit.Collider.GetComponent<NativePropBody>();
             if(target!=null&&TryTechniqueParry(target,b.Velocity,hit.Contact)){b.Instant=false;if(b.Reflections++>=3)return true;b.Owner=target.Seat.id;b.Direct=b.ChipImpact=b.Boomerang=false;b.Homing=0;b.Hit.Clear();b.Velocity=Vec(GunRules.Direction(target.Input.Yaw,target.Input.Pitch))*Math.Max(1,b.Velocity.magnitude);b.Position+=b.Velocity.normalized*.1f;return false;}
             if(target!=null&&AbsorbCharge(target,b.Velocity,hit.Contact,b.Id))return true;
+            if(target!=null)GodlikeContactParry(target);
             if(target!=null&&Time<target.BlockEnd)
             {
                 b.Instant=false;BlockProc(target,owner,hit.Contact,"deflect");if(b.Reflections>=3)return true;b.Reflections++;b.Owner=target.Seat.id;b.Direct=b.ChipImpact=b.Boomerang=false;b.Homing=0;b.Hit.Clear();b.Attack=nextAttack++;

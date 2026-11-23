@@ -31,6 +31,24 @@ namespace ChipArena.UnityConversion
             Reset("rifle");b.Body.position+=Vector3.right*5;Physics.SyncTransforms();Fire(a);Check(b.Hp==100,"old target position does not hit moved target");
             Aim();Fire(a);Check(b.Hp<100,"current authority target position hits");
             Reset("rifle");b.BlockEnd=Time+1;Fire(a);Check(b.Hp==100&&Bullets.Count==1&&Bullets[0].Owner==b.Seat.id&&!Bullets[0].Instant,"block returns simulated shot");
+            string oldA=a.Seat.difficulty,oldB=b.Seat.difficulty;
+            bool stationary=StationaryBots;
+            try
+            {
+                StationaryBots=false;
+                foreach(string spec in new[]{"rifle","fire"})
+                {
+                    Reset(spec);a.Seat.bot=true;a.Seat.difficulty="godlike";a.QReady=a.EReady=Time+10;a.ECharges=0;
+                    a.Input=BotFocus(a,b.Body.position,Vector3.zero,b.Collider,b);
+                    Fire(a);
+                    for(int tick=0;tick<10&&Bullets.Count>0;tick++)StepBullets();
+                    Check(Events.Any(e=>e.Kind==EventKind.Headshot&&e.Target==b.Seat.id),"Godlike headshot with "+spec);
+                }
+                Reset("rifle");b.Seat.bot=true;b.Seat.difficulty="godlike";b.BlockReady=0;
+                Fire(a);Check(b.Hp==100&&b.BlockReady>Time,"Godlike parries a same-tick hitscan");
+                b.BlockEnd=0;Fire(a);Check(b.Hp<100,"Godlike respects parry cooldown");
+            }
+            finally{a.Seat.difficulty=oldA;b.Seat.difficulty=oldB;StationaryBots=stationary;}
             foreach(string stat in new[]{"homing","boomerang","zigzag","projectileGravityAdd","projectileSpeed"})
             {
                 Reset("rifle");a.Stats[stat]=stat=="projectileSpeed"?.5:1;Fire(a);

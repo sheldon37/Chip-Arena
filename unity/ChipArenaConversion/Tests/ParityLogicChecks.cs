@@ -54,8 +54,23 @@ internal static class ParityLogicChecks
     }
     private static void CombatAndLobby(ConversionContent content)
     {
-        var brain=new NativeBotBrain();var first=brain.Observe(1,"easy",new V3(1,0,0),()=>.5);var delayed=brain.Observe(1.1,"easy",new V3(9,0,0),()=>.5);Check(first.x==delayed.x&&!brain.Reacted,"bot aim preserves reaction delay");brain.Observe(1.33,"easy",new V3(9,0,0),()=>.5);Check(brain.Aim.x==9&&brain.Reacted,"bot aim updates after think interval");
+        var brain=new NativeBotBrain();var first=brain.Observe(1,"easy",new V3(1,0,0),()=>.5);var delayed=brain.Observe(1.1,"easy",new V3(9,0,0),()=>.5);Check(first.x==delayed.x&&!brain.Reacted,"bot aim preserves reaction delay");brain.Observe(1.51,"easy",new V3(9,0,0),()=>.5);Check(brain.Aim.x==9&&brain.Reacted,"bot aim updates after think interval");
         Check(NativeBotRules.Reaction(2)<NativeBotRules.Reaction(0)&&NativeBotRules.Error(2)<NativeBotRules.Error(0)&&NativeBotRules.Desired(content.Weapon("rifle"))==32&&!NativeBotRules.Ads("pistol",12)&&NativeBotRules.Ads("rifle",12),"difficulty and weapon ranges match source AI");
+        string[] tiers={"easy","normal","hard","godlike"};
+        for(int tier=0;tier<tiers.Length;tier++)
+        {
+            string name=tiers[tier];
+            Check(NativeBotRules.Level(NativeLobbyRules.Difficulty(name))==tier,"room preserves "+name);
+            int parries=Enumerable.Range(1,10000).Count(id=>NativeBotRules.Parry(tier,101,2,id,false));
+            double expected=new[]{.05,.28,.68,1}[tier];
+            Check(Math.Abs(parries/10000d-expected)<.02,"one parry decision per swing: "+name);
+            var aim=new NativeBotBrain().Observe(0,name,new V3(4,1,7),()=>1,new V3(0,0,-1),10);
+            Check(Math.Abs(7-aim.z-NativeBotRules.Error(tier))<.001&&aim.x==4,"view-relative spread: "+name);
+        }
+        var perfect=new NativeBotBrain();
+        perfect.Observe(0,"godlike",new V3(),()=>0);
+        var head=new V3(4,NativeCombatRules.HeadHeight,7);
+        Check((perfect.Observe(.016,"godlike",head,()=>0)-head).Length==0,"Godlike follows the head every tick");
         Check(NativeBotRules.BossDifficulty(1)=="normal"&&NativeBotRules.BossDifficulty(4)=="hard"&&NativeBotRules.Ability("meteor-strike").lead==.6f,"party boss difficulty and kit-specific lead");
         Check(NativeCombatRules.Headshot(new V3(),0,new V3(0,.64f,-3),new V3(0,0,1),0,false),"head trajectory receives bonus");
         foreach(var hit in new[]{new V3(.3f,.45f,-3),new V3(.35f,.5f,-3),new V3(0,.4f,-3)})Check(!NativeCombatRules.Headshot(new V3(),0,hit,new V3(0,0,1),.03f,false),"shoulder is not the head");
