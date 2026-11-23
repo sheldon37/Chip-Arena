@@ -1,7 +1,7 @@
 ## 2026-11-23 — Claude: release 23: a larger aimed pistol, and aimed recoil on every gun (integrator)
 Owner: "The pistol ADS still looks a bit small and simulates no recoil"; after the review, "Ship it now".
 - **Published:** shared and the builder at `032f4e43`. Test channel revision `639310537083182085` (build `2cb22a2a`, 396.0 MiB).
-  - It also carries Astra's `5c7ebdb6`, which was on shared before this merge.
+  - It also carries Astra's `5c7ebdb6` (Blind Pick and City draft weapon families) and PR #442 `012995d9` (bot rebalance, Godlike, spitter lead removed), which were on shared before this merge; their checks are in their own entries.
 - **Merged:** `claude/ads-recoil` `607b0194` (G2).
   - The aimed pistol is about twice the size: rear sight 24 cm from the eye on a 55 degree lens.
   - `NativeAimKick` plays the pack's per-gun recoil, read as data, on the pistol, machine gun and rifle scope.
