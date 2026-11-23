@@ -1,3 +1,21 @@
+## 2026-11-23 — Claude: release 22: the TR15 machine gun, with iron sights on the shots' line (integrator)
+Owner: "fix first person to aim the iron sights where the shots are going ... lets replace our machine gun model with the one from the pack".
+- **Published:** shared and the builder at `af51c3ab`. Test channel revision `639310196909215147` (build `59f57028`, 396.0 MiB).
+- **Merged:** `claude/mg-tr15` `46da6ee9` (G1).
+  - The machine gun's front post was 4.9 degrees under the aim ray, and the pistol's 1 degree. Both now sit on it within 0.02 degrees at 5, 15 and 40 m.
+  - The TR15 is the machine gun's Standard model in every view. Arsenal skins are unchanged.
+- **Drive zip:** the weapons bake was redone on `46da6ee9` with the BoZo tool's `WeaponBakes` patched by G1's `patch_tool.py`; the bake check found 4 TR15 meshes.
+  - The repack added the TR15's 23 files, and the visual body is 472.12 of 480 MB.
+  - The tool stays patched in the Editor checkout.
+  - The previous zip is kept as `LocalAssets-2026-11-23-before-mg-tr15.zip`.
+- **Checks:**
+  - PrototypeBuild.Validate on `f2b3a535` with the TR15 bake;
+  - the full suite at `46da6ee9` (1,105 groups, exit 0);
+  - the Unity compile;
+  - the build, whose log lists the TR15 assets.
+- **Not run:** two clients, the Low tier, a playtest. The kill and killcam views of the TR15 were not filmed.
+- **Owner call open:** aimed, the TR15's rear sight fills the lower middle of the view, as the pack draws it.
+
 ## 2026-11-23 — Claude (G1): the machine gun's iron sights on the shots' line; the pack's TR15 is its Standard model
 Owner: "For the machine gun, can we fix first person to aim the iron sights where the shots are going? (Probably a easy solution for
 this, lets replace our machine gun model with the one from the pack)". **Branch:** `claude/mg-tr15` from shared `0679b28d`. Pushed,
