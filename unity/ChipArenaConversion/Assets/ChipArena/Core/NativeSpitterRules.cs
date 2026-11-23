@@ -17,8 +17,15 @@ namespace ChipArena.UnityConversion
         public const float Hit=.8f,Cycle=2.6f,Range=18,Radius=1.3f,Duration=4,DirectRadius=.6f,Damage=7,Dps=4,DotDuration=.5f,DotInterval=.25f,CorrosionInterval=.5f,Corrosion=6,DirectCorrosion=10;
         public static bool Interrupt(float damage,float now,float attack,bool struck)=>damage>0&&!struck&&now>=attack&&now<attack+Hit;
         public static float Retry(float now)=>now+Cycle*.6f;
-        public static V3 Lead(V3 origin,V3 target,V3 velocity)
-        {var delta=target-origin;delta.y=0;var lead=target+velocity*NativeHordeFx.Flight(delta.Length);delta=lead-origin;delta.y=0;if(delta.Length>Range){delta=delta.Normalized*Range;lead.x=origin.x+delta.x;lead.z=origin.z+delta.z;}lead.y=target.y;return lead;}
+        public static V3 Aim(V3 origin,V3 target,V3 velocity,bool expedition)
+        {
+            V3 delta=target-origin;delta.y=0;
+            V3 aim=expedition?target:target+velocity*NativeHordeFx.Flight(delta.Length);
+            delta=aim-origin;delta.y=0;
+            if(delta.Length>Range)aim=origin+delta.Normalized*Range;
+            aim.y=target.y;
+            return aim;
+        }
         public static bool Touch(V3 floor,V3 center,float halfHeight,float radius,float area)
         {var d=center-floor;return Math.Abs(d.y-halfHeight)<.6f&&(double)d.x*d.x+(double)d.z*d.z<=(double)(radius+area)*(radius+area);}
         public static float KeepDistance(float distance)=>distance<4?-1:distance<=8?0:1;

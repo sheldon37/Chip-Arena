@@ -18,7 +18,8 @@ namespace ChipArena.UnityConversion
         {
             var a=m.Pve;var target=a.Target;if(target==null||target.Hp<=0||!target.Seat.connected||pveAcid.Count>=16)return;
             var floor=m.Body.position-Vector3.up*(m.Collider.height/2);var from=floor+Vector3.up*(a.Crawl?.45f:1.2f)+Vec(V3.Forward(m.Yaw))*.3f;
-            var aim=Vec(NativeSpitterRules.Lead(Vec(floor),Vec(target.Body.position-Vector3.up*(target.Collider.height/2)),Vec(target.Body.linearVelocity)));
+            if(Expedition!=null&&!MeleeVisible(from,target.Body.position,m.Owner,target.Collider,true))return;
+            var aim=Vec(NativeSpitterRules.Aim(Vec(floor),Vec(target.Body.position-Vector3.up*(target.Collider.height/2)),Vec(target.Body.linearVelocity),Expedition!=null));
             var to=GroundPoint(aim)+Vector3.up*.025f;var flat=to-from;flat.y=0;
             if(flat.magnitude>NativeSpitterRules.Range+.01f)return;
             float flight=NativeHordeFx.Flight(flat.magnitude);

@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         private static readonly string[] KillLabels=new[]{"Default (15 solo / 30 teams)"}.Concat(Numbered(100,0)).ToArray(), DeathChipLabels={"One starting chip","Off","Comeback chips (3 / 6 deaths)"};
         private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test","Expedition"},ConnectionLabels={"Online","Local network (LAN)"};
         private static readonly string[] SetLabels=Numbered(10,5),RoundLabels=Numbered(10,2),ChoiceLabels=Numbered(12,6);
-        private static readonly string[] DifficultyIds={"dummy","easy","normal","hard"},DifficultyLabels={"Dummy","Easy","Normal","Hard"};
+        private static readonly string[] DifficultyIds={"dummy","easy","normal","hard","godlike"},DifficultyLabels={"Dummy","Easy","Normal","Hard","Godlike"};
         private static readonly string[] BetweenSetsLabels={"Players who lost the set draft","All players draft"},PartyBotLabels={"0","1","2","3"};
         private static readonly string[] BotSlots={"01","02","03","04","05","06","07"},BotNames={"Bot 1","Bot 2","Bot 3","Bot 4","Bot 5","Bot 6","Bot 7"};
         private static readonly string[] BotTeamLabels={"Bot 1 team","Bot 2 team","Bot 3 team","Bot 4 team","Bot 5 team","Bot 6 team","Bot 7 team"};
@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
                 case RoomOpt.RandomMap:o.randomizeMap=v==1;break;
                 case RoomOpt.Bots:o.bots=v;break;
                 // One BOT DIFFICULTY for every bot, as the source has: per-bot entries follow it.
-                case RoomOpt.Difficulty:o.botDifficulty=DifficultyIds[Mathf.Clamp(v,0,3)];o.botOptions=CopyBots(o.botOptions,0,o.botDifficulty);foreach(var b in o.botOptions)b.difficulty=o.botDifficulty;break;
+                case RoomOpt.Difficulty:o.botDifficulty=DifficultyIds[Mathf.Clamp(v,0,DifficultyIds.Length-1)];o.botOptions=CopyBots(o.botOptions,0,o.botDifficulty);foreach(var b in o.botOptions)b.difficulty=o.botDifficulty;break;
                 case RoomOpt.SkipBotDrafts:o.skipBotDrafts=v==1;break;
                 case RoomOpt.SkipIntros:o.skipPlayerIntros=v==1;break;
                 case RoomOpt.BothDraft:o.bothDraft=v==1;break;

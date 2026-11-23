@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         private Vector3 devPilotCamPos;private Quaternion devPilotCamRot;private bool devPilotCamValid;
         private string[] devWeaponIds,devWeaponNames,devMapIds,devMapNames;private readonly Dictionary<string,Color> devRarityColor=new Dictionary<string,Color>();
         private readonly Dictionary<string,string> devRarityName=new Dictionary<string,string>(),devChipFit=new Dictionary<string,string>();private float devChipFitWidth;
-        private static readonly string[] DevDifficulties={"dummy","easy","normal","hard"},DevOnOff={"ON","OFF"};
+        private static readonly string[] DevDifficulties={"dummy","easy","normal","hard","godlike"},DevOnOff={"ON","OFF"};
         private static GUIStyle devSearchStyle;
 
         // ---- Context ----------------------------------------------------------------------------------------------------

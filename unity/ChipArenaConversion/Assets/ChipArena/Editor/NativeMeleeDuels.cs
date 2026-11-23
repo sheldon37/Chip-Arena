@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion.Editor
             var maps=(Environment.GetEnvironmentVariable("CHIP_DUEL_MAPS")??"brickfall,factory,cybercity").Split(',').Select(s=>s.Trim()).ToArray();
             foreach(string map in maps)if(!content.maps.Any(m=>m.id==map)||content.Map(map).blocks.Length<10)throw new ArgumentException("Unknown/non-cover duel map: "+map);
             var difficulty=Environment.GetEnvironmentVariable("CHIP_DUEL_DIFFICULTY")??"normal";
-            if(difficulty!="easy"&&difficulty!="normal"&&difficulty!="hard")throw new ArgumentException("Invalid duel difficulty");
+            if(difficulty!="easy"&&difficulty!="normal"&&difficulty!="hard"&&difficulty!="godlike")throw new ArgumentException("Invalid duel difficulty");
             string output=Path.GetFullPath(Environment.GetEnvironmentVariable("CHIP_DUEL_OUTPUT")??"Temp/MeleeDuels.json");
             var report=new Report{utc=DateTime.UtcNow.ToString("O"),source=Environment.GetEnvironmentVariable("CHIP_DUEL_COMMIT")??"unrecorded",difficulty=difficulty,seedPairs=pairs,contentRevision=content.contentRevision};
             var rows=new List<Duel>();var previousMode=Physics.simulationMode;var previousGravity=Physics.gravity;var previousRandom=UnityEngine.Random.state;
