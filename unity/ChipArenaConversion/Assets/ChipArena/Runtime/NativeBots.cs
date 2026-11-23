@@ -58,7 +58,8 @@ namespace ChipArena.UnityConversion
             float desired=NativeWhirlwindRules.Active(p.Special,Time)?1:NativeBotRules.Desired(p.Weapon);var flat=new Vector3(delta.x,0,delta.z).normalized;Vector3 move=distance>desired+1?flat:distance<desired-1?-flat*.8f:Vector3.zero;
             if(level>0&&!melee&&visible)move+=Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*1.1f+p.Seat.id)>0?.65f:-.65f);
             Vector3 navGoal=target;
-            if(level==3&&TacticalPosition(p,target,desired,melee,out var goal))
+            bool planPosition=level==3||level==2&&!melee&&(!visible||p.ReloadEnd>Time);
+            if(planPosition&&TacticalPosition(p,target,opponent,desired,melee,out var goal))
             {
                 navGoal=goal;
                 var toward=goal-pos;
@@ -125,7 +126,7 @@ namespace ChipArena.UnityConversion
         }
 
         // Sample local firing lanes on a timer. Keep travelling toward the selected floor point between plans.
-        private bool TacticalPosition(NativePilot pilot,Vector3 target,float desired,bool melee,out Vector3 goal)
+        private bool TacticalPosition(NativePilot pilot,Vector3 target,NativePilot opponent,float desired,bool melee,out Vector3 goal)
         {
             var brain=pilot.BotBrain;
             bool cover=(pilot.Hp<pilot.Stats["hp"]*.35&&Time-pilot.LastDamage<1.2f)||pilot.ReloadEnd>Time||pilot.Weapon.ammo>0&&pilot.Ammo==0||
@@ -156,6 +157,13 @@ namespace ChipArena.UnityConversion
                         var side=Vector3.Cross(Vector3.up,target-candidate).normalized*1.8f;
                         if(SceneLinecast(candidate+side,target,WorldMask)||SceneLinecast(candidate-side,target,WorldMask))score+=3;
                         score+=Mathf.Clamp(candidate.y-target.y,-2,3);
+                        if(opponent!=null&&opponent.Weapon.@class!="melee")
+                        {
+                            var look=Vec(GunRules.Direction(opponent.Yaw,opponent.Pitch));
+                            var offset=candidate-target;
+                            float along=Vector3.Dot(offset,look);
+                            if(along>0)score-=Mathf.Max(0,3-(offset-look*along).magnitude);
+                        }
                     }
                     if(score<=best)continue;
                     best=score;brain.TacticalGoal=Vec(candidate);brain.HasGoal=true;

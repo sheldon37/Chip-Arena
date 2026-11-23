@@ -14,6 +14,7 @@ internal static class Program
                 var content=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(contentFile),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});
                 ParityLogicChecks.Run(content);
                 PveSpitterChecks.Run(ProjectRoot());
+                ExpeditionsMenuChecks.Run(ProjectRoot());
                 return 0;
             }
             if(args.Length==0||args.Length==1&&args[0]=="--intro-architect"){IntroArchitectChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
