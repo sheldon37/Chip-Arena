@@ -35,12 +35,15 @@ namespace ChipArena.UnityConversion
         // The camera (degrees: its rise, yaw and roll ranges) on the pack's shared shake shape at CameraRate, CameraShare of it.
         public float CamRise0,CamRise1,CamYaw0,CamYaw1,CamRoll0,CamRoll1,CameraRate=3,CameraShare=.5f;
         // Sustained fire (the machine gun): each round of a burst after the first raises the climb by Climb degrees, to ClimbMax (and
-        // ClimbUp metres up per degree); it follows at ClimbRate while the rounds keep coming, then settles at ClimbOmega.
-        public float Climb,ClimbMax,ClimbUp,ClimbRate=25,ClimbOmega=40;
+        // ClimbUp metres up per degree); it follows at ClimbRate while the rounds keep coming, then settles at ClimbOmega. Once the next
+        // round does not come the smoothed shapes settle at SettleRate (per second) at least.
+        public float Climb,ClimbMax,ClimbUp,ClimbRate=25,ClimbOmega=55,SettleRate=45;
         // The slide (the pistol): its travel's share from the shot (the pack's own slide on the Viper, 60 samples a second).
         public float[] SlideShape;
         // A semi-automatic gun's shot is back at rest within this share of its interval.
         public const float Fit=.9f;
+        // How long past its interval a burst's next round may land (the arena's 60 Hz tick, and a little).
+        public const float FiringSlack=1/60f+.005f;
         public float Span=>RiseShape!=null?(RiseShape.Length-1)/60f:0;
 
         // The WK-11 Viper's recoil (pitch 9-12 up, yaw -1.8..-1 or 1.2..2, roll 2-3 either side, kick 14-16 mm; aiming x1) and the
@@ -50,12 +53,12 @@ namespace ChipArena.UnityConversion
             CamRise0=.7f,CamRise1=1,CamYaw0=.2f,CamYaw1=.3f,CamRoll0=1.5f,CamRoll1=1.9f,CameraRate=3.4f,CameraShare=.5f,SlideShape=NativeAimKickData.ViperSlide};
         // The TR15's (pitch 0.7-0.9, yaw -0.7..-0.3 or 0.3..0.6, roll -1.2..-1 or 1..1.5, kick 10-11 mm; aiming x0.8 pitch and roll, x0.5
         // yaw, x0.8 kick; the pivot 4.5 cm under and 3 cm ahead of the gun bone; auto smoothing 30/15/25 and extra 2.5/1/1.2) and the
-        // light rifle shake (pitch 0.32-0.42, yaw 0.2-0.3, roll -1.3..-1.5 at 3x). The turn x1.4 and the climb are ours: the pack's
+        // light rifle shake (pitch 0.32-0.42, yaw 0.2-0.3, roll -1.3..-1.5 at 3x). The turn x1.1 and the climb are ours: the pack's
         // aimed TR15 lifts the post about as little as the old spring did.
         public static readonly NativeAimKick MachineGun=new NativeAimKick{Weapon=WeaponId.MachineGun,Rise0=.56f,Rise1=.72f,YawL0=-.35f,YawL1=-.15f,YawR0=.15f,YawR1=.3f,RollL0=-.96f,RollL1=-.8f,RollR0=.8f,RollR1=1.2f,
-            Back0=.008f,Back1=.0088f,Turn=1.4f,Pivot=new System.Numerics.Vector3(0,-.045f,.03f),RiseShape=NativeAimKickData.TR15TurnX,YawShape=NativeAimKickData.TR15TurnY,RollShape=NativeAimKickData.TR15TurnZ,BackShape=NativeAimKickData.TR15MoveZ,
+            Back0=.008f,Back1=.0088f,Turn=1.1f,Pivot=new System.Numerics.Vector3(0,-.045f,.03f),RiseShape=NativeAimKickData.TR15TurnX,YawShape=NativeAimKickData.TR15TurnY,RollShape=NativeAimKickData.TR15TurnZ,BackShape=NativeAimKickData.TR15MoveZ,
             Auto=true,SmoothRise=30,SmoothYaw=15,SmoothRoll=25,SmoothBack=30,ExtraRise=2.5f,ExtraYaw=1,ExtraRoll=1.2f,ExtraBack=1,
-            CamRise0=.32f,CamRise1=.42f,CamYaw0=.2f,CamYaw1=.3f,CamRoll0=-1.5f,CamRoll1=-1.3f,CameraRate=3,CameraShare=.4f,Climb=.07f,ClimbMax=.7f,ClimbUp=.002f};
+            CamRise0=.32f,CamRise1=.42f,CamYaw0=.2f,CamYaw1=.3f,CamRoll0=-1.5f,CamRoll1=-1.3f,CameraRate=3,CameraShare=.4f,Climb=.06f,ClimbMax=.6f,ClimbUp=.002f};
         // The Oryx SRM-12's (pitch 0.9-1.2, yaw -0.3..0.5 or 0.3..0.4, roll 0.5-1 either side, kick 1-1.5 mm; aiming x2 pitch and yaw, x3
         // roll, x10 kick) and the heavy rifle shake (pitch 0.7-0.8, yaw -0.2..-0.3, roll 1.8-2.7 at 2.9x). Aimed in first person the rifle
         // looks through its scope, whose overlay takes this kick (ScopeKick).
@@ -133,22 +136,24 @@ namespace ChipArena.UnityConversion
                 float cu=age*(k.Auto||!(interval>0)?k.CameraRate:Math.Max(k.CameraRate,1/(NativeAimKick.Fit*interval)));
                 cr=tCamRise*NativeAimKick.Shape(NativeAimKickData.ShakeX,cu);cy=tCamYaw*NativeAimKick.Shape(NativeAimKickData.ShakeY,cu);cz=tCamRoll*NativeAimKick.Shape(NativeAimKickData.ShakeZ,cu);
             }
+            // A burst runs while its next round is due: the interval and the arena's tick (a round lands on the first tick after it).
+            bool firing=age>=0&&age<interval+NativeAimKick.FiringSlack;
             if(k.Auto)
             {
-                // From the second round of a burst the pack smooths its automatic shapes (and scales them); the first round is crisp.
-                bool smooth=burst>1;
-                Rise=Follow(Rise,rise*(smooth?k.ExtraRise:1),smooth?k.SmoothRise:60,dt);Yaw=Follow(Yaw,yaw*(smooth?k.ExtraYaw:1),smooth?k.SmoothYaw:60,dt);
-                Roll=Follow(Roll,roll*(smooth?k.ExtraRoll:1),smooth?k.SmoothRoll:60,dt);Back=Follow(Back,back*(smooth?k.ExtraBack:1),smooth?k.SmoothBack:60,dt);
+                // From the second round of a burst the pack smooths its automatic shapes (and scales them); the first round is crisp. Once
+                // the next round does not come they settle at SettleRate at least.
+                bool smooth=burst>1;float settle=firing?0:k.SettleRate;
+                Rise=Follow(Rise,rise*(smooth?k.ExtraRise:1),smooth?Math.Max(k.SmoothRise,settle):60,dt);Yaw=Follow(Yaw,yaw*(smooth?k.ExtraYaw:1),smooth?Math.Max(k.SmoothYaw,settle):60,dt);
+                Roll=Follow(Roll,roll*(smooth?k.ExtraRoll:1),smooth?Math.Max(k.SmoothRoll,settle):60,dt);Back=Follow(Back,back*(smooth?k.ExtraBack:1),smooth?Math.Max(k.SmoothBack,settle):60,dt);
                 // The camera follows its restarted shake smoothly (the pack's smooth speed).
                 CamRise=Follow(CamRise,cr,40,dt);CamYaw=Follow(CamYaw,cy,40,dt);CamRoll=Follow(CamRoll,cz,40,dt);
             }
             else{Rise=rise;Yaw=yaw;Roll=roll;Back=back;CamRise=cr;CamYaw=cy;CamRoll=cz;}
             CamRise*=k.CameraShare;CamYaw*=k.CameraShare;CamRoll*=k.CameraShare;
-            // The climb: each round of a burst after the first adds to it (capped); it follows while the rounds come (the next one due
-            // within a quarter interval and a frame), then settles critically damped.
+            // The climb: each round of a burst after the first adds to it (capped); it follows while the rounds come, then settles
+            // critically damped.
             if(k.Climb>0)
             {
-                bool firing=age>=0&&age<interval*1.25f+.017f;
                 if(firing){float target=Math.Min(k.ClimbMax,Math.Max(0,burst-1)*k.Climb);Climb=Follow(Climb,target,k.ClimbRate,dt);climbV=0;}
                 else
                 {

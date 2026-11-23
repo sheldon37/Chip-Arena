@@ -369,7 +369,7 @@ namespace ChipArena.UnityConversion
                     float e=SightError(s,rear,front);if(t<=end+interval){peak=Math.Max(peak,e);climb=Math.Max(climb,s.Climb);settled=-1;}else if(e<.05f){if(settled<0)settled=t-end;}else settled=-1;
                 }
                 Check(peak>.8f&&climb>.3f&&climb<=NativeAimKick.MachineGun.ClimbMax+1e-4f,"a burst visibly kicks and climbs (its sights "+peak+" degrees off, the climb "+climb+", capped)");
-                Check(settled>0&&settled<=interval+.2f,"once the burst stops the sights are back on the aim ray within about 0.15 s of the next round's time ("+settled+" s after the last round)");
+                Check(settled>0&&settled<=interval+NativeAimKick.FiringSlack+.15f,"once the burst stops the sights are back on the aim ray within 0.15 s of the next round's time ("+settled+" s after the last round)");
                 report.Append("machine gun: 14 rounds peak "+peak.ToString("0.00")+" deg, climb "+climb.ToString("0.00")+" deg, within 0.05 deg "+settled.ToString("0.000")+" s after the last round; ");
             }
             // The rifle's scope: the shot lifts the reticle, then it is back on the aim ray before the next shot is allowed.
