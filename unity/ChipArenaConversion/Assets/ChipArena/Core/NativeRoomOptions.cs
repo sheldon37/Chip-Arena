@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
     public static class NativeLobbyRules
     {
         public static string PreviewMap(string selected,bool cooperative)=>cooperative?"siren":selected=="random"?NativeMapRules.DefaultArena:selected;
-        public static string Difficulty(string value)=>value=="dummy"||value=="easy"||value=="hard"?value:"normal";
+        public static string Difficulty(string value)=>value=="dummy"||value=="easy"||value=="hard"||value=="godlike"?value:"normal";
         public static int DefaultTeam(int id,bool cooperative)=>cooperative?0:Math.Max(0,id-1)%2;
         public static NativeSeat Bot(ConversionContent content,NativeRoomOptions options,int index,string hostWeapon,uint seed)
         {

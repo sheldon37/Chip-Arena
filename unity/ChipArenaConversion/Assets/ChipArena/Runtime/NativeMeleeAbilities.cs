@@ -291,6 +291,7 @@ namespace ChipArena.UnityConversion
             var minion=hit.Collider.GetComponent<NativeMinionBody>()?.Minion;
             s.Position=hit.Point;
             if(target!=null&&AbsorbCharge(target,s.Velocity,hit.Point,s.Id))return true;
+            if(target!=null)GodlikeContactParry(target);
             if(target!=null&&Time<target.BlockEnd)
             {
                 var attacker=s.Owner;BlockProc(target,attacker,hit.Point,"deflect");

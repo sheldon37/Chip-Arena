@@ -1,3 +1,6 @@
+## 2026-11-23 Astra, bot difficulty and Expedition spitter aim
+Shared base 5c7ebdb, branch codex/bot-difficulty. Easy/Normal/Hard have increasing tracking and per-threat parry skill. Godlike aims for head hitboxes, leads travelling shots, evaluates nearby cover and firing lanes, and uses the standard parry action on blockable contacts. Expedition spitter acid commits to the observed floor position at release. Core parity, 40,000 parry decisions, 54 practice checks and 639 spitter/wave checks passed. Added Unity combat validation for rifle and magic headshots and hitscan parry/cooldown. Windows play verification belongs to the test build.
+
 ## 2026-11-23 Astra, Blind Pick weapon pools
 Branch codex/weapon-pool-modifiers, shared base 05bd6e0. PvP host selects the catalog family for dealt and full-pool picks. City expeditions use Ranged. The host privately sends eligible cards and enforces them for pilots, bots and timeouts. Core build clean, 603 expedition pick, 5598 blind-choice and 158 deathmatch checks passed. Windows build and two-client play unverified.
 

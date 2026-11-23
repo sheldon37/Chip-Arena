@@ -150,6 +150,7 @@ namespace ChipArena.UnityConversion
             if(guard!=null&&TryTechniqueParry(guard,s.Velocity,hit.Point)){if(s.Reflections++>=3)return true;s.Owner=guard;s.Reflected=true;s.Velocity=Vec(GunRules.Direction(guard.Input.Yaw,guard.Input.Pitch))*Math.Max(1,s.Velocity.magnitude);s.Position=hit.Point+s.Velocity.normalized*.1f;return false;}
             if(s.Fx!=null)return HitMeleeKitShot(s,hit);
             var target=hit.Collider.GetComponent<NativePilotBody>()?.Pilot;s.Position=hit.Point;
+            if(target!=null)GodlikeContactParry(target);
             if(target!=null&&Time<target.BlockEnd)
             {
                 BlockProc(target,s.Owner,hit.Point,"deflect");

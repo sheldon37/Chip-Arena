@@ -13,7 +13,7 @@ def main():
     parser.add_argument('--unity', default=os.environ.get('UNITY_EDITOR'))
     parser.add_argument('--seeds', type=int, default=4, help='Paired seeds; each runs both spawn sides')
     parser.add_argument('--maps', default='brickfall,factory,cybercity')
-    parser.add_argument('--difficulty', choices=['easy', 'normal', 'hard'], default='normal')
+    parser.add_argument('--difficulty', choices=['easy', 'normal', 'hard', 'godlike'], default='normal')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     editor = shutil.which(args.unity or 'Unity')

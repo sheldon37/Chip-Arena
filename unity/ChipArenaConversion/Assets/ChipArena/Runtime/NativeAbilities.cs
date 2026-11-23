@@ -79,6 +79,11 @@ namespace ChipArena.UnityConversion
             if(gate==NativeAbilityRules.Press.Buffered)
             {if(!retry||p.BufferedSlot==null){p.BufferedSlot=slot;p.BufferedAt=Time;}return;}
             Vector3 point=AimedAbilityPoint(p,(float)d.range);
+            if(d.id=="flame-lance"&&p.Seat.bot&&p.Seat.difficulty=="godlike"&&p.Input.AbilityTarget.Length>.01f)
+            {
+                var muzzle=Muzzle(p);
+                point=muzzle+Vector3.ClampMagnitude(Vec(p.Input.AbilityTarget)-muzzle,(float)d.range);
+            }
             if(d.kind=="strike"||d.kind=="line"||d.kind=="zone")point=GroundPoint(point);
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(d.id=="blink-strike"){dir=new Vector3(p.Input.X,0,p.Input.Z);if(dir.sqrMagnitude<.01f)dir=Quaternion.Euler(0,p.Input.Yaw,0)*Vector3.forward;point=p.Body.position+dir.normalized*(float)d.range;}
@@ -248,6 +253,7 @@ namespace ChipArena.UnityConversion
                         s.Travel+=h.distance;s.Position+=delta.normalized*h.distance;
                         if(body!=null&&TryTechniqueParry(body.Pilot,s.Velocity,h.point)){if(s.Reflections++>=3){remove=true;contact=true;break;}s.Owner=body.Pilot;s.Velocity=Vec(GunRules.Direction(s.Owner.Input.Yaw,s.Owner.Input.Pitch))*Math.Max(1,s.Velocity.magnitude);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}
                         if(body!=null&&AbsorbCharge(body.Pilot,s.Velocity,h.point,s.Id)){remove=true;contact=true;break;}
+                        if(body!=null&&d.id!="tidal-wave"&&s.Reflections<3)GodlikeContactParry(body.Pilot);
                         if(body!=null&&Time<body.Pilot.BlockEnd&&d.id!="tidal-wave"&&s.Reflections<3)
                         {BlockProc(body.Pilot,s.Owner,h.point,"deflect");s.Owner=body.Pilot;s.Reflections++;s.Damage=Math.Min(100,s.Damage*(float)s.Owner.Stats["reflectDamage"]);s.Velocity=Vector3.ClampMagnitude(-s.Velocity*(float)s.Owner.Stats["reflectSpeed"],120);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}
                         remove=AbilityContact(s,h);contact=true;
