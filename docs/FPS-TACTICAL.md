@@ -115,7 +115,8 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
 - **The lens and the eye.** The eye is the pack's own camera: its `FPCamera` (the head bone at (0.02, -0.077, 0.035), turning
   with the look, never the head; `camera_bone` is a root-level null at the origin whose animated turn is the clips' camera
   motion, applied by `TacticalCameraKick`). The view model draws at the pack's lens: 90 degrees vertical at the hip (its
-  FPCamera), aimed each gun's `TacAnimSettings` aimFov (Viper 80, SRM-12 and TR15 70); the world camera keeps the game's (first
+  FPCamera), aimed each gun's `TacAnimSettings` aimFov (SRM-12 and TR15 70; the pistol 55 since 2026-11-23, its aim row's own, below);
+  the world camera keeps the game's (first
   person 75, the aim row's sight FOV, the rifle's scope). The pack's own idle poses put the Viper 6 degrees right and 21 below
   the centre, the SRM-12 and TR15 25 right and 19-31 below.
   The pistol is the one exception (integrator review 2026-11-22): the pack's two-hand Viper sat near the centre and low, and
@@ -170,6 +171,41 @@ for this, lets replace our machine gun model with the one from the pack)". Claud
   tips down 0.74 degrees). In first person it sits on the clips' gun bone where the pack's demo holds it (`SightHeight` .0639,
   `ModelOffset` z -.012), the eye 9.5 cm behind the aperture (`EyeRelief`, the pack's AimPoint). The game's fit lays the chip
   modules, the muzzle flash and the brass along its bore (scale .646). The Arsenal machine guns keep their models.
+
+## The aimed pistol larger and aimed recoil from the pack (owner 2026-11-23)
+
+Owner: "The pistol ADS still looks a bit small and simulates no recoil; Is this something we can fix? (I dont know if recoil is
+in the pack or not as well)". Claude (G2), branch `claude/ads-recoil`.
+
+- **Why it read small.** Aimed, the pistol's rear sight sat 34 cm from the eye on an 80 degree view-model lens while the world
+  zoomed to the aim row's 55: the slide was 46 px wide on 2000x1173 (the gun 0.4 % of the screen, the hands round it). The pack's own
+  Viper aims with the eye 16.1 cm behind its rear sight on 80 (its AimPoint; about 97 px for our slide). Now the rear sight sits
+  24 cm from the eye on the aim row's own 55 degrees (`EyeRelief`, `AimFov`): the gun zooms in with the world and the slide is
+  104 px wide (the gun 2.1 % of the screen), the hands below it. The sights stay on the aim ray (G1's front post: the line from the rear sight through it
+  runs along the eye's axis whatever the eye relief or lens).
+- **Why aimed shots barely moved.** The pistol's fire clip played before the aim and the aim's blend laid the gun on the sights
+  over it, so fully aimed it was wiped; what was left was the procedural spring after the aim (the pistol's at 0.6 of its kick,
+  peaking 0.27 degrees, the machine gun's 0.42); the rifle's scope never moved (the tactical view stands down while scoped).
+- **The pack's recoil, as data** (`Core/NativeAimKick.cs`). The pack carries per-gun procedural recoil assets and camera shakes;
+  their values are read as data (sampled every 1/60 s by the scratch tool `kickdata.py`; no pack code in git or at run time) and
+  played by our own code, aimed (it takes over from the spring as the aim comes in; the hip is as before):
+  | | Pistol (Viper data) | Machine gun (TR15 data) | Rifle (SRM-12 data) |
+  |---|---|---|---|
+  | Per shot | muzzle up 9-12 degrees, yaw 1-2, roll 2-3 (alternating), 14-16 mm back toward the eye, about the gun bone | 0.56-0.72 up (x1.1 ours), small yaw and roll, 8-9 mm back, about a pivot 4.5 cm under and 3 cm ahead | 1.8-2.4 up, roll 1.5-3, 10-15 mm back |
+  | Shape | the pack's semi curves, quickened to end within 0.9 of the shot's interval | the pack's automatic curves, cut at the next round; smoothed (30/15/25 per second, pitch x2.5) from the second round; a climb of 0.06 degrees a round to 0.6; once the next round does not come both settle fast (45 per second, the climb critically damped at 55) | the pack's semi curves, on the scope overlay |
+  | Camera (camera shake on) | half the pack's pistol shake: up 0.35-0.5, roll 0.75-0.95 | 0.4 of the light rifle shake | none (the scope overlay kicks) |
+  | Mechanism | the slide (the Army pistol's `SM_Gate_For_Army_Pistol`, an Arsenal pistol's `*_Bolt`) runs back 3.2 cm on the Viper's own slide timing (67 ms) | the TR15's bolt is unchanged (third person) | |
+- **Recovery** (Editor, measured every frame against the game's aim target; DEV_LOG has the table). The pistol's sights peak
+  3.5-4.4 degrees off the aim ray 0.02-0.03 s after a shot and are back within 0.05 degrees by 0.33 s, 0.01 at the next shot
+  allowed (0.47 s aimed); the rifle's reticle peaks 2.0-2.4 degrees and is back by 0.95 s (1.15 s allowed); the machine gun's
+  sights ride its climb through a burst (0.2-1.8 degrees at each next round) and are back within 0.05 degrees 0.23 s after the last
+  round, 0.13 s after the next round's time. Before: 0.27, 0 and 0.35-0.50 degrees.
+- **Rules.** Presentation only: the aim ray (taken before any camera turn), spread, the rules' recoil, fire rate, hitboxes and the
+  wire are untouched; the view reads the pilot's own LastShot and ShootReady. Aimed the sights lift off the aim ray during a kick
+  and are back before the next shot; the rounds still go to the screen centre.
+- **Checks:** `--tactical-view` (`TacticalViewChecks.AimKick`): the shapes start and end at rest, the pistol's kick and recovery by
+  the next shot over a string at its rate, the machine gun's climb and settle, the scope's kick, the hip and camera-shake gates,
+  a fresh view not replaying a shot, the lens; the sources' gates (the slide put back, the overlay's matrix restored, no rule state).
 
 ## Every other weapon and class: the pilot's own arms (owner 2026-11-22: "Go ahead and fix")
 

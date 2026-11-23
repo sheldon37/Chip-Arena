@@ -387,7 +387,8 @@ namespace ChipArena.UnityConversion
         private bool TacticalViewPosed(Actor a,float time)
         {
             if(tacticalArms!=null&&tacticalArms.Body==viewBody)tacticalArms.Rest();
-            if(ScopeActive){tacticalScopedFrame=Time.frameCount;return false;}
+            TacticalSlideRest();
+            if(ScopeActive){tacticalScopedFrame=Time.frameCount;ScopeKickSeen(a,time);return false;}
             var bank=TacticalBank;var g=NativeTacticalGun.For(a.Weapon);if(bank==null||g==null||!bank.Covers(g)||ViewCamera==null||viewRig==null)return false;
             if(!VisualViewDrawn(viewRig))return false;bool pack=false;// (owner 2026-11-22, reversing "Use pack guns": "use whatever gun we are holding": the game's own model and skin)if(!pack&&viewBody.Held==null)return false;
             string spec=HeldSpec(a);if(spec!="pistol"&&spec!="rifle"&&spec!="machinegun")return false;
@@ -498,7 +499,7 @@ namespace ChipArena.UnityConversion
                 rh.rotation=gr;rh.localScale=viewBody.RightScale;float ks=rh.lossyScale.x;if(ks>1e-5f)rh.localScale=viewBody.RightScale*(k/ks);
                 rh.position=W(s.Weapon)+gr*(CapturedAnimation.Vec(model.Muzzle)-new Vector3(0,0,mz*k));
             }
-            else{rh.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));rh.localScale=viewBody.RightScale;float rs=rh.lossyScale.x;if(rs>1e-5f)rh.localScale=viewBody.RightScale/rs;VisualWeaponFit(rh,held);}
+            else{rh.SetPositionAndRotation(W(s.Weapon),R(s.WeaponTurn));rh.localScale=viewBody.RightScale;float rs=rh.lossyScale.x;if(rs>1e-5f)rh.localScale=viewBody.RightScale/rs;VisualWeaponFit(rh,held);TacticalSlidePose(held,s.Slide);}
             var lm=arms.Hand[0].localToWorldMatrix*leftItem;lh.SetPositionAndRotation(lm.GetColumn(3),lm.rotation);
             // The view model's lens: the pack's own framing (its first-person camera's 90 degrees, its aim's 70-80) instead of the
             // world's, eased with the aim; the sights stay on the axis whatever the lens.
@@ -523,6 +524,48 @@ namespace ChipArena.UnityConversion
             var own=NativeTacticalGun.For(a.Weapon)?.ModelSight??System.Numerics.Vector3.Zero;if(own!=System.Numerics.Vector3.Zero)return CapturedAnimation.Vec(own);
             return w.Scale!=1?w.Centre+w.Scale*(rear-w.Centre):rear;
         }
+        // ---- The pistol's slide (owner 2026-11-23: "The pistol ADS ... simulates no recoil"): the held model's own slide part (the Army
+        // pistol's SM_Gate_For_Army_Pistol, an Arsenal pistol's *_Bolt) runs back along the bore by its share of TacticalSlideTravel on
+        // the pack's own slide timing (NativeAimKick.SlideShape) on every first-person shot, and is put back before the view is posed
+        // again. Only the view body's own model moves (third person draws its own copies).
+        private Transform tacticalSlide;private VisualWeapon tacticalSlideHeld;private Vector3 tacticalSlideRest,tacticalSlideBack;private bool tacticalSlideMoved;
+        private const float TacticalSlideTravel=.032f;
+        private void TacticalSlideRest(){if(tacticalSlideMoved&&tacticalSlide!=null)tacticalSlide.localPosition=tacticalSlideRest;tacticalSlideMoved=false;}
+        private void TacticalSlidePose(VisualWeapon held,float share)
+        {
+            if(held?.Model==null||held.Mount==null)return;
+            if(tacticalSlideHeld!=held)
+            {
+                tacticalSlideHeld=held;tacticalSlide=null;
+                foreach(var t in held.Model.GetComponentsInChildren<Transform>(true))if(t.name=="SM_Gate_For_Army_Pistol"||t.name.EndsWith("_Bolt",System.StringComparison.Ordinal)){tacticalSlide=t;break;}
+                if(tacticalSlide!=null&&tacticalSlide.parent!=null)
+                {
+                    // The bore's back in the slide's parent frame, through the local transforms down from the entry (its weapon frame).
+                    var m=Matrix4x4.identity;for(var t=tacticalSlide.parent;t!=null&&t!=held.Mount;t=t.parent)m=Matrix4x4.TRS(t.localPosition,t.localRotation,t.localScale)*m;
+                    tacticalSlideRest=tacticalSlide.localPosition;tacticalSlideBack=m.inverse.MultiplyVector(new Vector3(0,0,-TacticalSlideTravel));
+                }
+                else tacticalSlide=null;
+            }
+            if(tacticalSlide==null||!(share>1e-4f))return;
+            tacticalSlide.localPosition=tacticalSlideRest+tacticalSlideBack*Mathf.Clamp01(share);tacticalSlideMoved=true;
+        }
+        // ---- The rifle's scope kick (NativeAimKick.Rifle.ScopeKick): the latest shot as the scope saw it this frame, read by the scope
+        // overlay (ConversionGame.DrawScope), which lifts, turns and nears its ring and reticle by it; back on the aim ray within the shot's
+        // interval. Presentation only, and the world camera does not move.
+        private float scopeKickShot=float.NaN,scopeKickAge,scopeKickInterval;private int scopeKickFrame=-10;
+        private void ScopeKickSeen(Actor a,float time)
+        {
+            scopeKickFrame=Time.frameCount;scopeKickShot=a.LastShot;scopeKickAge=time-a.LastShot;scopeKickInterval=NativeTacticalTiming.Interval(a.Weapon,a.LastShot,a.ShootReady);
+        }
+        /// <summary>The scope's kick this frame: the reticle's rise and yaw and the ring's roll (degrees), its kick back toward the eye
+        /// (metres); false when there is none.</summary>
+        public bool ScopeKick(out float rise,out float yaw,out float roll,out float back)
+        {
+            rise=yaw=roll=back=0;if(scopeKickFrame<Time.frameCount-1||!(scopeKickAge>=0))return false;
+            NativeAimKick.Rifle.ScopeKick(scopeKickShot,scopeKickAge,scopeKickInterval,out rise,out yaw,out roll,out back);
+            return rise!=0||yaw!=0||roll!=0||back!=0;
+        }
+
         /// <summary>The clips' own camera motion (a reload's look down at the magazine, the bolt's nod), first person with camera shake
         /// on, applied after the aim point like HitKick (the view is rebuilt from the look angles every frame, so it never reaches aim);
         /// `scale` is the setting's share. The arms stay on the body: TacticalViewPose places them in the camera without it.</summary>

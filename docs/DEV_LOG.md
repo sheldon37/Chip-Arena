@@ -1,3 +1,74 @@
+## 2026-11-23 — Claude (G2): the aimed pistol larger; aimed recoil from the pack's recoil data (pistol, machine gun, rifle scope)
+Owner: "The pistol ADS still looks a bit small and simulates no recoil; Is this something we can fix? (I dont know if recoil is in the
+pack or not as well)". **Branch:** `claude/ads-recoil` from shared `05bd6e0e` (release 22). Pushed, not merged, not released. Docs:
+`docs/FPS-TACTICAL.md` ("The aimed pistol larger and aimed recoil from the pack").
+- **Measured first** (G2's local lab: the view-model layer rendered as masks, depth-tested; the sights projected every frame
+  against the game's aim target through the same camera; Cyber City, first person, camera shake off as the game's default):
+  - Aimed, the pistol's rear sight sat 34 cm from the eye on an 80 degree view-model lens (the world zoomed to the aim row's 55):
+    the slide 46 px wide on 2000x1173, 0.4 % of the screen. The pack's own Viper aims with the eye 16.1 cm behind its rear sight
+    on 80 (its AimPoint, from the parked prefab): about 97 px for our slide.
+  - Aimed shots barely moved: the pistol's fire clip plays before the aim and the aim's blend laid the gun back on the sights over
+    it, so only the procedural spring was left. The pistol's sights moved 0.27 degrees per shot (back in 0.08 s), the machine
+    gun's 0.35-0.50 per round; no slide, no camera; the rifle's scope not at all (the tactical view stands down while scoped).
+  - The pack does carry recoil: per-gun procedural recoil assets (pitch, yaw, roll, kick back, curves, aiming multipliers,
+    automatic smoothing) and camera shakes, read as data from the parked .unitypackage (`Recoil_WK-11_Viper`, `Recoil_TR15`,
+    `Recoil_Oryx_SRM-12`, `Shake_Pistol`/`_Rifle_Light`/`_Rifle_Heavy`; the Viper's 9-12 degree flip applies aimed at x1).
+- **Changes** (presentation only):
+  - `Core/NativeAimKick.cs` (new): the pack's values as data (sampled every 1/60 s by the scratch `kickdata.py`; no pack code in git
+    or at run time) played by our code: per shot the gun turns about the pack's pivot and kicks back toward the eye on the pack's
+    shapes, a semi-automatic gun's quickened to end within 0.9 of its interval; the machine gun's automatic shapes cut at the next
+    round, smoothed from the second round, plus a climb (0.06 degrees a round to 0.6, ours) that settles once the next round does
+    not come; a share of the pack's camera shake (camera shake on only); the Viper's own slide timing; the rifle's scope kick.
+  - `NativeTacticalView`: the aimed recoil takes over from the spring as the aim comes in (the hip keeps the spring and clip); the
+    pistol aims with its rear sight 24 cm from the eye on 55 degrees, its aim row's own lens (`EyeRelief`, `AimFov`).
+  - Runtime: the held pistol's own slide part (`SM_Gate_For_Army_Pistol`, an Arsenal pistol's `*_Bolt`) runs back 3.2 cm on every
+    first-person shot (`TacticalSlidePose`, put back before the view is posed again); the scope overlay lifts, turns and nears by
+    the kick, drawn as one mask quad while kicked (`DrawScope`, `ScopeKick`).
+  - `TacticalViewChecks`: +52 checks (`AimKick`): the shapes, each pistol shot of a string visibly off and back on the axis by the
+    next shot allowed, the burst's climb and settle, the scope's kick, the hip and camera-shake gates, a fresh view, the lens.
+- **After** (same captures on the branch):
+  - The aimed pistol: slide 104 px wide on 2000x1173, 2.1 % of the screen visible, the hands below (arms 19 %, were 16 %).
+  - Sight recovery per gun (off the aim ray: the rear sight's and front post's worst; the rifle's reticle):
+    | | Peak | At the next shot allowed | Within 0.05 degrees from |
+    |---|---|---|---|
+    | Pistol (single and a string at its 0.47 s rate) | 3.5-4.4 degrees at +0.02-0.03 s; slide 29 mm | 0.002-0.010 degrees | +0.33 s |
+    | Machine gun (11-round burst) | 1.6 degrees on the first round, rising to 3.0 with the climb | 0.2-1.8 degrees (the climb, by design) | +0.23 s after the last round (0.13 s after the next round's time) |
+    | Rifle scope (two shots) | 2.0-2.4 degrees at +0.08 s, ring roll up to 3.0, 12 mm nearer | 0.000 degrees (1.15 s) | +0.95-0.97 s |
+    Before, the same: pistol 0.27, machine gun 0.35-0.50, rifle 0.
+  - The hip: as before (the spring and the pistol's fire clip; not re-filmed, nothing pointed to it being broken), but the
+    pistol's slide now cycles there too (it never moved on the game's model since first person went back to it).
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement, the rules' recoil, spread, aim ray,
+  fire rate or the wire; the view reads the pilot's own LastShot and ShootReady. Aimed, the sights leave the aim ray during a kick
+  (and during a machine-gun burst, by up to 1.8 degrees) and the rounds still go to the screen centre; the camera's shake (camera
+  shake on) turns after the aim ray is taken.
+- **Checks:**
+  - full CoreTests the relgen5 way (a clean worktree, `expedition_path.patch`, the 14 stage banks) at `2b931e46`: 1,106 PASS lines,
+    exit 0 (and at `45895a41`: 1,106, exit 0); `--tactical-view` 4,103 checks (was 4,051);
+  - `tools/check_unity_compile.py` at `2b931e46`: all four assemblies PASS; `git diff --check` clean; the pin scan 0 broken;
+  - PrototypeBuild.Validate: ok on `45895a41`, `1bd15d21` and `2b931e46` (400 PASS each);
+  - Editor captures (five holds; hold 3 ran 27.5 minutes, 2.5 over the limit: two long clip captures and Validate): the pistol
+    and rifle on `45895a41` and the rifle again on `2b931e46` (the overlay's drawing), the machine gun on `1bd15d21`; before on
+    `05bd6e0e`.
+  - Not run: a Windows build, two clients, the Low tier, a playtest, camera shake on in the Editor, the Arsenal pistols' slides.
+- **Proof** (`F:/Chip Arena Development/scratch/ads-recoil/proof/`):
+  - stills: `stills/pistol-aimed-before-2000x1173.jpg`, `pistol-aimed-after-2000x1173.jpg`, `pistol-aimed-before-after.jpg`,
+    `pistol-shot-after-strip.jpg`, `pistol-framing-candidates-before-code.jpg` (six eye relief and lens pairs tried live); masks in `masks/`;
+  - clips (before | after, real time then 3x slower, with the HUD): `clips/pistol-aimed-before-after.mp4`,
+    `clips/machinegun-aimed-before-after.mp4`, `clips/rifle-scope-before-after.mp4`;
+  - numbers: `numbers/recovery-before.txt`, `recovery-after.txt`, `masks.txt`; tools in `tools/` (the lab, its mask shader, the
+    pack readers, the analysis and clip scripts).
+- **Ship:** code only; no Drive zip change (no bank, bake or local asset). Merge into shared, then the builder; the test channel by
+  the standing instruction.
+- **Risks / next:**
+  - The pistol's flip is the pack's own (9-12 degrees, x1 aimed) and strong; `NativeAimKick.Pistol.Turn` scales it.
+  - The machine gun's climb holds its sights up to 1.8 degrees over the aim ray in a long burst (inside its aimed cone, 0.57-1.43
+    degrees, growing); `MachineGun.Turn`/`ClimbMax` tune it.
+  - The camera shake was not filmed (camera shake is off by default and in the captures); CoreTests hold it (pistol peak about
+    0.9 degrees combined, nothing at the hip or with the setting off).
+  - The slide was filmed on the Standard pistol only; the Arsenal pistols' `*_Bolt` parts are assumed to be their slides.
+  - The pack's recoil numbers are in our source as data (sampled values, no asset or code), as the brief asked.
+  - Next: owner review.
+
 ## 2026-11-23 Astra, bot difficulty and Expedition spitter aim
 Shared base 5c7ebdb, branch codex/bot-difficulty. Easy/Normal/Hard have increasing tracking and per-threat parry skill. Godlike aims for head hitboxes, leads travelling shots, evaluates nearby cover and firing lanes, and uses the standard parry action on blockable contacts. Expedition spitter acid commits to the observed floor position at release. Core parity, 40,000 parry decisions, 54 practice checks and 639 spitter/wave checks passed. Added Unity combat validation for rifle and magic headshots and hitscan parry/cooldown. Windows play verification belongs to the test build.
 
