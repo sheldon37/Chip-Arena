@@ -39,22 +39,34 @@ want the animation to actually display hit direction (Like reactively)". Branch 
 - **The puppet had no legs and fixed hips**, so a leg hit could not buckle anything, and the unpin stayed local (BehaviourPuppet's
   falloff from the struck muscle) whatever the weight.
 
-**What it does now** (bridge version 2; the hook's optional `Strike` and `Bounds`):
+**What it does now** (bridge version 2; the hook's optional `Strike` and `Bounds`; game code: points, swings, reach, the clip):
 
+- The model's hit clip is the blow's side (`HitSide`), and only a heavy blow off the head plays one (`ReactionStrength` at its
+  full 1, 38 damage or more: a greatsword's blow, the Siren's claws, a heavy fighter strike; `NativeVisualMotion.HitClip`).
+  Rounds, cuts and headshots play no clip: the physical reaction shows them, so the struck part leads, a rifle round is a jolt
+  rather than the clip's lunge, and a burst's rounds add up on the body instead of restarting one clip a round.
 - The part struck is picked along the shot's line through the point (the trunk wins a line that crosses it), and the push lands
   on its surface facing the shot. A headshot's point is on the head's side the shot came from.
 - Each zone adds the body's answer in the same simulation: the head snaps away with the chest a little behind; an arm swings
   back and turns its shoulder; a gut hit from the front folds the chest over and pushes the hips back; a hit from behind
-  lurches the trunk forward; a side hit leans the trunk away and turns the struck shoulder back; a leg hit drops and turns the
+  lurches the trunk forward; a side hit leans the trunk away and turns the struck shoulder back; a leg hit drops and rolls the
   hips on that side and the knee bends under them.
 - Weight (`NativeHitPuppetRules.Spread`): a pistol round's unpin stays local, a rifle's reaches the spine, a greatsword's heavy
-  blow the whole body and the hips. The pins come back slower the further it reached. Hits before the pins are back add up.
-- Adds react the same way; `Loose` (shambler 1 .. Hulk .1) softens their unpinned muscles and slows their return.
-- **What the hips may do:** the pelvis may drop at most 11 cm, shift at most 6 cm level and turn at most 14 degrees from where the
-  game drew it, and never rise more than 5 mm. Each foot is put back exactly where the game planted it (a two-bone solve of
-  thigh and calf, the knee bent in the plane the reaction left it in). The bent body is kept in its hitbox: no part goes further
-  out of the capsule (a pilot's 0.42 m round its root; an add's own) than the drawn pose had it, by easing the whole bend back.
-  The model's root never moves.
+  blow the whole body and drops the hips. The pins come back slower the further it reached. Hits before the pins are back add up.
+- Adds react the same way; `Loose` (shambler 1 .. Hulk .1) softens their unpinned muscles, slows their return and lets them
+  turn a third further.
+- **Bounds on the bend.** Each bone turns at most so far off the drawn pose (spine 16/18/20 degrees, neck 20, head 30, upper arm
+  45, forearm 50, hand 30). A greatsword's blow turned the chest 160 degrees in the first tune; it now bends the trunk at most
+  about 55 degrees.
+- **What the hips may do:** the drawn pelvis is moved by a spring the hits kick (a leg hit: drop, roll toward the struck side,
+  shift along the push; a whole-body blow: drop and shift; a gut hit: back), never by the simulated pelvis: that one is the root
+  every push jolts, and mapped it shook the whole body for a frame after each hit. It may drop at most 11 cm, shift at most 6 cm
+  level and turn at most 14 degrees from where the game drew it, and never rise more than 5 mm. Each foot is put back exactly
+  where the game planted it (a two-bone solve of thigh and calf, the knee bent in the plane the reaction left it in); measured
+  slip at most 0.6 mm. The model's root never moves.
+- **The hitbox.** The bent trunk (hips, spine, neck, head) never takes a point further out of the capsule (a pilot's 0.42 m round
+  its root; an add's own) than the capsule or the drawn pose had it: the trunk's bend is eased back as far as needed. Each arm is
+  eased back on its own (an arm holding a gun is past the capsule as drawn; only reaching further out than that is eased back).
 - First person: the local pilot's body is not drawn, so its view never moves with its own reaction (third person: the camera
   follows the authority's body, not the drawn bones).
 
@@ -96,15 +108,20 @@ On the owner's PC, in the git-ignored `Assets/LocalAssets/PrivateAddons` (docs/P
   demos, editor inspectors, models or scenes. No asmdef: they compile into Assembly-CSharp. (`tools/check_unity_compile.py`
   references every Unity module, so it cannot catch a missing one: a local add-on is compile-checked against the Editor's own
   `Library/Bee/artifacts/*/Assembly-CSharp.rsp` references.)
-- `ChipArenaPuppetBridge/ChipArenaPuppetBridge.cs`: registers the seven hooks by name (reflection), so it compiles, and
-  registers nothing, on a checkout without the hook. In the Editor, `Temp/hitpuppets-off.flag` leaves the hooks empty for a
-  play (review captures' "before" on the same build).
+- `ChipArenaPuppetBridge/ChipArenaPuppetBridge.cs`: registers the seven hooks by name (reflection), and the optional `Strike`,
+  `Bounds` and `Trace` where the game has them, so it compiles, and registers nothing, on a checkout without the hook. Version 2
+  (P2, 2026-11-23; master copy in `F:/Chip Arena Development/scratch/puppet-hits-2/local/`) logs `Hit puppets bridge: version
+  2 ...` when it registers. In the Editor, `Temp/hitpuppets-off.flag` leaves the hooks empty for a play (review captures'
+  "before" on the same build) and `Temp/hitpuppets-log.flag` logs every hit (`HPQ` the game's read, `HPH` the part struck and
+  the push) and every step for a second after it (`HPS`: pins, muscle weights, turns off the drawn pose, the hips, the feet,
+  the hitbox's ease). A game without `Strike` (release 15) still works with it, and the first bridge still works with this
+  game (it reacts through `Hit` with the fixed points and swings; no hips, legs or bounds).
 
 The bridge builds twelve muscles (pelvis, spine_01, spine_03, spine_05, neck_01, head, and each arm's upperarm, lowerarm,
 hand) under a PuppetMaster with a BehaviourPuppet set never to lose balance or get up, steps them through PuppetMaster's
 manual simulation (`OnPreSimulate`, the scene's `Simulate`, `OnPostSimulate`: the game runs Physics in Script mode) and
-sleeps them with `DisableImmediately`. The bodies' bones are the bake's (the UE mannequin names); a body missing one gets no
-puppet.
+sleeps them with `DisableImmediately`. The legs (thigh, calf, foot) are found but not simulated: they are planted. The bodies'
+bones are the bake's (the UE mannequin names); a body missing a muscle's bone gets no puppet, one with a lost leg no hips.
 
 ## Shipping it to the builder
 
@@ -120,3 +137,10 @@ The builder installs private add-ons from the Drive zip through the existing, te
 
 The Drive zip had no `private-addons.json` before this, so the allowlist replaces nothing. Without the add-ons the build plays
 as today and logs "Hit puppets: bridge unavailable or incomplete; posed-body fallback."
+
+**Bridge version 2 (P2):** the same 106 paths (only the bridge's `.cs` content changed; its `.meta` and GUID are the same), so the
+allowlist is unchanged (copy beside the master: `F:/Chip Arena Development/scratch/puppet-hits-2/local/private-addons-allowlist.json`).
+After merging the branch: copy `F:/Chip Arena Development/scratch/puppet-hits-2/local/ChipArenaPuppetBridge.cs` over the Editor
+checkout's `Assets/LocalAssets/PrivateAddons/ChipArenaPuppetBridge/ChipArenaPuppetBridge.cs` (under the Editor lock, then a
+refresh), then repack and check as in steps 2 and 3. Until the zip is repacked the build reacts through the first bridge
+(directional points, swings and hit clips from the game; no hips, legs or bounds).
