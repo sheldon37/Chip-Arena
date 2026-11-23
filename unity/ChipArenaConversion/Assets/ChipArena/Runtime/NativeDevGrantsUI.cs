@@ -136,6 +136,19 @@ namespace ChipArena.UnityConversion
             });
             if(!account.Busy&&!adminOk){adminWaiting=false;adminLeftNote="The account service is busy. Try again.";adminLeftWarn=true;}
         }
+        private void AdminIssueReset(NativeAccountData player)
+        {
+            adminAction="issue-reset";adminWaiting=true;adminOk=false;adminError=null;adminNote=null;
+            string actor=account.Account?.id;
+            account.Manage(adminAction,JsonUtility.ToJson(new NativeResetRequest{accountId=player.id}),response=>
+            {
+                adminOk=true;
+                if(MenuTarget!=MenuScreen.Dev||account.Account?.id!=actor||!account.Developer||adminPick!=player.id)return;
+                if(string.IsNullOrEmpty(response.recoveryCode)){adminError="The service did not return a reset code.";return;}
+                GUIUtility.systemCopyBuffer=response.recoveryCode;
+                adminNote="Reset code copied for "+player.username+". Share privately. Use Account → Recovery within 15 minutes.";
+            });
+        }
         private void AdminSave()
         {
             var row=AdminRowFor(adminPick);if(row==null||account.Busy||!account.Developer)return;var p=row.P;
@@ -229,6 +242,13 @@ namespace ChipArena.UnityConversion
             float w=view.width-(adminContentR>view.height?14:0),x=view.x,y=view.y-adminScrollR,y0=y;
             adminGrants.TryGetValue(p.id,out var g);adminFlags.TryGetValue(p.id,out var f);
             NativeControllerPointer.SetClip(view);U.BeginBand(view);
+            if(!p.developer)
+            {
+                var reset=new Rect(x,y,w,42);
+                if(MenuButton(reset,null,"Copy password reset code for "+p.username,null,false,hot&&!account.Busy,e,15,true))
+                    AdminIssueReset(p);
+                y+=54;
+            }
             y=AdminSection(x,y,w,"DEV CLASSES","A class and its own entrance",adminClassKeys,adminClassLinks,p,hot,0,e);
             int cols=AdminCols(w,AdminClassMin);float cw=(w-(cols-1)*AdminGap)/cols;
             for(int i=0;i<adminClasses.Count;i++)AdminClassCard(new Rect(x+(i%cols)*(cw+AdminGap),y+(i/cols)*(AdminClassH+AdminGap),cw,AdminClassH),adminClasses[i],i,p,g,hot,e);

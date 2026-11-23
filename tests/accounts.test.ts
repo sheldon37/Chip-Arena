@@ -283,3 +283,37 @@ test('boss clears accumulate per pilot across sessions and duplicate reports', a
   assert.equal((await (await f.request('me',undefined,other.session)).json()).account.bossClears,0);
  }finally{f.db.close();}
 });
+
+test('DEV reset codes expire, replace previous codes and rotate credentials only on redemption',async()=>{
+ const f=await fixture();
+ try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const user:any=await(await f.request('register',{username:'pilot_reset',password})).json();
+  const target={accountId:user.account.id};
+  const issue=async()=>{const r=await f.request('issue-reset',target,dev.session);assert.equal(r.status,200);return (await r.json() as any).recoveryCode;};
+  const redeem=(code:string,time=now)=>f.request('recover',{username:'pilot_reset',password:'replacement',recoveryCode:code},'',time);
+  assert.equal((await f.request('issue-reset',target)).status,401);
+  assert.equal((await f.request('issue-reset',target,user.session)).status,403);
+  assert.equal((await f.request('issue-reset',{accountId:dev.account.id},dev.session)).status,403);
+  const first=await issue(),second=await issue();
+  assert.equal((await redeem(first)).status,401);
+  assert.equal((await redeem(second,now+15*60000)).status,401);
+  assert.equal((await f.request('me',undefined,user.session)).status,200);
+  const audits=f.db.sql.prepare("SELECT actor,target,detail FROM account_audit WHERE action='issue-reset'").all();
+  assert.equal(audits.length,2);
+  assert.ok(audits.every(a=>a.actor===dev.account.id&&a.target===target.accountId&&a.detail==='{}'));
+  const stored=f.db.sql.prepare('SELECT recovery FROM player_accounts WHERE id=?').get(target.accountId);
+  assert.ok(!String(stored?.recovery).includes(second));
+  const recovered=await redeem(second);assert.equal(recovered.status,200);
+  const fresh:any=await recovered.json();
+  assert.equal(fresh.account.id,target.accountId);
+  assert.equal((await redeem(second)).status,401);
+  assert.equal((await redeem(user.recoveryCode)).status,401);
+  assert.equal((await f.request('me',undefined,user.session)).status,401);
+  assert.equal((await f.request('login',{username:'pilot_reset',password})).status,401);
+  assert.equal((await f.request('login',{username:'pilot_reset',password:'replacement'})).status,200);
+  const third=await issue();
+  assert.equal((await redeem(fresh.recoveryCode)).status,200);
+  assert.equal((await redeem(third)).status,401);
+ }finally{f.db.close();}
+});

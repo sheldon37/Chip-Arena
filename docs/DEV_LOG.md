@@ -1,3 +1,6 @@
+## 2026-11-23 — Astra: DEV-assisted password reset
+Branch `codex/dev-password-reset`, base `cfb37503`. The selected registered non-DEV player can receive a 15-minute one-use code through the existing Account / Recovery form. Issuance is audited and preserves the player's original recovery code. Redemption rotates credentials and revokes account sessions. The DEV client copies the code only for the selected player. Account tests 19/19, TypeScript check passed. Unity player and hosted accounts deployment unverified. Requires both service and client updates.
+
 ## 2026-11-23 — Claude: release 24: guns and magic run on grounded strides (integrator)
 Owner: "its very 'hoppy' looking. Lets make it look more realistic (Mostly on guns and magic)".
 - **Published:** shared and the builder at `eefd1df4`. Test channel revision `639310659528403823` (build `be4d8a32`, 396.1 MiB).
