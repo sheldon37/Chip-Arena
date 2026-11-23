@@ -264,6 +264,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--menu-style"){MenuStyleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--visual-rig"){VisualRigChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--tp-tactical"){TacticalMotionChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--run-realistic"){GroundedStrideChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--model-poses"){ModelPoseChecks.Run(ProjectRoot());LobbyPoseChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-bank"){PackBankChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--body-reveal"){BodyRevealChecks.Run(ProjectRoot());return 0;}
@@ -496,6 +497,7 @@ internal static class Program
             BodySkinChecks.Run(root,data);
             VisualRigChecks.Run(root);ModelPoseChecks.Run(root);
             TacticalMotionChecks.Run(root);
+            GroundedStrideChecks.Run(root);
             PackBankChecks.Run(root);
             BodyRevealChecks.Run(root);
             PackWeaponChecks.Run(root);

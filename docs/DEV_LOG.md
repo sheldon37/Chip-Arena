@@ -1,3 +1,58 @@
+## 2026-11-23 — Claude (L1): realistic gun and magic runs (the grounded stride)
+Owner: "I want to fix the running/sprinting animations for weapons. Currently, its very 'hoppy' looking. Lets make it look more realistic
+(Mostly on guns and magic) think melee is fine?" **Branch:** `claude/run-realistic` from shared `39f6855b` (release 23). Pushed, not
+merged, not released. Docs: `docs/RUN-REALISTIC.md` (the measures, the table, the bank).
+- **Measured first** (Cyber City, third person, BoZo `motion=` every frame at a fixed 1/30 s on a clear course; and the bank's records
+  posed on the body by the local lab `ChipArenaL1Lab.cs`):
+  - The hop is the clips: the pack's runs ahead for the gun, bow (the pistol's), staff and unarmed (the Bombadier's) sets bound like a
+    cartoon. In play the pelvis rose and fell 19-30 cm a stride and the lower foot flew 34-53 cm off the floor (rifle and machine gun
+    18.9 cm, 39 cm; pistol 26.1, 39; fire and darkness staffs 27.7 and 25.2, 43; Bombadier 29.9, 49), played 1.3-1.6 times their pace.
+  - The sprint had no clip: the run ahead again, capped at twice its pace (5.0 steps a second); the long guns' planted feet slid
+    0.30 m/s (0.57 worst) because 2 x 4.30 m/s < 9.18. The staff's strafes bounced too (15-21 cm) and its hand swung 34-43 cm.
+  - Not the camera or root: the root moves level (0.0 cm), the camera follows the simulated body (only Settings' camera shake, off by
+    default, sways it). Not a carry bob: the guns' T1 carry rides the chest (the gun bobbed with the pelvis, 18.6 against 18.9 cm).
+- **Changes** (presentation only; `Core/NativeGroundedStride.cs` (new), `NativeVisualMotion` `Set.Grounded/RunUpper`, `Stride`, `Grounds`,
+  `Loops`; `Runtime/NativeVisualMotionPresentation.cs` the stride's clips and `VisualRunUpper`):
+  - The pistol, rifle, machine gun, every caster and the Bombadier stride on a grounded stride when the bank carries it: the Frank
+    gunslinger's 8-way run ahead and its diagonals ahead (7 cm a stride, 1.9 m steps on their planted feet; also the sprint, at 1.61
+    times its pace) over the gun set's own low side, back and back-diagonal runs and walks.
+  - The casters carry the staff steady over it (the Frank mage's run mirrored into the staff's left fist, its upper body at the stride's
+    phase); the Bombadier keeps its pumping fists (its unarmed run's upper body); the guns keep T1's carry (the pistol's sprint, which T1
+    leaves to the stride, now shows the gunslinger's raised pistol instead of the bow run's pumping arm).
+  - Melee, the bow, the fighters, the Top Dog and the DEV classes are untouched; match idles, jumps, landings, reactions unchanged.
+  - Fallbacks: without the stride's clips, or with stride clips that carry no travel (a full rebake), each set keeps its own stride.
+  - `GroundedStrideChecks` (`--run-realistic`, 425 checks); `BombadierChecks`' "nothing shouldered" pin now allows the stride's legs.
+- **After** (same course; the table per weapon and move is in the doc): the pelvis 6.1-7.3 cm a stride on every move of every covered
+  weapon (was 6.8-29.9); the flight 11-12 cm high ahead (was 34-53); 3.57 steps a second at the run with 1.91 m steps (was 3.3-3.95,
+  1.72-2.06) and 4.8 at the sprint with 1.92 m (was 4.4-5.0); planted feet still at the run (0.0 m/s median), the long guns' sprint slide
+  0.30 -> 0.10-0.13 m/s median (worst 0.69-0.81: a long stride's lock let go a frame early); the gun 7.3-7.5 cm a stride (was 18.6-18.9),
+  the pistol's sprint 13.3 (44.9), the staff hand 7.0-10.6 (12.4-42.9), the Bombadier's fist 8.2-14.0 (13.2-35.7); the head 6.1-9.5 cm.
+- **The bank** (local, the Drive zip's `ChipArenaVisualMotion.bytes`): the released `548c7889` (6,438,026 bytes, release 16 + T1's 14)
+  with 4 records appended, all 513 released records byte-identical (checked record by record): `Frank_RPG_Gunslinger_8Way_Run_F`, `_FR`,
+  `_FL` (the BoZo tool's own bake, `bozo-motionextra`; loop on; travel set to their planted feet's: (0, 5.70), (2.79, 4.83), (-2.44,
+  4.99) m/s, the pack's root motion being 25-40% off; the run ahead lowered 2.1 cm so its planted feet reach the floor and the foot
+  locks take them) and `Frank_RPG_Mage_8Way_Run_F~mirror` (the lab's bake, the bank's sampling and mirror). The new bank:
+  `F:/Chip Arena Development/scratch/run-realistic/ship/ChipArenaVisualMotion.bytes`, 6,474,581 bytes, sha256
+  `21eab500cea5ba1b863aa687f54bdf2705d2614db73a2989c2d8ed63ed551656`. A full BoZo motion rebake drops these four (and T1's 14): re-append
+  both (the `bankmerge.py` command in `F:/Chip Arena Development/scratch/run-realistic/README-bank.txt`).
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement or the wire: the stride reads the body's
+  travel as before and only picks other clips and their rate. The drawn pelvis rides 12-23 cm lower at a run's top and the feet fly
+  lower; hitboxes are the capsule's and the rig's, not the drawn legs'.
+- **Checks:** full CoreTests the relgen5 way (a clean worktree, `expedition_path.patch`, the 14 stage banks) at `5848323b`: 1,107 PASS
+  lines, exit 0; `--run-realistic` 425, `--tp-tactical` 142, `--visual-rig`, `--bombadier` pass; `tools/check_unity_compile.py` (Unity
+  6000.3.24f1 runtime and editor) PASS; PrototypeBuild.Validate in the Editor on `4dc4253e` with the new bank: ok; `git diff --check` clean.
+- **Proof:** `F:/Chip Arena Development/scratch/run-realistic/clips/`: per weapon (rifle, machine gun, pistol, fire and darkness staffs,
+  Bombadier) a 2x2 before/after (side and three-quarter) of the run, sprint, back-pedal and both strafes, real time and 2x slower;
+  another pilot's eye on a rifle pilot running and sprinting past (close, and at the street's width).
+- **Not run:** a Windows build, two clients (a guest's view of a remote pilot), the Low tier, the water, lightning and L33t staffs
+  (they share the fire staff's set and code path), the Drive zip repack.
+- **Risks:** the pistol's sprint now shows the gunslinger's raised pistol by the head (T1 has no pistol sprint carry); the diagonals'
+  feet travel ~15 degrees nearer ahead than the body (their mocap's), the foot locks holding them; at the sprint a planted foot can let
+  go a frame early (0.1 m/s median); the staff is carried low at the side, its tip ahead.
+- **Next:** the owner reviews the clips; the integrator merges and ships the bank in the Drive zip (put `ship/ChipArenaVisualMotion.bytes`
+  in the Editor's `Assets/LocalAssets/ChipArenaLocal/Resources`, `tools/pack_visual_body.py <Drive zip> <new zip> --project ...`,
+  `install_local_assets.py <new> --check`, keep the old zip, replace). Code without the bank keeps the old strides.
+
 ## 2026-11-23 — Claude: release 23: a larger aimed pistol, and aimed recoil on every gun (integrator)
 Owner: "The pistol ADS still looks a bit small and simulates no recoil"; after the review, "Ship it now".
 - **Published:** shared and the builder at `032f4e43`. Test channel revision `639310537083182085` (build `2cb22a2a`, 396.0 MiB).
