@@ -1,3 +1,80 @@
+## 2026-11-23 — Claude (G1): the machine gun's iron sights on the shots' line; the pack's TR15 is its Standard model
+Owner: "For the machine gun, can we fix first person to aim the iron sights where the shots are going? (Probably a easy solution for
+this, lets replace our machine gun model with the one from the pack)". **Branch:** `claude/mg-tr15` from shared `0679b28d`. Pushed,
+not merged, not released. Docs: `docs/FPS-TACTICAL.md` (new section), `docs/TP-TACTICAL.md`, `docs/BOZO-INTEGRATION.md`.
+- **Measured first** (G1's local lab `ChipArenaG1Lab.cs`, copy in `scratch/mg-tr15/proof/tools/`: a test wall at 5, 15 and 40 m on Cyber City, 2000x1173, aimed and firing; the
+  sights projected through the view camera, the impacts and the game's aim target through the world camera; `proof/tools/sights.py`).
+  The shots land on the screen centre: the client sends the camera's centre-ray hit and the authority fires from its muzzle to it.
+  - Before: the machine gun's front post sat 4.9 degrees under the shots (72 px; 44 cm at 5 m, 1.3 m at 15 m, 3.6 m at 40 m: its
+    `ModelSight` was 6 cm over the light machine gun's real sights); the pistol's 1.0-1.1 degrees under (13 px; 6.5, 30 and 79 cm:
+    ModelSight 6.7 mm over the slide); the rifle's scope reticle on them (0.00-0.03).
+  - After: the machine gun's and the pistol's front posts 0.00-0.02 degrees off the aim ray at every distance (0 px mean, 4-7 px at
+    worst); the rounds land round it inside the gun's cone. A burst lifts the post up to 0.42 degrees (the procedural recoil,
+    unchanged); it is back within 0.05 degrees 0.08 s after the last round.
+- **Changes** (presentation only):
+  - Core `NativeTacticalView`: aimed, the rear sight sits on the eye's axis and the line through the front post runs along it
+    (`SightTurn`, no roll; the post from the entry's new `SightFront` marker, else the gun's `ModelFront`). Fully aimed, the
+    procedural layer turns the gun but no longer moves it (`AimSteady`; its breathing dipped the TR15's aperture up to 2.7 degrees).
+  - The machine gun's first-person numbers for the TR15 (`SightHeight` .0639, `EyeRelief` .0954, `ModelOffset` z -.012). The pistol's
+    measured `ModelSight` and `ModelFront` (the slide's top).
+  - Runtime reads `SightFront` (`NativeVisualWeaponPresentation`, `TacticalFront`). `TacticalViewChecks` +8 checks.
+- **The TR15** (local only, never in git; `Assets/LocalAssets/KinemationTactical/Standard/`):
+  - `TR15_Standard.prefab`, made by the lab's build from `W_TR15.prefab` with `A_TR15_IronSights` on its scope mount. Its skinned parts
+    are baked at rest, the magazine turned onto its socket (its bind pose lies backwards; the pack's animator stands it up), and the
+    hidden magazine rounds dropped: 29,329 triangles (the old LMG had 16,847). Meshes 3.2 MB.
+  - On the arena toon, like every other weapon (spawn-in, hit flash, the corpse's fade). Its colour maps are lifted from the pack's
+    near-black albedo with the normal and metal maps baked in (`proof/tools/toonalbedo.py`): 1024 body, 512 magazine and sights,
+    0.9 MB.
+  - The BoZo tool's weapons table puts it in the bake's `VisualWeapons/machinegun`. `proof/tools/patch_tool.py` adds the table entry,
+    a `Front` field and its `SightFront` marker; `--revert` puts the kit's LMG back. The Arsenal machine guns are unchanged.
+  - Third person on T1's hold: the fist 4.5 cm under the grip's top, `Support` under the handguard's right edge, the stock at the butt.
+    T1's probe on the TR15: the support hand 0.0 mm off its hold in carry, raise, aim and fire; the palm 0.0 degrees off; the gun's
+    turn in the hand 0.00 degrees. It lets go in reloads, by design.
+- **Animation impacts (AGENTS.md):** none on hit timing, hitboxes, damage, cooldowns, movement, the aim ray, spread, recoil numbers or
+  the wire. Aimed, the first-person TR15 tips 0.74 degrees (its post stands 4.8 mm over the aperture's line). Third-person holds and
+  poses are unchanged.
+- **Checks:**
+  - full CoreTests the relgen5 way at `6c597d28` (clean worktree, `expedition_path.patch`, the 14 stage banks): 1,105 PASS, exit 0;
+  - `--tactical-view` 4,051 checks;
+  - `tools/check_unity_compile.py`: all four assemblies PASS;
+  - `git diff --check` clean; the pin scan 0 broken;
+  - PrototypeBuild.Validate on `f2b3a535` with the TR15 bake: ok, 400 PASS (the same two edit-mode Destroy errors as earlier validates);
+  - a test pack of the Drive zip with the TR15 bake (into scratch; the Drive zip was only read): visual body 1,241 files, 472.12 MB
+    (cap 480); `install_local_assets.py --check --require-cloth` exit 0. It adds the TR15's 24 files and drops the LMG's FBX and cut mesh.
+  - Not run: a Windows build, two clients, the Low tier, a playtest, every Arsenal skin (unchanged). A kill and killcam view was
+    not filmed: the capture framed the killer instead. The corpse draws the same `VisualWeapons` entry.
+- **Proof** (`F:/Chip Arena Development/scratch/mg-tr15/proof/`):
+  - `stills/fp-tr15-{rest,aimed,firing,mid-reload}-2000x1173.jpg`;
+  - `sheets/impact-test-before-after.jpg` (the machine gun, the pistol and the rifle's scope at 5, 15 and 40 m) and
+    `stills/impact-after-*-2000x1173.jpg`; the numbers in `sights-before.txt` and `sights-after.txt`;
+  - `sheets/fp-tr15-aimed-sight-picture-zoom.jpg`; `sheets/tp-tr15-hands-carry-aim-fire-reload.jpg`;
+  - `sheets/menu-locker-intro.jpg`; `stills/locker-machinegun.png`; `stills/intro-brass-storm-firing.png`;
+  - `clips/mg-fp-before-after.mp4` and `clips/mg-tp-{right,left}-before-after.mp4` (real time).
+- **Ship (integrator):** code and zip together (the code's TR15 numbers on the old bake misplace the LMG at the hip).
+  1. Merge `claude/mg-tr15` into shared.
+  2. Under the Editor lock, with the Editor on the merged commit:
+     - Apply the table: `python -I "F:/Chip Arena Development/scratch/mg-tr15/proof/tools/patch_tool.py" <BozoInventory.cs> <BozoInventory.cs>`, then refresh.
+     - Send `Temp/bozo-weapons.request` (`#version <tool Version>`, then an out folder). Check that `weapons.json` says saved True and
+       `python -I .../proof/tools/bakecheck.py <bake prefab>` says "ok 4 meshes".
+     - The TR15's assets are already in the checkout. To rebuild them: the lab's `build|...` line in `proof/tools/holdx.sh`, with the textures
+       from `scratch/mg-tr15/toon/`.
+  3. Repack: `python -I tools/pack_visual_body.py "G:/My Drive/Chip Arena Build Logs/LocalAssets.zip" <new zip> --project
+     "F:/Chip Arena Development/Chip-Arena-Unity/unity/ChipArenaConversion" --with-cloth --addons-allowlist
+     "F:/Chip Arena Development/scratch/puppet-hits-2/local/private-addons-allowlist.json"`.
+  4. Check with `python -I tools/install_local_assets.py <new zip> --check --require-cloth`. Keep the old zip as
+     `LocalAssets-2026-11-23-before-mg-tr15.zip`, then replace it.
+  5. Leave the tool patched: the TR15 is the Standard from then on. Then publish the builder branch.
+- **Risks / next:**
+  - Aimed, the sight picture is the pack's own: the eye 9.5 cm behind a 4 mm aperture, so the rear sight fills the lower middle.
+  - `AimSteady` also stills the pistol's and the rifle's iron aim. The pistol's sight fix goes beyond the request (two constants,
+    easy to revert).
+  - Each held machine gun now draws about 12,500 more triangles.
+  - Until the repack, the Editor's tool and bake stay on the LMG (restored after every hold). The lab and the TR15 assets stay in the
+    Editor checkout (git-ignored, inert).
+  - The lab's test wall is invisible in the frames (its face never drew); the magenta marks are the lab's markers at the
+    logged impacts. The game draws no bullet holes on that collider.
+  - Next: owner review.
+
 ## 2026-11-23 — Claude: release 21: hit reactions show direction, location and weight (integrator)
 Owner: "I want the animation to actually display hit direction (Like reactively)".
 - **Published:** shared and the builder at `b8ba16c9`. Test channel revision `639310078103238036` (build `5499f591`, 395.0 MiB).
