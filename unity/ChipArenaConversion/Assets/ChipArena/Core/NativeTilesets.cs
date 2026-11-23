@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public sealed class Tileset
         {
             /// <summary>The registry id (City is <see cref="City"/>). A3 puts it in the state and on the ticket; today nothing sends it.</summary>
-            public string Id;public State State;
+            public string Id;public State State;public WeaponPool WeaponPool;
             // ---- display (Claude) ----
             /// <summary>The name and its place (caps, in the station's stroke font): "CITY", "MERIDIAN".</summary>
             public string Name,Place;
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         {
             new Tileset
             {
-                Id=City,State=State.Live,Name="CITY",Place="MERIDIAN",Accent=0xffc65a,Enemies="THE INFECTED",Final=NativeFallenBoss.Name,
+                Id=City,WeaponPool=WeaponPool.Ranged,State=State.Live,Name="CITY",Place="MERIDIAN",Accent=0xffc65a,Enemies="THE INFECTED",Final=NativeFallenBoss.Name,
                 Instances=new[]{"exp-ward-zero","exp-transit","exp-foundry",NativeBackroomsGenerator.AreaId,NativePoolroomsGenerator.AreaId},
                 // Meridian's skyline round City Hall's tower, its clock stopped at 6:47 (docs/EXPEDITION-OVERHAUL.md N1).
                 Emblem="<rect x=\"6\" y=\"60\" width=\"17\" height=\"33\" fill=\"#fff\"/><rect x=\"21\" y=\"46\" width=\"15\" height=\"47\" fill=\"#fff\"/>"

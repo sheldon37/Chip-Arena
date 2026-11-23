@@ -5,12 +5,13 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeBotOption {public string weapon="random",difficulty="normal";public int team=-1;}
     [Serializable] public sealed class NativeRoomOptions
     {
-        public bool blindPick,deathmatch;public int blindChoices,killTarget,deathmatchChips;
+        public WeaponPool blindWeaponPool;public bool blindPick,deathmatch;public int blindChoices,killTarget,deathmatchChips;
         public int EffectiveTarget=>killTarget>0?killTarget:teams?30:15;
         public string boss="siren";public bool training;public string map=NativeMapRules.DefaultArena,botDifficulty="normal";public bool expedition,cooperative,teams,friendlyFire,skipBotDrafts,bothDraft,skipPlayerIntros,randomizeMap,mirrorWeapons,stationary,skipWaves;
         public int bots=3,rounds=2,sets=5,choices=6,selectionSeconds=18,hostTeam;public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();
         public void Normalize(ConversionContent content)
         {
+            blindWeaponPool=NativeWeaponPools.Normalize(blindWeaponPool);
             blindChoices=NativeOpeningDraft.OfferCount(blindChoices,content.weapons.Length);
             killTarget=Math.Max(0,Math.Min(100,killTarget));deathmatchChips=Math.Max(0,Math.Min(2,deathmatchChips));
             boss=NativeBossBattle.Pick(boss);if(boss.Length>32||!NativeExpeditionCatalogue.Bosses.Any(b=>b.Id==boss))boss="siren";

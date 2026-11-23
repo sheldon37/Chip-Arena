@@ -1,3 +1,6 @@
+## 2026-11-23 Astra, Blind Pick weapon pools
+Branch codex/weapon-pool-modifiers, shared base 05bd6e0. PvP host selects the catalog family for dealt and full-pool picks. City expeditions use Ranged. The host privately sends eligible cards and enforces them for pilots, bots and timeouts. Core build clean, 603 expedition pick, 5598 blind-choice and 158 deathmatch checks passed. Windows build and two-client play unverified.
+
 ## 2026-11-23 — Claude: release 22: the TR15 machine gun, with iron sights on the shots' line (integrator)
 Owner: "fix first person to aim the iron sights where the shots are going ... lets replace our machine gun model with the one from the pack".
 - **Published:** shared and the builder at `af51c3ab`. Test channel revision `639310196909215147` (build `59f57028`, 396.0 MiB).

@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
             expCountLabels??=NativeBlindChoices.CountLabels(botWeaponIds.Length,NativeRoomPick.ExpeditionDefault);
             int n=ExpPickChoices;
             RuleSelect(18764,RoomOpt.BlindChoices,"Weapon choices",expCountLabels,Mathf.Clamp(n-NativeBlindChoices.Min,0,expCountLabels.Length-1),0,NativeBlindChoices.Min);
-            RuleFine(18768,NativeRoomPick.Note(n),0,8);
+            RuleFine(18768,NativeWeaponPools.Labels[(int)NativeTilesets.Selected(DeploymentState).WeaponPool]+". "+NativeRoomPick.Note(n),0,8);
         }
     }
 }

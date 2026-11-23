@@ -22,6 +22,33 @@ internal static class ExpeditionWeaponPickChecks
         string Body(string src,string head){int s=src.IndexOf(head,StringComparison.Ordinal),e=s<0?-1:src.IndexOf("\n        }",s,StringComparison.Ordinal);return s>=0&&e>s?src.Substring(s,e-s):"";}
         var content=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});
 
+        Check(NativeTilesets.Selected(null).WeaponPool==WeaponPool.Ranged,"City uses the ranged weapon pool");
+        foreach(WeaponPool pool in Enum.GetValues(typeof(WeaponPool)))
+        {
+            bool Expected(string family)=>pool==WeaponPool.All||pool==WeaponPool.RangedAndMagic&&(family=="ranged"||family=="magic")||
+                string.Equals(pool.ToString(),family,StringComparison.OrdinalIgnoreCase);
+            var eligible=content.weapons.Where(w=>NativeWeaponPools.Allows(pool,w)).Select(w=>w.id).ToArray();
+            Check(eligible.SequenceEqual(content.weapons.Where(w=>Expected(w.@class)).Select(w=>w.id)),"catalog family filter "+pool);
+            foreach(bool full in new[]{false,true})
+            {
+                var pilots=new[]{new NativeSeat{id=1,spec="sword"},new NativeSeat{id=2,spec="sword",bot=true}};
+                bool Access(NativeSeat seat,string id)=>seat.id==1||!content.Weapon(id).devOnly;
+                var deal=new NativeOpeningDraft(pilots,true,false,0,p=>Array.Empty<string>(),Access,
+                    full?0:5,eligible,new SourceRandom(7).Next,full);
+                Check(deal.Refusal==null,"pool opens "+pool);
+                foreach(var pilot in deal.Pilots.Values)
+                {
+                    var permitted=eligible.Where(id=>Access(pilot.Seat,id)).ToArray();
+                    Check(pilot.WeaponOffers.All(permitted.Contains)&&permitted.Contains(pilot.Weapon),"authorized offers and bot pick");
+                    Check(pilot.WeaponOffers.Length==(full?permitted.Length:Math.Min(5,eligible.Count(id=>Access(pilots[1],id)))),"full and capped deal sizes");
+                }
+                foreach(var excluded in content.weapons.Where(w=>!eligible.Contains(w.id)))
+                    Check(!deal.Submit(1,OpeningStep.Weapon,excluded.id,true,1),"reject excluded "+excluded.id);
+                deal.Tick(21);
+                Check(deal.Ready&&eligible.Contains(deal.Pilots[1].Weapon),"timeout stays in pool");
+            }
+        }
+
         // ---- the default: five ----
         Check(NativeRoomPick.ExpeditionDefault==5,"an expedition deals five choices by default");
         Check(R("Runtime/NativeExpeditionWeaponPick.cs").Contains("private int expeditionChoices=NativeRoomPick.ExpeditionDefault;"),"the host's count starts at the default");
