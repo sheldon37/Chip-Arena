@@ -479,13 +479,15 @@ namespace ChipArena.UnityConversion
         public const float FadeIn=.1f, FadeOut=.2f, ReactionMin=.25f;
         /// <summary>
         /// Whether a hit reaction plays the set's whole-body hit clip (owner 2026-11-23: the reactions show the hit's direction, where it
-        /// struck and how heavy it was): a blow of at least <see cref="HitClipStrength"/> (Actor.ReactionStrength, .45 + damage / 70:
-        /// a rifle round, a blade's blow) does; a light one (a pistol round, a machine-gun round, a dagger's quick cut) plays none and
-        /// shows through the drawn body's physical reaction alone (Runtime NativeHitPuppetPresentation), so a burst's rounds add up
-        /// on the body instead of restarting one clip a round, and a flick stays a flick. A parried attacker's reel always plays.
+        /// struck and how heavy it was). Only a heavy blow does: Actor.ReactionStrength (.45 + damage / 70) at its full
+        /// <see cref="HitClipStrength"/> (38 damage or more: a greatsword's blow, the Siren's claws, a heavy fighter strike), and not on
+        /// the head. Everything lighter (a pistol, rifle or machine-gun round, a sword's or dagger's cut) and a headshot play none and
+        /// show through the drawn body's physical reaction alone (Runtime NativeHitPuppetPresentation): the struck part leads, a
+        /// rifle round is a jolt rather than the clip's lunge, and a burst's rounds add up on the body instead of restarting one clip
+        /// a round. A parried attacker's reel always plays.
         /// </summary>
-        public static bool HitClip(Actor a)=>a!=null&&(a.ReactionParry||!(a.ReactionStrength<HitClipStrength));
-        public const float HitClipStrength=.8f;
+        public static bool HitClip(Actor a)=>a!=null&&(a.ReactionParry||!(a.ReactionStrength<HitClipStrength)&&a.ReactionZone!=1);
+        public const float HitClipStrength=.99f;
         /// <summary>A parried attacker's reel (Choose): held this long past its stun while the parry's shove slides it out, and the fade from
         /// its recoil into its daze.</summary>
         public const float ParrySettle=.35f, ParryDazeFade=.2f;
