@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
@@ -79,6 +80,64 @@ namespace ChipArena.UnityConversion
             if(melee)unpin=Math.Min(1,unpin+.1f*h);
             return impulse>0;
         }
+
+        // ---- the reaction's reach and the body's give (owner 2026-11-23: "I want the animation to actually display hit direction") ----
+        /// <summary>
+        /// How far a hit's unpin reaches past the part struck (0..1): 0 the part and its neighbours only (a pistol round's flick),
+        /// 1 the whole body, the hips as well (a greatsword's heavy blow bends all of it). A blade's blow reaches further than a
+        /// round of the same weight, and further with its heft.
+        /// </summary>
+        public static float Spread(StaggerWeight w,bool melee,float heft)
+        {
+            float s=w==StaggerWeight.Heavy?.75f:w==StaggerWeight.Step?.3f:w==StaggerWeight.Flinch?.08f:0f;
+            if(melee&&s>0)s+=.12f*Math.Max(.5f,Math.Min(1.5f,Finite(heft,1)));
+            return Math.Max(0,Math.Min(1,s));
+        }
+        /// <summary>How loose an add's body is (0 a pilot's, firm .. 1 a shambler's, the loosest): its muscles give more and come back
+        /// slower. The horde's kinds (Core NativeHordeKinds); an unknown kind is a pilot's.</summary>
+        public static float Loose(int kind)
+        {
+            switch(kind)
+            {
+                case NativeHordeKinds.Shambler:return 1f;case NativeHordeKinds.Crawler:return .9f;case NativeHordeKinds.Bloater:return .7f;
+                case NativeHordeKinds.Spitter:return .6f;case NativeHordeKinds.Runner:return .45f;case NativeHordeKinds.Brute:return .25f;
+                case NativeHordeKinds.Hulk:return .1f;default:return 0f;
+            }
+        }
+        /// <summary>The body centre's height over the feet (m) a pilot's hit points are measured from: the rig root (Actor.Position is
+        /// the feet, the rig root stands this far over them).</summary>
+        public const float CentreHeight=.865f;
+        /// <summary>A blade's push: the share along the blow (from the attacker through the victim), across it (the blade's own travel)
+        /// and down (a chop's fall).</summary>
+        public const float SwingAlong=.5f,SwingAcross=.9f,SwingDown=.6f;
+        /// <summary>
+        /// A blade's push and where it lands (Unity world; presentation only), from the swing the attacker played as the slices read it
+        /// (Core NativeMeleeSlice.Plan: the attacker's cut for its attack, turned by its committed yaw, where it crosses the victim).
+        /// `along` is the blow's direction (the authority's, attacker to victim), `travel` the blade's travel there (unit), `centre` the
+        /// victim's body centre, `height` the cut's height over the victim's feet and `centreHeight` the centre's (m). The push turns
+        /// toward the travel, so a slash from the victim's left throws it to its right and one from its right to its left (a thrust,
+        /// travelling along the blow, stays a push; a chop drives down too); it lands at the cut's height on the side the blade comes
+        /// in from, on the attacker's side of the body. False (outputs unset) for a degenerate travel.
+        /// </summary>
+        public static bool Swing(Vector3 along,Vector3 travel,Vector3 centre,float height,float centreHeight,out Vector3 push,out Vector3 point)
+        {
+            push=default;point=default;
+            if(!Finite(travel)||travel.LengthSquared()<1e-6f)return false;
+            Vector3 t=Vector3.Normalize(travel),r=Finite(along)?new Vector3(along.X,0,along.Z):Vector3.Zero;
+            r=r.LengthSquared()>1e-6f?Vector3.Normalize(r):Vector3.Zero;
+            Vector3 level=new Vector3(t.X,0,t.Z);
+            push=r*SwingAlong+level*SwingAcross+new Vector3(0,Math.Min(0,t.Y)*SwingDown,0);
+            if(push.LengthSquared()<1e-6f)return false;push=Vector3.Normalize(push);
+            // The blade's entry side: its level travel across the blow, reversed.
+            Vector3 across=level-r*Vector3.Dot(level,r);float a=across.Length();
+            Vector3 entry=a>.05f?-across/a*EntrySide:Vector3.Zero;
+            float h=Math.Max(.3f,Math.Min(1.6f,Finite(height,centreHeight)));
+            point=centre+new Vector3(0,h-centreHeight,0)+entry-r*EntryFront;
+            return true;
+        }
+        /// <summary>How far to the side of the centre line (m) a slash lands on the side it comes in from, and toward the attacker.</summary>
+        public const float EntrySide=.2f,EntryFront=.1f;
+        private static bool Finite(Vector3 v)=>!float.IsNaN(v.X)&&!float.IsNaN(v.Y)&&!float.IsNaN(v.Z)&&!float.IsInfinity(v.X)&&!float.IsInfinity(v.Y)&&!float.IsInfinity(v.Z);
         private static float Finite(float v,float fallback)=>float.IsNaN(v)||float.IsInfinity(v)?fallback:v;
     }
 }
