@@ -878,12 +878,20 @@ namespace ChipArena.UnityConversion
             Check(P(land,40.05f,false,mem).Clip==set.Land&&P(land,40.05f+NativeVisualMotion.LandFor+.01f,false,mem).Clip==set.Idle,"a landing, then the idle");
             // The side is the blow's (its push in the pilot's facing frame, Actor.ReactionDir: +x its left, +z ahead), never the pilot's own
             // facing (ReactionYaw; owner 2026-11-23: "we have essentially the same hit reaction for all hits").
-            var hit=Ground();hit.ReactionAt=60;hit.ReactionUntil=60.5f;hit.ReactionDir=new V3(0,0,-1);Check(P(hit,60.2f).Clip==set.Reactions[0],"struck from the front");
+            var hit=Ground();hit.ReactionAt=60;hit.ReactionUntil=60.5f;hit.ReactionStrength=.9f;hit.ReactionDir=new V3(0,0,-1);Check(P(hit,60.2f).Clip==set.Reactions[0],"struck from the front");
             hit.ReactionDir=new V3(0,0,1);Check(P(hit,60.2f).Clip==set.Reactions[1],"struck from behind");
             hit.ReactionDir=new V3(-1,0,0);Check(P(hit,60.2f).Clip==set.Reactions[2],"struck from its left (pushed to its right)");
             hit.ReactionDir=new V3(1,0,0);Check(P(hit,60.2f).Clip==set.Reactions[3],"struck from its right");
             foreach(float yaw in new[]{0f,1.2f,(float)Math.PI,-2f}){hit.ReactionYaw=yaw;hit.ReactionDir=new V3(-1,0,0);Check(P(hit,60.2f).Clip==set.Reactions[2],"the side never follows the pilot's own facing (yaw "+yaw+")");}
             hit.ReactionDir=new V3();Check(NativeVisualMotion.HitSide(hit)==0&&NativeVisualMotion.HitSide(null)==0,"a push with no level part (an old frame) reads as from the front");
+            // A light hit (a pistol or machine-gun round, Actor.ReactionStrength under .8) plays no hit clip: the body's physical reaction
+            // shows it, and a burst's rounds add up instead of restarting the clip; a rifle round or a blade's blow plays it.
+            {
+                var light=Ground();light.ReactionAt=60;light.ReactionUntil=60.5f;light.ReactionDir=new V3(0,0,-1);
+                foreach(float dmg in new[]{10f,14f,20f}){light.ReactionStrength=MeleeReaction.Hit(new V3(0,1,0),0,new V3(0,0,-1),new V3(0,1.2f,.3f),60,dmg,false).Strength;Check(!set.Reactions.Contains(P(light,60.2f).Clip)&&!NativeVisualMotion.HitClip(light),"a "+dmg+"-damage round plays no hit clip");}
+                foreach(float dmg in new[]{30f,48f}){light.ReactionStrength=MeleeReaction.Hit(new V3(0,1,0),0,new V3(0,0,-1),new V3(0,1.2f,.3f),60,dmg,false).Strength;Check(P(light,60.2f).Clip==set.Reactions[0],"a "+dmg+"-damage hit plays its side's clip");}
+                light.ReactionStrength=.5f;light.ReactionParry=true;Check(NativeVisualMotion.HitClip(light),"a parried attacker's reel always plays");
+            }
             {
                 // A real reaction: a blow from a pilot's right, whatever way it faces, plays its right-side clip.
                 foreach(float facing in new[]{0f,90f,-135f})
@@ -945,7 +953,7 @@ namespace ChipArena.UnityConversion
                 Check(NativeVisualMotion.Choose(sword,down2,40.15f,lm,book2,false,out var landed)&&landed.Clip==sword.Land&&Math.Abs(landed.Time-.1f*Math.Max(NativeVisualMotion.LandRate,1.2f/NativeVisualMotion.LandFor))<1e-4f
                     &&NativeVisualMotion.Choose(sword,down2,40.06f+NativeVisualMotion.LandFor,lm,book2,false,out var stood)&&stood.Clip==sword.Idle,"a landing at its own pace or a little quicker, done within LandFor");
                 // A hit reaction at about its own pace (it twitched at two to three times); a block held on keeps its clip going.
-                var struck=Ground();struck.ReactionAt=60;struck.ReactionUntil=60.25f;
+                var struck=Ground();struck.ReactionAt=60;struck.ReactionUntil=60.25f;struck.ReactionStrength=.9f;
                 Check(Math.Abs(P(struck,60.2f).Time-.2f*NativeVisualMotion.MaxStrikeRate)<1e-4f,"a quick reaction plays at most MaxStrikeRate times its pace");
                 var bm=new NativeVisualMotion.Memory();var held=Ground();held.BlockAt=70;held.BlockUntil=70.3f;var b1=P(held,70.2f,false,bm);held.BlockAt=70.28f;held.BlockUntil=70.58f;var b2=P(held,70.4f,false,bm);
                 held.BlockAt=75;held.BlockUntil=75.3f;var b3=P(held,75.1f,false,bm);

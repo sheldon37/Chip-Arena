@@ -477,6 +477,15 @@ namespace ChipArena.UnityConversion
             public bool Flight; }
 
         public const float FadeIn=.1f, FadeOut=.2f, ReactionMin=.25f;
+        /// <summary>
+        /// Whether a hit reaction plays the set's whole-body hit clip (owner 2026-11-23: the reactions show the hit's direction, where it
+        /// struck and how heavy it was): a blow of at least <see cref="HitClipStrength"/> (Actor.ReactionStrength, .45 + damage / 70:
+        /// a rifle round, a blade's blow) does; a light one (a pistol round, a machine-gun round, a dagger's quick cut) plays none and
+        /// shows through the drawn body's physical reaction alone (Runtime NativeHitPuppetPresentation), so a burst's rounds add up
+        /// on the body instead of restarting one clip a round, and a flick stays a flick. A parried attacker's reel always plays.
+        /// </summary>
+        public static bool HitClip(Actor a)=>a!=null&&(a.ReactionParry||!(a.ReactionStrength<HitClipStrength));
+        public const float HitClipStrength=.8f;
         /// <summary>A parried attacker's reel (Choose): held this long past its stun while the parry's shove slides it out, and the fade from
         /// its recoil into its daze.</summary>
         public const float ParrySettle=.35f, ParryDazeFade=.2f;
@@ -667,7 +676,7 @@ namespace ChipArena.UnityConversion
                     pick=new Pick{Clip=set.Stunned,Time=into-len,Fade=ParryDazeFade};return true;
                 }
             }
-            if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin))
+            if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)&&HitClip(a))
             {
                 string clip=set.Reactions[HitSide(a)];if(!clips.Has(clip))return false;
                 float len=clips.Length(clip),span=Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)-a.ReactionAt,rate=Math.Max(ReactSlow,Math.Min(MaxStrikeRate,len/Math.Max(.05f,span)));

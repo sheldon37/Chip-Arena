@@ -16,6 +16,48 @@ greatsword's heavy blow is about 79 N·s, a sword's 35, a rifle round 26, a pist
 shot. The bridge caps the start it gives a part at 3.2 m/s over what that part carries (a hand or the head is never flung), and
 never strikes the neck itself: a blow there lands on the chest. Damage ticks, fields, thorns, hazards and stage hits push nothing.
 
+## Direction and location (P2, 2026-11-23)
+
+Owner: "Currently; we have essentially the same hit reaction for all hits. I want to really use the new ragdoll asset ... I
+want the animation to actually display hit direction (Like reactively)". Branch `claude/puppet-hits-2`.
+
+**Why every hit read the same (measured on release 15 in the Editor, the bridge's per-hit log):**
+
+- **The model's hit clip ignored the blow.** On a hit the model plays one of its set's four directional GetHit clips (front,
+  back, left, right) for about a quarter second. It was picked by `Actor.ReactionYaw`, which is the struck pilot's own facing
+  (Core `MeleeReaction.Hit`), not the blow's bearing. A bot that did not turn played the same clip for all 16 hits of the sheet,
+  and that whole-body clip is most of what the eye reads. Now `NativeVisualMotion.HitSide` takes the side from
+  `Actor.ReactionDir` (the push in the pilot's facing frame).
+- **Every pilot hit point rose .865 m.** The authority's point was measured from `Actor.Position` (the feet) and added to the
+  rig root (the body centre). Chest and arm hits landed above the head and went to the upper chest; leg hits landed at the hips
+  on the gun hand, capped to 2-7 N·s; a headshot struck the head bone (its pivot on the neck). Now the offset is from the
+  body centre (`NativeHitPuppetRules.CentreHeight`); adds were already measured floor to floor.
+- **A blade's blow carried no swing.** The authority's melee point is the hit volume's point nearest the attacker's waist and
+  its push is straight from the attacker (Runtime `NativeMelee`), so a left-to-right slash and a right-to-left one were the same
+  push at the same point. Now the swing the attacker played is read as a kill's cut reads it (Core `NativeMeleeSlice.Plan`):
+  the push turns along the blade's travel and lands on the side it comes in from (`NativeHitPuppetRules.Swing`).
+- **The puppet had no legs and fixed hips**, so a leg hit could not buckle anything, and the unpin stayed local (BehaviourPuppet's
+  falloff from the struck muscle) whatever the weight.
+
+**What it does now** (bridge version 2; the hook's optional `Strike` and `Bounds`):
+
+- The part struck is picked along the shot's line through the point (the trunk wins a line that crosses it), and the push lands
+  on its surface facing the shot. A headshot's point is on the head's side the shot came from.
+- Each zone adds the body's answer in the same simulation: the head snaps away with the chest a little behind; an arm swings
+  back and turns its shoulder; a gut hit from the front folds the chest over and pushes the hips back; a hit from behind
+  lurches the trunk forward; a side hit leans the trunk away and turns the struck shoulder back; a leg hit drops and turns the
+  hips on that side and the knee bends under them.
+- Weight (`NativeHitPuppetRules.Spread`): a pistol round's unpin stays local, a rifle's reaches the spine, a greatsword's heavy
+  blow the whole body and the hips. The pins come back slower the further it reached. Hits before the pins are back add up.
+- Adds react the same way; `Loose` (shambler 1 .. Hulk .1) softens their unpinned muscles and slows their return.
+- **What the hips may do:** the pelvis may drop at most 11 cm, shift at most 6 cm level and turn at most 14 degrees from where the
+  game drew it, and never rise more than 5 mm. Each foot is put back exactly where the game planted it (a two-bone solve of
+  thigh and calf, the knee bent in the plane the reaction left it in). The bent body is kept in its hitbox: no part goes further
+  out of the capsule (a pilot's 0.42 m round its root; an add's own) than the drawn pose had it, by easing the whole bend back.
+  The model's root never moves.
+- First person: the local pilot's body is not drawn, so its view never moves with its own reaction (third person: the camera
+  follows the authority's body, not the drawn bones).
+
 ## Presentation only
 
 - **Hits in.** A pilot's hits are read from the frame's replicated events (`ObserveHits`, beside the felt-hit ledger), an add's
@@ -27,8 +69,9 @@ never strikes the neck itself: a blow there lands on the chest. Damage ticks, fi
   before anything reads the bones: hats, gear, cloth and effects follow the bent pose. The held weapon is drawn at the game
   rig's hand, so the rig's hands are carried with the bent drawn hands for that frame (`VisualBodyRestore` puts them back
   before the next pose; the voxel ratchet pins this read).
-- **Rotations only.** Every bone keeps the game's local position; the hips are never mapped, so the feet and the model's root
-  stay where the game put them. Nothing writes a rule, a hit volume, a timing, a body or the wire (`HitPuppetChecks`).
+- **Rotations, and the hips within limits.** Every bone but the pelvis keeps the game's local position; the pelvis moves only
+  within the limits above, the feet stay where the game planted them and the model's root where the game put it (bridge 1
+  mapped no hips at all). Nothing writes a rule, a hit volume, a timing, a body or the wire (`HitPuppetChecks`).
 - **Its own physics.** Each puppet is in a physics scene of its own (`LocalPhysicsMode.Physics3D`) and has no collider, so it
   never meets the game's world or another body.
 - **Death.** A pilot killed while its puppet bends it falls from that drawn pose: `VisualRigFromDrawn` copies the drawn bones
