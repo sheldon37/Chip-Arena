@@ -196,7 +196,9 @@ namespace ChipArena.UnityConversion
         {
             if(s?.Grounded==null||clips==null||s.RunUpper!=null&&!clips.Has(s.RunUpper))return false;
             foreach(var c in s.Grounded)if(!clips.Has(c))return false;
-            return true;
+            // (A bank whose stride clips carry no travel (a full rebake bakes the Frank 8-way runs in place, without the travel their
+            // planted feet show: docs/RUN-REALISTIC.md "The bank") keeps the set's own stride: its rate would leave the feet sliding.)
+            return !(clips is NativeVisualMotionClips.Library lib)||NativeGroundedStride.Travels(s.Grounded,lib);
         }
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'

@@ -35,8 +35,9 @@ internal static class GroundedStrideChecks
     private static void Sets(Book book)
     {
         var s=NativeGroundedStride.Stride;
-        Check(s.Length==NativeVisualStride.Clips&&s.Distinct().Count()==s.Length&&s.All(c=>c!=null),"the grounded stride names a clip for each of the 8 runs, the 8 walks and the sprint");
-        Check(s[0]==NativeGroundedStride.RunAhead&&s[1]==NativeGroundedStride.RunAheadRight&&s[7]==NativeGroundedStride.RunAheadLeft&&s[NativeVisualStride.Sprint]==NativeGroundedStride.Sprint,"mocap ahead and on the diagonals ahead, a sprint of its own (not the run at twice its pace)");
+        Check(s.Length==NativeVisualStride.Clips&&s.Take(NativeVisualStride.Sprint).Distinct().Count()==NativeVisualStride.Sprint&&s.All(c=>c!=null),"the grounded stride names a clip for each of the 8 runs, the 8 walks and the sprint");
+        Check(s[0]==NativeGroundedStride.RunAhead&&s[1]==NativeGroundedStride.RunAheadRight&&s[7]==NativeGroundedStride.RunAheadLeft&&s[NativeVisualStride.Sprint]==NativeGroundedStride.Sprint&&NativeGroundedStride.Sprint==NativeGroundedStride.RunAhead,"mocap ahead and on the diagonals ahead; the sprint the run ahead's long stride (no longer the pack's bound capped at twice its pace)");
+        Check(NativeGroundedStride.Added.All(c=>Array.IndexOf(NativeGroundedStride.Clips,c)>=0)&&NativeGroundedStride.Clips.Distinct().Count()==NativeGroundedStride.Clips.Length,"every clip listed once");
         var rifle0=NativeVisualMotion.For("rifle");for(int i=2;i<=6;i++)Check(s[i]==rifle0.Locomotion[i],"way "+i+": the gun set's own low run (side, back)");
         for(int i=NativeVisualStride.Walks;i<NativeVisualStride.Sprint;i++)Check(s[i]==rifle0.Locomotion[i],"walk "+(i-NativeVisualStride.Walks)+": the gun set's own walk");
         foreach(var spec in Covered)
@@ -51,6 +52,14 @@ internal static class GroundedStrideChecks
             book.Stride=false;
             Check(NativeVisualMotion.Stride(set,book)==set.Locomotion&&!NativeVisualMotion.Grounds(set,book),spec+": without them, its own stride (the builder before the bank lands)");
             book.Stride=true;
+        }
+        // A real bank: every stride clip must travel (a full rebake bakes the Frank runs in place, without their feet's travel: the set's own then).
+        {
+            var lib=new NativeVisualMotionClips.Library{Muscles=1};var rifle=NativeVisualMotion.For("rifle");
+            foreach(var c in rifle.All.Concat(NativeGroundedStride.Clips))if(!lib.Clips.ContainsKey(c))lib.Clips[c]=new NativeVisualMotionClips.Clip{Name=c,Length=.8f,Hit=.4f,Rate=30,SpeedZ=4,Loop=true,Frames=2,Stride=8,Data=new float[16]};
+            Check(NativeVisualMotion.Stride(rifle,lib)==NativeGroundedStride.Stride,"a bank whose stride clips travel: the grounded stride");
+            lib.Clips[NativeGroundedStride.RunAhead].SpeedZ=0;
+            Check(NativeVisualMotion.Stride(rifle,lib)==rifle.Locomotion&&!NativeGroundedStride.Travels(NativeGroundedStride.Stride,lib),"a stride clip baked in place without its travel: the set's own stride (no sliding feet)");
         }
         // The casters carry the staff over it (the mage's run mirrored into the staff's left fist); without the carry clip, their own stride.
         var staff=NativeVisualMotion.For("fire");
@@ -81,10 +90,10 @@ internal static class GroundedStrideChecks
     // The stride's own travel (m/s, x right and z ahead: the bake's root-motion average speed on the body, which its planted feet match:
     // measured on the posed records, docs/RUN-REALISTIC.md) at the rules' run (6.8 m/s) and sprint (x1.35) in each way: the rate the game
     // plays them at stays within NativeVisualStride's RateMin..RateMax, so the feet are never left behind or dragged.
-    // The stride's travel in the bank (x, z m/s, NativeVisualStride's order; the two added Frank runs' set to their planted feet's, the
-    // rest as released): docs/RUN-REALISTIC.md "Bank".
-    private static readonly float[] TravelX={0,3.042f,3.726f,2.579f,0,-2.613f,-3.722f,-2.964f,0,1.489f,2.369f,1.489f,0,-1.489f,-2.369f,-1.489f,0};
-    private static readonly float[] TravelZ={6.0f,3.111f,0,-2.585f,-3.722f,-2.633f,0,3.111f,2.369f,1.489f,0,-1.489f,-2.356f,-1.488f,-.104f,1.489f,6.28f};
+    // The stride's travel in the bank (x, z m/s, NativeVisualStride's order; the added Frank runs' set to their planted feet's, the rest
+    // as released): docs/RUN-REALISTIC.md "The bank".
+    private static readonly float[] TravelX={0,2.79f,3.726f,2.579f,0,-2.613f,-3.722f,-2.44f,0,1.489f,2.369f,1.489f,0,-1.489f,-2.369f,-1.489f,0};
+    private static readonly float[] TravelZ={5.70f,4.83f,0,-2.585f,-3.722f,-2.633f,0,4.99f,2.369f,1.489f,0,-1.489f,-2.356f,-1.488f,-.104f,1.489f,5.70f};
     private static void Travel()
     {
         float run=Rules.Speed,sprint=Rules.Speed*Rules.SprintMultiplier;var w=new float[NativeVisualStride.Clips];
