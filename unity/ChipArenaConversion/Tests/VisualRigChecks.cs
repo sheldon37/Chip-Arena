@@ -876,8 +876,24 @@ namespace ChipArena.UnityConversion
             air.AirJumps=1;air.AirJumpAt=30;Check(P(air,30.1f).Clip==set.Flip,"an air jump: the flip");
             var mem=new NativeVisualMotion.Memory();var land=new Actor{Grounded=false};P(land,40,false,mem);land.Grounded=true;
             Check(P(land,40.05f,false,mem).Clip==set.Land&&P(land,40.05f+NativeVisualMotion.LandFor+.01f,false,mem).Clip==set.Idle,"a landing, then the idle");
-            var hit=Ground();hit.ReactionAt=60;hit.ReactionUntil=60.5f;hit.ReactionYaw=0;Check(P(hit,60.2f).Clip==set.Reactions[0],"struck from the front");
-            hit.ReactionYaw=(float)Math.PI;Check(P(hit,60.2f).Clip==set.Reactions[1],"struck from behind");
+            // The side is the blow's (its push in the pilot's facing frame, Actor.ReactionDir: +x its left, +z ahead), never the pilot's own
+            // facing (ReactionYaw; owner 2026-11-23: "we have essentially the same hit reaction for all hits").
+            var hit=Ground();hit.ReactionAt=60;hit.ReactionUntil=60.5f;hit.ReactionDir=new V3(0,0,-1);Check(P(hit,60.2f).Clip==set.Reactions[0],"struck from the front");
+            hit.ReactionDir=new V3(0,0,1);Check(P(hit,60.2f).Clip==set.Reactions[1],"struck from behind");
+            hit.ReactionDir=new V3(-1,0,0);Check(P(hit,60.2f).Clip==set.Reactions[2],"struck from its left (pushed to its right)");
+            hit.ReactionDir=new V3(1,0,0);Check(P(hit,60.2f).Clip==set.Reactions[3],"struck from its right");
+            foreach(float yaw in new[]{0f,1.2f,(float)Math.PI,-2f}){hit.ReactionYaw=yaw;hit.ReactionDir=new V3(-1,0,0);Check(P(hit,60.2f).Clip==set.Reactions[2],"the side never follows the pilot's own facing (yaw "+yaw+")");}
+            hit.ReactionDir=new V3();Check(NativeVisualMotion.HitSide(hit)==0&&NativeVisualMotion.HitSide(null)==0,"a push with no level part (an old frame) reads as from the front");
+            {
+                // A real reaction: a blow from a pilot's right, whatever way it faces, plays its right-side clip.
+                foreach(float facing in new[]{0f,90f,-135f})
+                {
+                    float rad=facing*(float)Math.PI/180;var right=new V3((float)Math.Cos(rad),0,-(float)Math.Sin(rad));
+                    var r=MeleeReaction.Hit(new V3(0,1,0),facing,new V3(-right.x,0,-right.z),new V3(right.x*.3f,1.2f,right.z*.3f),1,20,false);
+                    var a=Ground();a.ReactionDir=new V3(r.Direction.X,r.Direction.Y,r.Direction.Z);a.ReactionYaw=r.Yaw;
+                    Check(NativeVisualMotion.HitSide(a)==3,"a blow from the pilot's right plays its right-side clip, facing "+facing+" (side "+NativeVisualMotion.HitSide(a)+")");
+                }
+            }
             // A parried attacker's reel (owner 2026-11-11: "Parry with katana make enemy walk backwards in place"): its recoil at its own pace, then
             // the daze through the stun, held while the shove slides it out (moving), never the walk; then the walk again.
             var reel=Ground();reel.ReactionAt=62;reel.ReactionUntil=reel.StunUntil=64;reel.ReactionYaw=0;reel.ReactionParry=true;

@@ -198,8 +198,6 @@ namespace ChipArena.UnityConversion
                 bool stagger=m!=null&&NativeHordeKinds.Staggers(kind,e.Amount,m.MaxHp,heavy);
                 // A head hit snaps the head harder: the authority's head flag when the hit carries its horde-hit data, else Headshot.
                 s.React.Bind(kind);s.React.Add(e.Time,push,w,e.Amount,melee,e.HasHordeHit?e.Head:e.Kind==EventKind.Headshot,stagger,stats?.stagger??.45f);
-                // Its drawn body pushed by the hit (NativeHitPuppetPresentation.cs), from its authority floor point.
-                if(m!=null)HitPuppetAdd(m,e,w,melee,spec,m.Body.position-Vector3.up*NativeHordeKinds.RootHeight(s.Real,m.Pve!=null&&m.Pve.Crawl),new Vector3(push.X,0,push.Y));
                 // A stagger in the wind-up cancels the blow (StepPveHorde: StaggerAt, Struck=true), so the shown one stops too; any
                 // damaging hit interrupts a spitter's spit (the proposed rule): the sac deflates and the acid fizzles at its feet.
                 if(m!=null&&stats!=null&&s.CancelFor!=m.LastAttack)
@@ -214,6 +212,9 @@ namespace ChipArena.UnityConversion
                 s.Push=push;IronworksHit(m,s,e,new Vector3(push.X,0,push.Y),heavy);
                 if(melee&&actor!=null&&NativeHitRules.Standard(spec)){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=new MeleeBlow{At=e.Time,Source=e.Source,Spec=spec,CommitYaw=actor.CommitYaw,Index=actor.Combo+1,SwingAt=actor.SwingAt,SwingUntil=actor.SwingUntil,Air=actor.AirAttack,Special=actor.SpecialKind!=null&&e.Time>=actor.SpecialAt-.05f&&e.Time<=actor.SpecialUntil+.05f?actor.SpecialKind:null,Kit=e.Detail=="ability"&&actor.MeleeKit!=null&&!string.IsNullOrEmpty(actor.MeleeKit.Kind)?actor.MeleeKit.Kind:null,From=actor.Position,Yaw=actor.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=Mathf.Abs(e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z-1)<.19f};s.Blow.Clip=NativeBladeCuts.DevSwingClip(actor,s.Blow.Special!=null,s.Blow.Kit!=null);}
                 else if(blade){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=NativeBladeCuts.Blow(e,actor);}
+                // Its drawn body pushed by the hit (NativeHitPuppetPresentation.cs), from its authority floor point; a blade's blow along
+                // the swing just recorded (its blow), the body as loose as its kind.
+                if(m!=null)HitPuppetAdd(m,e,w,melee,spec,m.Body.position-Vector3.up*NativeHordeKinds.RootHeight(s.Real,m.Pve!=null&&m.Pve.Crawl),new Vector3(push.X,0,push.Y),kind,s.HasBlow&&Math.Abs(s.BlowAt-e.Time)<.004f,s.Blow);
             }
             else if(hordeDead.TryGetValue(e.Target,out var dead)&&Math.Abs(dead.At-e.Time)<.1f){dead.Push=push;dead.Melee|=melee;hordeDead[e.Target]=dead;}
             // The gore (NativeHordeGorePresentation.cs): the wound on the part struck, red blood out of it and along the shot into the

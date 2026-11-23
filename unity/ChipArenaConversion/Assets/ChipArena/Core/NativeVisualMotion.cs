@@ -268,7 +268,7 @@ namespace ChipArena.UnityConversion
         private static bool HeldDaze(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;if(!Dazed(a,time)||set.Reactions==null||set.Reactions.Length==0)return false;
-            string hit=set.Reactions[Side(a.ReactionYaw)%set.Reactions.Length];if(!clips.Has(hit))return false;
+            string hit=set.Reactions[HitSide(a)%set.Reactions.Length];if(!clips.Has(hit))return false;
             float len=clips.Length(hit),into=time-a.ReactionAt;bool daze=set.Stunned!=null&&clips.Has(set.Stunned);
             if(into<len||!daze){pick=new Pick{Clip=hit,Time=Math.Min(len,into),Fade=FadeIn};return true;}
             pick=new Pick{Clip=set.Stunned,Time=into-len,Fade=ParryDazeFade};return true;
@@ -659,7 +659,7 @@ namespace ChipArena.UnityConversion
             // walk: the legs stepped while the body hardly moved.
             if(a.ReactionParry&&a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)+ParrySettle)
             {
-                string hit=ParriedRecoil(set);if(hit==null||!clips.Has(hit))hit=set.Reactions[Side(a.ReactionYaw)];
+                string hit=ParriedRecoil(set);if(hit==null||!clips.Has(hit))hit=set.Reactions[HitSide(a)];
                 if(clips.Has(hit))
                 {
                     float len=clips.Length(hit),into=time-a.ReactionAt;bool daze=set.Stunned!=null&&clips.Has(set.Stunned);
@@ -669,7 +669,7 @@ namespace ChipArena.UnityConversion
             }
             if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin))
             {
-                string clip=set.Reactions[Side(a.ReactionYaw)];if(!clips.Has(clip))return false;
+                string clip=set.Reactions[HitSide(a)];if(!clips.Has(clip))return false;
                 float len=clips.Length(clip),span=Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)-a.ReactionAt,rate=Math.Max(ReactSlow,Math.Min(MaxStrikeRate,len/Math.Max(.05f,span)));
                 pick=new Pick{Clip=clip,Time=Math.Min(len,(time-a.ReactionAt)*rate),Fade=FadeIn};return true;
             }
@@ -975,8 +975,20 @@ namespace ChipArena.UnityConversion
             if(time<=hitAt)return from+(hit-from)*Clamp01((time-start)/Math.Max(1e-3f,hitAt-start));
             return hit+(length-hit)*Clamp01((time-hitAt)/Math.Max(Math.Max(1e-3f,end-hitAt),(length-hit)/maxRate));
         }
-        /// <summary>The reaction's side from its yaw (the struck pilot's facing frame, +x its left, radians): 0 front, 1 back,
-        /// 2 left, 3 right.</summary>
+        /// <summary>
+        /// The side the pilot's reaction came from (owner 2026-11-23: "we have essentially the same hit reaction for all hits"): from
+        /// the blow's push in its facing frame (Actor.ReactionDir, source frame: +x its left, +z ahead), the way it came being the push
+        /// reversed. Its ReactionYaw is the pilot's own facing at the hit (Core MeleeReaction.Hit), not the blow's bearing: read as one,
+        /// a pilot that did not turn played the same one of the four clips whatever struck it. A push with no level part (an old frame)
+        /// reads as from the front.
+        /// </summary>
+        public static int HitSide(Actor a)
+        {
+            float x=a==null||float.IsNaN(a.ReactionDir.x)?0:a.ReactionDir.x,z=a==null||float.IsNaN(a.ReactionDir.z)?0:a.ReactionDir.z;
+            return x*x+z*z<1e-8f?0:Side((float)Math.Atan2(-x,-z));
+        }
+        /// <summary>The reaction's side from the bearing it came from (the struck pilot's facing frame, +x its left, radians): 0 front,
+        /// 1 back, 2 left, 3 right.</summary>
         public static int Side(float yaw)
         {
             float y=(float)Math.IEEERemainder(yaw,2*Math.PI),deg=y*57.29578f;

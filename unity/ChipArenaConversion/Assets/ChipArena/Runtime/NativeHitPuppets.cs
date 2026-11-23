@@ -31,12 +31,24 @@ namespace ChipArena.UnityConversion
         public static Action<object> Release;
         /// <summary>Every hook is needed: a partial registration draws the bodies as posed.</summary>
         public static bool Registered=>Attach!=null&&Hit!=null&&Step!=null&&Awake!=null&&Fade!=null&&Sleep!=null&&Release!=null;
+        // Optional (owner 2026-11-23: the reactions show where and from where a hit came, and how heavy it was). A bridge without them
+        // (the first one, in an older licensed-assets zip) reacts through Hit alone.
+        /// <summary>Optional, called instead of Hit when registered: the blow on `handle` at the hit point (world) with the push (world,
+        /// N·s), how far the muscles there unpin (0..1), how far that unpin reaches the rest of the body (0 the part struck and its
+        /// neighbours .. 1 the whole body, the hips too: NativeHitPuppetRules.Spread) and how loose the body is (0 a pilot's .. 1 a
+        /// shambler's: NativeHitPuppetRules.Loose). False as Hit.</summary>
+        public static Func<object,Vector3,Vector3,float,float,float,bool> Strike;
+        /// <summary>Optional: the body's hitbox, a capsule standing on its skeleton's parent (the body's floor point): its radius and
+        /// height (m). The bent pose never takes a part further out of it than the drawn pose has it.</summary>
+        public static Action<object,float,float> Bounds;
+        /// <summary>Optional, the Editor's diagnostics: one line a hit as the presentation reads it (its source, point and push).</summary>
+        public static Action<string> Trace;
         // Runs after the bridge's startup registration. This is a registration receipt, not proof of visible reactions.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void ReportRegistration()
         {
             Debug.Log(Registered
-                ? "Hit puppets: bridge registered (attach/hit/step/fade/sleep/release). Verify the hit reactions in play."
+                ? "Hit puppets: bridge registered (attach/hit/step/fade/sleep/release"+(Strike!=null?", strike":"")+(Bounds!=null?", bounds":"")+"). Verify the hit reactions in play."
                 : "Hit puppets: bridge unavailable or incomplete; posed-body fallback. Repack licensed assets with the add-on allowlist (docs/HIT-PUPPETS.md).");
         }
     }
