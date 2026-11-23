@@ -1,3 +1,33 @@
+## 2026-11-22 — Claude: releases 19 and 20: first person holds the held gun, and arms for every other class (integrator)
+- **Release 19:** merged `claude/fps-held-gun` `4c33700e` (F1).
+  - Owner: "use whatever gun we are holding", "theres rods for some reason?", "the forearm thing might be cause im using 'Sheldon Robe'".
+  - Published: shared and the builder at `d058426d`. Test channel revision `639309750112557939` (build `ea910d4b`, 400.0 MiB).
+  - Changes:
+    - first person draws the game's own gun and skin on T1's hold;
+    - the chip modules sit on our weapon frame again (they were the "rods");
+    - the robe sleeve is a static mesh cut at mid-forearm in first person;
+    - the guns sit lower right.
+  - Checks: PrototypeBuild.Validate on `303b7f3a`, the full suite at `4c33700e` (1,105 groups, exit 0), the Unity compile, the build.
+  - No Drive zip change. `pack_visual_body` no longer packs `ChipArenaViewGuns.prefab`; the next routine repack drops it (about 7 MB).
+- **Release 20:** merged `claude/fps-melee` `5ecd43ec` (F1, then F2).
+  - Owner: "Go ahead and fix".
+  - Published: shared and the builder at `797f902f`. Test channel revision `639309896094597837` (build `e0384598`, 400.0 MiB).
+  - Changes:
+    - the pilot's own arms hold the weapon in first person for the 18 melee, magic and fighter classes (at rest 3-12% of a 2000x1173 frame);
+    - the arms' IK re-reads the elbow;
+    - the free hand tucks;
+    - near-black sleeves lift in this view only;
+    - the machine gun sits 3 cm higher.
+  - Checks: PrototypeBuild.Validate on `52c64f0e`, the full suite at `5ecd43ec` (1,105 groups, exit 0), the Unity compile, the build.
+  - No Drive zip change.
+  - Owner chose to leave the guns' first-person sleeves as they are (no cloth lift there).
+- **Not run (both):** two clients, the Low tier, a playtest.
+- **Open:**
+  - the greatsword is 13% of a bright frame at rest in the robe;
+  - the robe's shield is about 15%;
+  - the bow's upper limb crosses the centre box at rest.
+- **Editor:** rests on `797f902f`. `tools/bz.sh` now bumps the capture tool's version only when the tool changed (about 80 s saved per capture). Entering play mode still costs about 80 s of domain reload.
+
 ## 2026-11-22 — Claude (F2): first-person arms for every other weapon and class (takes over F1's entry below)
 Owner: "Go ahead and fix". **Branch:** `claude/fps-melee` (F1's head `b434147b`, from shared `134c2001` with `d058426d` merged).
 Pushed, not merged, not released. Presentation only.
