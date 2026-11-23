@@ -21,7 +21,7 @@ the upper body, on the game's own gun models and Arsenal skins:
 | Support hand | wraps the right (the clip's) | closed on the model's handguard: the grip's own finger pose (`Grip.Hand`) | the same |
 
 Unchanged: the standing match idles (the long guns' low carry, the pistol's low ready; owner 2026-11-10 and `match-idles-keep`),
-the legs (the game's 8-way runs, walks and sprint, jumps and landings), the guns' Q/E clips, techniques, reactions, knockdowns,
+the legs (the game's 8-way runs, walks and sprint, jumps and landings; since 2026-11-23 the grounded stride, docs/RUN-REALISTIC.md), the guns' Q/E clips, techniques, reactions, knockdowns,
 first person and every other weapon. The long guns' support fist still seats on the model's own handguard (`Support`), and the
 weapon still rides the right hand (the pack's ready hold by the pack's share of the upper body, `TacHold`; the gun's own set's
 hold at rest, so the idles do not move).
