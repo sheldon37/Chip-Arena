@@ -53,6 +53,9 @@ namespace ChipArena.UnityConversion
             // A pack gun (Set.Tactical): the carry's eased weight, its sprint share, its mix and its share of this frame's upper body, and
             // the hand's turn on the pack's ready hold (TacHold; HoldRotation stays its own set's, for the match idles and strides).
             public float Carry, CarrySprint, CarryShare, PitchKeep=1, Grip, GripHold; public float[] CarryMix; public Quaternion TacHold=Quaternion.identity; public Transform UpperChest, LeftShoulder;
+            // The grounded stride's upper-body carry (Set.RunUpper: a caster's staff carried steady; Core NativeGroundedStride): its clip
+            // (-1: none), its stride's offset onto the first run's, its mix and its share of this frame's upper body.
+            public int RunUpper=-1; public float RunUpperOffset, RunUpperShare; public float[] RunUpperMix;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -118,9 +121,11 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<names.Count;i++){m.Index[names[i]]=i;m.Clips[i]=bank.Clips[names[i]];m.HeldOut[i]=NativeBladeMotion.HeldOut(names[i]);}
             m.Victim=new bool[names.Count];for(int i=0;i<names.Count;i++)m.Victim[i]=System.Array.IndexOf(NativeBladeMotion.VictimClips,names[i])>=0;
             m.Loco=new int[NativeVisualStride.Clips];
+            // (The grounded stride when the bank carries it, else the set's own: Core NativeVisualMotion.Stride.)
+            var stride=NativeVisualMotion.Stride(set,bank);
             for(int k=0;k<m.Loco.Length;k++)
             {
-                m.Loco[k]=m.Index.TryGetValue(set.Locomotion[k],out int i)?i:-1;
+                m.Loco[k]=m.Index.TryGetValue(stride[k],out int i)?i:-1;
                 if(m.Loco[k]>=0){var c=m.Clips[m.Loco[k]];m.SpeedX[k]=c.SpeedX;m.SpeedZ[k]=c.SpeedZ;m.LocoLength[k]=Mathf.Max(.1f,c.Length);}
             }
             // The two skeletons, bone for bone (the proxy is the skeleton's copy: the same order).
@@ -139,6 +144,9 @@ namespace ChipArena.UnityConversion
             var muscle=HumanTrait.MuscleName;int lk=System.Array.IndexOf(muscle,"Left Lower Leg Stretch"),rk=System.Array.IndexOf(muscle,"Right Lower Leg Stretch");
             float first=m.Loco[0]>=0?NativeVisualMotionClips.StridePhase(m.Clips[m.Loco[0]],lk,rk):0;
             for(int k=0;k<m.Loco.Length;k++)if(m.Loco[k]>=0)m.LocoOffset[k]=Mathf.Repeat(NativeVisualMotionClips.StridePhase(m.Clips[m.Loco[k]],lk,rk)-first,1);
+            // The grounded stride's upper-body carry, stepping with it (its own stride's offset onto the first run's).
+            m.RunUpper=set.RunUpper!=null&&NativeVisualMotion.Grounds(set,bank)&&m.Index.TryGetValue(set.RunUpper,out int carried)?carried:-1;
+            if(m.RunUpper>=0)m.RunUpperOffset=Mathf.Repeat(NativeVisualMotionClips.StridePhase(m.Clips[m.RunUpper],lk,rk)-first,1);
             // The feet's clearances: their rest heights, from the bake itself (the body here already wears this frame's pose).
             var rest=visualBodyPrefab!=null?visualBodyPrefab.transform.Find("VisualSkeleton"):null;
             for(int f=0;f<ContactBones.Length;f++)
@@ -333,6 +341,19 @@ namespace ChipArena.UnityConversion
         {
             float rate=NativeVisualStride.Weights(gait.x,gait.z,m.SpeedX,m.SpeedZ,m.LocoWeights);
             return gaitSpeed>.05f?Mathf.Clamp(rate*speed/gaitSpeed,NativeVisualStride.RateMin,NativeVisualStride.RateMax):rate;
+        }
+        // The grounded stride's upper-body carry (Set.RunUpper; owner 2026-11-23: magic "staff held steady, not flailing"): by `w` (the
+        // locomotion's eased share), every muscle but the legs' takes the carry clip's at the stride's phase plus its offset (its arms
+        // step with the legs), over the stride's legs (their hips kept: keepLegs). Its share also stands the free arm's run lowering down
+        // (the carry holds the arms itself). A cast's upper layer still lays over it.
+        private static void VisualRunUpper(VisualMotion m,float w)
+        {
+            m.RunUpperShare=0;if(w<=0||m.RunUpper<0)return;var c=m.Clips[m.RunUpper];
+            if(m.RunUpperMix==null||m.RunUpperMix.Length!=m.Mix.Length)m.RunUpperMix=new float[m.Mix.Length];
+            System.Array.Clear(m.RunUpperMix,0,m.RunUpperMix.Length);NativeVisualMotionClips.Add(c,Mathf.Repeat(m.Phase+m.RunUpperOffset,1)*Mathf.Max(.1f,c.Length),1,m.RunUpperMix);NativeVisualMotionClips.Finish(m.RunUpperMix,1);
+            float e=Mathf.Clamp01(w);var mask=UpperMuscles;
+            for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.RunUpperMix[k]-m.Mix[k])*e;}
+            m.RunUpperShare=e;m.CarryShare=Mathf.Max(m.CarryShare,e);
         }
         // A weight eased in and out (a crossfade starts and ends gently instead of at a constant rate).
         private static float Ease(float w)=>w*w*(3-2*w);
@@ -630,9 +651,9 @@ namespace ChipArena.UnityConversion
             // A human pose places the body by its centre of mass: a raised upper body would swing the hips (and the legs with
             // them). The legs' motion is posed first and its hips kept.
             Vector3 hipsAt=default;Quaternion hipsTurn=default;
-            float carryWeight=VisualTacticalCarryWeight(m,a,time,pick,covered,ready,dt);bool keepLegs=upper||carryWeight>0;
+            float carryWeight=VisualTacticalCarryWeight(m,a,time,pick,covered,ready,dt);float runUpper=m.RunUpper>=0&&covered?loco:0;bool keepLegs=upper||carryWeight>0||runUpper>0;
             if(keepLegs){if(m.Legs==null||m.Legs.Length!=m.Mix.Length)m.Legs=new float[m.Mix.Length];System.Array.Copy(m.Mix,m.Legs,m.Mix.Length);}
-            VisualTacticalCarry(m,pick,time,carryWeight);
+            VisualTacticalCarry(m,pick,time,carryWeight);VisualRunUpper(m,runUpper);
             if(upper)
             {
                 System.Array.Clear(m.UpperMix,0,m.UpperMix.Length);NativeVisualMotionClips.Add(ua,up.TimeA,1-up.Mix,m.UpperMix);

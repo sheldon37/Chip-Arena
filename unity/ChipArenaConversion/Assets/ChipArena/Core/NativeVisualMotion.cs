@@ -21,6 +21,12 @@ namespace ChipArena.UnityConversion
             public string[] Reactions;
             /// <summary>Locomotion, NativeVisualStride's order: 8 runs, 8 walks (clockwise from forward), the sprint.</summary>
             public string[] Locomotion;
+            /// <summary>A grounded stride (Core NativeGroundedStride; owner 2026-11-23: the gun and magic runs read "very 'hoppy'"), in
+            /// Locomotion's order, played instead of it when the bank carries every one of its clips (Stride). Null: Locomotion alone.</summary>
+            public string[] Grounded;
+            /// <summary>A clip whose upper body (all but the legs) rides the grounded stride on the move, at the stride's phase: a caster's
+            /// staff carried steady (NativeGroundedStride.StaffCarry). Null: the stride's own upper body.</summary>
+            public string RunUpper;
             /// <summary>A gun's upper-body layer: its aim poses (down, level, up: blended by the pilot's pitch, AimPitch degrees
             /// apart), its recoil per shot (likewise; FireFromHit: the clip's Hit lands on the shot, else it starts there) and
             /// its reload (fitted to the reload). Null for melee.</summary>
@@ -173,7 +179,25 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides, the DEV classes'
         /// Grruzam fast run): its idle, its stride and its guard (the bake loops them).</summary>
-        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec)&&!NativeDevMotions.Is(spec))return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
+        public static string[] Loops(string spec)
+        {
+            var s=For(spec);if(s==null)return Array.Empty<string>();var l=new System.Collections.Generic.List<string>();
+            if(NativeBlades.Is(spec)||NativeDevMotions.Is(spec)){l.Add(s.Idle);l.Add(s.Block);l.AddRange(s.Locomotion);}
+            // The grounded stride and its staff carry (Core NativeGroundedStride) loop too.
+            if(s.Grounded!=null)foreach(var c in s.Grounded)if(c!=null&&!l.Contains(c))l.Add(c);
+            if(s.RunUpper!=null&&!l.Contains(s.RunUpper))l.Add(s.RunUpper);
+            return l.ToArray();
+        }
+        /// <summary>The stride a set plays on this bank: its grounded stride when the bank carries every one of its clips (and the staff
+        /// carry, for a set that has one), else its own (Locomotion: the builder before the bank lands, CoreTests' synthetic banks).</summary>
+        public static string[] Stride(Set s,IClips clips)=>Grounds(s,clips)?s.Grounded:s.Locomotion;
+        /// <summary>Whether set `s` strides on its grounded stride with this bank (Stride).</summary>
+        public static bool Grounds(Set s,IClips clips)
+        {
+            if(s?.Grounded==null||clips==null||s.RunUpper!=null&&!clips.Has(s.RunUpper))return false;
+            foreach(var c in s.Grounded)if(!clips.Has(c))return false;
+            return true;
+        }
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -197,7 +221,7 @@ namespace ChipArena.UnityConversion
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
-            AbilityIds=new[]{"overdrive"},AbilityStarts=new[]{"2Hand-Shooting-Boost1"},AbilityEnds=new string[1],AbilityRaise=new[]{"orbital-mark","rocket"}},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
+            AbilityIds=new[]{"overdrive"},AbilityStarts=new[]{"2Hand-Shooting-Boost1"},AbilityEnds=new string[1],AbilityRaise=new[]{"orbital-mark","rocket"},Grounded=NativeGroundedStride.Stride},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
         // The guns stand on the pack bow idle's natural stance, upright with the feet about shoulder width (owner 2026-11-10: "maybe
         // not have their legs spread out like they currently are ... more realistic"): the armed set's idle is a melee fighting crouch,
         // the rifle's a wide combat stance. A raise lays the upper body over it; the legs keep the stance, so it never shifts on a shot.
@@ -209,13 +233,13 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
-            AbilityIds=new[]{"frag-grenade"},AbilityStarts=new[]{"Armed-Cast-L-Attack2_start"},AbilityEnds=new[]{"Armed-Cast-L-Attack2_end"}},"2Hand-Bow-Run-","2Hand-Bow-Strafe-","2Hand-Bow-Run-Forward");
+            AbilityIds=new[]{"frag-grenade"},AbilityStarts=new[]{"Armed-Cast-L-Attack2_start"},AbilityEnds=new[]{"Armed-Cast-L-Attack2_end"},Grounded=NativeGroundedStride.Stride},"2Hand-Bow-Run-","2Hand-Bow-Strafe-","2Hand-Bow-Run-Forward");
         // The Bombadier: a bundle of TNT in each fist (owner 2026-11-04: "holding TNTs instead of a grenade launcher. Modify animations however needed"), so the pack's bare-handed set (upright, the fists up by the chest, so the TNT
         // shows from behind), its casts from the one-handed set. Held fire throws overhand, a hand at a time; nothing is raised to aim (Layer: the stance's own arms carry on, so its Aim is only there to make the reload layer run); a reload is the right hand going to the satchel on the hip.
         // Its abilities are in BombUpper (thrown on the move, the arms only) and BombCast (the whole body).
         private static readonly Set Bomb=Build(new Set{Spec=NativeBombs.Spec,TechClips=new[]{BombThrowStart,BombThrowEnd,BombThrowStart+Mirror,BombThrowEnd+Mirror,TechThrowStart,TechThrowEnd,TechFlickStart,TechFlickEnd,BombHeaveStart,BombHeaveEnd,BombLay,BombClick,BombStoop,BombSlam},
             Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
-            AirAttack="Unarmed-Fall",SprintAttack="Unarmed-Sprint",Attacks=new[]{BombThrowEnd},Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Aim=new[]{"Unarmed-Idle","Unarmed-Idle","Unarmed-Idle"},Reload=BombReload,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
+            AirAttack="Unarmed-Fall",SprintAttack="Unarmed-Sprint",Attacks=new[]{BombThrowEnd},Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Aim=new[]{"Unarmed-Idle","Unarmed-Idle","Unarmed-Idle"},Reload=BombReload,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward",Grounded=NativeGroundedStride.Stride,RunUpper=NativeGroundedStride.FistsCarry},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
         // The Top Dog (owner 2026-11-08: a cartoon mallet, swung two-handed): the pack's two-handed sword set, its casts in DogCast (the whole body).
         private static readonly Set TopDog=Build(new Set{Spec=NativeTopDog.Spec,Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
             Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
@@ -233,7 +257,7 @@ namespace ChipArena.UnityConversion
             AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true,Knockdown=M("2Hand-Staff-Knockdown1"),RollBack=M("2Hand-Staff-Roll-Backward"),
             AbilityIds=new[]{"flame-lance","meteor-strike","tidal-wave","geyser-wall","blink-strike","ball-lightning","shadow-shackles","singularity"},
             AbilityStarts=Array.ConvertAll(new[]{"Attack3","L-Buff1","L-AOE1","L-Summon2","L-Buff2","L-Summon1","Attack2","L-AOE2"},c=>M("2Hand-Staff-Cast-"+c+"_start")),
-            AbilityEnds=Array.ConvertAll(new[]{"Attack3","L-Buff1","L-AOE1","L-Summon2","L-Buff2","L-Summon1","Attack2","L-AOE2"},c=>M("2Hand-Staff-Cast-"+c+"_end"))},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
+            AbilityEnds=Array.ConvertAll(new[]{"Attack3","L-Buff1","L-AOE1","L-Summon2","L-Buff2","L-Summon1","Attack2","L-AOE2"},c=>M("2Hand-Staff-Cast-"+c+"_end")),Grounded=NativeGroundedStride.Stride,RunUpper=NativeGroundedStride.StaffCarry},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
         // The bow: the pack's bow set (its block clip is named "Hand-Bow-Block" inside), the bow in the left fist as the game's.
         // Raised while drawing (its drawn poses by the pitch), just after a loose (its release) or while aiming; else carried
         // at rest.
@@ -301,6 +325,8 @@ namespace ChipArena.UnityConversion
             foreach(var c in new[]{s.Knockdown,s.RollBack,s.Electric,s.Wave,s.Hadoken,s.ChargeStart,s.ChargeLoop,s.Shoryuken,s.Step})if(c!=null&&!all.Contains(c))all.Add(c);
             if(s.Kicks!=null)foreach(var c in s.Kicks)if(!all.Contains(c))all.Add(c);
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
+            if(s.Grounded!=null)foreach(var l in s.Grounded)if(l!=null&&!all.Contains(l))all.Add(l);
+            if(s.RunUpper!=null&&!all.Contains(s.RunUpper))all.Add(s.RunUpper);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
             foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
