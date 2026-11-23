@@ -40,19 +40,22 @@ namespace ChipArena.UnityConversion
             var at=CrosshairPoint(range,out _);NativeCameraRig.LookAt(V(focus),V(at),cameraRig.PivotSide,lockLift,out float yawOut,out float pitchOut);
             yaw+=Mathf.DeltaAngle(yaw,yawOut);pitch=Mathf.Clamp(pitchOut,-70,70);
         }
-        private Texture2D scopeMask;private GUIStyle scopeLabel;
+        private Texture2D scopeMask,scopeMaskWide;private GUIStyle scopeLabel;
         // How much nearer the ring looks per metre the rifle kicks back toward the eye (scale 1 + back x this).
         private const float ScopeKickNear=6;
+        // The scope mask: `spread` screen heights square, the ring the same size on screen (spread 3: the kicked scope's one quad that
+        // covers the screen wherever the kick moves it, so no shade strips meet in seams under its turn).
+        private static Texture2D ScopeMaskTexture(int size,float spread)
+        {
+            var t=new Texture2D(size,size,TextureFormat.RGBA32,false){name="Native rifle scope",filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};
+            var pixels=new Color32[size*size];
+            for(int y=0;y<size;y++)for(int x=0;x<size;x++)
+            {float px=(x+.5f)/size-.5f,py=(y+.5f)/size-.5f,r=Mathf.Sqrt(px*px+py*py)*spread;pixels[y*size+x]=Mathf.Abs(r-.32f)<.001f?new Color32(213,236,224,153):new Color32(5,12,18,(byte)Mathf.RoundToInt(255*NativeAimPresentation.ScopeAlpha(r)));}
+            t.SetPixels32(pixels);t.Apply(false,true);return t;
+        }
         private void DrawScope(float width,float height)
         {
-            if(scopeMask==null)
-            {
-                const int size=512;scopeMask=new Texture2D(size,size,TextureFormat.RGBA32,false){name="Native rifle scope",filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};
-                var pixels=new Color32[size*size];
-                for(int y=0;y<size;y++)for(int x=0;x<size;x++)
-                {float px=(x+.5f)/size-.5f,py=(y+.5f)/size-.5f,r=Mathf.Sqrt(px*px+py*py);pixels[y*size+x]=Mathf.Abs(r-.32f)<.001f?new Color32(213,236,224,153):new Color32(5,12,18,(byte)Mathf.RoundToInt(255*NativeAimPresentation.ScopeAlpha(r)));}
-                scopeMask.SetPixels32(pixels);scopeMask.Apply(false,true);
-            }
+            if(scopeMask==null)scopeMask=ScopeMaskTexture(512,1);
             Color previous=GUI.color;
             void Fill(Rect rect,Color color){GUI.color=color;GUI.DrawTexture(rect,Texture2D.whiteTexture);}
             float left=(width-height)*.5f,cx=width*.5f,cy=height*.5f,radius=height*.32f;
@@ -64,11 +67,16 @@ namespace ChipArena.UnityConversion
                 float perDegree=cameraView!=null?height*.5f/Mathf.Tan(cameraView.fieldOfView*.5f*Mathf.Deg2Rad)*Mathf.Deg2Rad:height*.035f,near=1+kBack*ScopeKickNear;
                 GUI.matrix=matrix*Matrix4x4.TRS(new Vector3(cx+kYaw*perDegree,cy-kRise*perDegree,0),Quaternion.Euler(0,0,-kRoll),new Vector3(near,near,1))*Matrix4x4.Translate(new Vector3(-cx,-cy,0));
             }
-            GUI.color=Color.white;GUI.DrawTexture(new Rect(left,0,height,height),scopeMask);
-            var shade=new Color(5/255f,12/255f,18/255f,.75f);
-            // Kicked, the shade runs past the screen's edges on every side (no overlaps), so the moved ring never opens a gap.
-            if(kicked){Fill(new Rect(-width,-height,width*3,height),shade);Fill(new Rect(-width,height,width*3,height),shade);Fill(new Rect(-width,0,width+left,height),shade);Fill(new Rect(left+height,0,width*2-left-height,height),shade);}
-            else if(left>0){Fill(new Rect(0,0,left,height),shade);Fill(new Rect(left+height,0,left,height),shade);}
+            GUI.color=Color.white;
+            // Kicked, one mask three screen heights square covers the screen (up to 21:9) wherever the ring goes (strips beside it showed
+            // seams once turned).
+            if(kicked){if(scopeMaskWide==null)scopeMaskWide=ScopeMaskTexture(1024,3);GUI.DrawTexture(new Rect(cx-height*1.5f,cy-height*1.5f,height*3,height*3),scopeMaskWide);}
+            else
+            {
+                GUI.DrawTexture(new Rect(left,0,height,height),scopeMask);
+                var shade=new Color(5/255f,12/255f,18/255f,.75f);
+                if(left>0){Fill(new Rect(0,0,left,height),shade);Fill(new Rect(left+height,0,left,height),shade);}
+            }
             // Thin source-colour reticle inside the circular sight; keep the centre on the aim ray.
             var line=new Color(201/255f,229/255f,217/255f,.55f);
             Fill(new Rect(cx-radius,cy-.5f,radius*2,1),line);Fill(new Rect(cx-.5f,cy-radius,1,radius*2),line);
