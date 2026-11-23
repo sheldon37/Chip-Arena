@@ -1,3 +1,22 @@
+## 2026-11-23 — Claude: release 21: hit reactions show direction, location and weight (integrator)
+Owner: "I want the animation to actually display hit direction (Like reactively)".
+- **Published:** shared and the builder at `b8ba16c9`. Test channel revision `639310078103238036` (build `5499f591`, 395.0 MiB).
+  - The build is about 5 MiB smaller: the unused first-person pack guns no longer ship.
+- **Merged:** `claude/puppet-hits-2` `626dc782` (P2). Its entry below has the step-1 findings and the limits on the hips and legs.
+  - The GetHit side comes from the blow, not the victim's facing.
+  - Hit points are measured from the body centre (they sat 0.865 m high).
+  - Blades push along the swing.
+  - The whole-body clip plays only for heavy blows.
+- **Drive zip:** the PuppetMaster bridge 2 (`38d1481d`) replaces release 15's bridge in the private add-ons; the allowlist is unchanged. The bridge is installed in the Editor checkout too. The previous zip is kept as `LocalAssets-2026-11-23-before-puppet-hits-2.zip`.
+- **Checks:**
+  - the full suite at `626dc782` (1,105 groups, exit 0);
+  - PrototypeBuild.Validate on `916fd96f` with bridge 2;
+  - the Unity compile;
+  - the builder log shows the bridge built;
+  - the build.
+  - The pin scan's 3 hits are P2's own must-not-contain strings.
+- **Not run:** two clients, the Balanced and Low tiers, a live PvE zombie hitting a pilot.
+
 ## 2026-11-23 — Claude (P2): hit reactions show the hit's direction, where it struck and its weight (PuppetMaster, presentation only)
 Owner: "Currently; we have essentially the same hit reaction for all hits. I want to really use the new ragdoll asset ... I want
 the animation to actually display hit direction (Like reactively)".
