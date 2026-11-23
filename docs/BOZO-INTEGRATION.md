@@ -1053,7 +1053,10 @@ owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CRE
     `SM_Sniper_Scope` on its receiver, 1.15 m (the game's 1.5 m); the scope's eyepiece is the entry's `Sight` (first person lines it up).
     The local tool's weapons table took two fields for it: `Extras` (kit parts mounted in kit space) and `Sight` (kit space).
     It was `SM_Assault_Rifle_5,56`, .92 m;
-  - machine gun: `SM_Light_Machine_Gun`, .93 m (the game's 1.2 m), its deployed bipod cut off in the bake;
+  - machine gun: since 2026-11-23 (owner: "lets replace our machine gun model with the one from the pack") the KINEMATION Tactical
+    Shooter Pack's TR15, .77 m, made static by the local G1 lab (`Assets/LocalAssets/KinemationTactical/Standard/TR15_Standard.prefab`)
+    with its rear aperture as `Sight` and its front post as `SightFront` (docs/FPS-TACTICAL.md); it was `SM_Light_Machine_Gun`, .93 m
+    (the game's 1.2 m), its deployed bipod cut off in the bake;
   - sword: `RB_Falchion`, its tip 1.27 m from the fist (the game's 1.275 m);
   - greatsword: `RB_Greatsword` at 1.15 times, its tip 1.64 m from the fist (the game's 1.685 m).
   - The daggers, shield, bow, staffs and magic keep the game's models, as do the Prototype Series skin, the Classic body
