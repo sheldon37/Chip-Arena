@@ -169,6 +169,7 @@ namespace ChipArena.UnityConversion
             // The model's directional hit clip: the blow's side, never the pilot's own facing (ReactionYaw is the facing at the hit).
             var motion=R(root,"Assets/ChipArena/Core/NativeVisualMotion.cs");
             Check(!motion.Contains("Side(a.ReactionYaw)")&&motion.Contains("set.Reactions[HitSide(a)]")&&motion.Contains("return x*x+z*z<1e-8f?0:Side((float)Math.Atan2(-x,-z));"),"the model's hit clip is the blow's side (Actor.ReactionDir), never the pilot's own facing");
+            Check(motion.Contains("time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)&&HitClip(a))")&&motion.Contains("public const float HitClipStrength=.8f;"),"a light hit (a pistol or machine-gun round) plays no whole-body hit clip: the physical reaction shows it and a burst adds up");
             // First person: the local pilot's own body is never posed, so no reaction moves its view.
             var pose=Body(run("NativeVisualBodyPresentation.cs"),"private void VisualBodyPose(Actor a,float time)");
             Check(pose.IndexOf("if(!ModelBody(a)||FirstPerson&&a.Id==LocalId||",StringComparison.Ordinal)>0&&pose.IndexOf("HitPuppetPilot(body,rig,a,time);",StringComparison.Ordinal)>pose.IndexOf("FirstPerson&&a.Id==LocalId",StringComparison.Ordinal),"the local pilot in first person draws no body, so its own reaction never moves its view");
