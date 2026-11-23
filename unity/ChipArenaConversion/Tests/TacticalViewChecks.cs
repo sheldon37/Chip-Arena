@@ -30,7 +30,10 @@ namespace ChipArena.UnityConversion
             foreach(var g in new[]{NativeTacticalGun.Pistol,NativeTacticalGun.Rifle,NativeTacticalGun.MachineGun})Check(bank.Covers(g),g.Weapon+"'s set is covered");
             Check(NativeTacticalGun.For(WeaponId.Sword)==null,"no tactical set for the sword");
             // The pack's own lens: its FPCamera's 90 degrees, each gun's TacAnimSettings aimFov.
-            Check(NativeTacticalGun.Pistol.HipFov==90&&NativeTacticalGun.Rifle.HipFov==90&&NativeTacticalGun.MachineGun.HipFov==90&&NativeTacticalGun.Pistol.AimFov==80&&NativeTacticalGun.Rifle.AimFov==70&&NativeTacticalGun.MachineGun.AimFov==70,"the view model's lens is the pack's (90; aimed 80 for the Viper, 70 for the SRM-12 and TR15)");
+            Check(NativeTacticalGun.Pistol.HipFov==90&&NativeTacticalGun.Rifle.HipFov==90&&NativeTacticalGun.MachineGun.HipFov==90&&NativeTacticalGun.Rifle.AimFov==70&&NativeTacticalGun.MachineGun.AimFov==70,"the view model's lens is the pack's (90; aimed 70 for the SRM-12 and TR15)");
+            // The pistol aimed larger (owner 2026-11-23: "The pistol ADS still looks a bit small"): its rear sight 24 cm from the eye on its aim
+            // row's own 55 degrees (it was 34 cm on 80, under half the pack's own Viper picture).
+            Check(NativeTacticalGun.Pistol.AimFov==55&&NativeTacticalGun.Pistol.AimFov==GunRules.Get(WeaponId.Pistol).Fov&&Near(NativeTacticalGun.Pistol.EyeRelief,.24f),"the aimed pistol: 24 cm eye relief on its aim row's 55 degree lens");
             Bad(()=>NativeTacticalBank.Parse(new byte[]{1,2,3}),"a short file");
             Bad(()=>{var b=(byte[])bytes.Clone();b[0]=(byte)'X';NativeTacticalBank.Parse(b);},"a wrong magic");
             Bad(()=>NativeTacticalBank.Parse(bytes.Take(bytes.Length-5).ToArray()),"a truncated bank");
@@ -48,6 +51,7 @@ namespace ChipArena.UnityConversion
             Timing();
             Solve(bank);
             Pack(bank);
+            AimKick(bank);
             Sources(root);
             ViewArms(root);
             Console.WriteLine("PASS tactical view: "+count+" checks: the bank's reader, every clip on the rules' clocks (reload, bolt, kick, draw, aim), the sight picture, the hands on the model, the pack guns (their clips, hands, aim point and jumps), no allocation per frame, first person and presentation only, no pack code or bank in git");
@@ -291,6 +295,95 @@ namespace ChipArena.UnityConversion
             Check(arms.Contains("arms.Hand[1].SetPositionAndRotation(hr,qr);")&&arms.Contains("arms.Hand[0].SetPositionAndRotation(hl,ql);"),"the hands stay where the old view put them (the weapon, its trails and effects stay put)");
         }
 
+        // The aimed recoil (owner 2026-11-23: "The pistol ADS still looks a bit small and simulates no recoil"; Core/NativeAimKick.cs): the
+        // pack's recoil data played aimed: each shot visibly turns the gun and kicks it back, and the sights are back on the eye's axis (the
+        // shots' line) by the time the next shot is allowed; the machine gun's burst climbs and settles once it stops; the pistol's slide
+        // cycles; the camera shakes only aimed and within the camera-shake share; the rifle's scope kicks and settles before its bolt is
+        // home; the hip is as it was. Presentation only.
+        private static float SightError(NativeTacticalSolution s,Vector3 rear,Vector3 front)
+        {
+            float Ang(Vector3 p)=>(float)(Math.Atan2(Math.Sqrt(p.X*p.X+p.Y*p.Y),p.Z)*180/Math.PI);
+            return Math.Max(Ang(s.Weapon+Vector3.Transform(rear,s.WeaponTurn)),Ang(s.Weapon+Vector3.Transform(front,s.WeaponTurn)));
+        }
+        private static float CameraAngle(NativeTacticalSolution s)=>(float)(2*Math.Acos(Math.Min(1,Math.Abs(s.Camera.W)))*180/Math.PI);
+        private static void AimKick(NativeTacticalBank bank)
+        {
+            var report=new StringBuilder();
+            // The pack's shapes, read as data: every one starts at rest and is at rest by its end; the targets are the pack's.
+            foreach(var k in new[]{NativeAimKick.Pistol,NativeAimKick.MachineGun,NativeAimKick.Rifle})
+            {
+                string n=k.Weapon.ToString();
+                foreach(var sh in new[]{k.RiseShape,k.YawShape,k.RollShape,k.BackShape})
+                    Check(sh!=null&&sh.Length==k.RiseShape.Length&&sh[0]==0&&sh.All(MathUtil.Finite)&&sh.Max()<=1.02f&&NativeAimKick.Shape(sh,k.Span)==0&&NativeAimKick.Shape(sh,-1)==0,n+": a recoil shape starts and ends at rest");
+                Check(k.Rise1>=k.Rise0&&k.Rise0>0&&k.Back1>=k.Back0&&k.Back0>0&&k.CameraShare>0&&k.CameraShare<=.5f,n+": the shot's rise and kick back, a share of the camera shake");
+                Check(NativeAimKick.For(k.Weapon)==k,n+"'s aimed recoil");
+            }
+            Check(NativeAimKick.For(WeaponId.Sword)==null,"no aimed recoil for the sword");
+            Check(NativeAimKick.Pistol.Rise0==9&&NativeAimKick.Pistol.Rise1==12&&NativeAimKick.Pistol.Back0==.014f&&NativeAimKick.Pistol.Rate==1.1f&&NativeAimKick.Pistol.SlideShape?.Length==5,"the Viper's own recoil (9-12 degrees, 14-16 mm, its slide)");
+            Check(NativeAimKick.MachineGun.Auto&&NativeAimKick.MachineGun.ExtraRise==2.5f&&NativeAimKick.MachineGun.SmoothRise==30&&NativeAimKick.MachineGun.Pivot.Y==-.045f,"the TR15's own automatic recoil (smoothed, its pivot)");
+            Check(!NativeAimKick.Pistol.Auto&&!NativeAimKick.Rifle.Auto&&NativeAimKick.Rifle.Rise0==1.8f&&NativeAimKick.Rifle.Back1==.015f,"the SRM-12's own recoil, aimed (x2 pitch, x10 kick)");
+            // The pistol: aimed and settled, a shot turns it well off the axis, the slide cycles, and the sights are back on the axis by the
+            // next shot the rule allows (its aimed interval); a string at that rate does the same every shot.
+            {
+                var g=NativeTacticalGun.Pistol;var v=new NativeTacticalView(bank);var s=new NativeTacticalSolution();Vector3 rear=g.ModelSight,front=g.ModelFront;
+                var c=v.Calibrate(g,new Vector3(.01f,-.05f,-.03f),Quaternion.Identity,rear);c.Fronted=true;c.Front=front;
+                var rule=GunRules.Get(WeaponId.Pistol);float interval=rule.Interval*rule.AimInterval;
+                NativeTacticalInput In(float t,float last,bool aim=true,float shake=1)=>new NativeTacticalInput{Time=t,Weapon=WeaponId.Pistol,LastShot=last,ShootReady=last+interval,Aim=aim,Grounded=true,Shake=shake};
+                float last=-100;for(int f=0;f<120;f++)v.Solve(In(f/60f,last),c,s);
+                Check(Near(s.Ads,1)&&SightError(s,rear,front)<.01f,"aimed at rest the pistol's sights are on the axis");
+                for(int n=0;n<5;n++)
+                {
+                    last=2+n*interval;float peak=0,slide=0,cam=0,back=0;
+                    for(int f=0;f/60f<interval-1e-3f;f++){v.Solve(In(last+f/60f,last),c,s);peak=Math.Max(peak,SightError(s,rear,front));slide=Math.Max(slide,s.Slide);cam=Math.Max(cam,CameraAngle(s));back=Math.Max(back,s.KickBack);}
+                    v.Solve(In(last+interval-1e-3f,last),c,s);float next=SightError(s,rear,front);
+                    Check(peak>2,"shot "+n+": the aimed pistol visibly kicks (its sights "+peak+" degrees off at the peak)");
+                    Check(back>.01f&&slide>.9f&&cam>.1f&&cam<2,"shot "+n+": it kicks back toward the eye ("+back+" m), the slide cycles, the camera shakes a little ("+cam+" degrees)");
+                    Check(next<.05f,"shot "+n+": the sights are back on the aim ray by the next shot allowed ("+next+" degrees at "+interval+" s)");
+                    if(n==0)report.Append("pistol: peak "+peak.ToString("0.00")+" deg off the axis, kick back "+(back*1000).ToString("0.0")+" mm, camera "+cam.ToString("0.00")+" deg, at the next shot ("+interval.ToString("0.000")+" s) "+next.ToString("0.000")+" deg; ");
+                }
+                // The hip is as it was: no aimed recoil, no camera shake; the slide still cycles.
+                var hv=new NativeTacticalView(bank);var hs=new NativeTacticalSolution();var hc=hv.Calibrate(g,new Vector3(.01f,-.05f,-.03f),Quaternion.Identity,rear);
+                float hipKick=0,hipCam=0,hipSlide=0;for(int f=0;f<120;f++){float t=f/60f;hv.Solve(In(t,t>=1?1:-100,aim:false),hc,hs);hipKick=Math.Max(hipKick,Math.Abs(hs.KickPitch)+hs.KickBack+Math.Abs(hs.CameraPitch));if(t<.9f)hipCam=Math.Max(hipCam,CameraAngle(hs));hipSlide=Math.Max(hipSlide,hs.Slide);}
+                Check(hipKick==0&&hipCam==0&&hipSlide>.9f,"at the hip the aimed recoil and its camera shake stay out; the slide cycles");
+                // Camera shake off: no camera turn from a shot.
+                var ov=new NativeTacticalView(bank);var os=new NativeTacticalSolution();var oc=ov.Calibrate(g,new Vector3(.01f,-.05f,-.03f),Quaternion.Identity,rear);float offCam=0;
+                for(int f=0;f<180;f++){float t=f/60f;ov.Solve(In(t,t>=2?2:-100,shake:0),oc,os);if(t>=2)offCam=Math.Max(offCam,CameraAngle(os));}
+                Check(offCam<1e-3f,"with camera shake off the camera never turns ("+offCam+")");
+                // A fresh view does not replay the shot already fired.
+                var fv=new NativeTacticalView(bank);var fs=new NativeTacticalSolution();var fc=fv.Calibrate(g,new Vector3(.01f,-.05f,-.03f),Quaternion.Identity,rear);
+                fv.Solve(new NativeTacticalInput{Time=5.01f,Weapon=WeaponId.Pistol,LastShot=5,ShootReady=5+interval,Grounded=true,Shake=1,Fresh=true},fc,fs);
+                Check(fs.Slide==0&&fv.AimKick.Rise==0,"a fresh view does not replay the last shot");
+            }
+            // The machine gun: aimed, a burst at its rate climbs (capped), and once it stops the sights settle back on the axis quickly.
+            {
+                var g=NativeTacticalGun.MachineGun;var v=new NativeTacticalView(bank);var s=new NativeTacticalSolution();var rear=new Vector3(0,.0062f,.005f);var front=new Vector3(0,.011f,.384f);
+                var c=v.Calibrate(g,new Vector3(.05f,-.13f,-.12f),Quaternion.Identity,rear);c.Fronted=true;c.Front=front;float interval=GunRules.Get(WeaponId.MachineGun).Interval;
+                float last=-100;int f=0;
+                for(;f<120;f++)v.Solve(new NativeTacticalInput{Time=f/60f,Weapon=WeaponId.MachineGun,LastShot=last,ShootReady=last+interval,Aim=true,Grounded=true,Shake=1},c,s);
+                Check(SightError(s,rear,front)<.01f,"aimed at rest the machine gun's sights are on the axis");
+                float start=2,peak=0,climb=0,settled=-1;int rounds=14;float end=start+(rounds-1)*interval;
+                for(;f<60*4;f++)
+                {
+                    float t=f/60f;if(t>=start&&t<=end+1e-4f)last=start+(float)Math.Floor((t-start)/interval+1e-4f)*interval;
+                    v.Solve(new NativeTacticalInput{Time=t,Weapon=WeaponId.MachineGun,LastShot=last,ShootReady=last+interval,Aim=true,Grounded=true,Shake=1},c,s);
+                    float e=SightError(s,rear,front);if(t<=end+interval){peak=Math.Max(peak,e);climb=Math.Max(climb,s.Climb);settled=-1;}else if(e<.05f){if(settled<0)settled=t-end;}else settled=-1;
+                }
+                Check(peak>.8f&&climb>.3f&&climb<=NativeAimKick.MachineGun.ClimbMax+1e-4f,"a burst visibly kicks and climbs (its sights "+peak+" degrees off, the climb "+climb+", capped)");
+                Check(settled>0&&settled<=interval+.2f,"once the burst stops the sights are back on the aim ray within about 0.15 s of the next round's time ("+settled+" s after the last round)");
+                report.Append("machine gun: 14 rounds peak "+peak.ToString("0.00")+" deg, climb "+climb.ToString("0.00")+" deg, within 0.05 deg "+settled.ToString("0.000")+" s after the last round; ");
+            }
+            // The rifle's scope: the shot lifts the reticle, then it is back on the aim ray before the next shot is allowed.
+            {
+                var k=NativeAimKick.Rifle;float interval=GunRules.Get(WeaponId.Rifle).Interval;float peak=0;
+                for(int f=0;f<70;f++){k.ScopeKick(3,f/60f,interval,out float r,out _,out _,out _);peak=Math.Max(peak,r);}
+                k.ScopeKick(3,interval*NativeAimKick.Fit,interval,out float r1,out float y1,out float z1,out float b1);
+                Check(peak>1.5f&&r1==0&&y1==0&&z1==0&&b1==0,"the scope kicks (its reticle "+peak+" degrees up) and is back on the aim ray before the bolt is home");
+                k.ScopeKick(float.NaN,.1f,interval,out float r2,out _,out _,out _);k.ScopeKick(3,-.1f,interval,out float r3,out _,out _,out _);Check(r2==0&&r3==0,"no shot, no scope kick");
+                report.Append("rifle scope: reticle up "+peak.ToString("0.00")+" deg, at rest by "+(interval*NativeAimKick.Fit).ToString("0.00")+" s");
+            }
+            Console.WriteLine("PASS aimed recoil (tactical view): "+report);
+        }
+
         private static void Sources(string root)
         {
             string runtime=Path.Combine(root,"Assets/ChipArena/Runtime"),core=Path.Combine(root,"Assets/ChipArena/Core");
@@ -332,6 +425,13 @@ namespace ChipArena.UnityConversion
             Check(pres.Contains("c.Skin.enabled=mesh!=null&&shown;")&&pres.Contains("bool shown=c.Shown||shoulders&&tacticalWide&&TacticalIsSkin(c.Skin)&&c.Source!=null&&c.Source.name==\"lowerarms\";")&&pres.Contains("Shown=skin.enabled"),"the arm cut never turns on a renderer the outfit switched off (the hologram proxy), but the forearm's skin below a wide sleeve");
             Check(pres.Contains("if(Twist[i][k]!=null)Twist[i][k].localScale=TwistScale[i][k];")&&pres.Contains("TacticalSlim(arms);"),"the slimmer forearms are the tactical view's alone (Rest puts them back every frame)");
             Check(pres.Contains("tacticalFill.cullingMask=1<<10;tacticalFill.shadows=LightShadows.None;"),"the fill light lights the view-model layer alone, without shadows");
+            // The aimed recoil (owner 2026-11-23): presentation only. The slide moves the view body's own held model and is put back before
+            // the view is posed again; the scope overlay reads its kick; the aimed recoil's code writes no pilot or input field.
+            Check(pres.Replace("\r\n","\n").Contains("tacticalArms.Rest();\n            TacticalSlideRest();"),"the slide is back at rest before the view is posed");
+            Check(pres.Contains("VisualWeaponFit(rh,held);TacticalSlidePose(held,s.Slide);}")&&pres.Contains("if(ScopeActive){tacticalScopedFrame=Time.frameCount;ScopeKickSeen(a,time);return false;}"),"the slide on the held model in first person; the scope sees its shot");
+            string scope=File.ReadAllText(Path.Combine(runtime,"NativeScopePresentation.cs")),kick=File.ReadAllText(Path.Combine(core,"NativeAimKick.cs"));
+            Check(scope.Contains("bool kicked=presentation.ScopeKick(out float kRise,out float kYaw,out float kRoll,out float kBack);")&&scope.Contains("GUI.matrix=matrix;"),"the scope overlay takes the shot's kick and puts its matrix back");
+            Check(!Regex.IsMatch(kick,@"\b(a|i|input)\.[A-Z]\w*\s*(=[^=]|\+=|-=)")&&!kick.Contains("GunRules.")&&!kick.Contains("Actor "),"the aimed recoil reads and writes no rule or pilot state");
             Check(bodyFile.Contains("if(skin!=null)TacticalViewSkin(body,skin,skin.sharedMesh,cut);")&&pres.Contains("TacticalArmCut(arms);"),"the view body's arms are cut at the clavicles only while the tactical view or the eye-anchored arms draw");
         }
     }

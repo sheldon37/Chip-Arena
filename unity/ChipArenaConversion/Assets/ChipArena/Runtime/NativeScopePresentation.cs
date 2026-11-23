@@ -41,6 +41,8 @@ namespace ChipArena.UnityConversion
             yaw+=Mathf.DeltaAngle(yaw,yawOut);pitch=Mathf.Clamp(pitchOut,-70,70);
         }
         private Texture2D scopeMask;private GUIStyle scopeLabel;
+        // How much nearer the ring looks per metre the rifle kicks back toward the eye (scale 1 + back x this).
+        private const float ScopeKickNear=6;
         private void DrawScope(float width,float height)
         {
             if(scopeMask==null)
@@ -54,13 +56,24 @@ namespace ChipArena.UnityConversion
             Color previous=GUI.color;
             void Fill(Rect rect,Color color){GUI.color=color;GUI.DrawTexture(rect,Texture2D.whiteTexture);}
             float left=(width-height)*.5f,cx=width*.5f,cy=height*.5f,radius=height*.32f;
+            // The shot's kick (owner 2026-11-23, aimed recoil; NativeAimKick.Rifle, the pack's SRM-12 data): the ring and reticle lift and
+            // turn with the rifle and near the eye, then settle back on the aim ray before the next shot is allowed. The world camera stays.
+            Matrix4x4 matrix=GUI.matrix;bool kicked=presentation.ScopeKick(out float kRise,out float kYaw,out float kRoll,out float kBack);
+            if(kicked)
+            {
+                float perDegree=cameraView!=null?height*.5f/Mathf.Tan(cameraView.fieldOfView*.5f*Mathf.Deg2Rad)*Mathf.Deg2Rad:height*.035f,near=1+kBack*ScopeKickNear;
+                GUI.matrix=matrix*Matrix4x4.TRS(new Vector3(cx+kYaw*perDegree,cy-kRise*perDegree,0),Quaternion.Euler(0,0,-kRoll),new Vector3(near,near,1))*Matrix4x4.Translate(new Vector3(-cx,-cy,0));
+            }
             GUI.color=Color.white;GUI.DrawTexture(new Rect(left,0,height,height),scopeMask);
             var shade=new Color(5/255f,12/255f,18/255f,.75f);
-            if(left>0){Fill(new Rect(0,0,left,height),shade);Fill(new Rect(left+height,0,left,height),shade);}
+            // Kicked, the shade runs past the screen's edges on every side (no overlaps), so the moved ring never opens a gap.
+            if(kicked){Fill(new Rect(-width,-height,width*3,height),shade);Fill(new Rect(-width,height,width*3,height),shade);Fill(new Rect(-width,0,width+left,height),shade);Fill(new Rect(left+height,0,width*2-left-height,height),shade);}
+            else if(left>0){Fill(new Rect(0,0,left,height),shade);Fill(new Rect(left+height,0,left,height),shade);}
             // Thin source-colour reticle inside the circular sight; keep the centre on the aim ray.
             var line=new Color(201/255f,229/255f,217/255f,.55f);
             Fill(new Rect(cx-radius,cy-.5f,radius*2,1),line);Fill(new Rect(cx-.5f,cy-radius,1,radius*2),line);
             Fill(new Rect(cx-1,cy-1,2,2),new Color(.91f,1,.95f));
+            GUI.matrix=matrix;
             GUI.color=new Color(205/255f,231/255f,224/255f);if(scopeLabel==null)scopeLabel=new GUIStyle(small){alignment=TextAnchor.MiddleCenter};
             GUI.Label(new Rect(cx-160,cy+height*.23f,320,25),"3× SCOPE · RELEASE Q",scopeLabel);GUI.color=previous;
         }

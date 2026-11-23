@@ -173,7 +173,8 @@ namespace ChipArena.UnityConversion
         // Eye relief: how far in front of the eye the rear sight sits fully aimed (m).
         public float EyeRelief;
         // The view model's lens (vertical degrees) at the hip and fully aimed: the pack's own (its FPCamera's 90, each gun's
-        // TacAnimSettings aimFov: the Viper 80, the SRM-12 and the TR15 70), so the arms and gun frame as its demo does.
+        // TacAnimSettings aimFov: the SRM-12 and the TR15 70), so the arms and gun frame as its demo does. The pistol aims at 55, its
+        // aim row's own world view (owner 2026-11-23: "The pistol ADS still looks a bit small"): the gun zooms in with the world.
         public float HipFov=90,AimFov=70;
         // The game's model on the pack's gun: its rear sight on the pack gun's sight line (SightHeight above the gun bone: the
         // pack weapon's AimPoint), its right wrist level with the pack's along the bore, then ModelOffset (gun frame). The left
@@ -199,9 +200,12 @@ namespace ChipArena.UnityConversion
         public float[] ReloadWarp;
         // The pack's idle/walk intensities (standing, aiming).
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
+        // The pistol aimed (owner 2026-11-23: "The pistol ADS still looks a bit small"): its rear sight 24 cm from the eye on a 55 degree
+        // lens (it was 34 cm on 80: the slide 46 px wide of 2000x1173, under half the pack's own Viper picture, whose eye sits 16 cm
+        // behind its rear sight on 80); the slide now about 100 px, as the pack frames it.
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.09f,-.032f,.047f),HipTurn=new Quaternion(0,-.04361939f,0,.99904822f),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            EyeRelief=.34f,AimShoulderDrop=.16f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.0147f,-.0586f),ModelFront=new Vector3(0,-.0147f,.1105f),
+            EyeRelief=.24f,AimShoulderDrop=.16f,SightHeight=.0346f,LeftOnRight=true,AimFov=55,ModelSight=new Vector3(0,-.0147f,-.0586f),ModelFront=new Vector3(0,-.0147f,.1105f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
@@ -374,6 +378,10 @@ namespace ChipArena.UnityConversion
         public float Ads,ActionWeight;public string Action="";public float ActionTime;
         // The pack gun's own clip this frame (its slide, bolt and magazine) and its time.
         public string WeaponClip="";public float WeaponTime;
+        // The aimed recoil this frame (NativeAimKick), as applied (times the aim): the gun's turn (degrees: the muzzle's rise, yaw and
+        // roll), its kick back toward the eye and its lift (metres), the machine gun's climb (degrees), the camera's rise and roll
+        // (degrees, before the camera-shake setting); and the pistol's slide travel share (any first-person shot).
+        public float KickPitch,KickYaw,KickRoll,KickBack,KickUp,Climb,CameraPitch,CameraRoll,Slide;
     }
 
     /// <summary>The view's state between frames (the draw, the aim's progress, the recoil and the last shot seen) and its solve.</summary>
@@ -384,6 +392,8 @@ namespace ChipArena.UnityConversion
         // The jump's moments (the pack's Jump_Start, Jump_Loop and Jump_End on the additive bone).
         private bool grounded=true;private float airAt=-100,landAt=-100;
         public readonly NativeTacticalRecoil Recoil=new NativeTacticalRecoil();
+        // The aimed recoil (the pack's per-gun recoil data, Core/NativeAimKick.cs): it takes over from the spring as the aim comes in.
+        public readonly NativeAimKickState AimKick=new NativeAimKickState();
         private readonly Vector3[] fr=new Vector3[15],fl=new Vector3[15],fr2=new Vector3[15],fl2=new Vector3[15];
         public NativeTacticalView(NativeTacticalBank bank){Bank=bank??throw new ArgumentNullException(nameof(bank));}
         public float AimProgress=>aim;public float DrawAt=>drawAt;
@@ -431,12 +441,13 @@ namespace ChipArena.UnityConversion
         {
             var g=NativeTacticalGun.For(i.Weapon);if(g==null||!cal.Set||!Bank.Covers(g))return false;
             float dt=float.IsNaN(at)||i.Time<at||i.Time-at>.5f?0:i.Time-at;at=i.Time;
-            if(i.Weapon!=gun||i.Fresh){gun=i.Weapon;drawAt=i.Time;aim=0;Recoil.Reset();lastShot=i.LastShot;}
+            if(i.Weapon!=gun||i.Fresh){gun=i.Weapon;drawAt=i.Time;aim=0;Recoil.Reset();AimKick.Reset(i.LastShot);lastShot=i.LastShot;}
             // A new shot: the recoil's kick (the pistol's and rifle's clips carry most of theirs).
             if(!float.IsNaN(lastShot)&&i.LastShot>lastShot+1e-4f&&i.LastShot<=i.Time+1e-3f)Recoil.Kick(g,i.LastShot,g.Fire==null?1:g.FireAction?.45f:.6f);
             lastShot=i.LastShot;Recoil.Step(g,dt);
             if(grounded&&!i.Grounded)airAt=i.Time;else if(!grounded&&i.Grounded)landAt=i.Time;grounded=i.Grounded;
             float interval=NativeTacticalTiming.Interval(i.Weapon,i.LastShot,i.ShootReady);
+            AimKick.Step(NativeAimKick.For(i.Weapon),i.Time,i.LastShot,interval,dt);
             bool reloading=NativeTacticalTiming.Reloading(i.Time,i.ReloadAt,i.ReloadUntil);
             var idle=Bank.Clip(g.Idle);idle.Sample(0,out var b,fr,fl);
             // The action layer: a reload, else the fire action (the bolt), else the draw.
@@ -484,12 +495,28 @@ namespace ChipArena.UnityConversion
             // (AimSteady): its breathing only ever dips (up to 4.4 mm at the aim's intensity), which took the sights off the shots' line,
             // by up to 0.6 degrees on the TR15's post (2.7 on its aperture, 9.5 cm from the eye).
             Locomotion(g,i,ads,walk,sprint,out var addP,out var addQ);gp+=addP*(1-AimSteady*ads);gq=Quaternion.Normalize(addQ*gq);
-            // Recoil about its pivot, then the look sway, hop and landing (the sway at 30 % aimed).
+            // Recoil about its pivot, then the look sway, hop and landing (the sway at 30 % aimed). The procedural spring at the hip
+            // (as before); as the aim comes in, the pack's aimed recoil (NativeAimKick: the gun turned about the pack's pivot and kicked
+            // back toward the eye, back on the sights before the next shot) takes over from it.
             {
-                var kq=NativeTacticalMath.Euler(new Vector3(-Recoil.Pitch,Recoil.Yaw,Recoil.Roll));var piv=g.KickPivot;
-                var nq=Quaternion.Normalize(gq*kq);gp+=NativeTacticalMath.Rotate(gq,piv)-NativeTacticalMath.Rotate(nq,piv)+NativeTacticalMath.Rotate(nq,new Vector3(0,0,-Recoil.Back));gq=nq;
+                float hip=1-ads;var kq=NativeTacticalMath.Euler(new Vector3(-Recoil.Pitch*hip,Recoil.Yaw*hip,Recoil.Roll*hip));var piv=g.KickPivot;
+                var nq=Quaternion.Normalize(gq*kq);gp+=NativeTacticalMath.Rotate(gq,piv)-NativeTacticalMath.Rotate(nq,piv)+NativeTacticalMath.Rotate(nq,new Vector3(0,0,-Recoil.Back*hip));gq=nq;
+                var ak=NativeAimKick.For(i.Weapon);
+                s.KickPitch=AimKick.Rise*ads;s.KickYaw=AimKick.Yaw*ads;s.KickRoll=AimKick.Roll*ads;s.KickBack=AimKick.Back*ads;s.KickUp=AimKick.Up*ads;s.Climb=AimKick.Climb*ads;
+                if(ak!=null&&ads>0)
+                {
+                    var aq2=NativeTacticalMath.Euler(new Vector3(-s.KickPitch,s.KickYaw,s.KickRoll));var ap2=ak.Pivot;
+                    var mq=Quaternion.Normalize(gq*aq2);gp+=NativeTacticalMath.Rotate(gq,ap2)-NativeTacticalMath.Rotate(mq,ap2)+NativeTacticalMath.Rotate(mq,new Vector3(0,s.KickUp,-s.KickBack));gq=mq;
+                }
                 float damp=1-ads*.7f;gp+=new Vector3(i.SwayX,i.SwayY+i.Hop,0)*damp+new Vector3(0,i.Land*.05f,0);
                 gq=Quaternion.Normalize(Quaternion.CreateFromAxisAngle(Vector3.UnitZ,-i.SwayRoll*damp)*gq);
+            }
+            // The shot's camera shake (aimed; within the camera-shake share, on top of the clips' camera motion; the aim ray is taken
+            // before the camera turns) and the pistol's slide (every first-person shot).
+            {
+                s.CameraPitch=AimKick.CamRise*ads;s.CameraRoll=AimKick.CamRoll*ads;float shake=MathUtil.Clamp(i.Shake,0,1);
+                if(shake>0&&ads>0)s.Camera=Quaternion.Normalize(s.Camera*NativeTacticalMath.Euler(new Vector3(-s.CameraPitch*shake,AimKick.CamYaw*ads*shake,s.CameraRoll*shake)));
+                s.Slide=AimKick.Slide;
             }
             // The model's weapon frame and the hand bones' targets (pack hand x key), elbows along.
             NativeTacticalMath.Compose(gp,gq,cal.GunToWeapon,cal.GunToWeaponTurn,out s.Weapon,out s.WeaponTurn);
