@@ -1,3 +1,17 @@
+## 2026-11-23 — Claude: release 24: guns and magic run on grounded strides (integrator)
+Owner: "its very 'hoppy' looking. Lets make it look more realistic (Mostly on guns and magic)".
+- **Published:** shared and the builder at `eefd1df4`. Test channel revision `639310659528403823` (build `be4d8a32`, 396.1 MiB).
+- **Merged:** `claude/run-realistic` `88ae74c6` (L1).
+  - Pelvis bob went from 19-30 cm to 6-7 cm, and flight from 34-53 cm to 11-12 cm.
+  - The pistol, rifle, machine gun, casters and Bombardier share the Frank gunslinger stride ahead and on the forward diagonals.
+  - Melee, idles and jumps are unchanged. Its entry below has the numbers.
+- **Drive zip:** motion bank `21eab500` (6,474,581 bytes): released `548c7889` plus 4 appended Frank records, every other record byte-identical.
+  - The previous zip is kept as `LocalAssets-2026-11-23-before-run-realistic.zip`.
+  - A full BoZo motion rebake must re-append T1's 14 records and L1's 4 (`scratch/run-realistic/README-bank.txt`).
+- **Checks:** PrototypeBuild.Validate on `4dc4253e` with the new bank, the full suite at `88ae74c6` (1,107 groups, exit 0), the Unity compile, the build.
+- **Not run:** two clients, the Low tier, separate captures of the water, lightning and L33t staffs.
+- **Owner to look at:** the pistol's sprint now holds the pistol raised beside the head.
+
 ## 2026-11-23 — Claude (L1): realistic gun and magic runs (the grounded stride)
 Owner: "I want to fix the running/sprinting animations for weapons. Currently, its very 'hoppy' looking. Lets make it look more realistic
 (Mostly on guns and magic) think melee is fine?" **Branch:** `claude/run-realistic` from shared `39f6855b` (release 23). Pushed, not
