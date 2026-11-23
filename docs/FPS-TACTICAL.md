@@ -178,10 +178,10 @@ Owner: "The pistol ADS still looks a bit small and simulates no recoil; Is this 
 in the pack or not as well)". Claude (G2), branch `claude/ads-recoil`.
 
 - **Why it read small.** Aimed, the pistol's rear sight sat 34 cm from the eye on an 80 degree view-model lens while the world
-  zoomed to the aim row's 55: the slide was 46 px wide on 2000x1173 (0.09 % of the screen visible above the hands). The pack's own
+  zoomed to the aim row's 55: the slide was 46 px wide on 2000x1173 (the gun 0.4 % of the screen, the hands round it). The pack's own
   Viper aims with the eye 16.1 cm behind its rear sight on 80 (its AimPoint; about 97 px for our slide). Now the rear sight sits
   24 cm from the eye on the aim row's own 55 degrees (`EyeRelief`, `AimFov`): the gun zooms in with the world and the slide is
-  about 100 px wide, the hands below it. The sights stay on the aim ray (G1's front post: the line from the rear sight through it
+  104 px wide (the gun 2.1 % of the screen), the hands below it. The sights stay on the aim ray (G1's front post: the line from the rear sight through it
   runs along the eye's axis whatever the eye relief or lens).
 - **Why aimed shots barely moved.** The pistol's fire clip played before the aim and the aim's blend laid the gun on the sights
   over it, so fully aimed it was wiped; what was left was the procedural spring after the aim (the pistol's at 0.6 of its kick,
@@ -195,8 +195,11 @@ in the pack or not as well)". Claude (G2), branch `claude/ads-recoil`.
   | Shape | the pack's semi curves, quickened to end within 0.9 of the shot's interval | the pack's automatic curves, cut at the next round; smoothed (30/15/25 per second, pitch x2.5) from the second round; a climb of 0.06 degrees a round to 0.6; once the next round does not come both settle fast (45 per second, the climb critically damped at 55) | the pack's semi curves, on the scope overlay |
   | Camera (camera shake on) | half the pack's pistol shake: up 0.35-0.5, roll 0.75-0.95 | 0.4 of the light rifle shake | none (the scope overlay kicks) |
   | Mechanism | the slide (the Army pistol's `SM_Gate_For_Army_Pistol`, an Arsenal pistol's `*_Bolt`) runs back 3.2 cm on the Viper's own slide timing (67 ms) | the TR15's bolt is unchanged (third person) | |
-- **Recovery** (measured: see the DEV_LOG entry). Every shot is back on the aim ray by the time the rules allow the next one; the
-  machine gun's burst settles within about 0.15 s of the next round's time once it stops.
+- **Recovery** (Editor, measured every frame against the game's aim target; DEV_LOG has the table). The pistol's sights peak
+  3.5-4.4 degrees off the aim ray 0.02-0.03 s after a shot and are back within 0.05 degrees by 0.33 s, 0.01 at the next shot
+  allowed (0.47 s aimed); the rifle's reticle peaks 2.0-2.4 degrees and is back by 0.95 s (1.15 s allowed); the machine gun's
+  sights ride its climb through a burst (0.2-1.8 degrees at each next round) and are back within 0.05 degrees 0.23 s after the last
+  round, 0.13 s after the next round's time. Before: 0.27, 0 and 0.35-0.50 degrees.
 - **Rules.** Presentation only: the aim ray (taken before any camera turn), spread, the rules' recoil, fire rate, hitboxes and the
   wire are untouched; the view reads the pilot's own LastShot and ShootReady. Aimed the sights lift off the aim ray during a kick
   and are back before the next shot; the rounds still go to the screen centre.
