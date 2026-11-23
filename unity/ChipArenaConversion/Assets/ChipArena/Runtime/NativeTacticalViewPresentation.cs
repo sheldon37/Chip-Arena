@@ -406,6 +406,8 @@ namespace ChipArena.UnityConversion
                 Vector3 hp=root.InverseTransformPoint(arms.Hand[1].position);Quaternion hq=Quaternion.Inverse(root.rotation)*arms.Hand[1].rotation;
                 var iq=Quaternion.Inverse(rq);
                 tacticalCal=tacticalView.Calibrate(g,CapturedAnimation.Num(iq*(hp-rp)),CapturedAnimation.Num(iq*hq),CapturedAnimation.Num(TacticalSight(a,held)),held.Supported?CapturedAnimation.Num(held.Support):default);
+                // The front post the aim lines up with the rear sight (owner 2026-11-23: "aim the iron sights where the shots are going").
+                TacticalFront(g,held,ref tacticalCal);
                 tacticalCalBody=viewBody;tacticalCalHeld=held;tacticalCalGun=a.Weapon;tacticalCalCalm=calm;tacticalCalPack=false;
             }
             bool fresh=tacticalFrame<Time.frameCount-1&&tacticalScopedFrame<Time.frameCount-1;
@@ -503,6 +505,14 @@ namespace ChipArena.UnityConversion
             ViewCamera.fieldOfView=Mathf.Lerp(g.HipFov,g.AimFov,s.Ads);
             tacticalCamera=CapturedAnimation.Quat(s.Camera);tacticalFrame=Time.frameCount;
             return true;
+        }
+        // The model's front post in its weapon frame at true size: the bake's SightFront, else the gun's ModelFront with its ModelSight
+        // (a Standard model without the bake's Sight); none for the rest (the bore runs along the view, as before).
+        private static void TacticalFront(NativeTacticalGun g,VisualWeapon w,ref NativeTacticalCalibration c)
+        {
+            c.Fronted=false;if(w==null)return;
+            if(w.Fronted){c.Front=CapturedAnimation.Num(w.Front);c.Fronted=w.Sighted;return;}
+            if(!w.Sighted&&g.ModelFront!=System.Numerics.Vector3.Zero&&g.ModelSight!=System.Numerics.Vector3.Zero){c.Front=g.ModelFront;c.Fronted=true;}
         }
         // The model's rear sight in its weapon frame at true size: the bake's Sight, else the gun's ModelSight, else the Standard
         // gun's through the fit.

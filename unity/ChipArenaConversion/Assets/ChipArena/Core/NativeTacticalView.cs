@@ -183,6 +183,10 @@ namespace ChipArena.UnityConversion
         // The Standard model's rear sight (weapon frame) where its bake entry names none, measured on the aimed view (the Army
         // pistol's slide and the light machine gun's rear sight; zero: the Standard gun's sight through the model's fit).
         public Vector3 ModelSight;
+        // The Standard model's front post (weapon frame) where its bake entry names none (zero: none): the Army pistol's, measured on
+        // its mesh with ModelSight (the slide's top at its rear and front ends; the old ModelSight sat 6.7 mm over the slide, and the
+        // sights pointed about a degree under the shots).
+        public Vector3 ModelFront;
         // How much of an action's turn of the gun plays (1 all): the rifle's long model tips its stock into the eye at the pack's
         // full reload tilt, so it tilts less; the hands keep their hold on it.
         public float ActionTurn=1;
@@ -197,14 +201,19 @@ namespace ChipArena.UnityConversion
         public float IdleIntensity=.8f,IdleAimIntensity=.25f,WalkIntensity=1,WalkAimIntensity=.4f;
         public static readonly NativeTacticalGun Pistol=new NativeTacticalGun{Weapon=WeaponId.Pistol,Family="WK-11 Viper",Idle="pistol.idle",Fire="pistol.fire",Reload="pistol.reload",Draw="pistol.quickdraw",
             DrawSeconds=.5f,WeaponOffset=new Vector3(.09f,-.032f,.047f),HipTurn=new Quaternion(0,-.04361939f,0,.99904822f),SprintOffset=new Vector3(0,.03f,.02f),SprintTurn=new Quaternion(0,.17364818f,0,.9848077f),
-            EyeRelief=.34f,AimShoulderDrop=.16f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.008f,-.04f),
+            EyeRelief=.34f,AimShoulderDrop=.16f,SightHeight=.0346f,LeftOnRight=true,AimFov=80,ModelSight=new Vector3(0,-.0147f,-.0586f),ModelFront=new Vector3(0,-.0147f,.1105f),
             KickBack=.012f,KickPitch=2.2f,KickYaw=.6f,KickRoll=1.2f,
             ReloadWarp=new[]{0f,0f,.12f,.115f,.30f,.245f,.42f,.42f,.62f,.605f,.74f,.678f,.92f,.851f,1f,1f}};
         public static readonly NativeTacticalGun Rifle=new NativeTacticalGun{Weapon=WeaponId.Rifle,Family="Oryx SRM-12",Idle="rifle.idle",Fire="rifle.fire",FireAction=true,Reload="rifle.reload",Draw="rifle.draw",
             DrawSeconds=.9f,ActionTurn=.3f,WeaponOffset=new Vector3(.03f,.01f,.025f),GripBack=.1f,EyeRelief=.09f,SightHeight=.0724f,
             KickBack=.02f,KickPitch=1.5f,KickYaw=.4f,KickRoll=.8f};
+        // The machine gun's Standard model is the pack's own TR15 (owner 2026-11-23: "lets replace our machine gun model with the one from
+        // the pack"; its bake entry carries its rear aperture as Sight and its front post as SightFront): it sits on the clips' gun bone
+        // where the pack's demo holds it (SightHeight: the aperture's centre over the TR15's root; ModelOffset: the root on the bone
+        // along the bore), aimed with the eye 9.5 cm behind the aperture (the pack's AimPoint). ModelSight stays the old light machine
+        // gun's, for a bake without the TR15.
         public static readonly NativeTacticalGun MachineGun=new NativeTacticalGun{Weapon=WeaponId.MachineGun,Family="TR15",Idle="ar.idle",Reload="ar.reload",Draw="ar.draw",
-            DrawSeconds=1f,WeaponOffset=new Vector3(.07f,.02f,.02f),GripBack=.14f,SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.16f,SightHeight=-.007f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(.015f,0,.15f),
+            DrawSeconds=1f,WeaponOffset=new Vector3(.07f,.02f,.02f),GripBack=.14f,SprintOffset=new Vector3(0,-.035f,0),EyeRelief=.0954f,SightHeight=.0639f,ModelSight=new Vector3(0,.09f,-.09f),ModelOffset=new Vector3(0,0,-.012f),
             KickBack=.014f,KickPitch=1.1f,KickYaw=.5f,KickRoll=1.1f,KickOmega=40,KickZeta=.6f};
         static NativeTacticalGun()
         {
@@ -292,6 +301,14 @@ namespace ChipArena.UnityConversion
             return Quaternion.CreateFromAxisAngle(Vector3.UnitY,degrees.Y*k)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,degrees.X*k)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,degrees.Z*k);
         }
         public static Quaternion Inverse(Quaternion q)=>Quaternion.Inverse(q);
+        /// <summary>The turn that lays `line` (a sight line in the weapon frame, rear to front) along +z, pitched about the weapon's own
+        /// right axis, then yawed, so that axis stays level (the gun does not roll).</summary>
+        public static Quaternion SightTurn(Vector3 line)
+        {
+            if(!(line.Z>1e-6f)||!MathUtil.Finite(line.X)||!MathUtil.Finite(line.Y))return Quaternion.Identity;
+            float pitch=(float)Math.Atan2(line.Y,line.Z),yaw=-(float)Math.Atan2(line.X,Math.Sqrt(line.Y*line.Y+line.Z*line.Z));
+            return Quaternion.Normalize(Quaternion.CreateFromAxisAngle(Vector3.UnitY,yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,pitch));
+        }
         public static void Compose(Vector3 ap,Quaternion aq,Vector3 bp,Quaternion bq,out Vector3 p,out Quaternion q){p=ap+Rotate(aq,bp);q=Quaternion.Normalize(aq*bq);}
         public static void Relative(Vector3 ap,Quaternion aq,Vector3 bp,Quaternion bq,out Vector3 p,out Quaternion q){var inv=Quaternion.Inverse(aq);p=Rotate(inv,bp-ap);q=Quaternion.Normalize(inv*bq);}
     }
@@ -341,6 +358,10 @@ namespace ChipArena.UnityConversion
         public Vector3 RightKey;public Quaternion RightKeyTurn;
         // The pack's own gun in hand: no fit (the model is the pack gun), both hands on the pack's places and palms, the sight its aim point.
         public bool PackGun;
+        // The model's front post (weapon frame) where one is measured (Fronted: its bake entry's SightFront, else the gun's ModelFront):
+        // aimed, the line from the rear sight through it runs along the eye's axis, the line the shots travel (the camera's centre ray;
+        // owner 2026-11-23: "aim the iron sights where the shots are going"). Without one the bore runs along the view.
+        public bool Fronted;public Vector3 Front;
     }
 
     /// <summary>One solved frame, camera frame: the model's weapon frame, the right hand bone's target, the left wrist and both
@@ -368,6 +389,8 @@ namespace ChipArena.UnityConversion
         public float AimProgress=>aim;public float DrawAt=>drawAt;
         // The pack gun's aim point is the eye's own place at full aim (its sight picture as KINEMATION's demo frames it).
         public const float PackEyeRelief=0;
+        // How much of the procedural layer's movement (not its turn) a full aim takes out (1: all), so the sights stay on the shots' line.
+        public const float AimSteady=1;
 
         /// <summary>The calibration from the gun's idle and the view body's grasp (hand bones in its weapon frame) and sight: the
         /// model's bore and up on the pack gun's, its right wrist on the pack's right wrist.</summary>
@@ -450,13 +473,17 @@ namespace ChipArena.UnityConversion
             gp+=g.WeaponOffset+g.SprintOffset*sprint+g.SprintCarry*sprint;
             gq=Quaternion.Normalize(NativeTacticalMath.Slerp(Quaternion.Identity,Quaternion.Normalize(g.SprintTurn*NativeTacticalMath.Euler(g.SprintCarryDegrees)),sprint)*gq);
             gq=Quaternion.Normalize(g.HipTurn*gq);
-            // Aiming down the sights: the model's rear sight onto the eye's axis, EyeRelief ahead, the bore along the view.
+            // Aiming down the sights: the model's rear sight onto the eye's axis, EyeRelief ahead, and the line from it through the front
+            // post (Fronted) along the view: the sights on the camera's centre ray, where the shots go; without a front post the bore.
             {
-                var wq=Quaternion.Identity;var wp=new Vector3(0,0,cal.PackGun?PackEyeRelief:g.EyeRelief)-cal.Sight;var aq=Quaternion.Normalize(wq*Quaternion.Inverse(cal.GunToWeaponTurn));var ap=wp-NativeTacticalMath.Rotate(aq,cal.GunToWeapon);
+                var wq=cal.Fronted&&!cal.PackGun?NativeTacticalMath.SightTurn(cal.Front-cal.Sight):Quaternion.Identity;
+                var wp=new Vector3(0,0,cal.PackGun?PackEyeRelief:g.EyeRelief)-NativeTacticalMath.Rotate(wq,cal.Sight);var aq=Quaternion.Normalize(wq*Quaternion.Inverse(cal.GunToWeaponTurn));var ap=wp-NativeTacticalMath.Rotate(aq,cal.GunToWeapon);
                 gp=Vector3.Lerp(gp,ap,ads);gq=NativeTacticalMath.Slerp(gq,aq,ads);
             }
-            // The pack's procedural layer on top (its intensities lower while aimed).
-            Locomotion(g,i,ads,walk,sprint,out var addP,out var addQ);gp+=addP;gq=Quaternion.Normalize(addQ*gq);
+            // The pack's procedural layer on top (its intensities lower while aimed). Fully aimed it turns the gun but no longer moves it
+            // (AimSteady): its breathing only ever dips (up to 4.4 mm at the aim's intensity), which took the sights off the shots' line,
+            // by up to 0.6 degrees on the TR15's post (2.7 on its aperture, 9.5 cm from the eye).
+            Locomotion(g,i,ads,walk,sprint,out var addP,out var addQ);gp+=addP*(1-AimSteady*ads);gq=Quaternion.Normalize(addQ*gq);
             // Recoil about its pivot, then the look sway, hop and landing (the sway at 30 % aimed).
             {
                 var kq=NativeTacticalMath.Euler(new Vector3(-Recoil.Pitch,Recoil.Yaw,Recoil.Roll));var piv=g.KickPivot;
