@@ -98,6 +98,11 @@ written. The clips are fitted to the rules (`Core/NativeTacticalMotion.cs`, held
 - **The order** (pinned in `TacticalMotionChecks`): the motion's pose, the spine's pitch and kick, the pistol's reach, the wrist's
   turns, the weapon on the hand, the support hand last; then the hand's fit, then the PuppetMaster hit bend (which carries the rig's
   hand frames with the drawn hands); every body poses before any model draws, in the same frame.
+- **The TR15** (2026-11-23, G1; docs/FPS-TACTICAL.md): the machine gun's Standard model is the pack's own TR15 now, on the same hold.
+  Its anchors were measured on its meshes: the fist 4.5 cm under the pistol grip's top on its raked axis (the game handle's fist
+  point), `Support` 1.3 cm left of the handguard's centre and 2.1 cm above its bottom, 20 cm ahead of the TR15's root, so ForeEnd's
+  Offset puts the middle knuckle 1.2 cm under the handguard's right edge as on the other long guns; the stock at its butt. Aim and
+  carry poses are unchanged.
 
 ## How it is built
 

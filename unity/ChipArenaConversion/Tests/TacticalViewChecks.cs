@@ -170,6 +170,29 @@ namespace ChipArena.UnityConversion
                 if(shot)mi.LastShot=4.01f;mi.Time=4.01f;mv.Solve(mi,mc,s);mi.Time=4.05f;mv.Solve(mi,mc,s);return s.Weapon;
             }
             Check(Vector3.Distance(Mg(false),Mg(true))>1e-3f,"the machine gun's shot kicks it (procedural recoil)");
+            // The front post (owner 2026-11-23: "aim the iron sights where the shots are going"): aimed, the rear sight and the front post
+            // both on the eye's axis (the camera's centre ray, the shots' line), so a post that stands over the aperture's line (the TR15's
+            // tip, 4.8 mm over it 38 cm on) tips the gun, not the sight picture; without one the bore runs along the view as before.
+            {
+                var mg=NativeTacticalGun.MachineGun;var rearS=new Vector3(0,.0062f,.005f);var frontS=new Vector3(0,.011f,.384f);
+                Vector3 Aimed(bool fronted,out Vector3 front,out float ads)
+                {
+                    var fv=new NativeTacticalView(bank);var fs=new NativeTacticalSolution();
+                    var fc=fv.Calibrate(mg,new Vector3(.05f,-.13f,-.12f),Quaternion.Identity,rearS);fc.Fronted=fronted;fc.Front=frontS;
+                    for(float t=0;t<3;t+=1/60f)fv.Solve(new NativeTacticalInput{Time=t,Weapon=WeaponId.MachineGun,LastShot=-100,Aim=t>1.5f,Grounded=true,Shake=1},fc,fs);
+                    front=fs.Weapon+Vector3.Transform(frontS,fs.WeaponTurn);ads=fs.Ads;return fs.Weapon+Vector3.Transform(rearS,fs.WeaponTurn);
+                }
+                var r=Aimed(true,out var f,out float fa);
+                Check(Near(fa,1),"the machine gun's aim is whole after its settle");
+                Check(Math.Abs(r.X)<1e-3f&&Math.Abs(r.Y)<1e-3f&&Near(r.Z,mg.EyeRelief,1e-3f),"aimed, the TR15's aperture sits on the eye's axis at its eye relief ("+r+")");
+                Check(Math.Abs(f.X)<1e-3f&&Math.Abs(f.Y)<1e-3f&&f.Z>r.Z+.3f,"aimed, the front post sits on the same axis: the sights point along the shots' line ("+f+")");
+                var r0=Aimed(false,out var f0,out _);
+                Check(Math.Abs(r0.Y)<1e-3f&&f0.Y>.004f,"without a front post the bore runs along the view (the post stands "+f0.Y+" m over the axis)");
+                var turn=NativeTacticalMath.SightTurn(new Vector3(.01f,.0048f,.379f));var laid=Vector3.Transform(Vector3.Normalize(new Vector3(.01f,.0048f,.379f)),turn);
+                Check(Near(laid,Vector3.UnitZ,1e-5f)&&Math.Abs(Vector3.Transform(Vector3.UnitX,turn).Y)<1e-5f,"SightTurn lays a sight line along +z without rolling the gun");
+                Check(NativeTacticalView.AimSteady==1,"fully aimed, the procedural layer turns the gun but no longer moves it");
+                Check(NativeTacticalGun.Pistol.ModelFront!=Vector3.Zero&&Near(NativeTacticalGun.Pistol.ModelFront.Y,NativeTacticalGun.Pistol.ModelSight.Y),"the Army pistol's front sight is measured, level with its rear (the slide's top)");
+            }
         }
 
         // The pack guns: both hands on the pack's own places, the aim point on the eye, the gun's own clips on the rules' clocks, the jumps.
@@ -299,6 +322,8 @@ namespace ChipArena.UnityConversion
             Check(NativeTacticalGun.Rifle.GripBack>0&&NativeTacticalGun.MachineGun.GripBack>0&&NativeTacticalGun.Pistol.GripBack==0&&pres.Contains("grip.Offset.Z-g.GripBack"),"the long guns' support hand sits back toward the receiver in first person");
             Check(Directory.GetFiles(Path.Combine(root,"Assets"),"ChipArenaViewGuns*",SearchOption.AllDirectories).All(f=>f.Replace('\\','/').Contains("/Assets/LocalAssets/")),"the pack guns are only ever a local asset");
             string weapon=File.ReadAllText(Path.Combine(runtime,"NativeVisualWeaponPresentation.cs")),bodyFile=File.ReadAllText(Path.Combine(runtime,"NativeVisualBodyPresentation.cs"));
+            // The sights on the shots' line (owner 2026-11-23): the bake's SightFront read for the aim, the procedural layer still while aimed.
+            Check(pres.Contains("TacticalFront(g,held,ref tacticalCal);")&&weapon.Contains("entry.Find(\"SightFront\")")&&File.ReadAllText(Path.Combine(core,"NativeTacticalView.cs")).Contains("gp+=addP*(1-AimSteady*ads)"),"first person lines the rear sight up with the bake's front post on the eye's axis");
             Check(weapon.Contains("if(rig==viewRig&&TacticalPackDrawn(viewBody))return true;")&&weapon.Contains("TacticalPackAfterDraw();"),"the pack gun replaces the model for the view rig alone, and hides when not drawn");
             foreach(var f in Directory.GetFiles(runtime,"*.cs"))if(!f.EndsWith("NativeVisualWeaponPresentation.cs",StringComparison.Ordinal)&&!f.EndsWith("NativeTacticalViewPresentation.cs",StringComparison.Ordinal))
                 Check(!File.ReadAllText(f).Contains("TacticalPackDrawn("),Path.GetFileName(f)+" never draws the pack gun");

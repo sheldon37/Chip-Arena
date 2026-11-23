@@ -28,6 +28,9 @@ namespace ChipArena.UnityConversion
         private sealed class VisualWeapon
         {
             public Transform Mount; public GameObject Model; public Vector3 Centre; public float Scale=1; public bool Supported, Stocked, Sighted; public Vector3 Support, Sight; public float Stock;
+            // A gun's front post (its entry's SightFront; the machine gun's TR15): first person's aim lays the line from Sight through it
+            // along the eye's axis (NativeTacticalView).
+            public bool Fronted; public Vector3 Front;
             // Made ready for the first-person view body (its renderers on, without shadows: VisualViewWeaponReady).
             public bool ViewReady;
             // A pack weapon's (NativePackWeaponPresentation.cs): its off-hand copy (daggers), whether the left fist closes on it
@@ -49,6 +52,7 @@ namespace ChipArena.UnityConversion
                 var support=entry.Find("Support");if(support!=null){w.Supported=true;w.Support=support.localPosition;}
                 var stock=entry.Find("Stock");if(stock!=null&&stock.localPosition.z<0){w.Stocked=true;w.Stock=-stock.localPosition.z;}
                 var sight=entry.Find("Sight");if(sight!=null){w.Sighted=true;w.Sight=sight.localPosition;}
+                var front=entry.Find("SightFront");if(front!=null){w.Fronted=true;w.Front=front.localPosition;}
                 weapons[entry.name]=w;
             }
             return weapons.Count>0?weapons:null;

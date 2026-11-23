@@ -137,6 +137,40 @@ bolt) do not fit the rules' spans, so the tactical reloads play every time.
   (as `HitKick` does), first person with camera shake on, .4 with reduced effects; the arms are placed in the camera without
   it, as the pack's arms are on the body.
 
+## The sights on the shots' line; the machine gun on the TR15 (owner 2026-11-23)
+
+Owner: "For the machine gun, can we fix first person to aim the iron sights where the shots are going? (Probably a easy solution
+for this, lets replace our machine gun model with the one from the pack)". Claude (G1), branch `claude/mg-tr15`.
+
+- **Where the shots go.** The client sends the screen centre's hit (the camera's centre ray, `ConversionGame.AimPoint`) as
+  AimTarget, and the authority fires from its muzzle to that point inside the gun's cone, so the rounds land on the screen centre
+  at any range. The view-model camera is the world camera's child (same eye and axis), so a sight on the eye's axis points there.
+- **Measured** (G1's local lab: a test wall at 5, 15 and 40 m, Cyber City, 2000x1173, aimed and firing; the sights projected
+  through the view camera, the impacts and the aim target through the world camera): before, the machine gun's front post sat
+  4.9 degrees under the shots (72 px; 44 cm low at 5 m, 1.3 m at 15 m, 3.6 m at 40 m: its rear sight point, `ModelSight`, sat 6 cm
+  over the light machine gun's real sights), the pistol's 1.0-1.1 degrees under them (13 px; 6.5, 30 and 79 cm: its ModelSight
+  sat 6.7 mm over the slide), the rifle's scope reticle on them (0.00-0.03 degrees). After: both guns' front posts 0.00-0.02
+  degrees off the aim ray, the impacts scattered round it inside the cone (their means 0.1-0.2 degrees off, four rounds each).
+- **The front post** (`NativeTacticalCalibration.Front`, `NativeTacticalMath.SightTurn`): aimed, the model's rear sight goes on the
+  eye's axis at the gun's eye relief as before, and the line from it through the front post now runs along the axis (pitched
+  about the gun's own right axis, then yawed: no roll). The post comes from the bake entry's `SightFront` marker, else the gun's
+  `ModelFront` (the Army pistol's, measured on its slide); a model with neither keeps the bore along the view.
+- **Steady aim** (`AimSteady`): fully aimed, the pack's procedural layer still turns the gun but no longer moves it. Its idle
+  breathing only ever dips the gun (up to 4.4 mm at the aim's intensity), which on the TR15's aperture 9.5 cm from the eye moved
+  the sight picture up to 2.7 degrees. The look sway, landing and recoil are unchanged: a burst still lifts the sights between
+  rounds, and they settle back on the shots.
+- **The TR15 is the machine gun's Standard model** everywhere a visual body draws it (third person, first person, the menu and
+  Locker pilot, portraits, intros, corpses and replays): the pack's TR15 made static by the local lab (its skinned parts baked at
+  rest, the magazine turned onto its socket, the hidden magazine rounds left out, the iron sights on its scope mount; 29,329
+  triangles), on the arena toon like every other weapon (spawn-in, hit flash, the corpse's fade) with colour maps lifted from the
+  pack's near-black albedo and its normal and metal maps baked in (scratch `toonalbedo.py`; 1024 body, 512 magazine and sights).
+  The local tool's weapons table places it from its meshes (kit frame, +x the bore): the bore at y 0, the flash hider .4174, the
+  butt -.3551, the fist 4.5 cm under the grip's top on its raked axis, the support under the handguard's right edge (T1's hold),
+  `Sight` the rear aperture's centre and `SightFront` the front post's tip (4.8 mm over the aperture's line, so aimed the bore
+  tips down 0.74 degrees). In first person it sits on the clips' gun bone where the pack's demo holds it (`SightHeight` .0639,
+  `ModelOffset` z -.012), the eye 9.5 cm behind the aperture (`EyeRelief`, the pack's AimPoint). The game's fit lays the chip
+  modules, the muzzle flash and the brass along its bore (scale .646). The Arsenal machine guns keep their models.
+
 ## Every other weapon and class: the pilot's own arms (owner 2026-11-22: "Go ahead and fix")
 
 Claude F1 then F2, branch `claude/fps-melee`. The sword, Katana, daggers, Fangs, glaive, greatsword, shield, bow, the four
