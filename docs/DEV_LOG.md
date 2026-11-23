@@ -1,3 +1,17 @@
+## 2026-11-23 — Claude: release 23: a larger aimed pistol, and aimed recoil on every gun (integrator)
+Owner: "The pistol ADS still looks a bit small and simulates no recoil"; after the review, "Ship it now".
+- **Published:** shared and the builder at `032f4e43`. Test channel revision `639310537083182085` (build `2cb22a2a`, 396.0 MiB).
+  - It also carries Astra's `5c7ebdb6`, which was on shared before this merge.
+- **Merged:** `claude/ads-recoil` `607b0194` (G2).
+  - The aimed pistol is about twice the size: rear sight 24 cm from the eye on a 55 degree lens.
+  - `NativeAimKick` plays the pack's per-gun recoil, read as data, on the pistol, machine gun and rifle scope.
+  - Sights are back on the aim ray by the next allowed shot.
+  - The pistol's slide now also cycles at the hip.
+  - No Drive zip change.
+- **Checks:** PrototypeBuild.Validate on `2b931e46`, the full suite at `5780481a` (1,106 groups, exit 0), the Unity compile, the build.
+- **Not run:** two clients, the Low tier, a playtest, the camera shake on film (off by default), the Arsenal pistols' slides.
+- **Owner-visible risk:** aimed, the pilot's gloves fill about a third of the view under a small slide. The owner chose to ship it as is.
+
 ## 2026-11-23 — Claude (G2): the aimed pistol larger; aimed recoil from the pack's recoil data (pistol, machine gun, rifle scope)
 Owner: "The pistol ADS still looks a bit small and simulates no recoil; Is this something we can fix? (I dont know if recoil is in the
 pack or not as well)". **Branch:** `claude/ads-recoil` from shared `05bd6e0e` (release 22). Pushed, not merged, not released. Docs:
