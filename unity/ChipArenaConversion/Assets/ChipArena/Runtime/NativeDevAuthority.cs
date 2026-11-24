@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
                 if(c.action=="chip-remove"&&count<I(1))return "Target does not have that many chips.";
             }
             int spawn=c.action=="spawn-dummy"?1:c.action=="spawn-dummies-around"?I(0):0;
-            if(spawn>0&&Match.Seats.Count-spawnFreeDummies()+spawn>8)return "No free pilot slots (eight including dummies).";
+            if(spawn>0&&Match.Seats.Count(s=>(!Training||!NativeTrainingRules.IsPad(s.id))&&(!s.devDummy||s.connected))+spawn>8)return "No free pilot slots (eight including dummies).";
             if((c.action=="debris"||c.action=="debris-rain")&&(!Content.materials.Any(m=>m.id==a[c.action=="debris"?2:0]&&!m.indestructible)||Props.Count(p=>p.Fragment)+(c.action=="debris"?1:6)>NativeStructureRules.MaxFragments||Props.Count>350))return "Unknown material or debris budget exceeded.";
             if((c.action=="debris"||c.action=="debris-rain")&&Map.blocks.Length==0)return "Arena has no debris anchor.";
             MapHazard hazard=null;
@@ -105,7 +105,6 @@ namespace ChipArena.UnityConversion
             var seat=new NativeSeat{id=id,name="DEV dummy",spec=weapon,team=team,bot=true,devDummy=true,access=NativeAccess.ScopedWeapon(actor.Seat.access,weapon,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())};
             Match.Seats.Add(seat);var p=SpawnPilot(seat,Match.Seats.Count-1);p.Body.position=point;p.DevInput=input;
         }
-        private int spawnFreeDummies()=>Match.Seats.Count(s=>s.devDummy&&!s.connected);
         private void DevDispose()
         {foreach(var seat in Match.Seats){if(devOriginalWeapons.TryGetValue(seat.id,out var spec))seat.spec=spec;seat.devWeaponAccess=null;seat.devScale=1;seat.devRevealed=false;}Match.Seats.RemoveAll(s=>s.devDummy);devOriginalWeapons.Clear();}
         private void DevDebris(NativePilot source,Vector3 point,Vector3 velocity,string material,float mass,string impact)

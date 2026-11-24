@@ -445,7 +445,7 @@ namespace ChipArena.UnityConversion
         // (Monsters starts on someone else).
         private float DevTargetPicker(float x,float y,float w)
         {
-            if(DevPilot(devTarget)==null){foreach(var p in arena.Pilots)if(p.Seat.connected&&p.Seat.id!=arena.LocalId&&!p.Seat.AuthorityBoss){devTarget=p.Seat.id;break;}}
+            if(DevPilot(devTarget)==null){foreach(var p in arena.Pilots)if(p.Seat.id!=arena.LocalId&&arena.DevRosterPilot(p)){devTarget=p.Seat.id;break;}}
             DevClassLists();return DevRoster(x,y,w);
         }
         private float DevDummiesTab(float x,float y,float w)
@@ -475,11 +475,11 @@ namespace ChipArena.UnityConversion
         {
             DevLists();float x=body.x+16,w=body.width-32,y=body.y+12;devBodyHot=devCursorFree&&body.Contains(devMouse);devBody=body;
             int roster=arena.LocalId;
-            foreach(var p in arena.Pilots)if(p.Seat.connected&&!p.Seat.AuthorityBoss)unchecked{roster=roster*31+p.Seat.id;roster=roster*31+(p.Seat.name??"").GetHashCode();}
+            foreach(var p in arena.Pilots)if(arena.DevRosterPilot(p))unchecked{roster=roster*31+p.Seat.id;roster=roster*31+(p.Seat.name??"").GetHashCode();}
             if(devChipRoster!=roster||devChipTargets.Count==0)
             {
                 devChipRoster=roster;devChipTargets.Clear();
-                foreach(var p in arena.Pilots)if(p.Seat.connected&&!p.Seat.AuthorityBoss)devChipTargets.Add(p);
+                foreach(var p in arena.Pilots)if(arena.DevRosterPilot(p))devChipTargets.Add(p);
                 devChipTargetNames=new string[devChipTargets.Count];
                 for(int i=0;i<devChipTargets.Count;i++){var p=devChipTargets[i];devChipTargetNames[i]=(p.Seat.id==arena.LocalId?"SELF · ":p.Seat.devDummy?"DUMMY · ":"")+p.Seat.name+" #"+p.Seat.id;}
             }
@@ -677,7 +677,8 @@ namespace ChipArena.UnityConversion
             y=DevHead(x,y,w,"RULES");DevToggleAct(new Rect(x,y,w,32),"safe-mode",arena.SafeMode,"Safe mode: the player retains 1 HP");y+=40;
             y=DevHead(x,y,w,"STATE (READ-ONLY)");
             y=DevStat(x,y,w,"PHASE",DevPhaseName(match.Phase));y=DevStat(x,y,w,"SET",NativeDevText.Int(match.Set));y=DevStat(x,y,w,"ROUND",NativeDevText.Int(match.Round));
-            y=DevStat(x,y,w,"MATCH TIME",NativeDevText.Value(Mathf.Floor(arena.Time),0," s"));y=DevStat(x,y,w,"PILOTS",NativeDevText.Int(arena.Pilots.Count));
+            int rosterCount=0;foreach(var p in arena.Pilots)if(arena.DevRosterPilot(p))rosterCount++;
+            y=DevStat(x,y,w,"MATCH TIME",NativeDevText.Value(Mathf.Floor(arena.Time),0," s"));y=DevStat(x,y,w,"PILOTS",NativeDevText.Int(rosterCount));
             y=DevStat(x,y,w,"PROJECTILES",NativeDevText.Int(arena.Bullets.Count));y=DevStat(x,y,w,"MINIONS",NativeDevText.Int(arena.Minions.Count));
             y=DevStat(x,y,w,"SIM STEP",NativeDevText.Value(devStepGraph.Average(),2," ms"));y=DevStat(x,y,w,"FRAME",NativeDevText.Value(devFrameGraph.Average(),1," ms"));
             if(Online)y=DevStat(x,y,w,"ROUND TRIP",NativeDevText.Value(devRttGraph.Last,0," ms"));

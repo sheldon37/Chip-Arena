@@ -133,6 +133,8 @@ namespace ChipArena.UnityConversion
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
             ClearWeaponPresentation();
         }
+        private readonly Plane[] trainingViewPlanes=new Plane[6];
+        private readonly HashSet<int> hiddenTrainingTargets=new HashSet<int>();
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
@@ -143,6 +145,9 @@ namespace ChipArena.UnityConversion
             foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); stepTrackers.Remove(id); }
             animationTimer.Restart();
             bool offStage=PilotsOffStage;
+            bool cullPads=WeaponLoadout?.Training==true&&VisualEye!=null&&!Viewer;
+            hiddenTrainingTargets.Clear();
+            if(cullPads)GeometryUtility.CalculateFrustumPlanes(VisualEye,trainingViewPlanes);
             foreach(Actor a in s.Actors)
             {
                 Vector3 old; Vector3 target=Vec(a.Position);
@@ -152,6 +157,15 @@ namespace ChipArena.UnityConversion
                 // while it does and in the air for its drop, with the replicated flag restored after posing.
                 if(!offStage)p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);p=TechniquePlace(a,p,renderTime);p=ReviveMachinePlace(a,p,renderTime);
                 visualPositions[a.Id]=p;
+                // Keep near targets and victims in paired animations posed. A generous margin
+                // keeps guns and animated limbs visible before the pad centre enters the view.
+                if(cullPads&&a.Alive&&NativeTrainingRules.IsPad(a.Id)&&a.GrabOwner==0&&
+                    (p-VisualEye.transform.position).sqrMagnitude>144&&
+                    !GeometryUtility.TestPlanesAABB(trainingViewPlanes,new Bounds(p,Vector3.one*10)))
+                {
+                    hiddenTrainingTargets.Add(a.Id);
+                    continue;
+                }
                 bool posed=a.Alive&&!offStage&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{VisualBodyRestore(a.Id);PrepareCapturedPose(a,p,renderTime);VisualBodyPose(a,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
                 // Its footfalls from the gait just posed (NativeFootfallPresentation.cs).
@@ -162,7 +176,7 @@ namespace ChipArena.UnityConversion
             foreach(Actor a in s.Actors)
             {
                 Vector3 p=visualPositions[a.Id];
-                if(offStage)continue;
+                if(offStage||hiddenTrainingTargets.Contains(a.Id))continue;
                 if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime,CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;

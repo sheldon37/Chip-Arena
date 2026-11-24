@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             foreach(var seat in seats)if(seat.clearMask<0 || seat.clearMask>NativePracticeRules.All ||
                 seat.clearOwner!=null && seat.clearOwner.Length>128 || seat.clearMask!=0 && string.IsNullOrEmpty(seat.clearOwner))return false;
             if(!NativePodRun.Valid(pods,time))return false;
-            if(!NativeTrainingRules.ValidFrame(content.Map(map),seats.Select(s=>(s.id,s.bot,s.team)).ToArray(),trainingReadouts))return false;
+            if(!NativeTrainingRules.ValidFrame(content.Map(map),seats.Select(s=>(s.id,s.bot,s.team,s.devDummy)).ToArray(),trainingReadouts))return false;
             if(!Number(resultAt)||resultAt<0||resultAt>time+1e-4||finalSeed<0||finalVictim<0||finalVictim!=0&&!seats.Any(s=>s.id==finalVictim)||finalVictim==0&&finalSeed!=0)return false;
             if(!new NativeStructureState(content.Map(map)).Valid(segments,(float)time))return false;
             if(!NativeShotEnds.Valid(projectileEnds,time))return false;

@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
         public bool Training=>MapId=="training";
         private readonly Dictionary<int,TrainingDamageMeter> trainingMeters=new Dictionary<int,TrainingDamageMeter>();
         public TrainingReadout[] TrainingRemote=Array.Empty<TrainingReadout>();
-        private bool TrainingDummy(NativePilot p)=>Training&&p.Seat.id>=NativeTrainingRules.FirstDummy&&p.Seat.id<NativeTrainingRules.FirstDummy+(Map.trainingPads?.Length??0);
+        public bool TrainingDummy(NativePilot p)=>Training&&NativeTrainingRules.IsPad(p.Seat.id);
+        public bool DevRosterPilot(NativePilot p)=>p.Seat.connected&&!p.Seat.AuthorityBoss&&!TrainingDummy(p);
         private TrainingPad TrainingPadOf(NativePilot p)=>TrainingDummy(p)?Map.trainingPads[p.Seat.id-NativeTrainingRules.FirstDummy]:null;
         private void TrainingInitialize()
         {trainingMeters.Clear();if(!Training)return;foreach(var p in Pilots){if(!Replica)p.Seat.alive=p.Hp>0&&p.Seat.connected;var pad=TrainingPadOf(p);if(pad!=null){p.Body.position=Vec(pad.pos);p.Yaw=pad.yaw;trainingMeters.Add(p.Seat.id,new TrainingDamageMeter(pad,p.Seat.id));}}}
@@ -20,7 +21,10 @@ namespace ChipArena.UnityConversion
             {
                 if(p.Hp<=0){if(p.Seat.connected&&(p.Death==null||Time-p.Death.at>=5))SandboxRestore(p);continue;}
                 var pad=TrainingPadOf(p);if(pad==null)continue;
-                p.Body.position=Vec(NativeTrainingRules.Position(pad,Math.Max(0,Time-Match.FightAt)));p.Body.linearVelocity=Vector3.zero;p.Knockback=p.MoveVelocity=Vector3.zero;p.Yaw=pad.yaw;
+                var anchor=Vec(NativeTrainingRules.Position(pad,Math.Max(0,Time-Match.FightAt)));
+                if(!p.Body.position.Equals(anchor))p.Body.position=anchor;
+                if(!p.Body.linearVelocity.Equals(Vector3.zero))p.Body.linearVelocity=Vector3.zero;
+                p.Knockback=p.MoveVelocity=Vector3.zero;p.Yaw=pad.yaw;
             }
         }
         private void TrainingHit(NativePilot target,NativePilot source,float actual,bool head,string sourceKind)

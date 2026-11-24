@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
     public static class NativeTrainingRules
     {
         public const int FirstDummy=1000,MaxPads=28;
+        public static bool IsPad(int seatId)=>seatId>=FirstDummy&&seatId<FirstDummy+MaxPads;
         public static bool RoomFits(string map,IEnumerable<NativeSeat> seats,bool teams)
         {var all=seats.ToArray();return map!="breakwater"||all.Length<=4&&(!teams||all.GroupBy(s=>s.team).Count()==2&&all.GroupBy(s=>s.team).All(g=>g.Count()<=2));}
         public static void AddDummies(NativeMatch match,ContentMap map)
@@ -29,24 +30,57 @@ namespace ChipArena.UnityConversion
             if(map.rotation||pads.Length!=MaxPads||pads.Any(p=>p==null)||pads.Select(p=>p.id).Distinct().Count()!=pads.Length)throw new InvalidOperationException("Training catalog");
             foreach(var p in pads)if(p==null||string.IsNullOrEmpty(p.id)||!NativeMapRules.Finite(p.pos)||!MathUtil.Finite(p.yaw)||!MathUtil.Finite(p.distance)||p.distance<0||!new[]{"static","strafe","melee"}.Contains(p.kind)||p.kind=="strafe"&&(p.rail==null||!NativeMapRules.Finite(p.rail.a)||!NativeMapRules.Finite(p.rail.b)||(p.rail.b-p.rail.a).Length<.1f))throw new InvalidOperationException("Training pad");
         }
-        public static bool ValidFrame(ContentMap map,(int id,bool bot,int team)[] seats,TrainingReadout[] rows)
+        private static bool ValidMeter(float value)=>value>=0&&MathUtil.Finite(value);
+        public static bool ValidFrame(ContentMap map,(int id,bool bot,int team,bool devDummy)[] seats,TrainingReadout[] rows)
         {
             if(map.id!="training")return rows==null||rows.Length==0;
-            int count=map.trainingPads?.Length??0;
-            if(count!=MaxPads||seats.Count(s=>s.id<FirstDummy)>8||seats.Any(s=>s.id>=FirstDummy&&(!s.bot||s.team!=1||s.id>=FirstDummy+count)||s.id<FirstDummy&&(s.bot||s.team!=0)))return false;
-            if(rows==null||rows.Length!=count||rows.Select(r=>r?.actor).Distinct().Count()!=count)return false;
-            foreach(var r in rows)if(r==null||r.actor<FirstDummy||r.actor>=FirstDummy+count||r.pad!=map.trainingPads[r.actor-FirstDummy].id||!seats.Any(s=>s.id==r.actor)||r.source!=null&&r.source.Length>100||new[]{r.total,r.last,r.at,r.distance,r.dps}.Any(v=>!MathUtil.Finite(v)||v<0)||r.sourceActor!=0&&!seats.Any(s=>s.id==r.sourceActor))return false;
+            if(map.trainingPads?.Length!=MaxPads||rows==null||rows.Length!=MaxPads)return false;
+            uint pads=0,reported=0;
+            int participants=0;
+            foreach(var seat in seats)
+            {
+                if(IsPad(seat.id))
+                {
+                    if(!seat.bot||seat.devDummy||seat.team!=1)return false;
+                    pads|=1u<<(seat.id-FirstDummy);
+                }
+                else if(seat.id>=FirstDummy||++participants>8||
+                    (seat.devDummy?!seat.bot:seat.bot||seat.team!=0))return false;
+            }
+            foreach(var row in rows)
+            {
+                if(row==null||!IsPad(row.actor))return false;
+                int index=row.actor-FirstDummy;uint bit=1u<<index;
+                if((pads&bit)==0||(reported&bit)!=0||map.trainingPads[index].id!=row.pad)return false;
+                if(row.source!=null&&row.source.Length>100||!ValidMeter(row.total)||!ValidMeter(row.last)||
+                    !ValidMeter(row.at)||!ValidMeter(row.distance)||!ValidMeter(row.dps))return false;
+                if(row.sourceActor!=0&&!Array.Exists(seats,s=>s.id==row.sourceActor))return false;
+                reported|=bit;
+            }
             return true;
         }
     }
     public sealed class TrainingDamageMeter
     {
         private readonly Queue<(float time,float damage)> hits=new Queue<(float,float)>();private float window;
-        public readonly TrainingReadout Row;
-        public TrainingDamageMeter(TrainingPad pad,int actor){Row=new TrainingReadout{pad=pad.id,actor=actor};}
+        private TrainingReadout row;
+        public TrainingDamageMeter(TrainingPad pad,int actor){row=new TrainingReadout{pad=pad.id,actor=actor};}
         public void Hit(float now,float damage,bool head,int sourceActor,string source,float distance)
-        {if(damage<=0)return;hits.Enqueue((now,damage));window+=damage;Row.total+=damage;Row.last=damage;Row.headshot=head;Row.sourceActor=sourceActor;Row.source=source;Row.distance=distance;Row.at=now;Read(now);}
-        public TrainingReadout Read(float now)
-        {while(hits.Count>0&&hits.Peek().time<=now-5)window-=hits.Dequeue().damage;Row.dps=Math.Max(0,window)/5;return new TrainingReadout{pad=Row.pad,actor=Row.actor,sourceActor=Row.sourceActor,source=Row.source,total=Row.total,last=Row.last,headshot=Row.headshot,distance=Row.distance,at=Row.at,dps=Row.dps};}
+        {
+            if(damage<=0)return;
+            hits.Enqueue((now,damage));window+=damage;
+            row=new TrainingReadout{pad=row.pad,actor=row.actor,total=row.total+damage,last=damage,headshot=head,
+                sourceActor=sourceActor,source=source,distance=distance,at=now,dps=Math.Max(0,window)/5};
+            Expire(now);
+        }
+        private void Expire(float now)
+        {
+            if(hits.Count==0||hits.Peek().time>now-5)return;
+            while(hits.Count>0&&hits.Peek().time<=now-5)window-=hits.Dequeue().damage;
+            row=new TrainingReadout{pad=row.pad,actor=row.actor,total=row.total,last=row.last,headshot=row.headshot,
+                sourceActor=row.sourceActor,source=row.source,distance=row.distance,at=row.at,dps=Math.Max(0,window)/5};
+        }
+        // Frames retain these rows for replay. Replace a changed row so earlier frames keep their own values.
+        public TrainingReadout Read(float now){Expire(now);return row;}
     }
 }
