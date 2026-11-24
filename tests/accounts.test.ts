@@ -317,3 +317,32 @@ test('DEV reset codes expire, replace previous codes and rotate credentials only
   assert.equal((await redeem(third)).status,401);
  }finally{f.db.close();}
 });
+
+test('DEV directory lists registered accounts in order and pages both browsing and prefix searches',async()=>{
+ const f=await fixture();
+ try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const regular:any=await(await f.request('register',{username:'alpha',password})).json();
+  const names=Array.from({length:24},(_,i)=>'pilot_'+String(i).padStart(2,'0'));
+  const insert=f.db.sql.prepare("INSERT INTO player_accounts(id,username,password,recovery,created,updated) VALUES(?,?,'fixture','fixture',?,?)");
+  for(const name of [...names].reverse())insert.run(name,name,now,now);
+  const list=async(query:string,after='')=>{
+   const r=await f.request('players',{query,after},dev.session);
+   assert.equal(r.status,200);
+   const body:any=await r.json();
+   return {names:body.players.map((p:any)=>p.username),after:body.nextAfter};
+  };
+  for(const [query,expected] of [['',['alpha',...names,'sheldon']],['P',names]] as const){
+   const first=await list(query);
+   assert.equal(first.names.length,20);
+   assert.equal(first.after,first.names.at(-1));
+   const second=await list(query,first.after);
+   assert.deepEqual([...first.names,...second.names],expected);
+   assert.equal(second.after,null);
+  }
+  assert.deepEqual(await list('absent'),{names:[],after:null});
+  assert.equal((await f.request('players',{query:'',after:'bad cursor'},dev.session)).status,400);
+  assert.equal((await f.request('players',{})).status,401);
+  assert.equal((await f.request('players',{},regular.session)).status,403);
+ }finally{f.db.close();}
+});

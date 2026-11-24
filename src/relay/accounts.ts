@@ -167,8 +167,14 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
    return response({recoveryCode:code});
   }
   if(action==='players'){
-   const query=typeof input.query==='string'?input.query.trim().toLowerCase():'';if(!/^[a-z0-9_]{2,20}$/.test(query))throw fail('Enter at least 2 username characters.');
-   const r=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? ORDER BY username LIMIT 20').bind(query,query+'\uffff')]);return response({players:r[0].results.map(view),grantCatalogVersion:1,grantableUnlocks:Object.keys(GRANTABLE_CONTENT)});
+   const query=(input.query??''),after=(input.after??'');
+   if(typeof query!=='string'||typeof after!=='string')throw fail('Invalid player filter.');
+   const prefix=query.trim().toLowerCase();
+   if(!/^[a-z0-9_]{0,20}$/.test(prefix)||after!==''&&(!/^[a-z0-9_]{3,20}$/.test(after)||!after.startsWith(prefix)))throw fail('Invalid player filter.');
+   const pageSize=20;
+   const result=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? AND username>? ORDER BY username LIMIT ?').bind(prefix,prefix+'\uffff',after,pageSize+1)]);
+   const rows=result[0].results,players=rows.slice(0,pageSize).map(view);
+   return response({players,nextAfter:rows.length>pageSize?players[pageSize-1].username:null,grantCatalogVersion:1,grantableUnlocks:Object.keys(GRANTABLE_CONTENT)});
   }
   if(action==='grant'){
    if(typeof input.accountId!=='string'||!Number.isSafeInteger(input.grantVersion)||!Array.isArray(input.unlocks)||!Array.isArray(input.flags))throw fail('Invalid player grant.');

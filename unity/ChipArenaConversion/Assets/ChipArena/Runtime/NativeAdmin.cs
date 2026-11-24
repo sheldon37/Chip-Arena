@@ -8,7 +8,7 @@ using UnityEngine.Networking;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeResetRequest {public string accountId;}
-    [Serializable] public sealed class NativeAdminQuery {public string query;}
+    [Serializable] public sealed class NativeAdminQuery {public string query,after;}
     [Serializable] public sealed class NativeGrantRequest {public string accountId;public int grantVersion;public string[] unlocks,flags;}
     public sealed partial class NativeAccount
     {
