@@ -1,3 +1,45 @@
+## 2026-11-24 — Claude (S1): gun sounds with distance layers, reloads on the clips' clocks, bolt and casings
+Owner: "We can put this one together now" (phase 2's sound half of https://claude.ai/artifact/3tjbdJCZpT1V4TwPds1sV9; earlier "Maybe the
+sounds? (I think they use distance sounds as well.)"). **Branch:** `claude/gun-sounds` from shared `50088710`. Pushed, not merged, not
+released. Doc: `docs/GUN-SOUNDS.md`.
+- **Pack guns:** pistol = FN 509 (9 mm), rifle = M2010 ESR (bolt sniper), machine gun = M4 Carbine (the TR15's AR family; M249 the
+  heavier alternative). Reloads and the rifle bolt: the Tactical Shooter Pack's own Viper, SRM-12 and TR15 recordings. No suppressors in
+  the game, so no suppressed takes.
+- **Shots** (`Core/NativeGunSounds.cs`, `Runtime/NativeGunAudio.cs`): close (`OneShot` + `Stop`) and distant (`Dist_OneShot`) layers
+  blended 10-60 m (log, equal power), a tail at half the shot's falloff rate, the travel delay (d/343, at most .35 s), 4 takes (3 tails)
+  in the bank's no-repeat bags. The machine gun streams one-shots (.22 s close layer at .085 s) and plays its release (`Stop` + `Tail`)
+  1.6 intervals after the last shot, aligned to it; the pack's loop runs at the M4's own rate and is not used.
+- **Reloads, bolt, casings:** parts cut from each tactical reload recording, placed on F1's first-person warp (the reloading pilot in
+  first person) or T1's ReloadEnd (everyone else); the rifle bolt on its fire action; casings on the footsteps' floor (concrete, metal,
+  wood, gravel; snow silent) .42 s after the shot (the rifle's after its bolt opens). Others' foley falls off twice and stops at 25 m.
+- **Contract:** 29 positional keys in `NativeSoundKeys` (tails and casings low priority). Fallback: without a gun's `near` clips its shot
+  plays today's `gun.*.shot` route; without its first reload part, today's `gun.reload.start/end`. Hooks: one line each in
+  `NativeAudio.EventSounds` and `Render`, `nativeAudio.FirstPerson` in `ConversionGame`.
+- **Clips (private, not in git):** 77 clips, 913,312 bytes added to EffectsAudio (13.14 -> 14.06 MB of 26 MB), mono Vorbis q5 through the
+  bank's chain (`tools/build_effects_audio.py` in the zip, extended with optional `mix` and `fade` source fields; existing inputs build as
+  before). New zip `F:/Chip Arena Development/scratch/gun-sounds/ship/LocalAssets-gun-sounds.zip` (188,678,092 bytes, sha256
+  `fd83efa5a28d882581ce48747851765248309f80e8af5c846f083e4182be5d86`): today's Drive zip (187,808,863 bytes, 2026-11-23 15:46) plus 183
+  entries, with `manifest.json`, `LICENSES.md`, `tools/inputs.json`, `tools/build-report.json` and the chain replaced; every other entry
+  byte-identical. Build scripts: `scratch/gun-sounds/build/`.
+- **Ship order:** the old installer rejects the new zip (unknown keys), so swap the Drive zip only with this code on the builder branch:
+  merge into shared, back up the Drive zip as `LocalAssets-2026-11-24-before-gun-sounds.zip`, replace it, then push the builder branch.
+  If the Drive zip changed since 2026-11-23 15:46, re-run `build/tools/merge_zip.py <Drive zip> build/fxrepo build/fxrepo/tools/build_effects_audio.py <out>`.
+- **Previews:** `F:/Chip Arena Development/scratch/gun-sounds/*.mp3` (mirror of the game's mix): each gun at 5/30/80 m and today's at the
+  same distances, the machine gun's 24-round burst at 5 and 80 m, a reload per gun in first person and at 6 m in third person.
+- **Checks:** CoreTests `--gun-sounds` 1,121 checks PASS (keys, blend, tail, delay, reload parts against `NativeTacticalTiming`/
+  `NativeTacticalMotion`, bolt, casings, release, hooks, fallbacks); full suite the relgen5 way (clean worktree at `1939cffb`, `expedition_path.patch`, the 14 stage banks) stops at shared's own
+  `DevGrantsChecks` pin ("the screen's only requests are the search and the save": #443's reset adds a third `account.Manage`; fails on
+  shared `50088710` too, for Astra); with that pin relaxed in the throwaway worktree only: exit 0, 1,108 PASS lines; Unity compile check PASS (Runtime and
+  Editor); `install_local_assets.py --check` on the new zip: 255 keys, 670 clips, 14.06 MB, visual body 1,241 files; pins scan clean;
+  `git diff --check` clean. Python sound tests (LOCALAPPDATA in scratch): the same 10 failures as shared before the pin fix;
+  `test_effects_audio` now 8/8 (its contract pin counted 545 keys and an 18 MB budget: now 799 with the intro2 keys and 26 MB).
+- **Not run:** listening in the Editor or a build, two-client play, PrototypeBuild.Validate (nothing it covers changed).
+  `package_source.py --check` stops on shared's own missing `Core/NativeViewArms.cs.meta` (untracked in the Editor checkout).
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; no animation change.
+- **Risks:** levels are set by the chain against today's shots and checked offline only; the owner's listening pass may retune the
+  manifest gains. Casings near a busy machine gun take low-priority voices (dedup .1 s).
+- **Next:** the owner listens to the previews; the integrator merges and swaps the zip in the order above.
+
 ## 2026-11-23 — Astra: browse registered players on entry
 PR #443, from 9849925, synced with shared 87076cc. DEV → Players loads a username-sorted directory. Cursor paging serves 20 accounts per page for browsing and filtered search. Load more retains edits and selection. Account tests passed 20/20 and TypeScript and diff checks passed. Requires the hosted account service and Unity client update. Unity runtime not verified locally.
 
