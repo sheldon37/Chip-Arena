@@ -62,6 +62,8 @@ was trimmed, length-capped, loudness-normalised (with a peak limiter) and re-enc
 | Fantasy Game Sound Effects | Epic Sounds and FX | 94186 |
 | Battle Sound Library - Magic & Melee | Infinity PBR / Magic Pig Games | 176417 |
 | Universal Sound FX | Imphenzia | 17256 |
+| Modern Weapons ALL-IN-ONE Sound System (gun sounds, 2026-11-24) | SoundFX Studio | 254503 |
+| Tactical FPS Animations / Tactical Shooter Pack (its reload and bolt recordings, 2026-11-24) | KINEMATION | not recorded yet |
 
 **The files themselves are never in this repository and must not be published while the repository is
 public.** Not even transcoded clips may be published: the Asset Store licence covers shipping them inside
@@ -262,6 +264,24 @@ series per key, 4 to 8 takes. Universal Sound FX paths are relative to `Assets/U
 | `pve.zombie.step.run` | asphalt (hard floors) | `FOOTSTEP_Trainers_Asphalt_Run` (6) | `HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR2_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR3_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR4_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR6_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR7_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR8_mono.wav` |
 | `pve.zombie.step.heavy` | stone (hard floors) | Fantasy `Stone_Heavy` (5) | Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_A.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_C.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_E.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_G.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_I.wav` |
 | `pve.zombie.step.crawl` | body drag (every surface) | `FRICTION_Deep_Body_Drag` (4) | `FRICTION/Body/FRICTION_Deep_Body_Drag_03_mono.wav`<br>`FRICTION/Body/FRICTION_Deep_Body_Drag_04_mono.wav`<br>`FRICTION/Body/FRICTION_Deep_Body_Drag_05_mono.wav`<br>`FRICTION/Body/FRICTION_Deep_Body_Drag_06_mono.wav` |
+
+### Gun sounds (2026-11-24, owner licence)
+
+Owner: "We can put this one together now" (`docs/GUN-SOUNDS.md`). The pistol, rifle and machine gun's close, distant and tail
+layers and their casings come from Modern Weapons ALL-IN-ONE Sound System (SoundFX Studio, 254503); the reload parts and the rifle's
+bolt from the Tactical Shooter Pack's recordings in KINEMATION's Tactical FPS Animations. 77 clips, 0.91 MB; the private zip's
+`LICENSES.md` names every source file. Modern Weapons paths are relative to its `Sounds/` folder, the Tactical pack's to `SFX/`.
+
+| Keys | Source |
+|---|---|
+| `gun.pistol.near`, `.far`, `.tail` | `FN 509 Semi-Automatic Pistol/FN509_OneShot_1-4` (each with `FN509_Stop_1-4` mixed in), `FN509_Dist_OneShot_1-4`, `FN509_Tail_1-3` |
+| `gun.rifle.near`, `.far`, `.tail` | `M2010 ESR Sniper Rifle/M2010_OneShot_1-4` (with `M2010_Stop_1-4`), `M2010_Dist_OneShot_1-4`, `M2010_Tail_1-3` |
+| `gun.machinegun.near`, `.far`, `.tail` | `M4 Carbine/M4_OneShot_1-4`, `M4_Dist_OneShot_1-4`, `M4_Stop_1-3` with `M4_Tail_1-3` (the release) |
+| `gun.casing.<gun>.<floor>` (concrete, metal, wood, gravel) | `AmmunitionCasings/AmmunitionCasings_<9mm, Sniper, 7_62mm>_<Concrete, Metal, Wood, Gravel>_*`, three takes each |
+| `gun.pistol.reload.out`, `.in` | `WK-11_Viper/Actions/S_WK-11_Viper_Reload_Tactical.WAV` (from .42 and 1.85 s) |
+| `gun.rifle.reload.out`, `.in` | `SRM-12/Actions/S_SRM-12_TacticalReload.WAV` (from .725 and 1.925 s) |
+| `gun.machinegun.reload.out`, `.in`, `.bolt` | `TR15/Actions/S_TR15_Reload_Tactical.WAV` (from .82, 1.575 and 2.365 s) |
+| `gun.rifle.bolt` | `SRM-12/Actions/S_SRM-12_ShotBoltOnly.WAV` (from .445 s) |
 
 ### Central Station enemy cues (2026-10-28)
 

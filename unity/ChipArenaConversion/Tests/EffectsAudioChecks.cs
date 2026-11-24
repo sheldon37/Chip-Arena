@@ -116,7 +116,7 @@ namespace ChipArena.UnityConversion
                 &&NativeToonSynth.Ids.Where(id=>id.StartsWith("ring-")).All(id=>NativeSoundKeys.Known(NativeToonSynth.BankKey(id))),"optional encounter and Glaive keys");
             passed.Add("authored entrance clocks, cast cancellation, replica confirmation, hit cursors (a new match's restarted ids and clock, the Preview Bombadier's loops), closest column");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==545&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==574&&keys.Count(k=>Array.IndexOf(NativeGunSounds.Keys,k.Key)>=0)==29&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");
@@ -322,7 +322,7 @@ namespace ChipArena.UnityConversion
                 {
                     string folder=Path.GetDirectoryName(local);var installed=NativeSoundBank.Parse(File.ReadAllText(local));
                     Check(installed.Errors.Count==0,"LocalAssets manifest: "+string.Join("; ",installed.Errors.Take(5)));
-                    var optional=new HashSet<string>(NativeStationKinds.CueKeys.Concat(NativeIronworksKinds.CueKeys));
+                    var optional=new HashSet<string>(NativeStationKinds.CueKeys.Concat(NativeIronworksKinds.CueKeys).Concat(NativeGunSounds.Keys));
                     Check(installed.Entry("field.fire")?.Loop==true&&installed.Has("field.fire"),"Converter furnace has a loopable donor");
                     var donors=NativeToonSynth.Ids.Select(NativeRecordedCues.Weapon).Concat(
                         NativeStationBossCues.Keys.Concat(NativeIronworksBossCues.Keys).Concat(NativeIronworksKinds.Keys.SelectMany(k=>k)).Select(NativeRecordedCues.Expedition));

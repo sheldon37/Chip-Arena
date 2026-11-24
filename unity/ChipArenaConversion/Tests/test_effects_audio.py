@@ -129,7 +129,7 @@ class EffectsAudioTests(unittest.TestCase):
 
     def test_contract_matches_the_core_bank(self):
         keys, schema, clips, budget = installer.contract()
-        self.assertEqual((len(keys), schema, clips, budget), (545, 1, 16, 18000000))
+        self.assertEqual((len(keys), schema, clips, budget), (574, 1, 16, 26000000))
         self.assertEqual({key for key in keys if key.startswith('ui.install.')},
                          {'ui.install.' + cue for cue in ('lock', 'shatter', 'lid', 'catch', 'seat', 'surge', 'out')})
         self.assertEqual(keys['boss.ironworks.idle.burn'], ('loop', 5))

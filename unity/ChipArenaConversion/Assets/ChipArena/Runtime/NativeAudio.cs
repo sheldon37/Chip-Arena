@@ -206,6 +206,8 @@ namespace ChipArena.UnityConversion
             var events=arena.Events;int newest=0;for(int i=0;i<events.Count;i++)newest=Math.Max(newest,events[i].Id);if(newest>0&&newest<cursor)cursor=0;
             for(int i=0;i<events.Count;i++){var e=events[i];if(e.Id<=cursor||t-e.Time>.4f||t<e.Time)continue;EventSounds(arena,events,i,me);}
             cursor=Math.Max(cursor,newest);BowFlightCues(arena);
+            // The guns' reload parts and a stopped stream's tail (Runtime/NativeGunAudio.cs).
+            GunFrame(arena,me,menu);
             foreach(var p in arena.Pilots)
             {
                 string id=p.Seat.id+":";Vector3 pos=p.Body.position;if(p==me&&t<p.ScareUntil&&Once(id+"scare",p.ScareAt)){Play("darkness",null,.9f);Play("metal",null,.6f);}bool mine=p==me;
@@ -277,6 +279,8 @@ namespace ChipArena.UnityConversion
             string style=e.Kind!=EventKind.Death?null:target?.Death!=null&&NativeTopDog.Popped(target.Death.damageKind)?NativeTopDog.Burst:target?.Death?.style??(string.IsNullOrEmpty(source?.Seat.killEffect)?null:source.Seat.killEffect);
             var detail=new NativeSoundDetail{WeaponDetail=e.Kind==EventKind.Explosion&&WeaponDetail(arena,e.Detail),KillStyle=style};
             int plays=NativeSoundPlan.Event(bank,context,detail,routed,n,planned);Vector3? from=source?.Body!=null?source.Body.position:(Vector3?)null;
+            // A gun's recorded layers play its shots and reloads instead of the route (Runtime/NativeGunAudio.cs); without them, today's.
+            if(GunEvent(arena,e,source,pos,arena.Time-e.Time,context.SourceMe))plays=0;
             for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);
             // The melee Q/E kit's cues (Core/NativeMeleeKitSounds): bank keys with today's built-in clips as their fallback.
             if(NativeMeleeKitFx.Kinds(e.Kind)&&NativeMeleeKitFx.Tag(e.Detail)){int k=NativeMeleeKitSounds.Event(e.Kind,e.Detail,e.Amount,context.TargetMe,kitSounds);for(int i=0;i<k;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:context.SourceMe||context.TargetMe);}
