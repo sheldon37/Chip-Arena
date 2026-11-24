@@ -1,3 +1,6 @@
+## 2026-11-24 — Astra: Training room roster and performance
+Branch `codex/training-target-performance`, base `d0a366cd`. Authored targets retain combat actor IDs but no longer fill the DEV roster, chip recipients, pilot count or spawn capacity. Cull distant off-camera target rigs before posing, avoid redundant physics writes, share unchanged readout rows and validate pad mappings in one pass. M1 stages and training passed 4,977 checks, and the training-look suite passed. Windows FPS and two-client gameplay unmeasured.
+
 ## 2026-11-24 — Claude: release 25: gun sounds with distance layers, reloads and casings (integrator); a builder failure and its fix
 Owner: "We can put this one together now"; earlier, "I think they use distance sounds as well".
 - **Merged:** `claude/gun-sounds` `622f0794` (S1) as shared `5104ef6b`. Its entry below has the details and the pack-gun choices.

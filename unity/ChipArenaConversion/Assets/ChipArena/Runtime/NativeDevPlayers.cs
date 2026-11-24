@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         {
             DevLists();DevClassLists();var me=DevLocal();
             // Whom the tab works on: the picked pilot, else you.
-            var p=DevPilot(devTarget);if(p==null||!p.Seat.connected||p.Seat.AuthorityBoss){devTarget=arena.LocalId;p=me;}
+            var p=DevPilot(devTarget);if(p==null||!arena.DevRosterPilot(p)){devTarget=arena.LocalId;p=me;}
             if(p==null)return DevNote(x,y,w,"No pilot to work on yet.",C.Muted());
             bool you=p.Seat.id==arena.LocalId;if(devClassPickFor!=p.Seat.id){devClassPick=null;devClassPickFor=p.Seat.id;}
             y=DevSection(x,y,w,"PLAYERS","users");y=DevRoster(x,y,w);
@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
             for(int pass=0;pass<2;pass++)
                 foreach(var p in arena.Pilots)
                 {
-                    if(!p.Seat.connected||p.Seat.AuthorityBoss)continue;bool you=p.Seat.id==arena.LocalId;if(you!=(pass==0))continue;
+                    if(!arena.DevRosterPilot(p))continue;bool you=p.Seat.id==arena.LocalId;if(you!=(pass==0))continue;
                     if(DevRosterCard(new Rect(x+col*(cw+gap),y,cw,ch),p,you))devTarget=p.Seat.id;
                     if(++col==2){col=0;y+=ch+gap;}
                 }

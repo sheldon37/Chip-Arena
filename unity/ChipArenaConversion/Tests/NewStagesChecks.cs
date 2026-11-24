@@ -50,12 +50,16 @@ internal static class NewStagesChecks
                 var meter=new TrainingDamageMeter(map.trainingPads[0],1000);meter.Hit(1,30,true,1,"rifle:Hit",10);meter.Hit(3,20,false,1,"pistol:Hit",20);
                 var row=meter.Read(5);Check(row.total==50&&row.dps==10&&row.last==20&&!row.headshot&&row.distance==20,"meter hit fields");
                 Check(meter.Read(6).dps==4&&meter.Read(8).dps==0&&meter.Read(8).total==50,"rolling expiry");
+                Check(row.dps==10&&ReferenceEquals(meter.Read(8),meter.Read(9)),"past replay keeps its DPS and idle reads reuse the row");
                 var rail=map.trainingPads.Single(p=>p.kind=="strafe");var prev=NativeTrainingRules.Position(rail,0);
                 for(double t=.01;t<30;t+=.01){var pos=NativeTrainingRules.Position(rail,t);Check((pos-prev).Length<=.0251&&pos.z>=rail.rail.a.z-.001&&pos.z<=rail.rail.b.z+.001,"smooth bounded rail");prev=pos;}
-                var rows=map.trainingPads.Select((p,i)=>new TrainingDamageMeter(p,1000+i).Read(0)).ToArray();var seats=match.Seats.Select(s=>(s.id,s.bot,s.team)).ToArray();
+                var rows=map.trainingPads.Select((p,i)=>new TrainingDamageMeter(p,1000+i).Read(0)).ToArray();var seats=match.Seats.Select(s=>(s.id,s.bot,s.team,s.devDummy)).ToArray();
                 Check(NativeTrainingRules.ValidFrame(map,seats,rows),"replicated target contract");
-                var full=Enumerable.Range(1,8).Select(i=>(i,false,0)).Concat(seats.Where(s=>s.id>=1000)).ToArray();
-                Check(NativeTrainingRules.ValidFrame(map,full,rows),"eight humans and 28 targets");Check(!NativeTrainingRules.ValidFrame(map,full.Concat(new[]{(9,false,0)}).ToArray(),rows),"ninth human rejected");
+                var full=Enumerable.Range(1,8).Select(i=>(i,false,0,false)).Concat(seats.Where(s=>s.id>=1000)).ToArray();
+                Check(NativeTrainingRules.ValidFrame(map,full,rows),"eight humans and 28 targets");Check(!NativeTrainingRules.ValidFrame(map,full.Concat(new[]{(9,false,0,false)}).ToArray(),rows),"ninth human rejected");
+                Check(match.Seats.Count(s=>!NativeTrainingRules.IsPad(s.id))==1,"solo roster excludes 28 range pads");
+                Check(NativeTrainingRules.ValidFrame(map,seats.Append((2,true,1,true)).ToArray(),rows),"developer-spawned bot fits beside range pads");
+                Check(!NativeTrainingRules.ValidFrame(map,seats.Append((2,true,1,false)).ToArray(),rows),"ordinary bot cannot impersonate a training participant");
                 rows[0].dps=float.NaN;Check(!NativeTrainingRules.ValidFrame(map,seats,rows),"bad readout rejected");
             }
         }
