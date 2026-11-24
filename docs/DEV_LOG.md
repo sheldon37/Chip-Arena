@@ -1,3 +1,19 @@
+## 2026-11-24 — Claude: release 25: gun sounds with distance layers, reloads and casings (integrator); a builder failure and its fix
+Owner: "We can put this one together now"; earlier, "I think they use distance sounds as well".
+- **Merged:** `claude/gun-sounds` `622f0794` (S1) as shared `5104ef6b`. Its entry below has the details and the pack-gun choices.
+  - The branch also fixes shared's stale `DevGrantsChecks` pin: #443 added a third `account.Manage` call, so shared's own suite failed.
+- **First build failed** at "Install optional local assets": `install_local_assets.py` refused the combined zip as "zip is too large".
+  - The Drive zip unpacks to 477.35 MB. The sound queue's generated originals are layered on top at build time, and together they passed `MAX_ZIP_BYTES` (512 MiB unpacked).
+  - S1's 0.9 MB tipped it over.
+- **Fix:** the Drive zip dropped 88 orphan members (6.5 MB): `KinemationTactical/ViewGuns`, `KinemationTactical/Meshes` and `ChipArenaViewGuns.prefab`.
+  - None is in `visual-body.json`. They are left over from release 17's first-person pack guns, which release 19 switched off.
+  - It now unpacks to 470.85 MB, and `--check` passes: 255 keys, 670 clips, 14.06 MB of effects audio, visual body 472.16 MB.
+  - Kept beside it: `LocalAssets-2026-11-24-before-gun-sounds.zip` (release 24's) and the unpruned zip in `F:/Chip Arena Development/scratch/release25b/`.
+  - This docs commit re-runs the builder.
+- **For Astra:** the 512 MiB unpacked cap (`MAX_ZIP_BYTES`) has only about 6 MB of room left with the generated audio. The owner chose a separate effects bank (entry of 2026-11-23); that bank, and any future visual work, needs this cap raised or split per section.
+- **Checks:** the full suite at `622f0794` (1,108 groups, exit 0), the Unity compile, `install_local_assets --check` on the pruned zip.
+- **Not run:** listening in a build, two clients.
+
 ## 2026-11-24 — Claude (S1): gun sounds with distance layers, reloads on the clips' clocks, bolt and casings
 Owner: "We can put this one together now" (phase 2's sound half of https://claude.ai/artifact/3tjbdJCZpT1V4TwPds1sV9; earlier "Maybe the
 sounds? (I think they use distance sounds as well.)"). **Branch:** `claude/gun-sounds` from shared `50088710`. Pushed, not merged, not
