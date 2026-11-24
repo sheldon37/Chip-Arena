@@ -40,6 +40,9 @@ released. Doc: `docs/GUN-SOUNDS.md`.
   manifest gains. Casings near a busy machine gun take low-priority voices (dedup .1 s).
 - **Next:** the owner listens to the previews; the integrator merges and swaps the zip in the order above.
 
+## 2026-11-24 — Astra: Expedition impact-area chip restrictions
+Branch `codex/expedition-impact-area-chips`, base `5008871`. Expedition reward rolls and host selection checks filter impact fields, blasts and pulses by mechanic and effect stat, including adapted cards and the final boss draft. Direct target burn and poison remain eligible. Managed Expedition integration passed 110 assertions. Windows gameplay unverified.
+
 ## 2026-11-23 — Astra: browse registered players on entry
 PR #443, from 9849925, synced with shared 87076cc. DEV → Players loads a username-sorted directory. Cursor paging serves 20 accounts per page for browsing and filtered search. Load more retains edits and selection. Account tests passed 20/20 and TypeScript and diff checks passed. Requires the hosted account service and Unity client update. Unity runtime not verified locally.
 
