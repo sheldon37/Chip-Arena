@@ -102,12 +102,18 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
     row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(id).first();
    }else if(action==='recover'){
     if(typeof input.recoveryCode!=='string'||input.recoveryCode.length>80)throw fail('Enter your recovery code and a new password.');
-    const recovery=await digest(input.recoveryCode.trim());if(!row||!equal(encoder.encode(recovery),encoder.encode(row.recovery)))throw fail('Username or recovery code is incorrect.',401);
+    // Existing rows contain just the player's recovery digest. A DEV-issued code
+    // appends its expiry and digest until either credential is redeemed.
+    const [original,expires,temporary]=String(row?.recovery||'').split(':');
+    const supplied=encoder.encode(await digest(input.recoveryCode.trim()));
+    const ownCode=equal(supplied,encoder.encode(original));
+    const devCode=row?.developer===0&&Number(expires)>now&&equal(supplied,encoder.encode(temporary||''));
+    if(!row||!ownCode&&!devCode)throw fail('Username or recovery code is incorrect.',401);
     const hash=await passwordHash(input.password);recoveryCode=random();
     // Atomic compare-and-swap consumes each recovery code once, even across simultaneous requests.
-    const result=await env.DB.batch([env.DB.prepare('UPDATE player_accounts SET password=?,recovery=?,updated=? WHERE id=? AND recovery=?').bind(hash,await digest(recoveryCode),now,row.id,recovery),env.DB.prepare('DELETE FROM player_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND password=?)').bind(row.id,row.id,hash)]);
+    const result=await env.DB.batch([env.DB.prepare('UPDATE player_accounts SET password=?,recovery=?,updated=? WHERE id=? AND recovery=? AND (developer=0 OR ?=1)').bind(hash,await digest(recoveryCode),now,row.id,row.recovery,ownCode?1:0),env.DB.prepare('DELETE FROM player_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND password=?)').bind(row.id,row.id,hash)]);
     if(!result[0].meta.changes)throw fail('This recovery code was already used.',401);
-    row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(row.id).first();
+    row={...row,password:hash};
    }else{
     if(!row&&username===reserved&&await legacyMatches(username,input.password,env)){
      const hash=await passwordHash(input.password);recoveryCode=random();const id=crypto.randomUUID();
@@ -118,7 +124,8 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
     if(!row||!await passwordMatches(input.password,row.password))throw fail('Username or password is incorrect.',401);
    }
    const session=random(),hash=await digest(session),expires=now+(input.remember===true?REMEMBER_MS:SESSION_MS);
-   await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)').bind(hash,row.id,expires)]);
+   const issued=await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) SELECT ?,id,? FROM player_accounts WHERE id=? AND password=?').bind(hash,expires,row.id,row.password)]);
+   if(!issued[2].meta.changes)throw fail('Credentials changed. Please log in again.',401);
    return response({session,expires:expires,account:view(row),token:await sign(row,env,now),recoveryCode});
   }
   const session=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!session||!/^[-\w]{43}$/.test(session))throw fail('Please log in.',401);
@@ -144,9 +151,30 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
    row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(row.id).first();return response({account:view(row),token:await sign(row,env,now)});
   }
   if(!row.developer)throw fail('Only DEVs can manage registered players.',403);
+  if(action==='issue-reset'){
+   if(request.method!=='POST')throw fail('Use the player management form.',405);
+   if(typeof input.accountId!=='string')throw fail('Select a registered player.');
+   const target=await env.DB.prepare('SELECT id,developer,recovery FROM player_accounts WHERE id=?').bind(input.accountId).first();
+   if(!target)throw fail('Registered player not found.',404);
+   if(target.developer)throw fail('DEV accounts must use their own recovery code.',403);
+   const code=random(),expires=now+15*60000;
+   const record=[target.recovery.split(':')[0],expires,await digest(code)].join(':');
+   const result=await env.DB.batch([
+    env.DB.prepare('UPDATE player_accounts SET recovery=? WHERE id=? AND developer=0 AND recovery=?').bind(record,target.id,target.recovery),
+    env.DB.prepare('INSERT INTO account_audit(id,actor,target,action,detail,created) SELECT ?,?,?,?, ?,? WHERE EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND recovery=?)').bind(crypto.randomUUID(),row.id,target.id,'issue-reset','{}',now,target.id,record)
+   ]);
+   if(!result[0].meta.changes)throw fail('Account recovery changed. Try again.',409);
+   return response({recoveryCode:code});
+  }
   if(action==='players'){
-   const query=typeof input.query==='string'?input.query.trim().toLowerCase():'';if(!/^[a-z0-9_]{2,20}$/.test(query))throw fail('Enter at least 2 username characters.');
-   const r=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? ORDER BY username LIMIT 20').bind(query,query+'\uffff')]);return response({players:r[0].results.map(view),grantCatalogVersion:1,grantableUnlocks:Object.keys(GRANTABLE_CONTENT)});
+   const query=(input.query??''),after=(input.after??'');
+   if(typeof query!=='string'||typeof after!=='string')throw fail('Invalid player filter.');
+   const prefix=query.trim().toLowerCase();
+   if(!/^[a-z0-9_]{0,20}$/.test(prefix)||after!==''&&(!/^[a-z0-9_]{3,20}$/.test(after)||!after.startsWith(prefix)))throw fail('Invalid player filter.');
+   const pageSize=20;
+   const result=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? AND username>? ORDER BY username LIMIT ?').bind(prefix,prefix+'\uffff',after,pageSize+1)]);
+   const rows=result[0].results,players=rows.slice(0,pageSize).map(view);
+   return response({players,nextAfter:rows.length>pageSize?players[pageSize-1].username:null,grantCatalogVersion:1,grantableUnlocks:Object.keys(GRANTABLE_CONTENT)});
   }
   if(action==='grant'){
    if(typeof input.accountId!=='string'||!Number.isSafeInteger(input.grantVersion)||!Array.isArray(input.unlocks)||!Array.isArray(input.flags))throw fail('Invalid player grant.');

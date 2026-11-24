@@ -1,3 +1,10 @@
+## 2026-11-23 — Astra: browse registered players on entry
+PR #443, from 9849925, synced with shared 87076cc. DEV → Players loads a username-sorted directory. Cursor paging serves 20 accounts per page for browsing and filtered search. Load more retains edits and selection. Account tests passed 20/20 and TypeScript and diff checks passed. Requires the hosted account service and Unity client update. Unity runtime not verified locally.
+
+## 2026-11-23 — Astra: DEV-assisted password reset
+Branch `codex/dev-password-reset`, base `cfb37503`. The selected registered non-DEV player can receive a 15-minute one-use code through the existing Account / Recovery form. Issuance is audited and preserves the player's original recovery code. Redemption rotates credentials and revokes account sessions. The DEV client copies the code only for the selected player. Account tests 19/19, TypeScript check passed. Unity player and hosted accounts deployment unverified. Requires both service and client updates.
+
+
 ## 2026-11-23 — Claude: request for Astra: a separate effects bank in the Drive zip (integrator; nothing implemented)
 Owner (2026-11-23): effects should move to the realistic packs the owner owns ("changing out the vfx to the more high quality ones
 instead of the toon ones"). Asked whether to raise the 480 MB visual-body cap or give effects their own bank, the owner chose

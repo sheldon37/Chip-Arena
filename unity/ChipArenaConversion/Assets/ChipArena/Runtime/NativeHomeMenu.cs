@@ -29,6 +29,7 @@ namespace ChipArena.UnityConversion
         private void Go(MenuScreen screen,bool sandbox)
         {
             var from=MenuTarget;
+            if(screen==MenuScreen.Dev&&from!=MenuScreen.Dev)AdminOpenDirectory();
             // Leaving Settings keeps what was changed (applied and saved); leaving Create / Join abandons a pending connection.
             if(from==MenuScreen.Settings&&screen!=MenuScreen.Settings){ApplySettings();Save();}
             if((from==MenuScreen.Create||from==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null||listingRooms)){CloseNetwork();networkStatus="Connection cancelled.";}

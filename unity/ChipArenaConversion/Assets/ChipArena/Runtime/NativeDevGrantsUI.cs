@@ -21,7 +21,8 @@ namespace ChipArena.UnityConversion
     {
         private sealed class AdminItem{public string Key,Id,Name,Kind,Sub,Icon;public Color Tone;public bool Server;public AdminItem Entrance;public int Look;}
         private sealed class AdminRow{public NativeAccountData P;public string Line,Icon,Count;public Color Tone,Accent,Body;public bool Tester,Vip;}
-        private string adminQuery="",adminPick,adminSearched,adminAsked,adminNote,adminError,adminAction,adminListHead="",adminLeftNote="Type the start of a registered username, then press Enter.";
+        private string adminQuery="",adminPick,adminSearched,adminAfter,adminOwner,adminNote,adminError,adminAction,adminListHead="",adminLeftNote="Loading registered players…";
+        private bool adminLoadDirectory;private int adminGeneration;
         private bool adminWaiting,adminOk,adminLeftWarn,adminClassLinks,adminLookLinks,adminIntroLinks;private int adminListedFor=-1;private float adminScrollL,adminScrollR,adminContentL,adminContentR;private GUIStyle adminField;
         private NativeAccountData[] managedPlayers=Array.Empty<NativeAccountData>(),adminRowsFor;
         private readonly Dictionary<string,Dictionary<string,bool>> adminGrants=new Dictionary<string,Dictionary<string,bool>>(),adminFlags=new Dictionary<string,Dictionary<string,bool>>();
@@ -44,6 +45,7 @@ namespace ChipArena.UnityConversion
             float keep=screenContent;screenContent=4000;var l=BeginScreen("CHIP ARENA · DEV","Players",Mathf.Min(1280,U.W-56),age,actions:false);screenContent=keep;
             if(l.Closed||!account.Developer){Go(account.Developer?MenuScreen.Home:MenuScreen.Account);return;}
             AdminLists();AdminRowsSync();AdminSettle();
+            if(adminLoadDirectory&&!account.Busy&&MenuTarget==MenuScreen.Dev){adminLoadDirectory=false;AdminSearch();}
             float e=l.Enter;var b=l.Body;const float barH=60;
             var bar=new Rect(b.x,b.yMax-barH,b.width,barH);var cols=new Rect(b.x,b.y,b.width,bar.y-16-b.y);
             float lw=b.width>=1100?330:290,gap=28;var left=new Rect(cols.x,cols.y,lw,cols.height);var right=new Rect(left.xMax+gap,cols.y,cols.xMax-left.xMax-gap,cols.height);
@@ -118,23 +120,48 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Requests (NativeAccount.Manage: one at a time, a DEV's session) -------------------------------------------
-        private void AdminSearch()
+        private void AdminOpenDirectory()
         {
-            string q=AdminClean(adminQuery);adminQuery=q;
-            if(q.Length<2){adminLeftNote="Type at least 2 characters of the username.";adminLeftWarn=true;return;}
-            if(AdminUnsaved(out string who)){adminLeftNote="Save or revert the changes for "+who+" first.";adminLeftWarn=true;return;}
+            string owner=account.Account?.id;
+            if(adminOwner==owner&&AdminUnsaved(out _))return;
+            adminOwner=owner;adminGeneration++;adminLoadDirectory=true;adminWaiting=false;
+            adminQuery="";adminSearched=adminAfter=adminPick=adminError=adminNote=null;
+            managedPlayers=Array.Empty<NativeAccountData>();adminRowsFor=null;
+            adminGrants.Clear();adminFlags.Clear();adminLeftWarn=false;adminLeftNote="Loading registered players…";
+        }
+        private void AdminSearch(bool more=false)
+        {
+            string q=more?adminSearched:AdminClean(adminQuery);
+            if(!more&&AdminUnsaved(out string who)){adminLeftNote="Save or revert the changes for "+who+" first.";adminLeftWarn=true;return;}
             if(account.Busy||!account.Developer)return;
-            adminAction="players";adminAsked=q;adminWaiting=true;adminOk=false;adminError=null;adminNote=null;adminLeftNote="Searching…";adminLeftWarn=false;
-            account.Manage("players",JsonUtility.ToJson(new NativeAdminQuery{query=q}),response=>
+            int generation=adminGeneration;adminAction="players";adminWaiting=true;adminOk=false;adminError=null;adminNote=null;adminLeftNote="Loading players…";adminLeftWarn=false;
+            account.Manage("players",JsonUtility.ToJson(new NativeAdminQuery{query=q,after=more?adminAfter:""}),response=>
             {
+                if(generation!=adminGeneration||account.Account?.id!=adminOwner)return;
                 adminOk=true;
                 adminAllowed=response.grantCatalogVersion>=1 ? response.grantableUnlocks??Array.Empty<string>() : NativeDevGrants.LegacyServer;
                 adminListedFor=-1;
-                managedPlayers=(response.players??Array.Empty<NativeAccountData>()).Where(p=>p!=null&&!string.IsNullOrEmpty(p.id)).Take(100).ToArray();
-                adminSearched=adminAsked;adminScrollL=adminScrollR=0;adminGrants.Clear();adminFlags.Clear();adminPick=null;
-                adminLeftNote=managedPlayers.Length==0?"No registered player starts with “"+adminSearched+"”.":managedPlayers.Length==1?"1 player starts with “"+adminSearched+"”.":managedPlayers.Length+" players start with “"+adminSearched+"”.";adminLeftWarn=managedPlayers.Length==0;
+                var page=(response.players??Array.Empty<NativeAccountData>()).Where(p=>p!=null&&!string.IsNullOrEmpty(p.id));
+                managedPlayers=more?managedPlayers.Concat(page).ToArray():page.ToArray();
+                adminSearched=q;adminAfter=response.nextAfter;
+                if(!more){adminScrollL=adminScrollR=0;adminGrants.Clear();adminFlags.Clear();adminPick=null;}
+                adminLeftNote=q.Length==0?"Registered players in username order.":"Usernames starting with “"+q+"”.";
+                adminLeftWarn=false;
             });
             if(!account.Busy&&!adminOk){adminWaiting=false;adminLeftNote="The account service is busy. Try again.";adminLeftWarn=true;}
+        }
+        private void AdminIssueReset(NativeAccountData player)
+        {
+            adminAction="issue-reset";adminWaiting=true;adminOk=false;adminError=null;adminNote=null;
+            string actor=account.Account?.id;
+            account.Manage(adminAction,JsonUtility.ToJson(new NativeResetRequest{accountId=player.id}),response=>
+            {
+                adminOk=true;
+                if(MenuTarget!=MenuScreen.Dev||account.Account?.id!=actor||!account.Developer||adminPick!=player.id)return;
+                if(string.IsNullOrEmpty(response.recoveryCode)){adminError="The service did not return a reset code.";return;}
+                GUIUtility.systemCopyBuffer=response.recoveryCode;
+                adminNote="Reset code copied for "+player.username+". Share privately. Use Account → Recovery within 15 minutes.";
+            });
         }
         private void AdminSave()
         {
@@ -171,13 +198,15 @@ namespace ChipArena.UnityConversion
             NativeIcons.Draw(new Rect(field.x+13,field.center.y-9,18,18),"scan",C.Muted(e));
             if(string.IsNullOrEmpty(adminQuery))U.Text(new Rect(field.x+40,field.y,field.width-48,field.height),"username",15,C.Dim(e),TextAnchor.MiddleLeft);
             bool searching=adminWaiting&&adminAction=="players";
-            if(MenuButton(find,null,searching?"…":"Find",null,true,!account.Busy&&(adminQuery??"").Length>=2,e,15,true))AdminSearch();
+            if(MenuButton(find,null,searching?"…":string.IsNullOrEmpty(adminQuery)?"Show all":"Find",null,true,!account.Busy,e,15,true))AdminSearch();
             y+=56;
             var note=AdminWrap(adminLeftNote,12,r.width,2);for(int i=0;i<note.Count;i++)U.Text(new Rect(r.x,y+i*16,r.width,16),note[i],12,adminLeftWarn?C.Warn(e):C.Muted(e),TextAnchor.MiddleLeft);
             y+=Mathf.Max(1,note.Count)*16+18;
             if(adminRows.Count==0){AdminEmptyList(new Rect(r.x,y,r.width,r.yMax-y),e);return;}
             AdminHeading(r.x,y,r.width,adminListHead,null,e);y+=36;
-            var list=new Rect(r.x,y,r.width,r.yMax-y);bool hot=!blocked&&U.Hover(list);
+            bool hasMore=!string.IsNullOrEmpty(adminAfter);
+            if(hasMore&&MenuButton(new Rect(r.x,r.yMax-40,r.width,40),null,"Load more players",null,false,!account.Busy,e,15,true))AdminSearch(true);
+            var list=new Rect(r.x,y,r.width,Mathf.Max(0,r.yMax-y-(hasMore?48:0)));bool hot=!blocked&&U.Hover(list);
             if(hot&&ev.type==EventType.ScrollWheel){adminScrollL+=ev.delta.y*24;ev.Use();}
             adminScrollL=Mathf.Clamp(adminScrollL,0,Mathf.Max(0,adminContentL-list.height));
             float cw=list.width-(adminContentL>list.height?12:0),cy=list.y+2-adminScrollL,c0=cy;
@@ -190,8 +219,9 @@ namespace ChipArena.UnityConversion
             if(r.height<150)return;var c=new Vector2(r.center.x,r.y+70);
             U.Radial(new Rect(c.x-80,c.y-80,160,160),C.Cyan(.06f*e));U.RadialStops(new Rect(c.x-34,c.y-34,68,68),C.Edge(.9f*e),AdminDiscAt,AdminDiscA);U.RadialStops(new Rect(c.x-32,c.y-32,64,64),U.Hex(0x0a0f24,e),AdminDiscAt,AdminDiscA);
             NativeIcons.Draw(new Rect(c.x-16,c.y-16,32,32),"users",C.Muted(e));
-            bool none=adminSearched!=null;U.Text(new Rect(r.x,c.y+46,r.width,22),none?"Nobody found":"No players yet",16,C.Ink(e),TextAnchor.MiddleCenter,bold:true);
-            var lines=AdminWrap(none?"Check the spelling: usernames are letters, numbers and _.":"Search a registered username to see the player here.",12,r.width-30,3);
+            if(adminWaiting||adminLoadDirectory||adminLeftWarn)return;
+            bool none=!string.IsNullOrEmpty(adminSearched);U.Text(new Rect(r.x,c.y+46,r.width,22),none?"Nobody found":"No players yet",16,C.Ink(e),TextAnchor.MiddleCenter,bold:true);
+            var lines=AdminWrap(none?"Check the spelling: usernames are letters, numbers and _.":"Registered accounts appear here.",12,r.width-30,3);
             for(int i=0;i<lines.Count;i++)U.Text(new Rect(r.x,c.y+72+i*16,r.width,16),lines[i],12,C.Muted(e),TextAnchor.MiddleCenter);
         }
         private bool AdminPlayerCard(Rect r,AdminRow row,int i,bool listHot,float e)
@@ -229,6 +259,13 @@ namespace ChipArena.UnityConversion
             float w=view.width-(adminContentR>view.height?14:0),x=view.x,y=view.y-adminScrollR,y0=y;
             adminGrants.TryGetValue(p.id,out var g);adminFlags.TryGetValue(p.id,out var f);
             NativeControllerPointer.SetClip(view);U.BeginBand(view);
+            if(!p.developer)
+            {
+                var reset=new Rect(x,y,w,42);
+                if(MenuButton(reset,null,"Copy password reset code for "+p.username,null,false,hot&&!account.Busy,e,15,true))
+                    AdminIssueReset(p);
+                y+=54;
+            }
             y=AdminSection(x,y,w,"DEV CLASSES","A class and its own entrance",adminClassKeys,adminClassLinks,p,hot,0,e);
             int cols=AdminCols(w,AdminClassMin);float cw=(w-(cols-1)*AdminGap)/cols;
             for(int i=0;i<adminClasses.Count;i++)AdminClassCard(new Rect(x+(i%cols)*(cw+AdminGap),y+(i/cols)*(AdminClassH+AdminGap),cw,AdminClassH),adminClasses[i],i,p,g,hot,e);
