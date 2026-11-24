@@ -88,10 +88,25 @@ namespace ChipArena.UnityConversion
             catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is InvalidOperationException||e is ArgumentException)
             {return ExpeditionCommandResult.Of(ExpeditionCommandState.Failed,"Extraction could not be saved. You are still in the run.");}
         }
+        // Match the effect, so alternate cards that use the same mechanic follow the same rule.
+        private static readonly HashSet<string> ImpactAreaMechanics=new HashSet<string>(StringComparer.Ordinal)
+        {
+            "black-hole","acid-rain","wildfire","blizzard","time-warp","repulsion-pad","med-garden",
+            "lightning-rod","bubble-mine","sticky-bomb","proximity-mail","delayed-gratification",
+            "implosion-bomb","demolition-charge","aftershock","cluster-mine","artillery","wormhole",
+            "wild-domino","l44t-nuke","l44t-uprising","mishima-twin","boss-hum-max-hum"
+        };
+        public static bool AllowsChip(ContentChip chip)
+        {
+            if(chip==null||ImpactAreaMechanics.Contains(chip.mechanic??chip.id))return false;
+            return chip.effects==null||!chip.effects.Any(e=>e.value>0&&
+                (e.stat=="shrapnel"||e.stat=="vacuum"||e.stat=="staticEvery"));
+        }
+        private bool CanOffer(ContentChip chip)=>AllowsChip(chip)&&(ChipFilter==null||ChipFilter(chip));
         public bool Eligible(string account,string chip)
         {
             var p=Run.Snapshot().members.FirstOrDefault(m=>m.account==account);
-            return p!=null&&(ChipFilter==null||ChipFilter(content.Chip(chip)))&&NativeContentRules.Eligible(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),AbilityLoadout?.Invoke(account)??"").Any(c=>c.id==chip);
+            return p!=null&&NativeContentRules.Eligible(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),AbilityLoadout?.Invoke(account)??"").Any(c=>c.id==chip&&CanOffer(c));
         }
         public string[] Offers(string account,string reward)
         {
@@ -106,7 +121,7 @@ namespace ChipArena.UnityConversion
                 row=string.IsNullOrEmpty(r.cacheTier)||r.cacheTier=="standard"?"common":r.cacheTier;
             var weights=string.IsNullOrEmpty(row)?null:CacheWeights?.First(w=>w.id==row).weights.ToDictionary(w=>w.name,w=>w.value);
             var rolled=NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
-                c=>(ChipFilter==null||ChipFilter(c))&&(r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="mythic"||c.rarity=="unique"),weights,abilityLoadout:AbilityLoadout?.Invoke(account)??"").ToArray();
+                c=>CanOffer(c)&&(r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="mythic"||c.rarity=="unique"),weights,abilityLoadout:AbilityLoadout?.Invoke(account)??"").ToArray();
             // A boss's reward: rarely, one of that boss's own relics (docs/BOSS-CHIPS.md).
             if(r.source=="boss"){var boss=NativeBossChips.RewardBoss(r.id,Sources.Director?.Layout);var offered=rolled;rolled=NativeBossChips.Place(rolled,NativeBossChips.Drop(boss,chip=>!offered.Contains(chip)&&Eligible(account,chip),random.Next));}
             frozenOffers[key]=rolled;return (string[])rolled.Clone();

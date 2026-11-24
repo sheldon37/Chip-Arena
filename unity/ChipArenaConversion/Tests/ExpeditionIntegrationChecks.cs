@@ -28,6 +28,15 @@ internal static class ExpeditionIntegrationChecks
         Check(clockRun.Elapsed-clockStart>=3,"frame-stepped channel reaches three-second reprint threshold");
         var run=Ready();run.Credit("host","money",100);run.Credit("guest","money",50);
         var session=new ExpeditionSession(run,data,_=>{});session.Checkpoint();
+        foreach(var id in new[]{"shrapnel","vacuum","acid-rain","wildfire","med-garden","wormhole","fireworks"})
+            Check(!session.Eligible("host",id),"impact area excluded: "+id);
+        foreach(var id in new[]{"ember","poison","plague","inferno","hot-foot","splitter","puppet-master"})
+            Check(session.Eligible("host",id),"ordinary hit, status or dodge chip retained: "+id);
+        foreach(var alias in NativeRoundsCards.Chips().Where(c=>c.sourceCard=="Smoke Grenade"||c.sourceCard=="Short Circuit"))
+            Check(!ExpeditionSession.AllowsChip(alias),"adapted area effect excluded: "+alias.id);
+        var filtered=new ExpeditionSession(run,data){ChipFilter=c=>c.id=="wildfire"||c.id=="inferno"};
+        string filteredReward=run.Snapshot().rewards.First(r=>r.owner=="host").id;
+        Check(filtered.Offers("host",filteredReward).SequenceEqual(new[]{"inferno"}),"host deals the eligible burn chip");
         var batch=ExpeditionViewBatch.Build(run,new[]{"host","guest"},session.Sources);
         Check(batch.Public.mine==null&&batch.Public.viewer==null,"public frame contains no personal state");
         var receiver=new ExpeditionViewReceiver("guest");
