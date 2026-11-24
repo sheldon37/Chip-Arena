@@ -1,3 +1,21 @@
+## 2026-11-23 — Claude: request for Astra: a separate effects bank in the Drive zip (integrator; nothing implemented)
+Owner (2026-11-23): effects should move to the realistic packs the owner owns ("changing out the vfx to the more high quality ones
+instead of the toon ones"). Asked whether to raise the 480 MB visual-body cap or give effects their own bank, the owner chose
+"Separate effects bank". Plan: https://claude.ai/artifact/3tjbdJCZpT1V4TwPds1sV9 (effects work starts after 2026-11-25).
+- **Why:** the visual body is 472 of 480 MB in the Drive zip, and realistic particle effects (textures, meshes, materials, prefabs)
+  will need far more.
+- **Ask (build tooling, Astra):**
+  - a second section in `LocalAssets.zip` for effects, with its own manifest and size budget (the owner sets the number), packed
+    from a fixed git-ignored folder (proposed `Assets/LocalAssets/ChipArenaFx/`, prefabs under its `Resources/`);
+  - `tools/pack_visual_body.py` (or a sibling packer) adds or replaces only that section, like `--with-cloth` and
+    `--addons-allowlist` do;
+  - `tools/install_local_assets.py --check` verifies it;
+  - the 480 MB visual-body cap stays as it is.
+  - The game keeps working without the section: every effect falls back to today's.
+- **Claude's side:** loading effects from that folder at runtime, and the audit and style test (phase 1), which ships nothing.
+  Phases 2-4 wait for this.
+- **Not run:** nothing to run; docs only.
+
 ## 2026-11-23 — Claude: release 24: guns and magic run on grounded strides (integrator)
 Owner: "its very 'hoppy' looking. Lets make it look more realistic (Mostly on guns and magic)".
 - **Published:** shared and the builder at `eefd1df4`. Test channel revision `639310659528403823` (build `be4d8a32`, 396.1 MiB).
