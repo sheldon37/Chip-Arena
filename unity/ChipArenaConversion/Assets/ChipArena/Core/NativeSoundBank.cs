@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// their requested variants, docs/audio/SOUND-REQUESTS.md), then 16 MB. The approved Backrooms and NOCTIEL
         /// batches require 18 MB (2026-11-06), the approved intros v2 batch (95 takes) 20 MB (2026-11-20), and batch 2's
         /// weapon intros (282 requested takes over three slices, about 23.4 MB in all) 26 MB (2026-11-21); per-clip and
-        /// playback budgets are unchanged.</summary>
+        /// playback budgets are unchanged. The gun sounds (77 clips, about 0.9 MB, 2026-11-24) fit inside it.</summary>
         public const long BudgetBytes=26000000;
         private const NativeSoundSpace P=NativeSoundSpace.Positional,F=NativeSoundSpace.Flat,O=NativeSoundSpace.Loop;
         private const NativeSoundPriority H=NativeSoundPriority.High,N=NativeSoundPriority.Normal,L=NativeSoundPriority.Low;
@@ -45,6 +45,15 @@ namespace ChipArena.UnityConversion
             K("field.acid",O,6f,L),K("field.black-hole",O,6f,L),K("field.fire",O,6f,L),K("field.frost",O,6f,L),K("field.heal",O,5f,L),K("field.repulsion",O,4f,L),K("field.storm",O,5f,L),K("field.time",P,2.5f,L),
             K("gun.ads",F,.4f,H),K("gun.dryfire",F,.3f,H),K("gun.flyby",P,.6f,L),K("gun.frag.throw",P,.6f,N),K("gun.machinegun.shot",P,.32f,N),K("gun.orbital.mark",P,2.5f,N),K("gun.pistol.shot",P,.6f,N),K("gun.reload.end",F,.8f,H),
             K("gun.reload.start",F,.8f,H),K("gun.ricochet",P,.9f,N),K("gun.rifle.shot",P,1.4f,N),K("gun.rocket.dud",P,.8f,N),K("gun.rocket.launch",P,1.2f,N),
+            // The guns' recorded layers (Core NativeGunSounds, docs/GUN-SOUNDS.md): close, distant and tail per gun, the reload parts, the
+            // rifle's bolt and the casings by floor. Each falls back to today's gun.*.shot and gun.reload.* cues while it has no clips.
+            K("gun.pistol.near",P,1f,N),K("gun.pistol.far",P,.25f,N),K("gun.pistol.tail",P,1.8f,L),K("gun.rifle.near",P,1.6f,N),K("gun.rifle.far",P,.9f,N),K("gun.rifle.tail",P,3f,L),
+            K("gun.machinegun.near",P,.22f,N),K("gun.machinegun.far",P,.12f,N),K("gun.machinegun.tail",P,2.4f,L),
+            K("gun.pistol.reload.out",P,.6f,N),K("gun.pistol.reload.in",P,.6f,N),K("gun.rifle.reload.out",P,.6f,N),K("gun.rifle.reload.in",P,.6f,N),
+            K("gun.machinegun.reload.out",P,.6f,N),K("gun.machinegun.reload.in",P,.6f,N),K("gun.machinegun.reload.bolt",P,.6f,N),K("gun.rifle.bolt",P,.8f,N),
+            K("gun.casing.pistol.concrete",P,.6f,L),K("gun.casing.pistol.metal",P,.6f,L),K("gun.casing.pistol.wood",P,.6f,L),K("gun.casing.pistol.gravel",P,.6f,L),
+            K("gun.casing.rifle.concrete",P,.6f,L),K("gun.casing.rifle.metal",P,.6f,L),K("gun.casing.rifle.wood",P,.6f,L),K("gun.casing.rifle.gravel",P,.6f,L),
+            K("gun.casing.machinegun.concrete",P,.6f,L),K("gun.casing.machinegun.metal",P,.6f,L),K("gun.casing.machinegun.wood",P,.6f,L),K("gun.casing.machinegun.gravel",P,.6f,L),
             K("hazard.entry",F,1.5f,N),K("hazard.lava",P,4f,N),K("hazard.saw",P,1.2f,N),K("hazard.spikes",P,1f,N),
             K("hit.body",P,.35f,L),K("hit.confirm",F,.2f,H),K("hit.dodge",P,.5f,L),K("hit.headshot",F,.5f,H),K("hit.hurt",F,.45f,H),K("hit.kill-confirm",F,1f,H),
             K("impact.ceiling",P,.7f,L),K("impact.debris",P,.6f,L),K("impact.energy",P,.5f,L),K("impact.glass",P,.6f,L),K("impact.ground",P,.4f,L),K("impact.metal",P,.5f,L),K("impact.stone",P,.45f,L),K("impact.water",P,.6f,L),

@@ -76,7 +76,7 @@ class EffectsAudioTests(unittest.TestCase):
         report = installer.audio_coverage(self.tree.base)
         self.assertEqual((report['entries'], report['recorded_keys'], report['clips']), (3, 2, 3))
         self.assertEqual(report['bytes'], installer.verify(self.tree.base)[2])
-        self.assertEqual(report['headroom_bytes'], 18000000 - report['bytes'])
+        self.assertEqual(report['headroom_bytes'], 26000000 - report['bytes'])
         self.assertEqual(report['groups']['boss.noctiel.']['expected_keys'], 57)
         self.assertEqual(report['groups']['boss.noctiel.']['recorded_keys'], 0)
         self.assertEqual(report['groups']['topdog.blade-']['expected_keys'], 14)
@@ -129,7 +129,7 @@ class EffectsAudioTests(unittest.TestCase):
 
     def test_contract_matches_the_core_bank(self):
         keys, schema, clips, budget = installer.contract()
-        self.assertEqual((len(keys), schema, clips, budget), (545, 1, 16, 18000000))
+        self.assertEqual((len(keys), schema, clips, budget), (799, 1, 16, 26000000))
         self.assertEqual({key for key in keys if key.startswith('ui.install.')},
                          {'ui.install.' + cue for cue in ('lock', 'shatter', 'lid', 'catch', 'seat', 'surge', 'out')})
         self.assertEqual(keys['boss.ironworks.idle.burn'], ('loop', 5))
