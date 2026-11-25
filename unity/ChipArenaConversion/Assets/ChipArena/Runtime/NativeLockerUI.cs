@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
         {
             var ev=Event.current;if(ev.type==EventType.Layout&&lockerTabNext>=0){lockerTab=lockerTabNext;lockerTabNext=-1;}
             LockerStyles();LockerLists();LockerAbilities();if(prefs.name!=lockerNameRaw){lockerNameRaw=prefs.name;lockerName=NativeCosmeticRules.Name(prefs.name);}
-            if(ev.type==EventType.Repaint){lockerHat=lockerPose=lockerBody=lockerAccent=lockerWeapon=lockerBack=lockerHatColor=lockerBackColor=null;lockerBodyTry=null;lockerFaceTry=null;lockerToneTry=-2;}
+            if(ev.type==EventType.Repaint){lockerHat=lockerPose=lockerBody=lockerAccent=lockerWeapon=lockerBack=lockerHatColor=lockerBackColor=null;lockerBodyTry=null;lockerFaceTry=null;lockerToneTry=-2;lockerBodyKindTry=-1;}
             float W=U.W,H=U.H,e=In(age,0,.26f),t=Time.unscaledTime;bool tight=H<720,compact=W<1320;lockerFade=e;
             float total=Mathf.Min(W-56,1760);var shell=new Rect((W-total)/2,80+10*(1-e),total,H-62-80);
             bool dirty=LockerDirty();lockerBlocked=lockerConfirm;if(lockerConfirm)menuBlockedNow=true;
@@ -213,7 +213,7 @@ namespace ChipArena.UnityConversion
             {
                 case NativeLocker.Appearance:
                     LkHead(true);prefs.name=GUILayout.TextField(prefs.name??"",20,lockerField);
-                    if(LkOnModel){LkHead();LkReserve(LkMasksH());LkHead();LkReserve(LkToneH());}
+                    if(LkOnModel){LkHead();LkReserve(LkBodyKindH());LkHead();LkReserve(LkMasksH());LkHead();LkReserve(LkToneH());}
                     else{LkHead();LkReserve(LkBodyRowH());LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");}
                     // The voxel costume on the model (Runtime/NativeLockerCostumeUI.cs), and its body colour while it is worn.
                     if(LkOnModel){lockerCostume=NativeVoxelCostume.Worn(prefs.look);LkHead();LkReserve(LkCostumeH());if(lockerCostume){LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");}}
@@ -255,6 +255,8 @@ namespace ChipArena.UnityConversion
                     {
                         // (Under the voxel costume the masks and the skin tone do not show: dimmed, and saying so.)
                         var shown=GUI.color;var dim=lockerCostume?new Color(shown.r,shown.g,shown.b,shown.a*LkHiddenAlpha):shown;
+                        // The body (Runtime/NativeLockerBodyUI.cs): Male / Female, first.
+                        LkHeading(lockerSlots[k++],"BODY",lockerCostume?LkHiddenHint:"Every hairstyle and outfit fits both");GUI.color=dim;LkBodyKind(lockerSlots[k++]);GUI.color=shown;
                         LkHeading(lockerSlots[k++],"MASKS",lockerCostume?LkHiddenHint:"Hover one to try it on");GUI.color=dim;LkMasks(lockerSlots[k++]);GUI.color=shown;
                         LkHeading(lockerSlots[k++],"SKIN TONE",lockerCostume?LkHiddenHint:LkToneHint());GUI.color=dim;LkSkinTone(lockerSlots[k++]);GUI.color=shown;
                     }
@@ -375,13 +377,13 @@ namespace ChipArena.UnityConversion
         }
         // A wide row card: icon well, name and one line (a description or a mono stat line), the tick at the right. `body` >= 0
         // draws that body skin's thumbnail in the well instead of the icon (LkBodyThumb); `dev` badges the description line.
-        private bool LkRowCard(Rect r,int key,bool on,string icon,Color tint,string name,string text,string stats,out bool hot,int body=-1,bool dev=false)
+        private bool LkRowCard(Rect r,int key,bool on,string icon,Color tint,string name,string text,string stats,out bool hot,int body=-1,bool dev=false,string figure=null,string figureKey=null)
         {
             float e=lockerFade;hot=lockerViewHot&&U.Hover(r);float h=U.HoverAmount(key,r,hot);var d=new Rect(r.x,r.y-2*h,r.width,r.height);
             if(on)U.Glow(new Rect(d.x+10,d.y+10,d.width-20,d.height-10),U.Hex(0xff6b35,.12f*e),12);
             U.Round(d,on?U.Hex(0x2f2224,e):U.A(U.Mix(U.Hex(0x1d1e24),U.Hex(0x26272e),h),e),10,on?U.Hex(0xff6b35,e):U.A(U.Mix(U.Hex(0x3b3c45),U.Hex(0x9a8a9e),h),e),on?2:1);
             var well=new Rect(d.x+14,d.center.y-22,44,44);U.Round(well,U.Hex(0x15161b,e),10,U.Hex(on?0x8a5a45:0x4c4653,e));
-            if(body>=0)LkBodyThumb(well,body,e,h);else NativeIcons.Draw(new Rect(well.x+10,well.y+10,24,24),icon,U.A(on?U.Hex(0xffb38a):tint,e));
+            if(body>=0)LkBodyThumb(well,body,e,h);else if(figure!=null)NativeIcons.DrawMarkup(new Rect(well.x+10,well.y+10,24,24),figureKey,figure,24,U.A(on?U.Hex(0xffb38a):tint,e));else NativeIcons.Draw(new Rect(well.x+10,well.y+10,24,24),icon,U.A(on?U.Hex(0xffb38a):tint,e));
             float tx=well.xMax+14,tw=d.xMax-tx-(on?36:14);var n=U.Wrap(name,15,tw,true,1);var sl=stats!=null?LkStatLines(stats,tw):null;bool two=sl!=null&&sl.Count>1;
             U.Text(new Rect(tx,d.center.y-(two?27:19),tw,20),n.Count>0?n[0]:name,15,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
             if(sl!=null)for(int i=0;i<sl.Count;i++)U.Text(new Rect(tx,d.center.y+(two?-5:3)+i*14,tw+6,14),sl[i],10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,mono:true,tracking:.1f);
@@ -705,7 +707,7 @@ namespace ChipArena.UnityConversion
 
         // ---- Stage: the pilot on its turntable -------------------------------------------------------------------------
         private const int LockerPortraitKey=3;
-        private float LockerYawShown(float t){float idle=prefs.reducedEffects?0:Mathf.Clamp01((Time.unscaledTime-lockerTurnAt-2.5f)/1.5f);return lockerYaw+Mathf.Sin(t*.5f)*9*idle;}
+        private float LockerYawShown(float t){float idle=prefs.reducedEffects?0:Mathf.Clamp01((Time.unscaledTime-lockerTurnAt-2.5f)/1.5f);return lockerYaw+LkSpin()+Mathf.Sin(t*.5f)*9*idle;}
         private void LockerStage(Rect r,Rect plate,float e,float t)
         {
             var w=LockerShownWeapon();Color accent=LkColor(lockerAccent??prefs.accentColor,0x70e1d0),body=LkColor(lockerBody??prefs.bodyColor,0xe5e7eb),tone=U.Hex((int)w.color);string pose=lockerPose??prefs.lobbyPose;
@@ -721,7 +723,7 @@ namespace ChipArena.UnityConversion
             var look=new PortraitLook{Spec=w.id,Pose=pose,Hat=lockerHat??prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Yaw=LockerYawShown(t),Skin=LockerSkinShown(w.id),BodySkin=BodySkinShown(),HatColor=lockerHatColor??prefs.hatColor};
             float ring=Mathf.Min(86,r.width*.26f);PortraitStage(r,LockerPortraitKey,look,lockerBack??prefs.lobbyBack,NativeHatLooks.Rgb(lockerBackColor??prefs.backColor),accent,body,NativeIcons.Spec(w.id),tone,e,t,0,new Vector2(r.center.x,r.y+r.height*.42f),ring,28,false,true);
             U.Text(new Rect(r.x+16,r.y+14,200,14),"LIVE PREVIEW",10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
-            if(lockerHat!=null||lockerPose!=null||lockerBody!=null||lockerAccent!=null||lockerWeapon!=null||lockerBack!=null||lockerHatColor!=null||lockerBackColor!=null||lockerBodyTry!=null)U.Text(new Rect(r.x,r.y+14,r.width-16,14),"TRYING ON",10,U.Hex(0xc9bfff,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
+            if(lockerHat!=null||lockerPose!=null||lockerBody!=null||lockerAccent!=null||lockerWeapon!=null||lockerBack!=null||lockerHatColor!=null||lockerBackColor!=null||lockerBodyTry!=null||lockerBodyKindTry>=0)U.Text(new Rect(r.x,r.y+14,r.width-16,14),"TRYING ON",10,U.Hex(0xc9bfff,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
             float hint=lockerTurned?Mathf.Clamp01(1-(Time.unscaledTime-lockerTurnAt-1.5f)):1;
             if(hint>0){var hr=new Rect(r.center.x-80,r.yMax-28,160,18);NativeIcons.Draw(new Rect(hr.x+4,hr.y+2,14,14),"rotate-cw",U.Hex(0x8f909a,hint*e));U.Text(new Rect(hr.x+24,hr.y,hr.width-24,hr.height),"DRAG TO ROTATE",10,U.Hex(0x8f909a,hint*e),TextAnchor.MiddleLeft,mono:true,tracking:.14f);}
             LockerTurn(r);

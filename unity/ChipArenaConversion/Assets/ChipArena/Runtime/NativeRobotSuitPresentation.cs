@@ -11,20 +11,35 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeSourceModels
     {
         public const string Suit="pilot-suit";
+        /// <summary>The plates fitted to the female body (Core/NativeBodyKind; ArenaPresentation SuitFemaleEnsure).</summary>
+        public const string SuitFemale="pilot-suit-female";
+        private Material suitMaterial;
         private void SuitModels()
         {
             var lit=Resources.Load<Shader>("NativeSourceLit");if(lit==null)return;
-            var material=new Material(lit){enableInstancing=true,name="Robot suit"};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);
+            var material=new Material(lit){enableInstancing=true,name="Robot suit"};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);suitMaterial=material;
+            models[Suit]=SuitParts(material,null);
+        }
+        // The suit's parts, each vertex moved by `carry` (its suit bone, its position: where it goes) when given.
+        private static Part[] SuitParts(Material material,Func<int,Vector3,Vector3> carry)
+        {
             var sections=NativeRobotSuit.Build();var parts=new Part[sections.Length];
             for(int p=0;p<sections.Length;p++)
             {
                 var s=sections[p];int n=s.Positions.Count;var vertices=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var emission=new List<Vector4>(n);
                 for(int i=0;i<n;i++){var v=s.Positions[i];var nn=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];vertices[i]=new Vector3(v.X,v.Y,v.Z);normals[i]=new Vector3(nn.X,nn.Y,nn.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);emission.Add(new Vector4(e.X,e.Y,e.Z,e.W));}
+                if(carry!=null)for(int i=0;i<n;i++)vertices[i]=carry(s.Bone,vertices[i]);
                 var t=s.Indices.ToArray();
-                var mesh=new Mesh{name="Robot suit / "+s.Part,indexFormat=n>65535?IndexFormat.UInt32:IndexFormat.UInt16};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=new Vector2[n];mesh.SetUVs(1,emission);mesh.triangles=t;mesh.RecalculateBounds();mesh.UploadMeshData(true);
+                var mesh=new Mesh{name="Robot suit / "+s.Part+(carry!=null?" (female)":""),indexFormat=n>65535?IndexFormat.UInt32:IndexFormat.UInt16};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=new Vector2[n];mesh.SetUVs(1,emission);mesh.triangles=t;mesh.RecalculateBounds();mesh.UploadMeshData(true);
                 parts[p]=new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,Core=CoreOf(vertices,normals,colors,emission,t)};
             }
-            models[Suit]=parts;
+            return parts;
+        }
+        /// <summary>The suit fitted to the female body: today's plates, each vertex where `carry` moves it (the garment under it, by
+        /// that garment's own shape deltas), on the same instanced material. Made once.</summary>
+        public void SuitFemaleModels(Func<int,Vector3,Vector3> carry)
+        {
+            if(suitMaterial==null||carry==null||models.ContainsKey(SuitFemale))return;models[SuitFemale]=SuitParts(suitMaterial,carry);
         }
     }
 
@@ -81,7 +96,8 @@ namespace ChipArena.UnityConversion
             int shown=SuitShown(id)&keep;if(shown==0||sourceModels==null||!sourceModels.Has(NativeSourceModels.Suit))return;var rig=SuitRigOf(root);if(rig==null||(shown&=rig.Found)==0)return;
             for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
             suitBone??=i=>suitMatrices[i];suitReveal=reveal;suitTint=tint;suitShown=shown;suitVisible??=b=>(suitShown>>b&1)!=0;
-            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,suitVisible,layer,camera,BodyTint(bodyColor),accentOverride??AccentTint(accentColor),1,
+            // (On the female body, the plates fitted to it: NativeBodyKindPresentation.cs.)
+            sourceModels.Queue(SuitModelOf(root,rig),Matrix4x4.identity,suitBone,suitVisible,layer,camera,BodyTint(bodyColor),accentOverride??AccentTint(accentColor),1,
                 reveal==null?null:suitRevealOf??=i=>suitReveal(SuitJoints[i]),tint==null?null:suitTintOf??=i=>suitTint(SuitJoints[i]),new Vector4(glowGain,glowGain,glowGain,1),null,flash);
         }
     }

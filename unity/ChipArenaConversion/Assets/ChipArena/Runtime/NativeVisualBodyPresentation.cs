@@ -93,7 +93,12 @@ namespace ChipArena.UnityConversion
         private string VisualLookOf(int id)
         {
             var look=HotDogOrTop(VisualOutfitOf(id)??"");costumeBank=sourceModels;
-            if(!robotDressed.TryGetValue(look,out var dressed)){if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);}
+            if(!robotDressed.TryGetValue(look,out var dressed))
+            {
+                if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);
+                // (The body pick through the dressing, which normalises the key away until NativeLook carries it: Core NativeBodyKind.)
+                if(NativeBodyKind.IsFemale(look))robotDressed[look]=dressed=NativeBodyKind.Keep(dressed,look);
+            }
             // The voxel costume in its variant (the skin map's body entry: NativeVoxelCostumePresentation.cs).
             if(!NativeVoxelCostume.Worn(dressed))return dressed;int skin=CostumeSkinOf(id);return CostumeLook(dressed,skin,CostumeTierOf(id,skin));
         }
@@ -106,6 +111,8 @@ namespace ChipArena.UnityConversion
             if(id<RooftopIdTop&&id>RooftopIdTop-8)return NativeLook.Concept;
             if(DeployOutfit(id,out var deploy))return deploy;
             if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
+            // This client's own pilot in its own body pick (Core NativeBodyKind; NativeBodyKindPresentation.cs LocalBodyOwn).
+            if(id==LocalId&&LocalBodyOwn(out var own))return own;
             // Use the displayed arena, including replay/guest seats, rather than current local preferences.
             var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";
             return id==LocalId?LocalLook??"":"";
@@ -847,6 +854,8 @@ namespace ChipArena.UnityConversion
             lookNamed.Clear();
             if(NativeHotDog.Worn(look))HotDogWear(root);
             if(NativeVoxelCostume.Worn(look))CostumeWear(root,look);
+            // The female body (Core NativeBodyKind; NativeBodyKindPresentation.cs), under any outfit but the Hot Dog and the costume.
+            else if(NativeBodyKind.IsFemale(look)&&!NativeHotDog.Worn(look))VisualFemale(root);
         }
         // The pilot's skin tone (Core NativeLook's skin entry; owner 2026-10-28: "Give skin color customization"): written on the
         // skin parts when a body is dressed, and again in place when only the tone changes (VisualRetone), never per frame. A
@@ -893,7 +902,7 @@ namespace ChipArena.UnityConversion
         private static bool VisualRetone(VisualBody body,string look)
         {
             if(string.Equals(body.Look,look,StringComparison.Ordinal))return true;
-            if(!NativeLook.SameOutfit(body.Look,look))return false;
+            if(!NativeLook.SameOutfit(body.Look,look)||NativeBodyKind.Of(body.Look)!=NativeBodyKind.Of(look))return false; // (another body: made again)
             if(NativeVoxelCostume.Worn(look)&&(CostumeSkinIn(body.Look)!=CostumeSkinIn(look)||CostumeTierIn(body.Look)!=CostumeTierIn(look)))return false; // (another costume variant or tier)
             int tone=NativeLook.SkinOf(look);if(body.All!=null)foreach(var r in body.All)VisualSkinToneOne(r,tone);body.Look=look;return true;
         }
@@ -933,10 +942,14 @@ namespace ChipArena.UnityConversion
             if(CostumeOn(body.Root))return; // (The costume set its own: NativeVoxelCostumePresentation.cs CostumeAnchors.)
             var d=VisualLookData();if(d?.anchors==null)return;string upper=NativeLook.Of(body.Look,NativeLook.Upper),hands=NativeLook.Of(body.Look,NativeLook.Hands);LookAnchor best=null;
             foreach(var a in d.anchors)if(a!=null&&a.upper==upper&&(best==null||a.hands==hands))best=a;
-            if(best==null)return;
-            if(body.GearCore!=null&&best.core?.Length==7){body.GearCore.localPosition=new Vector3(best.core[0],best.core[1],best.core[2]);body.GearCore.localRotation=new Quaternion(best.core[3],best.core[4],best.core[5],best.core[6]);}
-            if(body.GearDevice!=null&&best.device?.Length==7&&best.radius>.01f){body.GearDevice.localPosition=new Vector3(best.device[0],best.device[1],best.device[2]);body.GearDevice.localRotation=new Quaternion(best.device[3],best.device[4],best.device[5],best.device[6]);body.GearRadius=best.radius;}
-            if(best.emblem?.Length==2&&best.emblem[0]>.03f)body.Emblem=EmblemFrameAt(best.emblem[0],best.emblem[1]);
+            if(best!=null)
+            {
+                if(body.GearCore!=null&&best.core?.Length==7){body.GearCore.localPosition=new Vector3(best.core[0],best.core[1],best.core[2]);body.GearCore.localRotation=new Quaternion(best.core[3],best.core[4],best.core[5],best.core[6]);}
+                if(body.GearDevice!=null&&best.device?.Length==7&&best.radius>.01f){body.GearDevice.localPosition=new Vector3(best.device[0],best.device[1],best.device[2]);body.GearDevice.localRotation=new Quaternion(best.device[3],best.device[4],best.device[5],best.device[6]);body.GearRadius=best.radius;}
+                if(best.emblem?.Length==2&&best.emblem[0]>.03f)body.Emblem=EmblemFrameAt(best.emblem[0],best.emblem[1]);
+            }
+            // The female body's chest carries the core out with it (NativeBodyKindPresentation.cs).
+            VisualFemaleCore(body);
         }
         // The model's head bone (the game's head joint's).
         private static Transform VisualHeadOf(VisualBody body){var of=body.Binding.Rig.Of;int v=CapturedRig.Head<of.Length?of[CapturedRig.Head]:-1;return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;}
@@ -1545,7 +1558,9 @@ namespace ChipArena.UnityConversion
             if(!visualRevives.TryGetValue(key,out var s)||s.Root==null)
             {
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joints);if(root==null)return false;root.name="Visual revive "+death.id;
-                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length]};VisualSceneHooded(s);
+                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length],Rest=new Vector3[bones.Length]};VisualSceneHooded(s);
+                // (Each bone's own scale at rest: the female body's head is counter-scaled, Core NativeBodyKind.)
+                for(int v=0;v<bones.Length;v++)s.Rest[v]=bones[v]!=null?bones[v].localScale:Vector3.one;
                 var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
                 for(int v=0;v<bones.Length;v++){s.Bind[v]=bones[v].localToWorldMatrix;s.Top[v]=bones[v]==null||bones[v].parent==null||!index.TryGetValue(bones[v].parent,out int up)||joints[up]!=joints[v];}
                 for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
@@ -1555,10 +1570,10 @@ namespace ChipArena.UnityConversion
             if(alpha<(visualDissolve?.01f:.5f)){if(s.Root.activeSelf)s.Root.SetActive(false);return true;}
             if(!s.Root.activeSelf)s.Root.SetActive(true);
             if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);
-            for(int v=0;v<s.Bones.Length;v++)if(s.Top[v])s.Bones[v].localScale=Vector3.one;
+            for(int v=0;v<s.Bones.Length;v++)if(s.Top[v])s.Bones[v].localScale=s.Rest[v];
             for(int j=0;j<22;j++)s.Now[j]=joint(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
-            if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;float g=grow(s.Joint[v]);if(g<1)s.Bones[v].localScale=Vector3.one*Mathf.Max(.001f,g);}
+            if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;float g=grow(s.Joint[v]);if(g<1)s.Bones[v].localScale=s.Rest[v]*Mathf.Max(.001f,g);}
             VisualSceneHood(s,death,alpha);VisualSceneFace(s,death,alpha);
             return true;
         }
@@ -1615,7 +1630,7 @@ namespace ChipArena.UnityConversion
         // death: each visual bone follows its joint's motion since then (the scene's joint matrices over the rig's at death),
         // hidden while the scene hides the pelvis or the body is under half opacity. True: the voxel victim and its hat are not
         // drawn. Kept per death until it goes undrawn for 2 s.
-        private sealed class VisualScene{public bool[] Top;public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;public bool Hood;public int Head=-1;}
+        private sealed class VisualScene{public bool[] Top;public Vector3[] Rest;public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;public bool Hood;public int Head=-1;}
         // A scene's or revive's body made with the Sheldon hood: its model head, where the hood's void and face ride (the scene and
         // the revive draw no hat; the hood is the body's own).
         private static void VisualSceneHooded(VisualScene s){s.Hood=s.Root.transform.Find(NativeSheldonHood.Renderer)!=null;s.Head=Array.FindIndex(s.Bones,b=>b!=null&&b.name=="head");}
