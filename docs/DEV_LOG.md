@@ -1,3 +1,93 @@
+## 2026-11-25 — Claude (M1): Meridian's described route: Crown Hill camp, the Hundred Steps, left toward City Hall; the Ironworks recognisable
+Owner, 2026-11-25: "lets get work started" on Astra's brief, section 3 ("Give Meridian a route players can describe").
+**Branch:** `claude/meridian-route` from shared `b6e24973`, which includes Astra's #447 stairs and rails. Pushed; not merged, not released.
+Doc: `docs/expedition/MERIDIAN-ROUTE.md`. Presentation only.
+- **Walked first** on shared: the live Crown Hill deal, xseed 2027808463, from the game camera.
+  - The camp's north gate opens on the plaza, with the steps 13 m ahead.
+  - Astra's guards were thin iron boxes, and their landing joins were square.
+  - The clock tower stood centred, but over a bare retaining wall.
+  - Clock Street was an open asphalt plateau with nothing turning the eye left.
+- **Dressed.** `Core/NativeMeridianRoute.cs` places the pieces, `tools/stages/meridian_route.py` builds the bank `ChipArenaCityRoute`, and `Runtime/NativeMeridianRoute.cs` draws it.
+  - Leaving camp:
+    - the camp's apron road;
+    - a zebra crossing at the north gate, with studs, zigzags, a dropped granite kerb and a tactile band;
+    - Belisha beacons on the fence ends, above 3.1 m;
+    - a York-flag footway, edged in the same granite, to the first tread.
+  - The steps: cast-iron balustrades on Astra's guards.
+    - They slope with each flight, run level on the landings and bend round the joins, with bars and with newels seated on the treads.
+    - The guards' boxes are hidden while the balustrades draw. Their colliders are untouched.
+  - The tower: hipped slate roofs with chimney stacks on Clock Street's four `pitched` rows frame it.
+  - The left turn:
+    - the same kerb and footway up Clock Street, the west one turning left along the switchback;
+    - Meridian Stores on the corner lot's ground storey: Modern Supermarket's produce, sale cards and doors in lit windows, a lit fascia, an awning and a blade sign;
+    - the CITY HALL sign with its arrow, high on the wall that closes the street.
+  - The Ironworks, wherever it is dealt:
+    - an Old Industry loading bay (door, window bay, canopy, gutter, lamp) in the door front's two bays right of the door;
+    - smoke over the far stacks: low-poly puffs in Polygon Arsenal's look, animated by the drawer.
+  - The street dress leaves the shop's ground storey to the route through the new `NativeMeridianDress.FacadeReplaced`, which is null elsewhere.
+  - The street life keeps off the route's pieces, and the landmarks drop the two replaced Ironworks bays.
+  - All of this applies only while the bank is present.
+  - `tools/pack_bank/fbx.py` now reads ASCII FBX arrays (`Name: *N { a: ... }`) and ASCII names in binary order. Before this, Old Industry's Houdini exports read as one node named "Model".
+- **Packs:** all owned and named in the brief.
+  - **Used:**
+    - Old Industry and Modern Supermarket: downloaded today and parked in `F:/Chip Arena Development/AssetStoreCache`.
+    - Polygon Arsenal: bought today and downloaded for reference. Its SmokestackDark is the smoke's model; nothing from it ships.
+  - **Not used:**
+    - EasyRoads3D Pro: it builds Editor road meshes on terrain, and Meridian is generated at runtime.
+    - City & Terrace: a modern skyline backdrop of textured towers with no terrace rooflines, against the art bible.
+    - The Horror Hospital (owned since 11-24): not used at the corner. It suits Ward Zero's front. Not downloaded.
+  - Pack meshes are read as data and their albedo is baked into vertex colours. No pack texture or file ships except the bank.
+- **Bytes:** `ChipArenaCityRoute.bytes` is 2,220,863 bytes (sha 8bda8a82; v2), plus a 158-byte meta. Measured with the v1 bank (2,227,631) on a repack of today's Drive zip; the zip itself was not swapped. The zip's members grew from 493,868,549 to 496,096,589 bytes (+2,228,040: the bank, its meta, `visual-body.json`); v2 makes that about +2,221,272. That leaves about 38.9 MiB under `MAX_ZIP_BYTES` before the sound queue's generated audio (about 35 MiB), so **about 3.9 MiB** with it. The visual body is 474.38 MB of 480 MB. `install_local_assets --check` passes (258 keys, 683 clips, 14.18 MB of effects audio). This bank fits; the next city or effects bank needs Astra's cap raise or the separate effects bank.
+- **Collision handoff for Astra.** Nothing here adds or moves a collider. Art stands where no collider is:
+  - **Roofs** (`route/647/roofs`, world frame, Crown Hill only). The rows are `pitched` in the plans but flat boxes today, so the roofs stand up to 4.5 m over the boxes' tops:
+    - lots 71 and 72 as one roof: x -60.3..-24.7, z 89.7..100.3, eaves at y 21.38, ridge at 25.52 along x -55..-30;
+    - lot 73: x 19.7..35.3, z 99.7..110.3, eaves 24.38, ridge 28.52;
+    - lot 74: x 44.7..60.3, z 99.7..110.3, eaves 21.38, ridge 25.52;
+    - the chimney stacks reach the ridge plus 1.5 m.
+    - Not reached on foot (the nearest walkable surface is 5 m off). A pilot launched onto one by a chip would stand inside the slates until the roof wedges exist (D1's standing ask).
+    - Screenshots: after `t12_tower_sight`, `t16_corner_eye`.
+  - **Balustrade bars** (`route/647/rails`): the bars between Astra's posts at x ±5.75, z 38..75, from the tread up to 0.85 m under each grip. A standing pilot is stopped by the grip; anything passing under 0.85 m would pass through the bars. Screenshots: after `t6_rail_base_1`, `t7_rail_join_2`.
+  - **Belisha beacons** (`route/647/crossing`): on the north gate's fence ends at x ±5.45, z 24.9, y 3.22..4.51. Screenshots: after `t2_gate_out`, `t3_gate_edge_w`.
+  - **Loading-bay canopy** (`route/front/ironworks/loading`, the door front's frame; seed 2027808463 puts it on hall-a's E door at (259, 14, 63)):
+    - the canopy is about x 256.7..259, z 51.55..55.55, y 18.75..19.2, with brackets from y 17.6;
+    - it projects 2.3 m, 3.6 m to 5.2 m over the apron.
+    - Screenshot: after `t21_front_a`.
+  - The screenshots are in `F:/Chip Arena Development/scratch/meridian-route/cap/after_stills3/`.
+- **Checks:**
+  - **Full CoreTests on `86d3d442`**, run the relgen5 way (stage banks plus `CHIPARENA_ROUTE_BANK`): exit 0, 1,109 PASS lines; `--meridian-route` 15,514 checks with the bank.
+    - It ran in a throwaway worktree, which held two local changes that are not committed:
+      - shared `b6e24973`'s failing Belvedere seed-123 pin, set to the values shared's own re-pin `372ed569` now has (this branch does not move it);
+      - `ExpeditionEndingChecks`' meta-path comparison, normalised.
+  - **Unity compile check** on the branch content (Assembly-CSharp, Editor, Player defines, InputSystem; Unity's Roslyn): 0 errors.
+  - `git diff --check b6e24973..HEAD`: clean. `tools/pack_bank` tests: 17 of 17.
+  - **PrototypeBuild.Validate** in the Editor: ok on `029a4e37`. Since then only the smoke constants, the smoke tints and the bank script changed; it was not re-run on `86d3d442`, to keep hold 4 under 25 minutes.
+  - **Live Expedition starts** in the Editor, all `STAGE_LOADING reason=ready`:
+    - on `029a4e37` with v1: three on Crown Hill (`Meridian route Crown Hill: 7 pieces, 102 blocks replaced, 2 landmark pieces replaced, 3 plumes`) and one on a clock seed (The Stride: nothing drawn, countdown reached);
+    - on `86d3d442` with v2: two more on Crown Hill, the same line.
+- **Proof:** in `F:/Chip Arena Development/scratch/meridian-route/proof/`, all from the game camera on seed 2027808463:
+  - `walk-before-after-2x.mp4`: shared against the branch, the same path;
+  - `walk-after-1x.mp4`;
+  - `stills-1-leaving-camp.jpg`, `stills-2-the-steps.jpg`, `stills-3-the-left-turn.jpg`, `stills-4-ironworks.jpg` (before and after);
+  - `stills-5-smoke-street-level-v1.jpg`.
+  - Raw captures are in `cap/`.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. No animation change.
+- **Not done:**
+  - The Developer walk (Settings > Developer > Walk Meridian greybox) does not draw the route.
+  - Only Crown Hill has the walk's pieces. The other four layouts have only the Ironworks bay and smoke.
+  - Not captured on the Low graphics tier.
+  - No Windows build and no two-client run. The change is presentation only, and nothing is networked.
+  - Smoke against enemies is reasoned, not filmed: the fight capture stayed in the sanctuary phase with no zombies. The plumes are 80–150 m up and more than 300 m out; enemies are at street level.
+  - No first-time walker has described the route yet.
+  - Ward Zero's Horror Hospital front is left as a suggestion.
+  - My hold 3 overran the 25-minute cap (37 minutes: importing the new assets and refreshing the tool took time). Hold 4 took 22 minutes.
+- **Ship:** for the integrator; never done here.
+  1. Merge `claude/meridian-route`. It merges cleanly onto `a2d2d771`.
+  2. Under the lock, copy `F:/Chip Arena Development/scratch/meridian-route/bank2/ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` and its `.meta` into the Editor's `Assets/LocalAssets/ChipArenaLocal/Resources`.
+  3. Run `tools/pack_visual_body.py <Drive zip> <new zip> --project <Editor project>`, then `tools/install_local_assets.py <new zip> --check`.
+  4. Keep the old zip as `LocalAssets-2026-11-25-before-meridian-route.zip`, then swap the zip and push the builder.
+  5. Leave the bank in Resources.
+  - Without the bank, the game draws exactly as shared does.
+
 ## 2026-11-24 — Astra: Deathmatch replay timing
 Branch `codex/deathmatch-replay`, base `9be1dbf8`. Cap ordinary Deathmatch replay lead-in against the authoritative respawn countdown, reserving 0.75 s after impact when available. Hosts and guests use the same deadline. Core built, 161 Deathmatch/blind-pick and 114 final-killcam checks passed. Windows multiplayer playback outstanding.
 
