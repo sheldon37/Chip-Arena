@@ -22,8 +22,9 @@ namespace ChipArena.UnityConversion
         public static bool On=true;
         /// <summary>The trial's spell: the fire staff's primary bolt.</summary>
         public const NativeMagicSchool School=NativeMagicSchool.Fire;
-        /// <summary>The pack's missile is about 1.5 m across, its explosion 4 m: scaled to the game's bolt (its glow about 0.5 m) and hit.</summary>
-        public const float MissileScale=.32f,ExplosionScale=.3f;
+        /// <summary>The pack's missile is about 1.5 m across, its explosion 4 m (its flame turning to smoke): scaled to the game's bolt (its glow
+        /// about 0.5 m) and to a hit about a metre across.</summary>
+        public const float MissileScale=.32f,ExplosionScale=.24f;
         /// <summary>A missile whose bolt left the frame stops emitting; its trails live out this long, then it is put away.</summary>
         public const float TrailFade=.8f;
         /// <summary>An explosion plays this long, then it is put away; an event older than <see cref="Stale"/> plays none.</summary>
