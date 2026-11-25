@@ -1,3 +1,18 @@
+## 2026-11-25 — Claude: release 28: the blood spray (X1), a zip-size build failure, and orphans pruned (integrator)
+- **Merged:** `claude/fx-blasts-blood` (X1, `448b9b65`, synced to `456920db`) into shared and the builder as `3dc364cd`. The suite at `456920db` passed (1,110 groups, exit 0), and so did the Unity compile.
+- **First build failed:** at "Install optional local assets", with "zip is too large" (install_local_assets' `MAX_ZIP_BYTES`, once the sound queue layered its generated originals). The test channel stayed on release 27.
+- **Room correction:** builds only pass with about 40.4-40.8 MB of generated originals added on top. `SoundQueue/originals` is 43.2 MB, and part of it replaces existing members. So after release 27 only about 0.4 MB was free, not the 3.9 MiB in the 2026-11-25 request below. The 0.39 MB blood spray tipped it over.
+- **Fix:** pruned 14 orphaned members (3.47 MB), with no reference in code, git scenes or prefabs, or zip text members:
+  - `ChipArenaLocal/VisualBody/Weapons/machinegun_Model_held.asset` (the held MG from before the TR15, 3.0 MB);
+  - `Polygon-Mega Weapone Kit/Models/SM_Light_Machine_Gun.fbx` and `SM_Assault_Rifle_5,56.fbx`;
+  - four unlisted `Feet_OfficeLoafer` / `Top_FullSuit` materials;
+  - and the metas of all of these.
+  The zip now unpacks to 493.01 MB, leaving about 3.1 MB of room in the worst case. `install_local_assets --check --require-cloth` passes. The zips are kept as `LocalAssets-2026-11-25-before-blood-spray.zip` and `-before-orphan-prune.zip`. This receipt's builder push rebuilds.
+- **Shipping:**
+  - X1's blood spray (`ChipArenaLocal/Resources/ChipArenaBloodSpray`, 0.39 MB) layers over the RVFX splashes on gun hits and kills.
+  - X1's explosion and fire flipbooks (3.4 MB) stay in the Editor's git-ignored `ChipArenaFx`, so builds keep today's explosions and fire until **Astra's** effects bank or a `MAX_ZIP_BYTES` raise.
+- **Astra:** the room request below stands. With about 3.1 MB left, the female pilot (2.5 MB) fits next, and little else does.
+
 ## 2026-11-25 — Claude (X1): realistic explosions, fire and the blood spray from the flipbooks (effects plan phase 4)
 Owner, 2026-11-25, on V1's effects gallery: "go with recommended". Integrator brief `agents-fx-2026-11-25.md`.
 **Branch:** `claude/fx-blasts-blood` from shared `4a2b5c4f`. Pushed; not merged, not released, the Drive zip not swapped.
