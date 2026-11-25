@@ -1,3 +1,6 @@
+## 2026-11-24 — Astra: Expedition cache locker lookup across runs
+Branch `codex/expedition-cache-map-binding`, base `59b930f4`. Resolve lockers against the current generated block array and anchor placement when runs reuse area and cache IDs. Unsupported anchors keep their hologram. Core build passed and the cache-opening suite passed 19,737 checks including all five Meridian plans and same-ID map replacement. Windows playthrough pending.
+
 ## 2026-11-24 — Astra: Training room roster and performance
 Branch `codex/training-target-performance`, base `d0a366cd`. Authored targets retain combat actor IDs but no longer fill the DEV roster, chip recipients, pilot count or spawn capacity. Cull distant off-camera target rigs before posing, avoid redundant physics writes, share unchanged readout rows and validate pad mappings in one pass. M1 stages and training passed 4,977 checks, and the training-look suite passed. Windows FPS and two-client gameplay unmeasured.
 
