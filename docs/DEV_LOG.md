@@ -1,3 +1,81 @@
+## 2026-11-25 — Claude (X1): realistic explosions, fire and the blood spray from the flipbooks (effects plan phase 4)
+Owner, 2026-11-25, on V1's effects gallery: "go with recommended". Integrator brief `agents-fx-2026-11-25.md`.
+**Branch:** `claude/fx-blasts-blood` from shared `4a2b5c4f`. Pushed; not merged, not released, the Drive zip not swapped.
+Doc: `docs/PACK-EFFECTS.md` "Explosions, fire and the blood spray from the flipbooks". Presentation only.
+- **What changed** (Core `NativeFxPack`: V1's lab recipes as pure functions of an effect's age and seed; `NativeVfxDraw` draws them in its
+  one sorted batch as `NativeVfx.shader` modes 13 fire, 14 smoke and dust, 15 blood):
+  - Fire, Mine and Meteor blasts (untinted: rockets, barrels, mines, meteors, the fire staff's hit) and the Bombadier's charges: the fireball
+    (flash glow, ignition burst, four burst flipbooks, five aftermath smokes, 30 embers).
+    - **V1's fault 1 fixed:** the ignition burst is at full size and opaque from the first frame, and the flash glow is wider than today's.
+  - Kinetic (the frag's own tint, and the untinted dash blast, kinetic and bubble mine), Quake and melee slam landings: smoke and dust.
+    - **V1's fault 2 fixed:** a light dust cloud opens the burst, the smoke is a lighter grey, and nothing goes darker than a self-light floor.
+  - Kept code-drawn: the shock front (it still ends exactly on the gameplay radius), the three blast lights, halo and core glows, sparks,
+    rubble and slabs, the slam wave, every telegraph. Dropped for restyled blasts only: their toon puffs, toon flashes and crescent licks.
+  - Fire fields burn with one to seven large-flame flipbooks. Burning bodies (third person), the camp's drums and brazier, and the town's
+    brazier, bus and burning windows burn with the campfire or the large flame. Halos, light, the camp's and the town's smoke stay.
+  - Gun hits (punctures) and every kill throw the blood pack's spray (mist, two splatters, 24 stretched drops) **over** the RVFX splashes,
+    which stay the hit cue.
+  - `NativeBlastSim` records each restyled blast after its spawns, with no random draw, and lists live fire fields. The pools, the pinned
+    frames and the shock fronts are unchanged; the record's seed ranges let the drawer leave out exactly that blast's toon puffs.
+  - **Fallback:** without a sheet its layer is off and everything keeps today's look (`NativeFxPack.On` is the DEV and capture switch).
+- **Gameplay, networking, animation:** none. Radius, timing, damage, hit timing, the wire and every rule are untouched. No animation change.
+- **Loading** (C2's convention, `Core/NativeCachePackFx.cs`): `Resources.Load` by name, read once.
+  - The explosion and fire sheets load from the effects bank, `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaBlastFx/<name>`.
+  - The blood sheets load from the zip's `ChipArenaLocal/Resources/ChipArenaBloodSpray/<name>`.
+- **Bytes** (flipbooks at 1024, grey + alpha):
+  - **Drive zip (blood only):** +395,165 bytes unpacked (0.395 MB, 0.377 MiB): `splatters.png` 255,386 and `mist.png` 134,389, their two
+    metas, the folder meta, and `visual-body.json` +651. Measured by repacking a copy of release 27's zip with `pack_visual_body.py` from a
+    hard-linked mirror of the Editor's LocalAssets; `install_local_assets.py --check --require-cloth` passed; it unpacks to 473.48 MiB.
+  - **Effects folder:** 3,433,792 bytes (3.43 MB) for six sheets and their metas.
+    - Explosions: `burst` 521,173, `smoke` 489,248, `dust` 419,384.
+    - Fire: `flame` 700,969, `large` 687,094, `flamesmoke` 601,876.
+- **Counts** (drawn quads; lab `n`; today -> after):
+  - Fire r3: 65 -> 65 at .05 s, 65 -> 56 at .25 s, 31 -> 21 at .5 s, 5 -> 14 at .9 s; 5 smokes linger to 2.6 s.
+  - Frag r3: 46 -> 56 at .05 s, 27 -> 36 at .25 s, 15 -> 24 at .5 s, 2 -> 20 at .9 s; 6 left at 2.6 s.
+  - Quake r2.5: 55 -> 46 peak.
+  - Slam landing: 40 -> 13.
+  - Fire field r1.2: 85 -> 72 peak.
+  - A campfire: about 30.
+  - Spray: +30 sprites a hit or kill (today's 2-3 RVFX splashes stay).
+  - CoreTests prints the same per age (`--fx-blasts-blood`).
+- **Proof** (V1's rig, same cameras; blasts at 10 m; through the game's own `NativeVfxDraw` with `NativeFxPack.On` off and on; Editor
+  hold 16:02-16:17):
+  - Sheets: `F:/Chip Arena Development/scratch/x1/sheets3/explosion.jpg` (final), `sheets2/slam.jpg`, `sheets2/fire.jpg`,
+    `sheets/blood.jpg` and `sheets/firefield.jpg` (before the fire tuning).
+  - Clips, dark and bright: `F:/Chip Arena Development/scratch/x1/clips/rocket-fireball-{dark,bright}-realtime.mp4`,
+    `frag-dust-{dark,bright}-realtime.mp4`, `blood-spray-{bright,dark}-2x-slow.mp4` (6 m), `fire-dark-realtime.mp4` and
+    `slam-dark-realtime.mp4`.
+  - Read: the fireball outsizes today's flash from the first frame. The frag reads as strongly or more from .25 s on, and lasts longer on
+    the dark stage. **At .12 s the frag's fire core and dust are still smaller than today's crisp white poof.**
+- **Checks:**
+  - Full CoreTests the relgen5 way (LF worktree, `expedition_path.patch`, the 14 stage banks): `712f55e3`, 1,110 PASS lines, exit 0.
+  - New group `FxBlastsBloodChecks` (`--fx-blasts-blood`, 13,781 checks): sim records and seed ranges, unchanged spawns and fronts, recipes
+    deterministic and in their sheets, both faults in numbers, the spray, the fires, the fallback pins, no publisher name in code.
+  - `VfxRuntimeChecks`' `Blasts` pin is updated to the new structure.
+  - `tools/check_unity_compile.py` passed; `git diff --check` clean; the Editor compiled `398c75a9`, `a4060be6` and `d942e821`.
+  - `PrototypeBuild.Validate` in the Editor at `d942e821` (the last code commit) with the sheets installed: ok (16:40-16:51 hold).
+- **Ship steps:**
+  - **Zip (now):** under the Editor lock:
+    - Copy `F:/Chip Arena Development/scratch/x1/out/ChipArenaLocal/Resources/ChipArenaBloodSpray/` and `ChipArenaBloodSpray.meta` into the
+      Editor's `Assets/LocalAssets/ChipArenaLocal/Resources/`.
+    - Repack with `tools/pack_visual_body.py <Drive zip> <new> --project <Editor project> --addons-allowlist <allowlist>`, holding out
+      unshipped banks as `pack-b1.sh` does.
+    - Check with `install_local_assets.py <new> --check --require-cloth`. Expect 5 added members (394,514 bytes) and `visual-body.json`
+      +651 bytes.
+    - Keep the old zip beside it, then replace it.
+  - **Effects folder (with Astra's effects-bank packer, DEV_LOG `87076cc7`):**
+    - The six sheets and metas are already installed in the Editor at `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaBlastFx/`.
+      Source copy: `F:/Chip Arena Development/scratch/x1/out/ChipArenaFx/`.
+    - The packer takes the `ChipArenaFx` folder whole; the installer puts it at the same path on the builder.
+    - Until then builds keep today's explosions and fires.
+  - **Rebuild:** `python -I tools/fx_bank/flipbooks.py <Editor>/Assets/LocalAssets/V1FxLab <out>` is deterministic and keeps existing metas.
+- **Not done:** Meridian's half-drum fires (their own drawer), Ward Zero's vent flames, the intros' scripted fires, first-person burning (it keeps the status flames),
+  a BoZo match capture, frame cost in a build, and a Windows build.
+- **Risks:**
+  - Until Astra's packer exists, a merged branch with the zip blood alone gives the spray but no explosions or fire changes.
+  - The Editor keeps the six effects sheets installed in `ChipArenaFx`. The temporary blood copy was removed.
+- **Next:** the integrator reviews the clips, ships the blood with the next zip and the effects sheets with the effects bank.
+
 ## 2026-11-25 — Claude: release 27: Meridian's described route (integrator)
 - **Published:** shared and the builder at `91bed26c`. Test channel revision `639312330273820441` (build `f5ebe749`, 396.9 MiB).
 - **Merged:** `claude/meridian-route` (M1, `3ea8e2eb`, synced to `72f3bc0f`). The integrator reviewed the before/after stills and the walk on seed 2027808463.
