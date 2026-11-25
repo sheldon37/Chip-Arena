@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
                 float k=FireLevel(f,time,reduced);
                 // into the camp from the fence the drum stands against
                 double nx=inX[i],nz=inZ[i];
-                if(PackFlames)PackFires.Add(new NativePackFire{X=(float)s.X,Y=(float)(s.Y-(bowl?.38:.08)),Z=(float)s.Z,Size=bowl?1.7f:.85f,Seed=(uint)f*131u+7u});
+                if(PackFlames)PackFires.Add(new NativePackFire{X=(float)s.X,Y=(float)(s.Y-(bowl?.38:.08)),Z=(float)s.Z,Size=bowl?2.4f:1.3f,Seed=(uint)f*131u+7u});
                 // the flames: a core and four tongues licking up out of the drum's mouth
                 if(!PackFlames)for(int t=0;t<5;t++)
                 {

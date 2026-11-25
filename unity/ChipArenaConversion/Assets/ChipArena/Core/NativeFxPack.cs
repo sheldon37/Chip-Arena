@@ -61,9 +61,9 @@ namespace ChipArena.UnityConversion
         public const float FlashSize=6.8f,FlashLife=.18f,IgniteSize=3.6f,IgniteLife=.55f;
         /// <summary>Fix 2 (V1: the smoke-and-dust burst hardly read on dark stages): its smoke is a lighter grey, it never goes darker than a
         /// floor of self light (the explosion's own glow lighting it), and a bigger fire core and flash open it.</summary>
-        public const float DustSelf=.34f,SmokeSelf=.2f,FireSmokeSelf=.12f;
+        public const float DustSelf=.55f,SmokeSelf=.3f,FireSmokeSelf=.12f;
         public static readonly Vector3 FlashTint=new Vector3(1,.72f,.38f),DustFlashTint=new Vector3(1,.86f,.62f),EmberTint=new Vector3(1,.5f,.15f);
-        public const int FireSmokeHex=0x9e9a94,FireballSmokeHex=0x5f5a55,DustHex=0xc7b79e,FragSmokeHex=0x8e8983,SlamDustHex=0xb6a895,FlameSmokeHex=0x5e5b58;
+        public const int FireSmokeHex=0x9e9a94,FireballSmokeHex=0x5f5a55,DustHex=0xc7b79e,FragSmokeHex=0xa19b94,SlamDustHex=0xb6a895,FlameSmokeHex=0x5e5b58;
         /// <summary>Blood: the RVFX splash's own tint (NativeBloodSplash.Tint), a little darker for the spray's sheets.</summary>
         public const int BloodHex=0x6c0a10;
 
@@ -107,12 +107,12 @@ namespace ChipArena.UnityConversion
         public static readonly Emitter[] DustRecipe=
         {
             new Emitter{Look=NativeFxLook.Glow,Count=1,Life0=.14f,Life1=.14f,Size0=5.6f,Size1=5.6f,OffsetY=.8f,Gain=4,Tint=DustFlashTint,Alpha=new[]{1f,.35f,0}},
-            new Emitter{Sheet=Burst,Look=NativeFxLook.Fire,Count=1,Life0=.7f,Life1=.7f,Size0=2.9f,Size1=2.9f,OffsetY=.9f,Rot=60,Gain=2.2f,HeatGain=1.35f,Occlusion=.7f,Hex=FragSmokeHex,Self=DustSelf,
-                Heat=new[]{1f,.5f,0},Alpha=new[]{1f,1f,.6f,0},Grow=new[]{.9f,1.15f}},
+            new Emitter{Sheet=Burst,Look=NativeFxLook.Fire,Count=2,Life0=.75f,Life1=.85f,Size0=3.2f,Size1=3.6f,Radius=.3f,OffsetY=.9f,Rot=60,Gain=2.6f,HeatGain=1.6f,Occlusion=.75f,Hex=FragSmokeHex,Self=DustSelf,
+                Heat=new[]{1f,.55f,0},Alpha=new[]{1f,1f,.7f,0},Grow=new[]{.9f,1.15f}},
             new Emitter{Sheet=Smoke,Look=NativeFxLook.Smoke,Count=7,Delay=.03f,Life0=2.5f,Life1=3.5f,Size0=3.6f,Size1=5.2f,Speed0=1.2f,Speed1=2.6f,Drag=1.5f,Shape=NativeFxShape.Hemisphere,Radius=.6f,OffsetY=.6f,Hex=FragSmokeHex,Self=DustSelf,
-                Alpha=new[]{.55f,.95f,.85f,.5f,0},Grow=new[]{.6f,1.4f}},
+                Alpha=new[]{.8f,1f,.9f,.55f,0},Grow=new[]{.8f,1.4f}},
             new Emitter{Sheet=Dust,Look=NativeFxLook.Smoke,Count=10,Life0=1.4f,Life1=2.2f,Size0=1.4f,Size1=2.4f,Speed0=4,Speed1=7,Drag=2.5f,Shape=NativeFxShape.Ring,Radius=.4f,OffsetY=.25f,Hex=DustHex,Self=DustSelf,
-                Alpha=new[]{.6f,.9f,.6f,0},Grow=new[]{.6f,1.4f}},
+                Alpha=new[]{.8f,1f,.65f,0},Grow=new[]{.6f,1.4f}},
         };
         // The Quake slam: the dust ring wider and lower, the smoke slower; its slam wave, slabs and rubble stay the code's.
         public static readonly Emitter[] QuakeRecipe=
@@ -125,21 +125,21 @@ namespace ChipArena.UnityConversion
         // A melee slam's landing (NativeSlamDust's place and clock): a small dust ring and a low puff; its stones stay the code's.
         public static readonly Emitter[] SlamRecipe=
         {
-            new Emitter{Sheet=Dust,Look=NativeFxLook.Smoke,Count=7,Life0=.9f,Life1=1.3f,Size0=.8f,Size1=1.3f,Speed0=2.6f,Speed1=4.2f,Drag=2.8f,Shape=NativeFxShape.Ring,Radius=.25f,OffsetY=.15f,Hex=SlamDustHex,Self=DustSelf,
-                Alpha=new[]{.7f,.9f,.55f,0},Grow=new[]{.6f,1.5f}},
-            new Emitter{Sheet=Smoke,Look=NativeFxLook.Smoke,Count=2,Delay=.04f,Life0=1.1f,Life1=1.3f,Size0=1.2f,Size1=1.6f,Speed0=.3f,Speed1=.6f,Shape=NativeFxShape.Hemisphere,Radius=.2f,OffsetY=.3f,Hex=SlamDustHex,Self=DustSelf,
-                Alpha=new[]{.5f,.8f,.5f,0},Grow=new[]{.7f,1.3f}},
+            new Emitter{Sheet=Dust,Look=NativeFxLook.Smoke,Count=10,Life0=.9f,Life1=1.3f,Size0=1.3f,Size1=2.1f,Speed0=3.2f,Speed1=5f,Drag=2.8f,Shape=NativeFxShape.Ring,Radius=.25f,OffsetY=.2f,Hex=SlamDustHex,Self=DustSelf,
+                Alpha=new[]{.85f,1f,.6f,0},Grow=new[]{.6f,1.5f}},
+            new Emitter{Sheet=Smoke,Look=NativeFxLook.Smoke,Count=3,Delay=.04f,Life0=1.1f,Life1=1.3f,Size0=1.6f,Size1=2.2f,Speed0=.3f,Speed1=.7f,Shape=NativeFxShape.Hemisphere,Radius=.3f,OffsetY=.35f,Hex=SlamDustHex,Self=DustSelf,
+                Alpha=new[]{.6f,.85f,.5f,0},Grow=new[]{.7f,1.3f}},
         };
         // V1's campfire recipe (looping streams; size s the flame's width): flame, smoke, glow, embers. The large flame swaps the sheet.
         public static Emitter[] FireRecipe(bool large)=>large?LargeFire:Campfire;
         private static Emitter[] FireStreams(int sheet)=>new[]
         {
-            new Emitter{Look=NativeFxLook.Glow,Loop=true,Rate=5,Life0=.8f,Life1=1,Size0=1.8f,Size1=2f,OffsetY=.35f,Gain=.35f,Tint=new Vector3(1,.45f,.12f),Alpha=new[]{0f,.7f,.7f,0}},
+            new Emitter{Look=NativeFxLook.Glow,Loop=true,Rate=5,Life0=.8f,Life1=1,Size0=1.3f,Size1=1.5f,OffsetY=.35f,Gain=.12f,Tint=new Vector3(1,.45f,.12f),Alpha=new[]{0f,.7f,.7f,0}},
             new Emitter{Sheet=sheet,Look=NativeFxLook.Fire,Loop=true,Rate=3.2f,Life0=2f,Life1=2.1f,Size0=1,Size1=1.15f,Speed0=.02f,Speed1=.06f,Shape=NativeFxShape.Ring,Radius=.12f,OffsetY=.42f,Rot=12,Gain=1.35f,HeatGain=1.1f,Occlusion=.6f,Hex=FlameSmokeHex,Self=FireSmokeSelf,
                 Heat=new[]{1f,1f,.9f},Alpha=new[]{0f,1f,1f,1f,0}},
             new Emitter{Sheet=FlameSmoke,Look=NativeFxLook.Smoke,Loop=true,Rate=1.6f,Life0=3.2f,Life1=3.6f,Size0=1.2f,Size1=1.7f,Speed0=.7f,Speed1=1,Shape=NativeFxShape.Cone,Angle=8,OffsetY=.9f,Hex=FlameSmokeHex,Self=.06f,
                 Alpha=new[]{0f,.5f,.4f,0},Grow=new[]{.6f,1.5f}},
-            new Emitter{Look=NativeFxLook.Streak,Loop=true,Rate=14,Life0=1,Life1=2.2f,Size0=.025f,Size1=.05f,Speed0=.8f,Speed1=2.2f,Gravity=-.08f,Shape=NativeFxShape.Cone,Angle=18,Radius=.15f,OffsetY=.2f,Gain=5,Tint=new Vector3(1,.55f,.18f),Alpha=new[]{0f,1f,1f,0},Stretch=.03f},
+            new Emitter{Look=NativeFxLook.Streak,Loop=true,Rate=10,Life0=1,Life1=2.2f,Size0=.025f,Size1=.05f,Speed0=.8f,Speed1=2.2f,Gravity=-.08f,Shape=NativeFxShape.Cone,Angle=18,Radius=.15f,OffsetY=.2f,Gain=3,Tint=new Vector3(1,.55f,.18f),Alpha=new[]{0f,1f,1f,0},Stretch=.03f},
         };
         private static readonly Emitter[] Campfire=FireStreams(Flame),LargeFire=FireStreams(Large);
         // V1's blood pack spray rebuild (along the wound's exit direction): mist, two splatters, stretched drops.
@@ -258,9 +258,9 @@ namespace ChipArena.UnityConversion
         // ---- the fire fields and stage fires: where a field's flames stand ----
         /// <summary>How many flames a fire field of radius r burns with (one for a small one, up to seven), and the flames' width.</summary>
         /// <summary>A burning body's flame: the campfire this wide (m), its base this far above the feet.</summary>
-        public const float BodyFireSize=1.05f,BodyFireLift=.3f;
+        public const float BodyFireSize=1.5f,BodyFireLift=.25f;
         public static int FieldFlames(double r)=>Math.Max(1,Math.Min(7,(int)Math.Round(1+r*r*.45)));
-        public static float FieldFlameSize(double r)=>(float)Math.Max(1.4,Math.Min(2.4,.9+r*.5));
+        public static float FieldFlameSize(double r)=>(float)Math.Max(1.8,Math.Min(3,1.2+r*.6));
         /// <summary>Flame j of a field: the centre, then a ring at .55 of its radius, turned by its id.</summary>
         public static Vector3 FieldFlameAt(double x,double ground,double z,double r,long id,int j,int n)
         {

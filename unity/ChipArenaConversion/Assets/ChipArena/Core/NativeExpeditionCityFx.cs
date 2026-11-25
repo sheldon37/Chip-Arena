@@ -245,7 +245,7 @@ namespace ChipArena.UnityConversion
             {
                 var c=s.Fires[f];double d=Dist(c.X,c.Y,c.Z);if(d>110)continue;double k=NativeExpeditionCityKit.Level(NativeExpeditionCityKit.DriveFire,c.Param,time),size=c.Size;
                 bool brazier=c.Kind==NativeExpeditionCityKit.GlowBrazier;
-                if(PackFlames)PackFires.Add(new NativePackFire{X=(float)c.X,Y=(float)(c.Y-.05),Z=(float)c.Z,Size=(float)(size*(brazier?1.5:1.7)),Seed=(uint)f*173u+11u,Large=!brazier});
+                if(PackFlames)PackFires.Add(new NativePackFire{X=(float)c.X,Y=(float)(c.Y-.05),Z=(float)c.Z,Size=(float)(size*(brazier?2.2:2.2)),Seed=(uint)f*173u+11u,Large=!brazier});
                 // The flames: a core and tongues that lick up and sway; the halo.
                 if(!PackFlames)for(int t=0;t<5;t++)
                 {
