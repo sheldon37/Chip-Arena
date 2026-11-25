@@ -101,6 +101,8 @@ namespace ChipArena.UnityConversion
                 double age=now-impact.At;if(age<0||age>NativeSlamDust.Life)continue;
                 Vector3 root=impact.Position+Vector3.up*(float)NativeSlamDust.Lift;
                 float opacity=(float)NativeSlamDust.DustOpacity(age)*DustOpacity,u=(float)(age/NativeSlamDust.Life),size=DustSize*(1+DustGrow*(float)age);
+                // The effects bank's dust ring and puff (Core NativeFxPack.Slam; Claude X1) when present, else today's toon puffs.
+                if(vfx.PackSlam(impact.Position,(float)age,(uint)(impact.At*1000)^0x51a3u,quality))opacity=0;
                 if(opacity>0)for(int i=0;i<dust;i++)
                 {
                     NativeSlamDust.DustPoint(i,age,out double x,out double y,out double z);

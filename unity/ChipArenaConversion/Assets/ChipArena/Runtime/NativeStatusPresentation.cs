@@ -132,13 +132,17 @@ namespace ChipArena.UnityConversion
         private void QueueStatus(in NativeStatusVisuals.Rig rig,float time,Matrix4x4 parent,StatusBatch[] target)
         {
             int count=NativeStatusVisuals.Build(rig,time,statusPieces);
+            // A burning body in the world burns with the effects bank's campfire flame (drawn by the blasts' layer) instead of the
+            // status flames and embers, while the bank is loaded (Core NativeFxPack; Claude X1, 2026-11-25).
+            bool packFire=rig.Fire&&target==statusWorld&&blasts!=null&&vfx!=null&&vfx.PackBlasts;
+            if(packFire)blasts.StageFires.Add(new NativePackFire{X=parent.m03,Y=parent.m13+NativeFxPack.BodyFireLift,Z=parent.m23,Size=NativeFxPack.BodyFireSize,Seed=(uint)blasts.StageFires.Count*977u+5u});
             for(int i=0;i<count;i++)
             {
                 var p=statusPieces[i];var m=parent*Matrix4x4.TRS(new Vector3(-p.Position.X,p.Position.Y,p.Position.Z),new Quaternion(p.Rotation.X,-p.Rotation.Y,-p.Rotation.Z,p.Rotation.W),new Vector3(p.Scale.X,p.Scale.Y,p.Scale.Z));
                 switch(p.Kind)
                 {
-                    case NativeStatusVisuals.Kind.Flame:target[(int)NativeStatusVisuals.Surface.Fire].Add(m);target[(int)NativeStatusVisuals.Surface.Core].Add(m*coreLocal);break;
-                    case NativeStatusVisuals.Kind.Ember:target[(int)NativeStatusVisuals.Surface.Ember].Add(m);break;
+                    case NativeStatusVisuals.Kind.Flame:if(packFire)break;target[(int)NativeStatusVisuals.Surface.Fire].Add(m);target[(int)NativeStatusVisuals.Surface.Core].Add(m*coreLocal);break;
+                    case NativeStatusVisuals.Kind.Ember:if(packFire)break;target[(int)NativeStatusVisuals.Surface.Ember].Add(m);break;
                     case NativeStatusVisuals.Kind.Bubble:
                         // A popping bubble keeps only its rim (status-effects.ts:50).
                         if(!p.Popping)target[(int)NativeStatusVisuals.Surface.Bubble].Add(m);target[(int)NativeStatusVisuals.Surface.Rim].Add(m*rimLocal);if(!p.Popping)target[(int)NativeStatusVisuals.Surface.Glint].Add(m*glintLocal);break;

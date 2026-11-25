@@ -104,8 +104,13 @@ namespace ChipArena.UnityConversion
         private double Dist(double x,double y,double z)=>Math.Sqrt((x-ex)*(x-ex)+(y-ey)*(y-ey)+(z-ez)*(z-ez));
 
         // ---------------- the fires ----------------
+        /// <summary>The effects bank's campfire on the drums and the brazier (Claude X1, 2026-11-25): while set, the fires' flame tongues and
+        /// embers are not queued here and their bases are listed in <see cref="PackFires"/> for the runtime's flipbook (Core NativeFxPack);
+        /// the halos, light and smoke stay.</summary>
+        public bool PackFlames;public readonly NativePackFires PackFires=new NativePackFires();
         private void Fires(double time,double quality,bool low,bool reduced)
         {
+            PackFires.Clear();
             smokes=0;int embers=reduced?0:NativeBrickfallAtmosphere.Count(9,quality,low),puffs=low?2:NativeBrickfallAtmosphere.Count(4,quality,low);
             for(int i=0;i<sources.Length;i++)
             {
@@ -113,15 +118,16 @@ namespace ChipArena.UnityConversion
                 float k=FireLevel(f,time,reduced);
                 // into the camp from the fence the drum stands against
                 double nx=inX[i],nz=inZ[i];
+                if(PackFlames)PackFires.Add(new NativePackFire{X=(float)s.X,Y=(float)(s.Y-(bowl?.38:.08)),Z=(float)s.Z,Size=bowl?1.7f:.85f,Seed=(uint)f*131u+7u});
                 // the flames: a core and four tongues licking up out of the drum's mouth
-                for(int t=0;t<5;t++)
+                if(!PackFlames)for(int t=0;t<5;t++)
                 {
                     double ph=Frac(time*(1.5+.4*H(f,t,1))+H(f,t,2)),w=.42*(.62-.08*t)*(1-.3*ph),hgt=.62*(.75+.5*H(f,t,3))*(.7+.6*Math.Sin(ph*Math.PI));
                     double ox=(H(f,t,4)-.5)*.22+(reduced?0:Math.Sin(time*3+t)*.03),oz=(H(f,t,5)-.5)*.12;bool core=t==0;
                     double big=bowl?2.2:1;Upright(s.X+ox*big+nx*.02,s.Y-(bowl?.38:.08),s.Z+oz*big+nz*.02,w*big,hgt*big,1.0,core?.62:.4,core?.22:.08,(core?.78:.52)*k);Flames++;
                 }
                 Sprite(s.X+nx*.15,s.Y+.25,s.Z+nz*.15,1.5,.95*k,.36*k,.08*k,.17,true);Halos++;
-                if(d<45)for(int e=0;e<embers;e++)
+                if(d<45&&!PackFlames)for(int e=0;e<embers;e++)
                 {
                     double life=1.4+H(f,e,6)*1.4,ph=Frac(time/life+H(f,e,7)),y=s.Y+.15+ph*2.4,x=s.X+(H(f,e,8)-.5)*.3+nx*ph*.3+Math.Sin(time*2.1+e)*.18,z=s.Z+(H(f,e,9)-.5)*.3+nz*ph*.3+Math.Cos(time*1.7+e)*.18;
                     double a=(1-ph)*Math.Min(1,ph*8);Sprite(x,y,z,Math.Max(.04,d*.0015),1,.55,.16,a,true);Embers++;

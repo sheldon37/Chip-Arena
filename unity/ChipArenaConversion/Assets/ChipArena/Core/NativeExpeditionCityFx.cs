@@ -233,14 +233,21 @@ namespace ChipArena.UnityConversion
         }
 
         // ---------------- fires, smoke and embers ----------------
+        /// <summary>The effects bank's flames on the town's fires (Claude X1, 2026-11-25): while set, the flame tongues and embers are not queued
+        /// and the fires are listed in <see cref="PackFires"/> (the brazier as the campfire, the bus and the windows as the large flame) for the
+        /// runtime's flipbook (Core NativeFxPack); the halo, the light pool and the smoke stay.</summary>
+        public bool PackFlames;public readonly NativePackFires PackFires=new NativePackFires();
         private void FireFx(NativeCityFxScene s,double time,double quality,bool low)
         {
+            PackFires.Clear();
             int embers=Count(14,quality,low);
             for(int f=0;f<s.Fires.Length;f++)
             {
                 var c=s.Fires[f];double d=Dist(c.X,c.Y,c.Z);if(d>110)continue;double k=NativeExpeditionCityKit.Level(NativeExpeditionCityKit.DriveFire,c.Param,time),size=c.Size;
+                bool brazier=c.Kind==NativeExpeditionCityKit.GlowBrazier;
+                if(PackFlames)PackFires.Add(new NativePackFire{X=(float)c.X,Y=(float)(c.Y-.05),Z=(float)c.Z,Size=(float)(size*(brazier?1.5:1.7)),Seed=(uint)f*173u+11u,Large=!brazier});
                 // The flames: a core and tongues that lick up and sway; the halo.
-                for(int t=0;t<5;t++)
+                if(!PackFlames)for(int t=0;t<5;t++)
                 {
                     double ph=Frac(time*(1.6+.4*H(f,t,1))+H(f,t,2)),w=size*(.55-.07*t)*(1-.3*ph),hgt=size*(.8+.5*H(f,t,3))*(.7+.6*Math.Sin(ph*Math.PI));
                     double ox=(H(f,t,4)-.5)*size*.5+Math.Sin(time*3+t)*.05,oz=(H(f,t,5)-.5)*size*.5;bool core=t==0;
@@ -248,7 +255,7 @@ namespace ChipArena.UnityConversion
                 }
                 Sprite(c.X,c.Y+size*.4,c.Z,size*3.2,.9*k,.32*k,.06*k,.16,true);Halos++;
                 Flat(c.X,.03,c.Z,Math.Min(6,size*3.5),.55*k,.2*k,.05*k,.3,true);Pools++;
-                if(d>70)continue;
+                if(d>70||PackFlames)continue;
                 for(int e=0;e<embers;e++)
                 {
                     double life=1.6+H(f,e,6)*1.6,ph=Frac(time/life+H(f,e,7)),y=c.Y+.3+ph*(2.6+size*1.5),x=c.X+(H(f,e,8)-.5)*size+Math.Sin(time*2.1+e)*.25+WindX*ph*1.2,z=c.Z+(H(f,e,9)-.5)*size+Math.Cos(time*1.7+e)*.25+WindZ*ph*1.2;

@@ -128,7 +128,15 @@ namespace ChipArena.UnityConversion
         public const int Max=40;public const float Rate=14,BurstMax=12;
         public struct Puff{public bool Live,Ink,Flip;public int Sheet;public Vector3 Origin,Dir;public float Size,Life,Born;}
         public readonly Puff[] Items=new Puff[Max];private int cursor;private float budget=BurstMax,budgetAt=float.NaN;
-        public void Clear(){Array.Clear(Items,0,Max);cursor=0;budget=BurstMax;budgetAt=float.NaN;}
+        public void Clear(){Array.Clear(Items,0,Max);cursor=0;budget=BurstMax;budgetAt=float.NaN;Array.Clear(Sprays,0,MaxSprays);sprayCursor=0;}
+        /// <summary>The licensed blood pack's spray over a gun hit's or a kill's splashes (Core NativeFxPack.Spray; Claude X1, 2026-11-25): one per
+        /// wound that threw splashes, along its exit direction, while the runtime has the spray's sheets (<see cref="Spraying"/>). An
+        /// extra layer: the splashes above stay the hit cue. Ink (the robots') throws none.</summary>
+        public struct Spray{public bool Live,Kill;public Vector3 Origin,Along;public float Born;public uint Seed;}
+        public const int MaxSprays=12;public const float SprayLife=1.2f;
+        public readonly Spray[] Sprays=new Spray[MaxSprays];private int sprayCursor;public bool Spraying;
+        /// <summary>Whether a wound takes the spray: gun hits (punctures) and every kill, not ink.</summary>
+        public static bool Sprays_(string kind,bool kill,bool ink)=>!ink&&(kill||kind=="puncture");
         /// <summary>The splashes alive at `time` (the checks and the dev overlay).</summary>
         public int Alive(float time){int n=0;for(int i=0;i<Max;i++)if(Items[i].Live&&time-Items[i].Born<Items[i].Life&&time>=Items[i].Born-.5f)n++;return n;}
         public int Add(string kind,float severity,uint seed,Vector3 origin,Vector3 normal,Vector3 along,float time,float quality,bool low,bool kill,bool ink=false)
@@ -142,6 +150,7 @@ namespace ChipArena.UnityConversion
                 NativeBloodSplash.Puff(kind,seed,i,normal,along,severity,kill,out int sheet,out var dir,out float size,out float life,out float delay,out bool flip);
                 Items[cursor++%Max]=new Puff{Live=true,Ink=ink,Flip=flip,Sheet=sheet,Origin=origin,Dir=dir,Size=size,Life=life,Born=time+delay};
             }
+            if(Spraying&&Sprays_(kind,kill,ink))Sprays[sprayCursor++%MaxSprays]=new Spray{Live=true,Kill=kill,Origin=origin,Along=along.LengthSquared()>1e-6f?along:normal,Born=time,Seed=seed};
             return count;
         }
         /// <summary>Drops the splashes that have played out (and any born well after `time`: a rewind past them).</summary>

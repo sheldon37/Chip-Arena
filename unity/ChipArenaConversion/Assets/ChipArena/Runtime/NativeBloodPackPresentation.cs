@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         /// <summary>BloodFx, each frame before the drops step: whether the sprays throw splashes this frame.</summary>
         private void BloodPackBegin(float now)
         {
-            BloodPack();bloodPackClock=now;blood.Splashes=Gore&&splashMaterials!=null?splashes:null;
+            BloodPack();bloodPackClock=now;blood.Splashes=Gore&&splashMaterials!=null?splashes:null;splashes.Spraying=Gore&&vfx!=null&&vfx.PackBlood;
         }
         /// <summary>Whether the wounds' vapour mist still draws (not where the pack's splashes do).</summary>
         private bool BloodMistShown=>blood.Splashes==null;
@@ -94,6 +94,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The splashes of this frame: one quad each, facing the camera, in the sheet's sub-mesh.</summary>
         private void DrawSplashes(Camera camera,float now)
         {
+            DrawSprays(now);
             if(splashMaterials==null)return;
             if(!Gore||splashes.Update(now)==0){if(splashMesh.vertexCount>0)splashMesh.Clear();return;}
             var view=camera!=null?camera:Camera.main;if(view==null)return;var e=view.transform.position;var eye=new NVector(e.x,e.y,e.z);
@@ -179,5 +180,17 @@ namespace ChipArena.UnityConversion
             gutDraws.Clear();
         }
         private void ClearBloodPack(){splashes.Clear();gutDraws.Clear();}
+        // The blood pack's spray over gun hits and kills (Core NativeBloodSplashes.Sprays, NativeFxPack.Spray; Claude X1, 2026-11-25), into the
+        // effects batch while the zip's spray sheets are loaded; a rewind past one drops it.
+        private void DrawSprays(float now)
+        {
+            var list=splashes.Sprays;bool on=Gore&&vfx!=null&&vfx.PackBlood;
+            for(int i=0;i<list.Length;i++)
+            {
+                ref var s=ref list[i];if(!s.Live)continue;float age=now-s.Born;
+                if(!on||age>=NativeBloodSplashes.SprayLife||age<-.5f){s.Live=false;continue;}
+                if(age>=0)vfx.PackSpray(new Vector3(s.Origin.X,s.Origin.Y,s.Origin.Z),new Vector3(s.Along.X,s.Along.Y,s.Along.Z),age,s.Seed,s.Kill,BloodQuality);
+            }
+        }
     }
 }
