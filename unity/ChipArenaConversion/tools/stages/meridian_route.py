@@ -35,7 +35,8 @@ GROUP = 'route'
 
 def _args():
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-    a = {'route': None, 'out': None, 'packs': None, 'ao': True, 'preview': None, 'only': None, 'report': None}
+    a = {'route': None, 'out': None, 'packs': None, 'ao': True, 'preview': None, 'only': None, 'report': None,
+         'storefronts': None}
     i = 0
     while i < len(argv):
         k = argv[i]
@@ -65,7 +66,8 @@ TIER_NAME = {0: '0', 2: '2'}
 PAINT_LAYERED, PAINT_LAYER = ('route/647/crossing', 'route/647/footway'), 9
 LOW_FROM = 2500       # Fine triangles from which a piece also banks a Low tier
 CAPS = {'route/647/rails': (24000, 5000), 'route/647/crossing': (4000, 1500), 'route/647/footway': (6000, 2000),
-        'route/647/corner': (26000, 6000), 'route/647/sign': (6000, 1500), 'route/647/roofs': (9000, 3000),
+        'route/647/corner': (26000, 6000), 'route/647/corner-cf': (26000, 6000), 'route/647/corner-mix': (26000, 6000),
+        'route/647/sign': (6000, 1500), 'route/647/roofs': (9000, 3000),
         'route/front/ironworks/loading': (24000, 5000), 'route/smoke/puff': (160, 0)}   # Tests/MeridianRouteChecks.Cap
 
 
@@ -95,6 +97,9 @@ def finishes():
     X['pack'] = a('route-pack', 0xFFFFFF, D.DETAIL_NONE, .30, 0, .5, 0, 0)          # pack meshes: the albedo comes from their textures
     X['pack-metal'] = a('route-pack-metal', 0xFFFFFF, D.DETAIL_NONE, .45, .5, .5, 0, 0)
     X['puff'] = a('route-puff', 0xC8C8CC, D.DETAIL_NONE, .05, 0, 0, 0, 0)
+    X['cf-white'] = a('route-cf-white', 0xE4E3DE, D.DETAIL_NONE, .40, 0, .7, 0, .2)
+    X['cf-red'] = a('route-cf-red', 0xB4282A, D.DETAIL_NONE, .45, 0, .6, 0, .1)
+    X['cf-steel'] = a('route-cf-steel', 0x5C6064, D.DETAIL_IRON, .45, .6, .8, 0, .2)
     return X
 
 
@@ -176,6 +181,9 @@ def _sample(arr, uv):
     return arr[np.clip(np.round(v).astype(int), 0, h - 1), np.clip(np.round(u).astype(int), 0, w - 1), :3]
 
 
+_BARY = np.array([(1 / 3, 1 / 3, 1 / 3), (.6, .2, .2), (.2, .6, .2), (.2, .2, .6), (.45, .45, .1), (.1, .45, .45), (.45, .1, .45)])
+
+
 def _cluster(P, I, cell):
     """Vertex clustering (a quick decimation for small detailed props): corners snapped to a `cell` grid share one place (their
     mean); triangles left with fewer than three distinct places are dropped. Returns (P2, kept triangle mask)."""
@@ -193,11 +201,11 @@ def _cluster(P, I, cell):
     return P2, keep
 
 
-def pack_part(g, tints, pack, prefab, m, fin=None, lod_keep=0, keep=None, cell=0.0):
+def pack_part(g, tints, pack, prefab, m, fin=None, lod_keep=0, keep=None, cell=0.0, face_mean=False):
     """Adds a pack prefab's visible meshes to g through the 3x4 affine m (Unity space), each corner coloured from its material's
     albedo (sampled at its corner and toward the triangle's middle) times the material's colour. Returns the triangles added (0
     without --packs). keep(material name) may drop submeshes (e.g. glass); cell > 0 clusters the corners to that grid (m) first,
-    each face then flat."""
+    each face then flat. face_mean: each face one colour, its texture's mean over the face (labels read as their main colour)."""
     root = ARGS['packs']
     if not root:
         return 0
@@ -251,7 +259,10 @@ def pack_part(g, tints, pack, prefab, m, fin=None, lod_keep=0, keep=None, cell=0
                     g.face(pts, fin, normals=nrm)
                 if len(g.p) // 3 == c0:
                     continue
-                if tex is not None:
+                if tex is not None and face_mean:
+                    uvt = UV[tri]
+                    cs = np.repeat(_sample(tex, np.array([w @ uvt for w in _BARY])).mean(axis=0, keepdims=True), 3, axis=0)
+                elif tex is not None:
                     # each corner its vertex's texel: a smooth vertex keeps one colour, so its corners merge in the bank
                     cs = _sample(tex, UV[tri])
                 else:
@@ -604,9 +615,10 @@ SALE = ('Assets/ModernSupermarket/Prefabs/Furniture/Sign_9jlt52_Rounded.prefab',
 DOOR = 'Assets/ModernSupermarket/Prefabs/Architecture/Door_c5bu08.prefab'
 
 
-def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
+def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed, room=False):
     """One face of the shop, canonical: L m long; door (x0, x1) or None; the fascia's words; an awning over the windows; the
-    corner pilaster at x 0 (corner_left) or at x L."""
+    corner pilaster at x 0 (corner_left) or at x L. room: the windows and the door open onto the lit room behind (the storefront
+    trial's 'mix'; the wall's inner face drawn round them) instead of a lit back a window's depth in."""
     T = mk.tier(t)
     E = finishes()
     g = Geo()
@@ -630,7 +642,8 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
         bx(g, T, a, b, .62, .7, -.06, 0.0, stone, bevel=.005, cell=0, skip=('+z',))           # the sill
         # the frame round the glazing, the glazing bars, the lit back
         bx(g, T, a, b, 2.95, 3.1, -.05, 0.0, green, bevel=.005, cell=0, skip=('+z',))
-        g.face(((a, .7, rec), (b, .7, rec), (b, 2.95, rec), (a, 2.95, rec)), glow(0xF2C890, .5), (0, 0, -1))
+        if not room:
+            g.face(((a, .7, rec), (b, .7, rec), (b, 2.95, rec), (a, 2.95, rec)), glow(0xF2C890, .5), (0, 0, -1))
         g.face(((a, .7, 0.0), (a, .7, rec), (a, 2.95, rec), (a, 2.95, 0.0)), green, (1, 0, 0))
         g.face(((b, .7, rec), (b, .7, 0.0), (b, 2.95, 0.0), (b, 2.95, rec)), green, (-1, 0, 0))
         g.face(((a, 2.95, 0.0), (b, 2.95, 0.0), (b, 2.95, rec), (a, 2.95, rec)), green, (0, -1, 0))
@@ -642,7 +655,7 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
         bx(g, T, a, b, 2.35, 2.4, -.02, .03, green, bevel=0, cell=0)                              # the transom
         if T.detail:
             # shelves inside the window (dark), the produce crates on the sill and the stall boards, SALE cards
-            for ys in (1.45, 2.05):
+            for ys in (() if room else (1.45, 2.05)):
                 bx(g, T, a + .05, b - .05, ys, ys + .03, rec - .12, rec - .005, F['timber-old'], bevel=0, cell=0)
             # the produce: crates on the sill (the pack's, clustered to 3 cm: lumps of fruit at street distance)
             m = max(1, int((b - a) / .6))
@@ -664,7 +677,8 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
     if door:
         a, b = door
         dr = .25
-        g.face(((a, 0.0, dr), (b, 0.0, dr), (b, 3.1, dr), (a, 3.1, dr)), glow(0xF2C890, .7), (0, 0, -1))
+        if not room:
+            g.face(((a, 0.0, dr), (b, 0.0, dr), (b, 3.1, dr), (a, 3.1, dr)), glow(0xF2C890, .7), (0, 0, -1))
         g.face(((a, 0.0, 0.0), (a, 0.0, dr), (a, 3.1, dr), (a, 3.1, 0.0)), stone, (1, 0, 0))
         g.face(((b, 0.0, dr), (b, 0.0, 0.0), (b, 3.1, 0.0), (b, 3.1, dr)), stone, (-1, 0, 0))
         g.face(((a, 3.1, 0.0), (b, 3.1, 0.0), (b, 3.1, dr), (a, 3.1, dr)), stone, (0, -1, 0))
@@ -673,6 +687,10 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
             pack_part(g, tints, 'Modern Supermarket', DOOR, m_, fin=E['pack-metal'], keep=lambda n: 'glass' not in n.lower())
         bx(g, T, a, b, 2.62, 3.1, -.02, dr - .1, green, bevel=0, cell=0)
         bx(g, T, a - .05, b + .05, 0.0, .04, -.25, 0.0, F['granite'], bevel=.008, cell=0, skip=('-y',))
+    if room:
+        # the wall's inner face, round the windows and the door, toward the room (seen through the other face's windows)
+        holes = [(a, b, .7, 2.95) for a, b in spans] + ([(door[0], door[1], 0.0, 2.62)] if door else [])
+        _wall_with_holes(g, 0.0, L, 0.0, ROOM_H, rec, holes, glow(0xE6E1D6, .32), (0, 0, 1))
     # the wall between the shopfront's head and the fascia (the street dress draws nothing on these bays)
     g.face(((0.0, 3.09, 0.0), (L, 3.09, 0.0), (L, 3.13, 0.0), (0.0, 3.13, 0.0)), stone, (0, 0, -1))
     # the fascia over 3.1 m: a deep board with lit letters, its cornice; the brackets at its ends
@@ -702,13 +720,20 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
     return g
 
 
-def corner(t, R, tints):
+def corner(t, R, tints, variant=''):
+    """Meridian Stores. variant '' the grocer's front (release 27); 'mix' the same front open onto a lit room furnished from
+    Checkout Frenzy; 'cf' Checkout Frenzy's glazing and entrance under a lit modern fascia, the same room behind."""
     T = mk.tier(t)
     g = Geo()
     x0, x1, y0, y1, z0, z1 = R.box('lot-lower-hill-72')
     te, tn = Tints(), Tints()
-    east = _shopfront(t, z1 - z0, (z1 - z0 - 2.9, z1 - z0 - .9), 'MERIDIAN STORES', 'GROCER  PROVISIONS  OPEN LATE', False, False, te, 1)
-    north = _shopfront(t, x1 - x0, None, 'PROVISIONS', 'MERIDIAN STORES', True, True, tn, 4)
+    if variant == 'cf':
+        east = _cf_front(t, z1 - z0, True, False, 'MERIDIAN STORES', te)
+        north = _cf_front(t, x1 - x0, False, True, 'MERIDIAN STORES', tn)
+    else:
+        room = variant == 'mix'
+        east = _shopfront(t, z1 - z0, (z1 - z0 - 2.9, z1 - z0 - .9), 'MERIDIAN STORES', 'GROCER  PROVISIONS  OPEN LATE', False, False, te, 1, room)
+        north = _shopfront(t, x1 - x0, None, 'PROVISIONS', 'MERIDIAN STORES', True, True, tn, 4, room)
     # the tints were recorded against each face's own corners: shifted as each joins g
     _join(g, east, mk.qy(270), (x1, y0, z0), te, tints)
     _join(g, north, mk.qy(180), (x1, y0, z1), tn, tints)
@@ -727,7 +752,190 @@ def corner(t, R, tints):
     mk.seg(blade, T, (0.0, 4.82, 0.0), (0.0, 4.82, -1.55), .05, .05, F['iron-black'])
     lk.lantern(blade, T, 0.0, 4.75, -1.75, s=.7)
     mk.part(g, blade, mk.qy(225), (x1, y0, z1))
+    if variant in ('cf', 'mix'):
+        door = (z1 - 2.5, z1) if variant == 'cf' else (z1 - 2.9, z1 - .9)
+        _room(g, tints, T, x0, x1, z0, z1, y0, door, variant)
     return g
+
+
+def _wall_with_holes(g, x0, x1, y0, y1, z, holes, f, normal):
+    """A wall's face at depth z (canonical: x along it, y up) from x0 to x1 and y0 to y1, rectangles (a, b, lo, hi) cut out."""
+    xs = sorted({x0, x1} | {h[0] for h in holes} | {h[1] for h in holes})
+    for a, b in zip(xs[:-1], xs[1:]):
+        if b - a < 1e-4:
+            continue
+        m = (a + b) / 2
+        cut = sorted((h[2], h[3]) for h in holes if h[0] <= m <= h[1])
+        y = y0
+        for lo, hi in cut + [(y1, y1)]:
+            if lo - y > 1e-4:
+                g.face(((a, y, z), (b, y, z), (b, lo, z), (a, lo, z)), f, normal)
+            y = max(y, hi)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# The storefront trial (issue #450, docs/expedition/MERIDIAN-ROUTE.md): Checkout Frenzy (Crying Snow) furnishes a lit room behind
+# Meridian Stores' windows ('mix', the grocer's front kept) or also gives it its glazing, entrance and a lit modern fascia ('cf').
+# The room stands inside the corner lot's box (no pilot reaches it); its fittings are the pack's meshes read as data, their palette
+# and labels baked into the corners (one material, the route's). Nothing stands on the pavement.
+# ---------------------------------------------------------------------------------------------------------------------------
+STOREFRONT_DEFAULT = 'ms'
+ROOM_H = 3.0
+CF = 'Checkout Frenzy'
+_CFP = 'Assets/CheckoutFrenzy/Prefabs/'
+CF_WINDOW, CF_EDGE, CF_ENTRANCE = _CFP + 'Buildings/Window.prefab', _CFP + 'Buildings/Window_Edge.prefab', _CFP + 'Buildings/Entrance.prefab'
+CF_FRIDGE = _CFP + 'Furnitures/Fridge02.prefab'
+CF_SHELF = _CFP + 'Furnitures/ShelvingUnit02.prefab'
+CF_FREEZER = _CFP + 'Furnitures/Freezer01.prefab'
+CF_COUNTER = _CFP + 'CheckoutCounter.prefab'
+CF_PLANT = _CFP + 'Furnitures/Houseplant.prefab'
+CF_CURTAIN = _CFP + 'Props/AirCurtain.prefab'
+CF_DRINKS = tuple(_CFP + 'Products/%s.prefab' % n for n in ('SoftDrink01', 'Juice01_A', 'Milk01', 'Juice01_B'))
+CF_BOXES = tuple(_CFP + 'Products/%s.prefab' % n for n in ('Cereal01_A', 'Pasta01', 'Cereal01_B', 'Flour01', 'LightBulb01'))
+CF_ICE = tuple(_CFP + 'Products/%s.prefab' % n for n in ('IceCream01', 'IceCream02'))
+
+
+def NO_GLASS(name):
+    return 'glass' not in name.lower()
+
+
+def _put(g, tints, prefab, x, y, z, yaw=0.0, fin=None, cell=0.0, face_mean=False, keep=None):
+    """A Checkout Frenzy prefab at its own size, its footprint's middle at (x, z) and its foot at y, turned by yaw."""
+    b = bounds_of(CF, prefab)
+    if b is None:
+        return 0
+    q = mk.qy(yaw)
+    Rm = np.array(sk.affine(q), dtype=np.float64).reshape(3, 4)[:, :3]
+    corners = np.array([[a, c, e] for a in (b[0][0], b[1][0]) for c in (b[0][1], b[1][1]) for e in (b[0][2], b[1][2])]) @ Rm.T
+    r0, r1 = corners.min(axis=0), corners.max(axis=0)
+    t = np.array([x, y, z], dtype=np.float64) - np.array([(r0[0] + r1[0]) / 2, r0[1], (r0[2] + r1[2]) / 2])
+    m = [Rm[0, 0], Rm[0, 1], Rm[0, 2], t[0], Rm[1, 0], Rm[1, 1], Rm[1, 2], t[1], Rm[2, 0], Rm[2, 1], Rm[2, 2], t[2]]
+    return pack_part(g, tints, CF, prefab, m, fin=fin, cell=cell, face_mean=face_mean, keep=keep)
+
+
+def _cf_front(t, L, door, corner_left, fascia, tints):
+    """One face of Checkout Frenzy's front, canonical (as _shopfront): its window modules (the entrance at the corner's end when
+    door), glazing left out so the room shows; a filler to 3.12 m; a lit lightbox fascia over 3.1 m with the name; a corner post."""
+    T = mk.tier(t)
+    E = finishes()
+    g = Geo()
+    n = max(1, int(round(L / 2.5)))
+    w = L / n
+    for i in range(n):
+        a, b = i * w, (i + 1) * w
+        at_corner = (i == 0) if corner_left else (i == n - 1)
+        far_end = (i == n - 1) if corner_left else (i == 0)
+        if door and at_corner:
+            pf, yaw = CF_ENTRANCE, 0.0
+        elif far_end:
+            pf, yaw = CF_EDGE, (180.0 if corner_left else 0.0)
+        else:
+            pf, yaw = CF_WINDOW, 0.0
+        if T.detail:
+            m_ = fit(CF, pf, (a, 0.0, -.12), (b, ROOM_H, .08), yaw=yaw, keep_aspect=False)
+            if m_ is not None:
+                pack_part(g, tints, CF, pf, m_, keep=NO_GLASS, cell=.02)
+        else:
+            # Low: the modules' frames as a sill, a head and mullions
+            bx(g, T, a, b, 0.0, .12, -.1, .08, E['cf-steel'], bevel=0, cell=0)
+            bx(g, T, a, b, 2.7, ROOM_H, -.1, .08, E['cf-white'], bevel=0, cell=0)
+            bx(g, T, a + w / 2 - .04, a + w / 2 + .04, .12, 2.7, -.08, .06, E['cf-steel'], bevel=0, cell=0)
+        if door and at_corner and T.detail:
+            # an OPEN card hung in the entrance's glazing
+            bx(g, T, (a + b) / 2 - .32, (a + b) / 2 + .32, 1.78, 2.0, -.03, -.01, E['cf-white'], bevel=0, cell=0)
+            mk.text_stroke(g, 'OPEN', (a + b) / 2, 1.83, -.032, .026, glow(0x34D058, 1.8), T, style='flat', d=.006)
+    # the filler between the modules' head and the fascia (the street dress draws nothing on these bays)
+    g.face(((0.0, ROOM_H, 0.0), (L, ROOM_H, 0.0), (L, 3.13, 0.0), (0.0, 3.13, 0.0)), E['cf-white'], (0, 0, -1))
+    # the lightbox fascia: a red base stripe, the lit face with the name in red, a steel cap
+    bx(g, T, 0.0, L, 3.12, 3.86, -.26, 0.0, E['cf-white'], bevel=.01, cell=0, skip=('+z',))
+    bx(g, T, 0.0, L, 3.12, 3.24, -.275, -.26, E['cf-red'], bevel=0, cell=0)
+    g.face(((.08, 3.26, -.262), (L - .08, 3.26, -.262), (L - .08, 3.82, -.262), (.08, 3.82, -.262)), glow(0xF6F4EE, 1.1), (0, 0, -1))
+    mk.text_stroke(g, fascia, L / 2, 3.36, -.27, .068, E['cf-red'], T, style='flat', d=.012)
+    bx(g, T, -.02, L + .02, 3.86, 3.93, -.29, 0.0, E['cf-steel'], bevel=0, cell=0)
+    # the corner post
+    c0, c1 = (0.0, .22) if corner_left else (L - .22, L)
+    bx(g, T, c0, c1, 0.0, 3.12, -.14, .08, E['cf-white'], bevel=.01, cell=0)
+    return g
+
+
+def _room(g, tints, T, x0, x1, z0, z1, y0, door, variant):
+    """The shop's lit room in the corner lot's ground storey (world frame): floor, ceiling with light strips, the back walls with a
+    red band; along the west wall Checkout Frenzy's drinks fridges lit inside and filled, shelving with boxed goods on the south wall
+    and a gondola between, the checkout counter and the ice-cream freezer by the north windows, a plant and the air curtain at the
+    east door. door: the east door's z span."""
+    E = finishes()
+    X0, X1, Z0, Z1, H = x0 + .3, x1 - .02, z0 + .3, z1 - .02, ROOM_H
+    wall, floor_, ceil = glow(0xE6E1D6, .32), glow(0xC9C6BE, .3), glow(0xD8D8D6, .3)
+    g.face(((X0, y0 + .004, Z0), (X1, y0 + .004, Z0), (X1, y0 + .004, Z1), (X0, y0 + .004, Z1)), floor_, (0, 1, 0))
+    g.face(((X0, y0 + H, Z0), (X1, y0 + H, Z0), (X1, y0 + H, Z1), (X0, y0 + H, Z1)), ceil, (0, -1, 0))
+    g.face(((X0, y0, Z0), (X0, y0, Z1), (X0, y0 + H, Z1), (X0, y0 + H, Z0)), wall, (1, 0, 0))
+    g.face(((X0, y0, Z0), (X1, y0, Z0), (X1, y0 + H, Z0), (X0, y0 + H, Z0)), wall, (0, 0, 1))
+    band = glow(0xC8302C, .55)
+    g.face(((X0 + .005, y0 + 2.3, Z0), (X0 + .005, y0 + 2.3, Z1), (X0 + .005, y0 + 2.62, Z1), (X0 + .005, y0 + 2.62, Z0)), band, (1, 0, 0))
+    g.face(((X0, y0 + 2.3, Z0 + .005), (X1, y0 + 2.3, Z0 + .005), (X1, y0 + 2.62, Z0 + .005), (X0, y0 + 2.62, Z0 + .005)), band, (0, 0, 1))
+    # light strips across the ceiling
+    x = X0 + 1.4
+    while x < X1 - .6:
+        g.face(((x - .14, y0 + H - .006, Z0 + .8), (x + .14, y0 + H - .006, Z0 + .8), (x + .14, y0 + H - .006, Z1 - .8), (x - .14, y0 + H - .006, Z1 - .8)),
+               glow(0xFFFFFF, 1.6), (0, -1, 0))
+        x += 2.4
+    lit = glow(0xFFFFFF, .5)
+    goods = glow(0xFFFFFF, .62)
+    fridge_glow = glow(0xEAF4FF, 1.15)
+    nf = 4
+    for k in range(nf):
+        zc = Z0 + .15 + .6 + 1.2 * k
+        sub, st = Geo(), Tints()
+        if T.detail and ARGS['packs']:
+            pack_part(sub, st, CF, CF_FRIDGE, sk.affine((0, 0, 0, 1)), fin=lit, keep=NO_GLASS, cell=.04)
+            # the drinks: a kind a shelf, three a door
+            for si, ys in enumerate((.45, .85, 1.25, 1.65)):
+                pf = CF_DRINKS[(k + si) % len(CF_DRINKS)]
+                for side in (-1, 1):
+                    for j in range(3):
+                        _put(sub, st, pf, side * (.11 + .16 * j), ys + .005, .4, fin=goods, cell=.04, face_mean=True)
+        else:
+            bx(sub, T, -.6, .6, 0.0, 2.1, 0.0, .6, E['cf-white'], bevel=0, cell=0)
+        # the lit inside (the cabinet's back), seen through the doors
+        sub.face(((-.56, .4, .07), (.56, .4, .07), (.56, 2.02, .07), (-.56, 2.02, .07)), fridge_glow, (0, 0, 1))
+        if not T.detail:
+            sub.face(((-.56, .4, .605), (.56, .4, .605), (.56, 2.02, .605), (-.56, 2.02, .605)), fridge_glow, (0, 0, 1))
+        _join(g, sub, mk.qy(90), (X0, y0, zc), st, tints)
+    if not (T.detail and ARGS['packs']):
+        # Low: the shelving and the counter as plain blocks
+        bx(g, T, X0, X0 + 4.2, y0, y0 + 2.1, Z0, Z0 + .5, E['cf-white'], bevel=0, cell=0)
+        bx(g, T, X0 + 3.0, X0 + 5.0, y0, y0 + 2.1, Z0 + 2.8, Z0 + 3.8, E['cf-white'], bevel=0, cell=0)
+        bx(g, T, X1 - 5.1, X1 - 2.1, y0, y0 + 1.0, Z1 - 2.05, Z1 - 1.15, E['cf-red'], bevel=0, cell=0)
+        return
+    # shelving with boxed goods on the south wall (facing north), and a gondola of two back to back between
+    def shelving(xc, zf, yaw, seed):
+        # the kit's shelving (Checkout Frenzy's ShelvingUnit02's size and shelf heights, its bevels left out), facing local -z
+        sub, st = Geo(), Tints()
+        steel, shelf_f = glow(0xB8BCC0, .4), glow(0xDADCDE, .45)
+        bx(sub, T, -1.0, 1.0, 0.0, 2.1, .44, .5, steel, bevel=0, cell=0, skip=('+z',))
+        for sx in (-1.0, .97):
+            bx(sub, T, sx, sx + .03, 0.0, 2.1, 0.0, .44, steel, bevel=0, cell=0, skip=('+z',))
+        for ys in (.2, .68, 1.18, 1.68):
+            bx(sub, T, -.97, .97, ys - .03, ys, 0.0, .44, shelf_f, bevel=0, cell=0, skip=('+z',))
+        for si, ys in enumerate((.685, 1.185, 1.685)):
+            pf = CF_BOXES[(seed + si) % len(CF_BOXES)]
+            for j in range(8):
+                _put(sub, st, pf, -.81 + .232 * j, ys, .16, yaw=180.0, fin=goods, face_mean=True)
+        _join(g, sub, mk.qy(yaw), (xc, y0, zf), st, tints)
+    shelving(X0 + 1.25, Z0 + .5, 180.0, 0)
+    shelving(X0 + 3.3, Z0 + .5, 180.0, 2)
+    zg, xg = Z0 + 3.3, X0 + 4.1
+    shelving(xg, zg + .5, 180.0, 4)
+    # the checkout counter and the ice-cream freezer by the north windows
+    _put(g, tints, CF_COUNTER, X1 - 3.6, y0, Z1 - 1.6, yaw=0.0, fin=lit, cell=.04)
+    fz = Geo(); ft = Tints()
+    pack_part(fz, ft, CF, CF_FREEZER, sk.affine((0, 0, 0, 1)), fin=lit, keep=NO_GLASS, cell=.05)
+    for j in range(4):
+        _put(fz, ft, CF_ICE[j % 2], -.6 + .4 * j, .62, .5, yaw=90.0 * (j % 2), fin=goods, cell=.04, face_mean=True)
+    _join(g, fz, mk.qy(0), (X0 + 2.0, y0, Z1 - 1.27), ft, tints)
+    # by the east door: a plant, and the air curtain over it
+    _put(g, tints, CF_PLANT, X1 - .6, y0, door[0] - .65, fin=lit, cell=.05)
+    _put(g, tints, CF_CURTAIN, X1 - .32, y0 + 2.55, (door[0] + door[1]) / 2, yaw=90.0, fin=lit, cell=.04)
 
 
 def _join(g, sub, q, t, sub_tints, tints):
@@ -944,12 +1152,20 @@ def registry(R):
         'route/647/crossing': lambda t, tn: crossing(t, R),
         'route/647/footway': lambda t, tn: footway(t, R),
         'route/647/sign': lambda t, tn: sign(t, R),
-        'route/647/corner': lambda t, tn: corner(t, R, tn),
         'route/647/roofs': lambda t, tn: roofs(t, R),
         'route/front/ironworks/loading': lambda t, tn: loading(t, R, tn),
         'route/smoke/puff': lambda t, tn: puff(t),
     }
+    for sf in storefronts():
+        reg['route/647/corner' + ('-' + sf if sf else '')] = (lambda v: (lambda t, tn: corner(t, R, tn, v)))(sf)
     return reg
+
+
+def storefronts():
+    """The corner shops the bank carries (--storefronts ms,cf,mix; ms the release-27 grocer's front): Core's Storefront in force
+    must be among them (CoreTests --meridian-route with CHIPARENA_ROUTE_BANK checks it)."""
+    names = (ARGS['storefronts'] or STOREFRONT_DEFAULT).split(',')
+    return ['' if n == 'ms' else n for n in names if n in ('ms', 'cf', 'mix')]
 
 
 def build_all(R, only=None):

@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
                     NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(dress,p,14);
                     NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(dress,p,n);
                 }
-                if(liveRoutePlan!=null&&liveRoutePlan.Facades.Count>0){var route=liveRoutePlan;NativeMeridianDress.FacadeReplaced=(p,n)=>route.Covers(p,n);}
+                if(liveRoutePlan!=null&&liveRoutePlan.Facades.Count>0&&NativeMeridianRouteDraw.Has(NativeMeridianRoute.CornerKey)){var route=liveRoutePlan;NativeMeridianDress.FacadeReplaced=(p,n)=>route.Covers(p,n);}
                 liveStreets=new GameObject("Expedition streets").AddComponent<NativeMeridianDressDraw>();
                 liveStreets.Prepare(new NativeMeridianDress.Input{Map=city.Map,Layout=plan.Seed,Run=seed,
                     Slots=world.HallSlots,Hatches=city.RoofHatches.ToArray(),KeepOut=NativeCityBleedDress.CacheKeepOuts(city.Caches,city.Map),

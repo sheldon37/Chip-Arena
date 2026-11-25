@@ -38,6 +38,16 @@ namespace ChipArena.UnityConversion
         /// <summary>Meridian Stores' lot (Clock Street's north-west corner, turned toward the junction) and Clock Street's rows.</summary>
         public const string CornerLot = "lot-lower-hill-72";
         public static readonly string[] RoofLots = { "lot-lower-hill-71", "lot-lower-hill-72", "lot-lower-hill-73", "lot-lower-hill-74" };
+        /// <summary>The storefront trial (issue #450, docs/expedition/MERIDIAN-ROUTE.md): the corner shop's dressing. "" is the
+        /// grocer's front with Modern Supermarket's produce (release 27, key Corner); StorefrontCf is Checkout Frenzy's convenience
+        /// store; StorefrontMix is the grocer's front with Checkout Frenzy's lit interior behind its windows. The same lot faces, keep-outs
+        /// and collision for every one; the bank carries the variants it was built with (tools/stages/meridian_route.py --storefronts).</summary>
+        public static string Storefront = "";
+        public const string StorefrontCf = "cf", StorefrontMix = "mix";
+        public static readonly string[] Storefronts = { "", StorefrontCf, StorefrontMix };
+        /// <summary>The corner shop's bank key for a storefront ("" Corner itself, otherwise Corner-variant).</summary>
+        public static string CornerKeyOf(string storefront) => string.IsNullOrEmpty(storefront) ? Corner : Corner + "-" + storefront;
+        public static string CornerKey => CornerKeyOf(Storefront);
         /// <summary>The terrace wall that closes Clock Street (its south face carries the sign) and the camp's north gate's fence.</summary>
         public const string SignWall = "terrace-81", GateWest = "camp-fence-0--1", GateEast = "camp-fence-0-1";
         /// <summary>The shop's storey (D1's ground storey, 4 m) and how far its pieces keep the street life off its faces.</summary>
@@ -128,7 +138,7 @@ namespace ChipArena.UnityConversion
                 float z0 = corner.pos.z - corner.size.z / 2, z1 = corner.pos.z + corner.size.z / 2;
                 plan.Facades.Add(new Facade(new V3(1, 0, 0), x1, z0, z1, y, y + Storey));
                 plan.Facades.Add(new Facade(new V3(0, 0, 1), z1, x0, x1, y, y + Storey));
-                Add(plan, Corner, "Meridian Stores", new NativeMeridianLandmarks.Read(x1 + .3f, y + 4.6f, z1 - 3f, 4f), new NativeMeridianLandmarks.Read(x1 - 2f, y + 4.6f, z1 + .3f, 3f));
+                Add(plan, CornerKey, "Meridian Stores", new NativeMeridianLandmarks.Read(x1 + .3f, y + 4.6f, z1 - 3f, 4f), new NativeMeridianLandmarks.Read(x1 - 2f, y + 4.6f, z1 + .3f, 3f));
                 // the shop's faces and their aprons keep the street life off (core: no poster or board on the shopfront)
                 plan.KeepOut.Add(new NativeCityBleedDress.KeepOut(new V3(x1 - .3f, y - .2f, z0 - .4f), new V3(x1 + ShopApron, y + 7.2f, z1 + ShopApron), true));
                 plan.KeepOut.Add(new NativeCityBleedDress.KeepOut(new V3(x0 - .4f, y - .2f, z1 - .3f), new V3(x1 + ShopApron, y + 7.2f, z1 + ShopApron), true));

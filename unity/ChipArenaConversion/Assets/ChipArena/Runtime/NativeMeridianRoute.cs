@@ -28,6 +28,9 @@ namespace ChipArena.UnityConversion
 
         /// <summary>Whether the route's bank is present (the plan's facades, keep-outs and replaced pieces apply only then).</summary>
         public static bool HasBank => NativePackBanks.Bank(NativeMeridianRoute.Bank) != null;
+        /// <summary>Whether the bank carries a piece (the corner shop's storefront variant: without it the street dress keeps the
+        /// lot's ground storey).</summary>
+        public static bool Has(string key) => NativePackBanks.Bank(NativeMeridianRoute.Bank)?.Find(key + "/0") != null;
         /// <summary>The pieces drawn and the plumes smoking (the captures' log line).</summary>
         public int Pieces => (art != null ? art.Pieces : 0) + (fronts != null ? fronts.Pieces : 0);
         public int Plumes => smoke != null && plan != null ? plan.Plumes.Count : 0;

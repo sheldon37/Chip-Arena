@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
                 case NativeMeridianRoute.Roofs: return tier == 0 ? 9000 : 3000;
                 case NativeMeridianRoute.Loading: return tier == 0 ? 24000 : 5000;
                 case NativeMeridianRoute.Puff: return tier == 0 ? 160 : 0;
-                default: return 0;
+                default: return key.StartsWith(NativeMeridianRoute.Corner + "-", StringComparison.Ordinal) ? (tier == 0 ? 26000 : 6000) : 0;
             }
         }
 
@@ -60,6 +60,7 @@ namespace ChipArena.UnityConversion
                 {
                     crown++;
                     CrownHill(city.Map, route, walkKeys);
+                    Storefronts(plan.Seed, city.Map, landmarks, route);
                 }
                 else
                 {
@@ -94,10 +95,36 @@ namespace ChipArena.UnityConversion
                 + (Environment.GetEnvironmentVariable("CHIPARENA_ROUTE_BANK") == null ? " (the bank's pieces need CHIPARENA_ROUTE_BANK)" : " (with the route bank)"));
         }
 
+        // The storefront trial (issue #450): each variant draws its own key on the same lot faces, with the same keep-outs, covers
+        // and replaced pieces as the storefront in force; the selector goes back as it was.
+        private static void Storefronts(uint seed, ContentMap map, NativeMeridianLandmarks.Layout landmarks, NativeMeridianRoute.Plan route)
+        {
+            var was = NativeMeridianRoute.Storefront;
+            Check(NativeMeridianRoute.Storefronts.Distinct().Count() == 3 && NativeMeridianRoute.Storefronts.Contains(was), "three storefronts, the one in force among them");
+            try
+            {
+                foreach (var sf in NativeMeridianRoute.Storefronts)
+                {
+                    NativeMeridianRoute.Storefront = sf;
+                    var v = NativeMeridianRoute.Place(seed, map, landmarks);
+                    var key = NativeMeridianRoute.CornerKeyOf(sf);
+                    Check(key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal) && (sf == "") == (key == NativeMeridianRoute.Corner), "storefront '" + sf + "' draws " + key);
+                    Check(v.Art.Pieces.Count(p => p.Key == key) == 1 && v.Art.Pieces.Count(p => p.Key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal)) == 1, "storefront '" + sf + "': one corner shop, its own");
+                    Check(v.Art.Pieces.Select(p => p.Key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal) ? NativeMeridianRoute.Corner : p.Key).SequenceEqual(route.Art.Pieces.Select(p => p.Key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal) ? NativeMeridianRoute.Corner : p.Key))
+                        && v.Art.Pieces.Zip(route.Art.Pieces, (a, b) => a.Place.SequenceEqual(b.Place)).All(x => x), "storefront '" + sf + "': the other pieces and every place unchanged");
+                    Check(v.Facades.Count == route.Facades.Count && v.Facades.Zip(route.Facades, (a, b) => a.Equals(b)).All(x => x) && v.Art.Covers.SetEquals(route.Art.Covers) && v.Replaced.Count == route.Replaced.Count,
+                        "storefront '" + sf + "': the same lot faces, covers and replaced pieces");
+                    Check(v.KeepOut.Count == route.KeepOut.Count && v.KeepOut.Zip(route.KeepOut, (a, b) => a.Lo.Equals(b.Lo) && a.Hi.Equals(b.Hi) && a.Core == b.Core).All(x => x), "storefront '" + sf + "': the same keep-outs (the pavement stays clear)");
+                }
+            }
+            finally { NativeMeridianRoute.Storefront = was; }
+        }
+
         private static void CrownHill(ContentMap map, NativeMeridianRoute.Plan route, List<string> keys)
         {
-            foreach (var k in new[] { NativeMeridianRoute.Rails, NativeMeridianRoute.Crossing, NativeMeridianRoute.Footway, NativeMeridianRoute.Corner, NativeMeridianRoute.Sign, NativeMeridianRoute.Roofs })
+            foreach (var k in new[] { NativeMeridianRoute.Rails, NativeMeridianRoute.Crossing, NativeMeridianRoute.Footway, NativeMeridianRoute.CornerKey, NativeMeridianRoute.Sign, NativeMeridianRoute.Roofs })
                 Check(keys.Count(x => x == k) == 1, "Crown Hill places " + k + " once");
+            Check(keys.Count(x => x.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal)) == 1, "one corner shop");
             foreach (var p in route.Art.Pieces.Where(p => p.Key.StartsWith("route/647/", StringComparison.Ordinal)))
                 Check(p.Place.SequenceEqual(new float[] { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 }) && p.Kind == NativeMeridianLandmarks.Kind.Exit && p.Reads.Length > 0, p.Key + " in the world's frame, with read points");
             // the balustrades replace exactly the Hundred Steps' guards: both sides of the four flights and three landings
@@ -188,6 +215,7 @@ namespace ChipArena.UnityConversion
             Check(life.Contains("if(liveRoutePlan!=null)input.KeepOut.AddRange(liveRoutePlan.KeepOut);"), "the street life keeps off the route's pieces");
             var draw = Src("Runtime/NativeMeridianRoute.cs");
             Check(draw.Contains("art.Build(street, camera, NativeMeridianRoute.Bank, false)") && draw.Contains("fronts.Build(front, camera, NativeMeridianRoute.Bank)") && draw.Contains("public static bool HasBank => NativePackBanks.Bank(NativeMeridianRoute.Bank) != null;"), "the route's pieces come from its own bank, through the landmarks' drawer");
+            Check(show.Contains("liveRoutePlan.Facades.Count>0&&NativeMeridianRouteDraw.Has(NativeMeridianRoute.CornerKey)") && draw.Contains("public static bool Has(string key) => NativePackBanks.Bank(NativeMeridianRoute.Bank)?.Find(key + \"/0\") != null;"), "only a storefront the bank carries takes the ground storey");
             var lm = Src("Runtime/NativeMeridianLandmarks.cs");
             Check(lm.Contains("bankName = bankName ?? NativeMeridianLandmarks.Bank;") && lm.Contains("return NativePackBanks.Mesh(bankName, prop.Parts[0].Mesh);"), "the landmarks' drawer reads the bank it is given");
             Check(!Src("Core/NativeMeridianRoute.cs").Contains("UnityEngine"), "the placement is pure");
@@ -198,8 +226,9 @@ namespace ChipArena.UnityConversion
             var path = Environment.GetEnvironmentVariable("CHIPARENA_ROUTE_BANK");
             if (string.IsNullOrEmpty(path)) return;
             var bank = NativePackBank.Read(File.ReadAllBytes(path));
-            foreach (var key in new[] { NativeMeridianRoute.Rails, NativeMeridianRoute.Crossing, NativeMeridianRoute.Footway, NativeMeridianRoute.Corner, NativeMeridianRoute.Sign,
-                NativeMeridianRoute.Roofs, NativeMeridianRoute.Loading, NativeMeridianRoute.Puff })
+            var variants = NativeMeridianRoute.Storefronts.Select(NativeMeridianRoute.CornerKeyOf).Where(k => k != NativeMeridianRoute.CornerKey && bank.Find(k + "/0") != null);
+            foreach (var key in new[] { NativeMeridianRoute.Rails, NativeMeridianRoute.Crossing, NativeMeridianRoute.Footway, NativeMeridianRoute.CornerKey, NativeMeridianRoute.Sign,
+                NativeMeridianRoute.Roofs, NativeMeridianRoute.Loading, NativeMeridianRoute.Puff }.Concat(variants))
             {
                 var fine = bank.Find(key + "/0");
                 Check(fine != null && fine.Parts.Length == 1, "the bank has " + key);
