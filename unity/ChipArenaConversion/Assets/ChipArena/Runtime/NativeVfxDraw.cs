@@ -38,6 +38,10 @@ namespace ChipArena.UnityConversion
     ///    glows, sparks, rubble, lights and shock front stay), the fire fields burn with the large flame instead of toon tongues,
     ///    and callers can ask for a slam's dust (PackSlam), a looping fire (PackFire) and a wound's spray (PackSpray): modes 13
     ///    fire, 14 smoke and dust, 15 blood, each a pure function of its effect's age. Without the sheets nothing changes.
+    ///  - Realistic magic (Claude MG1, 2026-11-25; effects plan phase 3, Core NativeMagicFxPack): when the effects bank's magic atlases are
+    ///    present (Resources/ChipArenaMagicFx), the magic schools' bolts, trails and hits queue the licensed effects pack's flipbooks
+    ///    (<see cref="Magic"/>): modes 16 glow, 17 fire, 18 smoke, each a pure function of its bolt's path or its hit's age. Without them
+    ///    nothing changes.
     ///  - Pack pass (owner 2026-10-28, the licensed packs as in-place upgrades; docs/PACK-EFFECTS.md): when the licensed-assets
     ///    zip carries them (NativePackBanks), the toon sheet is the effect pack's cartoon masks in the same layout and
     ///    channels (Core NativeVfxTextures.PackToonId), so every puff, flash, lick and spark keeps its colours, lighting,
@@ -71,6 +75,10 @@ namespace ChipArena.UnityConversion
         /// flipbook sprite, a lit blood sprite (along its segment when it has one). TEXCOORD1.y sheet x 64 + frame, .w heat;
         /// TEXCOORD2.w the smoke or blood tint as a packed sRGB hex; COLOR gain, self light, occlusion, opacity.</summary>
         public const float FxFireMode=13,FxSmokeMode=14,FxBloodMode=15;
+        /// <summary>Realistic magic (Core NativeMagicFxPack): a glowing flipbook in its tint (white-hot where brightest), a flame flipbook (as
+        /// 13), a lit smoke flipbook (as 14), on the magic atlases. TEXCOORD1.y flipbook x 256 + frame, .w heat; TEXCOORD2.w the tint as a
+        /// packed sRGB hex; COLOR gain, hot share or self light, occlusion, opacity.</summary>
+        public const float MagicGlowMode=16,MagicFireMode=17,MagicSmokeMode=18;
         /// <summary>The floor of a puff that has none (no floor fade).</summary>
         public const float NoFloor=-1e9f;
         // ---- the look: sprite size per voxel edge and HDR gain per role (stylized, punchy; the bloom takes what passes 1) ----
@@ -206,6 +214,14 @@ namespace ChipArena.UnityConversion
         private static readonly int[] FxSheetIds={Shader.PropertyToID("_FxSheet0"),Shader.PropertyToID("_FxSheet1"),Shader.PropertyToID("_FxSheet2"),Shader.PropertyToID("_FxSheet3"),
             Shader.PropertyToID("_FxSheet4"),Shader.PropertyToID("_FxSheet5"),Shader.PropertyToID("_FxSheet6"),Shader.PropertyToID("_FxSheet7")};
         private readonly NativeFxList fxList=new NativeFxList();
+        // The realistic magic atlases (Core NativeMagicFxPack.Path; Resources textures, never released here), read once a process.
+        private static Texture2D[] magicSheets;private static bool magicRead,magicLoaded;
+        private static readonly int[] MagicSheetIds={Shader.PropertyToID("_MagicSheet0"),Shader.PropertyToID("_MagicSheet1")};
+        private static readonly int MagicRectId=Shader.PropertyToID("_MagicRect"),MagicGridId=Shader.PropertyToID("_MagicGrid");
+        /// <summary>The realistic magic atlases are loaded and the layer is on (otherwise the bolts keep today's look).</summary>
+        public bool PackMagic=>magicLoaded&&NativeMagicFxPack.On;
+        /// <summary>The magic sprites queued this frame (checks, captures).</summary>
+        public int MagicSprites{get;private set;}
         // While Blasts draws a sim whose restyled blasts the pack draws: that sim (its toon puffs are left out), else null.
         private NativeBlastSim fxCover;
         /// <summary>The explosion and fire sheets are loaded and the layer is on (otherwise blasts, fields and callers keep today's look).</summary>
@@ -251,10 +267,11 @@ namespace ChipArena.UnityConversion
             packSheet=NativePackBanks.Texture(NativeMagicPackFx.SheetId);packToon=NativePackBanks.Texture(NativeVfxTextures.PackToonId);
             if(packSheet!=null){packSheet.wrapMode=TextureWrapMode.Clamp;billboardMaterial.SetTexture(PackId,packSheet);billboardMaterial.SetVector(PackGridId,new Vector4(NativeMagicPackFx.Columns,NativeMagicPackFx.Rows,0,0));}
             FxSheets();for(int k=0;k<NativeFxPack.Sheets;k++)if(fxSheets[k]!=null)billboardMaterial.SetTexture(FxSheetIds[k],fxSheets[k]);
+            MagicSheets();if(magicLoaded)MagicBind(billboardMaterial);
             StartBuild();
         }
         /// <summary>Starts a frame: nothing queued.</summary>
-        public void Begin(){puffCount=0;links=0;lit.Clear();shocks.Clear();billboards.Clear();FxSprites=0;}
+        public void Begin(){puffCount=0;links=0;lit.Clear();shocks.Clear();billboards.Clear();FxSprites=0;MagicSprites=0;}
         /// <summary>Drops everything queued (rewinds, resets).</summary>
         public void Clear()=>Begin();
 
@@ -730,6 +747,53 @@ namespace ChipArena.UnityConversion
             }
         }
 
+        // ---- realistic magic (Core NativeMagicFxPack; Claude MG1, 2026-11-25) ----
+        /// <summary>A magic recipe's sprites into this frame's batch (Core NativeMagicFxPack.Head, Trail, Impact, the darkness layers): the
+        /// flipbooks as modes 16-18, the code's glows, streaks and teardrops as they are. Nothing without the atlases.</summary>
+        public void Magic(NativeMagicList list)
+        {
+            if(list==null||!PackMagic)return;
+            for(int k=0;k<list.Count;k++)
+            {
+                ref var s=ref list.Items[k];var at=new Vector3(s.At.X,s.At.Y,s.At.Z);if(!(s.Size>1e-4f)||!float.IsFinite(at.x+at.y+at.z))continue;
+                var tint=new Color(s.Tint.X,s.Tint.Y,s.Tint.Z,0);
+                switch(s.Look)
+                {
+                    case NativeMagicLook.CodeGlow:Glow(at,tint*s.Opacity,s.Size,s.Profile);break;
+                    case NativeMagicLook.CodeStreak:Streak(at,new Vector3(s.Velocity.X,s.Velocity.Y,s.Velocity.Z),tint*s.Opacity,s.Size,s.Size*2.5f,s.Stretch,.9f);break;
+                    case NativeMagicLook.Drop:{tint.a=s.Opacity;Drop(at,new Vector3(s.Segment.X,s.Segment.Y,s.Segment.Z),tint,s.Size,0,k);break;}
+                    default:
+                    {
+                        if(s.Sheet<0||s.Sheet>=NativeMagicFxPack.Subs)continue;
+                        float mode=s.Look==NativeMagicLook.Glow?MagicGlowMode:s.Look==NativeMagicLook.Fire?MagicFireMode:MagicSmokeMode;
+                        float second=s.Look==NativeMagicLook.Glow?s.Hot:s.Self;
+                        Add(at,new Color(s.Gain,second,s.Occlusion,Mathf.Clamp01(s.Opacity)),s.Size,s.Roll,0,s.Sheet*256+Mathf.Clamp(s.Frame,0,NativeMagicFxPack.Frames(s.Sheet)-.001f),mode,s.Heat,new Vector4(s.Segment.X,s.Segment.Y,s.Segment.Z,s.Hex));break;
+                    }
+                }
+                MagicSprites++;
+            }
+        }
+        /// <summary>A darkness smoke puff from the effects bank (Core NativeMagicFxPack.DarkSmoke) in place of the toon puff; false without
+        /// the atlases (the caller draws the toon puff).</summary>
+        public bool MagicSmoke(Vector3 at,Color albedo,float opacity,float size,float u,float seed)
+        {
+            if(!PackMagic)return false;magicOne.Clear();NativeMagicFxPack.DarkSmoke(magicOne,new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(albedo.r,albedo.g,albedo.b),opacity,size,u,seed);Magic(magicOne);return true;
+        }
+        private readonly NativeMagicList magicOne=new NativeMagicList();
+        // The atlases, read once a process (outside the per-frame queueing); each flipbook's rect and grid for the shader.
+        private static void MagicSheets()
+        {
+            if(magicRead)return;magicRead=true;magicSheets=new Texture2D[NativeMagicFxPack.Atlases];magicLoaded=true;
+            for(int k=0;k<NativeMagicFxPack.Atlases;k++){var t=Resources.Load<Texture2D>(NativeMagicFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;else magicLoaded=false;magicSheets[k]=t;}
+        }
+        private static void MagicBind(Material m)
+        {
+            var rect=new Vector4[8];var grid=new Vector4[8];
+            for(int k=0;k<NativeMagicFxPack.Subs;k++){var s=NativeMagicFxPack.Sheets[k];rect[k]=new Vector4(s.X,s.Y,s.W,s.H);grid[k]=new Vector4(s.Columns,s.Rows,s.Atlas,NativeMagicFxPack.Aspect(k));}
+            for(int k=NativeMagicFxPack.Subs;k<8;k++)grid[k]=new Vector4(1,1,0,1);
+            for(int k=0;k<NativeMagicFxPack.Atlases;k++)m.SetTexture(MagicSheetIds[k],magicSheets[k]);m.SetVectorArray(MagicRectId,rect);m.SetVectorArray(MagicGridId,grid);
+        }
+
         // ---- submission ----
         private void Upload()
         {
@@ -768,7 +832,7 @@ namespace ChipArena.UnityConversion
             {
                 ref var p=ref puffs[i];keys[i]=-Vector3.Dot(p.Centre-eye,forward)+(p.Mode==CoreGlow&&!p.Behind?CoreLead*p.Size:0);order[i]=i;
                 // A billboard reaches half its size from its centre; a streak also half its segment.
-                float reach=p.Size*.5f+(p.Mode==StreakMode||p.Mode==ToonWaterMode||p.Mode==SpriteMode||p.Mode==FxBloodMode?new Vector3(p.Axis.x,p.Axis.y,p.Axis.z).magnitude*.5f:0);
+                float reach=p.Size*.5f+(p.Mode==StreakMode||p.Mode==ToonWaterMode||p.Mode==SpriteMode||p.Mode==FxBloodMode||p.Mode>=MagicGlowMode?new Vector3(p.Axis.x,p.Axis.y,p.Axis.z).magnitude*.5f:0);
                 lo=Vector3.Min(lo,p.Centre-Vector3.one*reach);hi=Vector3.Max(hi,p.Centre+Vector3.one*reach);
             }
             if(puffCount>1)Array.Sort(keys,order,0,puffCount);
