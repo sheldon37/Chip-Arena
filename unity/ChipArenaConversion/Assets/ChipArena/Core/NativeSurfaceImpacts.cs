@@ -44,6 +44,15 @@ namespace ChipArena.UnityConversion
             if(material=="foundation"&&up>.7f)return floor==NativeFootsteps.Snow||floor==NativeFootsteps.Gravel?Dirt:floor==NativeFootsteps.Stone?Rock:floor==NativeFootsteps.Wood?Wood:floor==NativeFootsteps.Metal?Metal:Stone;
             return floor==NativeFootsteps.Stone&&material!="foundation"?Rock:Stone;
         }
+        /// <summary>
+        /// The separate effects bank's impacts (owner 2026-11-25, effects plan phase 2: "go with recommended"; the git-ignored effects
+        /// folder Assets/LocalAssets/ChipArenaFx, its Resources/ChipArenaImpactFx prefab, written by the local tool's
+        /// bozo-impacts.request with fx=1): an entry per kind by its name (brick, glass, dirt), each holding an Effect of particle
+        /// systems on the engine's own shaders. A kind the visual body's bake lacks plays its Effect from there; its hole stays the
+        /// stone quad with the kind's bank texture (HoleTexture). Without the prefab, or for a kind it lacks, the stone effect plays
+        /// as before.
+        /// </summary>
+        public const string FxResource="ChipArenaImpactFx";
         /// <summary>The bank texture a kind's bullet hole takes when the bake has no entry for the kind (null: the stone hole);
         /// water leaves none.</summary>
         public static string HoleTexture(int kind)=>kind==Brick?"impact-hole-brick":kind==Glass?"impact-hole-glass":kind==Dirt?"impact-hole-dirt":null;
