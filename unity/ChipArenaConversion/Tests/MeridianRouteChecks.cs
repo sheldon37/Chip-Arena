@@ -179,7 +179,9 @@ namespace ChipArena.UnityConversion
             string Src(string rel) => File.ReadAllText(Path.Combine(root, "Assets/ChipArena", rel)).Replace("\r\n", "\n");
             var show = Src("Runtime/NativeExpeditionWorldPresentation.cs");
             Check(show.Contains("liveRoutePlan=NativeMeridianRouteDraw.HasBank?NativeMeridianRoute.Place(plan.Seed,city.Map,landmarks):null;"), "ShowMeridian places the route with the landmarks it replaces pieces of");
-            Check(show.Contains("NativeMeridianDress.FacadeCovered=(p,n)=>route.Covers(p,n)||bleedCovers!=null&&bleedCovers(p,n);"), "the street dress leaves the shop's faces plain (and the bleed's)");
+            Check(show.Contains("NativeMeridianDress.FacadeReplaced=(p,n)=>route.Covers(p,n);") && show.Contains("NativeMeridianDress.FacadeReplaced=null;"), "the street dress leaves the shop's ground storey to the route (and lets go after)");
+            var lots = Src("Core/NativeMeridianDressLots.cs");
+            Check(lots.Contains("if(BayReplaced(at,uh,N,w,fh))continue;"), "a replaced bay draws nothing of the street dress");
             Check(show.Contains("if(liveRoutePlan!=null)foreach(var piece in liveRoutePlan.Replaced)landmarks.Pieces.Remove(piece);"), "the landmarks leave the loading bay's two bays to the route");
             Check(show.Contains("liveRoute.Build(liveRoutePlan,cameraView);") && show.Contains("if(liveRoute!=null){liveRoute.Release();Destroy(liveRoute.gameObject);}"), "the route is drawn and dropped with the run's city");
             var life = Src("Runtime/NativeMeridianStreetLifeLive.cs");

@@ -251,9 +251,8 @@ def pack_part(g, tints, pack, prefab, m, fin=None, lod_keep=0, keep=None, cell=0
                 if len(g.p) // 3 == c0:
                     continue
                 if tex is not None:
-                    uvs = UV[tri]
-                    mid = uvs.mean(axis=0)
-                    cs = (_sample(tex, uvs) * .6 + _sample(tex, uvs * .5 + mid * .5) * .4)
+                    # each corner its vertex's texel: a smooth vertex keeps one colour, so its corners merge in the bank
+                    cs = _sample(tex, UV[tri])
                 else:
                     cs = np.ones((3, 3))
                 cs = cs * col
@@ -673,6 +672,8 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
             pack_part(g, tints, 'Modern Supermarket', DOOR, m_, fin=E['pack-metal'], keep=lambda n: 'glass' not in n.lower())
         bx(g, T, a, b, 2.62, 3.1, -.02, dr - .1, green, bevel=0, cell=0)
         bx(g, T, a - .05, b + .05, 0.0, .04, -.25, 0.0, F['granite'], bevel=.008, cell=0, skip=('-y',))
+    # the wall between the shopfront's head and the fascia (the street dress draws nothing on these bays)
+    g.face(((0.0, 3.09, 0.0), (L, 3.09, 0.0), (L, 3.13, 0.0), (0.0, 3.13, 0.0)), stone, (0, 0, -1))
     # the fascia over 3.1 m: a deep board with lit letters, its cornice; the brackets at its ends
     bx(g, T, 0.0, L, 3.12, 3.86, -.24, 0.0, green, bevel=.012, cell=0, skip=('+z',))
     bx(g, T, .1, L - .1, 3.2, 3.78, -.255, -.24, F['iron-black'], bevel=0, cell=0)
@@ -869,7 +870,7 @@ def loading(t, R, tints):
     g.face(((.4, wy0, rec - .003), (4.6, wy0, rec - .003), (4.6, wy1, rec - .003), (.4, wy1, rec - .003)), glow(FURNACE, 1.1), (0, 0, -1))
     m_ = fit(OI, OI_WINDOW, (.4, wy0, rec - .1), (4.6, wy1, rec - .005), keep_aspect=False)
     if m_ is not None:
-        pack_part(g, tints, OI, OI_WINDOW, m_, fin=E['pack-metal'], keep=lambda nm: 'glass' not in nm.lower() or 'opaque' in nm.lower())
+        pack_part(g, tints, OI, OI_WINDOW, m_, fin=E['pack-metal'], keep=lambda nm: 'glass' not in nm.lower() or 'opaque' in nm.lower(), cell=.02)
     else:
         for k in range(1, 6):
             x = .4 + 4.2 * k / 6
@@ -1050,7 +1051,9 @@ def preview(R, built, out_dir):
              ('rails_low', (3.4, 2.9, 40.2), (5.75, 1.4, 42.2), 60), ('rails_join', (3.2, 5.2, 46.4), (5.75, 4.2, 48.2), 60),
              ('flights_side', (-22, 9, 41), (0, 6, 57), 55), ('top_north', (0, 15.7, 78), (-6, 17, 112), 62),
              ('corner', (-8, 15.7, 86), (-27, 17, 97), 60), ('corner_close', (-16, 15.7, 96), (-25, 16, 99), 60),
-             ('sign', (0, 15.7, 95), (-1, 19, 117), 55), ('roofs', (0, 1.7, 35), (0, 30, 120), 60)]
+             ('sign', (0, 15.7, 95), (-1, 19, 117), 55), ('roofs', (0, 1.7, 35), (0, 30, 120), 60),
+             ('window', (-21.5, 15.7, 93.5), (-25, 15.4, 93.5), 60), ('door', (-21.5, 15.7, 98.1), (-25, 15.4, 98.1), 60),
+             ('north_face', (-29, 15.7, 104), (-30, 15.6, 100), 70)]
     sk.preview(geos, views, out_dir, size=(1280, 720))
     lg = built.get('route/front/ironworks/loading')
     if lg:

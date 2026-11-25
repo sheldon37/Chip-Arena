@@ -50,8 +50,8 @@ namespace ChipArena.UnityConversion
         /// <summary>A plume of smoke: where it leaves its stack (world) and its seed (each stack its own rhythm).</summary>
         public readonly struct Plume { public readonly V3 At; public readonly int Seed; public Plume(V3 at, int seed) { At = at; Seed = seed; } }
 
-        /// <summary>A lot face's ground storey the shop hangs on: the face's plane (its normal axis and its coordinate), the span
-        /// along it and the heights. The street dress draws plain wall there (NativeMeridianDress.FacadeCovered).</summary>
+        /// <summary>A lot face's ground storey the shop stands in: the face's plane (its normal axis and its coordinate), the span
+        /// along it and the heights. The street dress leaves those bays to the shop (NativeMeridianDress.FacadeReplaced).</summary>
         public readonly struct Facade
         {
             public readonly V3 Normal; public readonly float Plane, Lo, Hi, Y0, Y1;
@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             public readonly List<NativeCityBleedDress.KeepOut> KeepOut = new List<NativeCityBleedDress.KeepOut>();
             public readonly List<Plume> Plumes = new List<Plume>();
             public readonly List<NativeMeridianLandmarks.Piece> Replaced = new List<NativeMeridianLandmarks.Piece>();
-            /// <summary>Whether a facade bay's point lies on a face the shop covers (NativeMeridianDress.FacadeCovered).</summary>
+            /// <summary>Whether a facade bay's point lies on a face the shop draws (NativeMeridianDress.FacadeReplaced).</summary>
             public bool Covers(V3 p, V3 n) { foreach (var f in Facades) if (f.Holds(p, n)) return true; return false; }
         }
 
