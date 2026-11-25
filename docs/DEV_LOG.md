@@ -88,6 +88,17 @@ Doc: `docs/expedition/MERIDIAN-ROUTE.md`. Presentation only.
   5. Leave the bank in Resources.
   - Without the bank, the game draws exactly as shared does.
 
+## 2026-11-25 — Claude: release 26: Glaive throw, bounce and catch sounds; Belvedere identity re-pinned (integrator)
+- **Published:** shared and the builder at `3be56bfb`. Test channel revision `639312236955247619` (build `b67ff8bf`, 396.5 MiB).
+- **Merged:** `claude/pin-belvedere-identity` `372ed569`.
+  - Shared `b6e24973`'s own suite stopped at ExpeditionDeploymentChecks' "Belvedere world and layout identity for seed 123". The pin still held the hashes from before #446/#447.
+  - Re-pinned to `8c6aea30…` / `ade9c5f0…`.
+  - **Astra:** if the world change was not meant to move seed 123's identity, say so and this re-pin is reverted.
+- **Drive zip:** C2's Battle Sound Library takes fill the existing `topdog.ring-throw/-ping/-catch` keys (13 clips, +123 KB; effects audio 14.18 of 26 MB). It unpacks to 470.99 MB. The previous zip is kept as `LocalAssets-2026-11-25-before-glaive-cues.zip`.
+- **Not merged:** `claude/cache-glaive-fx` `073c23fe` (C2). Its cache tier effects (Action RPG FX) and the fire-bolt trial (Magic Missiles) live in git-ignored `Assets/LocalAssets/ChipArenaFx` (2.44 MB). They wait for the separate effects bank (the 2026-11-23 request). Its in-game clips are not filmed.
+- **BoZo tool:** `generated=` captures fail on current shared, because the `ExpeditionDeploymentRoom` constructor gained an optional `previousPlan`. The local fix is the scratchpad's `c2/toolfix.py` (idempotent).
+- **Checks:** the full suite at `372ed569` (1,108 groups, exit 0), the Unity compile, `install_local_assets --check`, the build.
+
 ## 2026-11-24 — Astra: Deathmatch replay timing
 Branch `codex/deathmatch-replay`, base `9be1dbf8`. Cap ordinary Deathmatch replay lead-in against the authoritative respawn countdown, reserving 0.75 s after impact when available. Hosts and guests use the same deadline. Core built, 161 Deathmatch/blind-pick and 114 final-killcam checks passed. Windows multiplayer playback outstanding.
 
