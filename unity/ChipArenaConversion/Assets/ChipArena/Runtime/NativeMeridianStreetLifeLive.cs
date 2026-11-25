@@ -17,6 +17,8 @@ namespace ChipArena.UnityConversion
             try
             {
                 var input=NativeMeridianStreetLife.InputOf(world.City,layout,world.Blueprint.worldSeed,world.HallSlots,liveStreets!=null?liveStreets.Plan:null,bleed,bleedPlan);
+                // Meridian's route draws its crossing, footways, shopfront and sign there (docs/expedition/MERIDIAN-ROUTE.md)
+                if(liveRoutePlan!=null)input.KeepOut.AddRange(liveRoutePlan.KeepOut);
                 liveStreetLife=NativeMeridianStreetLifeDraw.OpenAsync(input,cameraView);
             }
             catch(Exception e){Debug.LogException(e);liveStreetLife=null;}

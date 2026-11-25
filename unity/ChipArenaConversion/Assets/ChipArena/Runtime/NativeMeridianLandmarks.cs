@@ -31,6 +31,7 @@ namespace ChipArena.UnityConversion
         private Material solid, glow, farSolid, farGlow;
         private Material[] one = new Material[1], two = new Material[2], farOne = new Material[1], farTwo = new Material[2];
         private Camera eye;
+        private bool farLayer = true;
         private GameObject root;
         /// <summary>The pieces built, and the frame's counts at each tier (the walk's budget line and the captures read them).</summary>
         public int Pieces => draws.Count;
@@ -39,12 +40,16 @@ namespace ChipArena.UnityConversion
         public int ShownFar { get; private set; }
 
         /// <summary>Builds a layout's pieces (any earlier build is released first). False without the bank or the shaders: nothing
-        /// draws then and the greybox stays.</summary>
-        public bool Build(NativeMeridianLandmarks.Layout layout, Camera camera)
+        /// draws then and the greybox stays. bankName: the bank the pieces' keys name (the landmarks' own by default; Meridian's
+        /// route draws its pieces from ChipArenaCityRoute through this drawer, NativeMeridianRoute). farLayer false: no piece takes
+        /// the fog-capped far material at distance (street furniture fogs as the street round it does).</summary>
+        public bool Build(NativeMeridianLandmarks.Layout layout, Camera camera, string bankName = null, bool farLayer = true)
         {
             Release();
+            this.farLayer = farLayer;
             if (layout == null) return false;
-            var bank = NativePackBanks.Bank(NativeMeridianLandmarks.Bank);
+            bankName = bankName ?? NativeMeridianLandmarks.Bank;
+            var bank = NativePackBanks.Bank(bankName);
             if (bank == null) return false;
             var stage = Resources.Load<Shader>("NativeStageLit");
             var far = Resources.Load<Shader>("NativeMeridianFar");
@@ -61,7 +66,7 @@ namespace ChipArena.UnityConversion
                 root.transform.SetParent(transform, false);
                 foreach (var piece in layout.Pieces)
                 {
-                    Mesh fine = MeshOf(bank, piece.Key + "/0"), low = MeshOf(bank, piece.Key + "/2"), farMesh = MeshOf(bank, piece.Key + "/far");
+                    Mesh fine = MeshOf(bank, bankName, piece.Key + "/0"), low = MeshOf(bank, bankName, piece.Key + "/2"), farMesh = MeshOf(bank, bankName, piece.Key + "/far");
                     if (fine == null && low == null && farMesh == null) continue;
                     var go = new GameObject(piece.Key);
                     go.transform.SetParent(root.transform, false);
@@ -87,11 +92,11 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        private static Mesh MeshOf(NativePackBank.Bank bank, string name)
+        private static Mesh MeshOf(NativePackBank.Bank bank, string bankName, string name)
         {
             var prop = bank.Find(name);
             if (prop == null || prop.Parts.Length == 0) return null;
-            return NativePackBanks.Mesh(NativeMeridianLandmarks.Bank, prop.Parts[0].Mesh);
+            return NativePackBanks.Mesh(bankName, prop.Parts[0].Mesh);
         }
 
         // The piece's place (Core's 3 x 4 rows: a turn about +y, the scales along its local x and z, a translation).
@@ -121,7 +126,7 @@ namespace ChipArena.UnityConversion
             var at = cam.transform.position;
             bool low = NativeAdvancedLighting.Tier == NativeGraphicsTier.Low;
             float farFrom = float.MaxValue;
-            if (RenderSettings.fog)
+            if (RenderSettings.fog && farLayer)
                 farFrom = RenderSettings.fogMode == FogMode.Linear
                     ? NativeMeridianLandmarks.FarFrom(RenderSettings.fogStartDistance, RenderSettings.fogEndDistance)
                     : Mathf.Log(1f / (1f - NativeMeridianLandmarks.FarFogCap)) / Mathf.Max(1e-5f, RenderSettings.fogDensity);
