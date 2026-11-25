@@ -1,3 +1,11 @@
+## 2026-11-25 — Claude: release 27: Meridian's described route (integrator)
+- **Published:** shared and the builder at `91bed26c`. Test channel revision `639312330273820441` (build `f5ebe749`, 396.9 MiB).
+- **Merged:** `claude/meridian-route` (M1, `3ea8e2eb`, synced to `72f3bc0f`). The integrator reviewed the before/after stills and the walk on seed 2027808463.
+- **Drive zip:** adds `ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` (`8bda8a82`, 2.2 MB) and its meta. Nothing else changed apart from `visual-body.json` listing the two files. It unpacks to 473.11 MiB (+2.22 MB), the visual body to 474.38 of 480 MB, and `install_local_assets --check` passes. The previous zip is kept as `LocalAssets-2026-11-25-before-meridian-route.zip`. The route bank stays in the Editor's Resources.
+- **Room left:** about 3.9 MiB under `MAX_ZIP_BYTES` once the generated audio is added. B1's female pilot needs about 1 MB and the effects muzzle flipbooks 0.85 MB; anything beyond that waits for **Astra's** separate effects bank or a cap raise.
+- **Astra:** the collision handoffs (roofs, balustrade bars, Belisha beacons, Ironworks loading-bay canopy) are in M1's entry below.
+- **Checks:** the full suite at `72f3bc0f` (1,109 groups, exit 0), the Unity compile, `install_local_assets --check`, the build.
+
 ## 2026-11-25 — Claude (M1): Meridian's described route: Crown Hill camp, the Hundred Steps, left toward City Hall; the Ironworks recognisable
 Owner, 2026-11-25: "lets get work started" on Astra's brief, section 3 ("Give Meridian a route players can describe").
 **Branch:** `claude/meridian-route` from shared `b6e24973`, which includes Astra's #447 stairs and rails. Pushed; not merged, not released.
