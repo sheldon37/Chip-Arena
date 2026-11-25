@@ -435,15 +435,17 @@ white-hot where it is brightest), 17 (a flame through the fire ramp, as 13) and 
 
 | School | Bolt (head) | Trail | Hit | Stays code-drawn |
 |---|---|---|---|---|
-| Fire | a white-hot core, three rolling flames licking back along the flight | flames turning to grey smoke, embers | a flash, two flame bursts, embers, smoke (the staff's 1.5 m blast stays the blast sim's: the bank's fireball where installed) | the ribbon, halo, lights |
+| Fire | a white-hot core in a rolling ball of flame, two flames licking back along the flight | flames turning to grey smoke, embers | a flash, two flame bursts, embers, smoke (the staff's 1.5 m blast stays the blast sim's: the bank's fireball where installed) | the ribbon, halo, lights |
 | Water | a bright core in two shimmering water shells, spray streaming back | spray waves, mist, falling droplets | a flash, the shell bursting, mist, spray waves thrown out, droplets falling | the ribbon, halo, lights |
 | Lightning | a white core in a crackling plasma ball, arcs re-struck every 50 ms | arcs along the path, plasma sparks | a flash, a plasma burst, five arcs thrown out (re-struck every 40 ms), sparks | the ribbon, halo, lights |
 | L33t H4x | a bright core in a green plasma ball and two turning energy shells | glowing green energy wisps, plasma sparks, sparks | a flash, two green flame bursts, the shell popping, sparks | the ribbon, halo, lights |
 | Darkness | the void orb's black core, lens, swirl and motes, with black flames (a violet glow in them) licking back | the void orb's tail puffs as realistic dark smoke wisps | black flames rolling out after the implosion, over the void orb's smoke (realistic), glows, embers, ink and scorch | core, lens, swirl, motes, ink, drain, cast |
 
 Every colour is the shot's own (`NativeShotRules.HaloColor`, the weapon's), so each school keeps its colour identity. The cast charge,
-every telegraph, the bolt's halo, spill and contact lights, the short HDR ribbon, the trajectory and the impact timing are unchanged: a
-head rides the bolt's presented position and a hit plays on the same Impact or direct Hit event the magic sheet's burst used.
+every telegraph, the bolt's halo, spill and contact lights, the trajectory and the impact timing are unchanged: a head rides the bolt's
+presented position and a hit plays on the same Impact or direct Hit event the magic sheet's burst used. The HDR ribbon stays as the
+motion streak at the head, shortened from .1 s to .04 s (`NativeMagicFxPack.RibbonLife`: today's ten metres of line behind a 100 m/s
+bolt read as a laser); the flipbook trail carries the path behind it.
 
 - **Hooks:** the look rides the magic sheet's (`PackLooks` is the sheet or the atlases): the bolt's model gives way, the surface
   impact's generic shards give way to the school's own burst, the static-world hits (`BoltEnded`) land it. With the atlases the head is
