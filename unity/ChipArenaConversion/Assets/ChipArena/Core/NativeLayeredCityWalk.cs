@@ -209,6 +209,48 @@ namespace ChipArena.UnityConversion
                 width = width, bottom = low.y - .25f, blocks = visual });
         }
 
+        // Public stair rails sit on the same tread boxes as the visible stairs.
+        // Axis-aligned landings use the same rail height so the grip continues through them.
+        private void StreetHandrails(string id, V3 start, V3 end, float width)
+        {
+            const float gripHeight = 1.05f, gripSize = .08f, postWidth = .09f;
+            var delta = end - start;
+            bool alongX = delta.x != 0;
+            float run = Math.Abs(alongX ? delta.x : delta.z);
+            int spans = (int)Math.Ceiling(run / 2f);
+            int steps = Math.Max(1, (int)Math.Ceiling(Math.Abs(delta.y) / .25f));
+            float axisSign = Math.Sign(alongX ? delta.x : delta.z);
+            double halfAngle = Math.Atan2(delta.y * axisSign, run) * .5;
+            float sin = (float)Math.Sin(halfAngle), cos = (float)Math.Cos(halfAngle);
+            foreach (int side in new[] { -1, 1 })
+            {
+                float inset = side * (width / 2 - .25f);
+                var offset = alongX ? new V3(0, 0, inset) : new V3(inset, 0, 0);
+                var foot = start + offset;
+                string prefix = "stair-guard-" + id + (side < 0 ? "-left" : "-right");
+                for (int i = 0; i < spans; i++)
+                {
+                    var centre = foot + delta * ((i + .5f) / spans);
+                    float length = delta.Length / spans;
+                    blocks.Add(new ContentBlock {
+                        id = prefix + "-grip-" + i, role = "static", material = "metal",
+                        pos = centre + new V3(0, gripHeight, 0),
+                        size = alongX ? new V3(length, gripSize, gripSize) : new V3(gripSize, gripSize, length),
+                        rotation = alongX ? new ContentRotation { z = sin, w = cos } : new ContentRotation { x = -sin, w = cos }
+                    });
+                }
+                for (int i = 0; i <= spans; i++)
+                {
+                    // Set each foot inside a tread, including the end posts.
+                    int tread = Math.Min(steps - 1, i * steps / spans);
+                    float t = delta.y == 0 ? (.08f + (run - .16f) * i / spans) / run : (tread + .5f) / steps;
+                    var p = foot + delta * t;
+                    Box(prefix + "-post-" + i, p.x, p.z, postWidth, postWidth,
+                        p.y, p.y + gripHeight, "metal");
+                }
+            }
+        }
+
         private void BuildRoute(int side, string district, float level, bool large)
         {
             string id = "street-" + side;

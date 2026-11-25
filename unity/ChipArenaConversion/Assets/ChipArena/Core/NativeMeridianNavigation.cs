@@ -40,7 +40,8 @@ internal static class NativeMeridianNavigation
         foreach (var b in map.blocks.Where(b=>!treads.Contains(b.id)))
             Add(new Surface { X=b.pos.x,Z=b.pos.z,W=b.size.x/2,D=b.size.z/2,
                 Bottom=b.pos.y-b.size.y/2,Top=b.pos.y+b.size.y/2,
-                Street=!b.id.StartsWith("camp-",StringComparison.Ordinal)&&!b.id.StartsWith("fire-escape-",StringComparison.Ordinal) });
+                Street=!b.id.StartsWith("camp-",StringComparison.Ordinal)&&!b.id.StartsWith("fire-escape-",StringComparison.Ordinal)
+                    &&!b.id.StartsWith("stair-guard-",StringComparison.Ordinal) });
         foreach(var m in machines??Array.Empty<PveMachine>())
         {
             var b=NativeExpeditionLayout.MachineBlock(m);
