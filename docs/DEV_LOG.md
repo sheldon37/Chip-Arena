@@ -1,3 +1,17 @@
+## 2026-11-25 — Claude: request for Astra: room in the Drive zip's total (MAX_ZIP_BYTES) for the next asset batches (integrator; nothing implemented)
+Follows the 2026-11-23 effects bank request. Asset handoff read: `docs/CLAUDE-UNITY-ASSETS.md` (`ef642e6f`) and issue #450.
+- **Why:** after release 27 the zip unpacks to 473.11 MiB. With the sound queue's generated originals (about 35 MiB) added at build time, about 3.9 MiB is left under `install_local_assets.py`'s `MAX_ZIP_BYTES` (512 MiB). A separate effects section inside the same zip still counts toward that total.
+- **Queued against that room:**
+  - the female pilot bake: +2.5 MB (B1; on hold for a more feminine pass);
+  - the kripto289 muzzle flipbooks: 0.85 MB (G1);
+  - the blood spray: 0.44 MB (X1).
+- **Waiting outside it:**
+  - X1's explosion and fire flipbooks: about 2-4 MB, in `Assets/LocalAssets/ChipArenaFx/`;
+  - G1's brick, dirt and glass impacts: about 1 MB;
+  - #450's storefront trial (Checkout Frenzy) and the Hovl shield cue.
+- **Ask (build tooling, Astra):** raise `MAX_ZIP_BYTES` (and whatever the installer and updater assume about it), or move effects into their own zip with its own cap, plus the effects section from the 23rd. The owner sets the number. Until then the integrator batches releases to fit.
+- **Not run:** nothing to run; docs only.
+
 ## 2026-11-25 — Claude: release 27: Meridian's described route (integrator)
 - **Published:** shared and the builder at `91bed26c`. Test channel revision `639312330273820441` (build `f5ebe749`, 396.9 MiB).
 - **Merged:** `claude/meridian-route` (M1, `3ea8e2eb`, synced to `72f3bc0f`). The integrator reviewed the before/after stills and the walk on seed 2027808463.
