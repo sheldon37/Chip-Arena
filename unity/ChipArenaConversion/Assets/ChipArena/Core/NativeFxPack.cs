@@ -109,6 +109,9 @@ namespace ChipArena.UnityConversion
             new Emitter{Look=NativeFxLook.Glow,Count=1,Life0=.14f,Life1=.14f,Size0=5.6f,Size1=5.6f,OffsetY=.8f,Gain=4,Tint=DustFlashTint,Alpha=new[]{1f,.35f,0}},
             new Emitter{Sheet=Burst,Look=NativeFxLook.Fire,Count=2,Life0=.75f,Life1=.85f,Size0=3.2f,Size1=3.6f,Radius=.3f,OffsetY=.9f,Rot=60,Gain=2.6f,HeatGain=1.6f,Occlusion=.75f,Hex=FragSmokeHex,Self=DustSelf,
                 Heat=new[]{1f,.55f,0},Alpha=new[]{1f,1f,.7f,0},Grow=new[]{.9f,1.15f}},
+            // the burst's own dust cloud, light and opaque from the first frame: it carries today's white poof's read
+            new Emitter{Sheet=Dust,Look=NativeFxLook.Smoke,Count=5,Life0=.9f,Life1=1.2f,Size0=2.2f,Size1=3f,Speed0=1.5f,Speed1=3f,Drag=2f,Radius=.4f,OffsetY=.7f,Hex=DustHex,Self=DustSelf,
+                Alpha=new[]{1f,1f,.7f,0},Grow=new[]{.6f,1.3f}},
             new Emitter{Sheet=Smoke,Look=NativeFxLook.Smoke,Count=7,Delay=.03f,Life0=2.5f,Life1=3.5f,Size0=3.6f,Size1=5.2f,Speed0=1.2f,Speed1=2.6f,Drag=1.5f,Shape=NativeFxShape.Hemisphere,Radius=.6f,OffsetY=.6f,Hex=FragSmokeHex,Self=DustSelf,
                 Alpha=new[]{.8f,1f,.9f,.55f,0},Grow=new[]{.8f,1.4f}},
             new Emitter{Sheet=Dust,Look=NativeFxLook.Smoke,Count=10,Life0=1.4f,Life1=2.2f,Size0=1.4f,Size1=2.4f,Speed0=4,Speed1=7,Drag=2.5f,Shape=NativeFxShape.Ring,Radius=.4f,OffsetY=.25f,Hex=DustHex,Self=DustSelf,
