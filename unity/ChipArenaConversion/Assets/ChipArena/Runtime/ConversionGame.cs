@@ -586,13 +586,17 @@ namespace ChipArena.UnityConversion
         // The pilot board (G / Tab) at the top right, where the source keeps scores: each row opens that pilot's build.
         private void Board(float width)
         {
-            if(inspectSeat!=0)return;float W=NativeUi.W,w=360,x=W-24-w,y=62;var seats=match.Seats.Where(s=>!s.AuthorityBoss).ToList();float h=14+20+10+seats.Count*46+10;
+            if(inspectSeat!=0)return;float W=NativeUi.W,w=360,x=W-24-w,y=62;int count=0;
+            foreach(var seat in match.Seats)if(!seat.AuthorityBoss)count++;
+            float h=14+20+10+count*46+10;
             // The pilot board in the cyber HUD chrome: a holographic panel, chamfered rows lifting into a cyan edge on hover.
             NativeHudChrome.Panel(new Rect(x,y,w,h),1,default,NativeHudCyber.Cut,NativeHudChrome.Corners.Diagonal,true,.94f);NativeUi.Text(new Rect(x+14,y+14,w-28,20),arena?.Pve!=null?"PARTY":"PILOTS",12,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
             NativeUi.Text(new Rect(x+14,y+14,w-28,20),"Click to inspect a build",11,NativeCyberTheme.Muted(),TextAnchor.MiddleRight);float cy=y+44;
-            foreach(var p in seats)
+            var local=arena?.Local;
+            foreach(var p in match.Seats)
             {
-                var r=new Rect(x+10,cy,w-20,40);float hv=NativeUi.HoverAmount(7100+p.id,r);bool you=p.id==arena?.Local?.Seat.id;var pilot=arena?.Pilots.Find(q=>q.Seat==p);bool alive=pilot!=null&&pilot.Hp>0&&p.connected;
+                if(p.AuthorityBoss)continue;
+                var r=new Rect(x+10,cy,w-20,40);float hv=NativeUi.HoverAmount(7100+p.id,r);bool you=p.id==local?.Seat.id;var pilot=arena?.Pilots.Find(q=>q.Seat==p);bool alive=pilot!=null&&pilot.Hp>0&&p.connected;
                 var row=new Rect(r.x,r.y-hv,r.width,r.height);NativeHudChrome.Cut(row,NativeUi.Mix(NativeCyberTheme.Indigo(.9f),NativeCyberTheme.Indigo(),hv),NativeHudCyber.TagCut);NativeHudChrome.Outline(row,NativeUi.Mix(NativeCyberTheme.Edge(.8f),NativeCyberTheme.Cyan(),hv),NativeHudCyber.TagCut);
                 NativeUi.Fill(new Rect(r.x,r.y+6-hv,2,r.height-12),match.Teams?TeamColor(p.team):SeatColor(p));
                 NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeCyberTheme.Ink(alive?1:.6f),TextAnchor.MiddleLeft,bold:you);

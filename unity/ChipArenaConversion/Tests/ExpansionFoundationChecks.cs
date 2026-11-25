@@ -89,6 +89,12 @@ internal static class ExpansionFoundationChecks
         var actor=new Actor{TechniqueMarks=marks,ChipGauges=new[]{new NativeChipGauge{Kind="wild-planted",Value=.5f}}};var copy=actor.ViewCopy();actor.TechniqueMarks[0].Until=99;actor.ChipGauges[0].Value=1;
         Check(copy.TechniqueMarks[0].Until!=99&&copy.ChipGauges[0].Value==.5f,"replay owns marks and gauges");
         var wire=JsonSerializer.Deserialize<Actor>(JsonSerializer.Serialize(copy,options),options);Check(NativeCombatMarks.Valid(wire.TechniqueMarks,wire.ChipGauges)&&wire.TechniqueMarks.Length==6,"wire fields round trip");
+        var pairMarks=new[]{wire.TechniqueMarks[0],wire.TechniqueMarks[0]};
+        Check(!NativeCombatMarks.Valid(pairMarks,null),"duplicate mark owner and kind rejected");
+        pairMarks[1].By=pairMarks[0].By+1;
+        Check(NativeCombatMarks.Valid(pairMarks,null),"same kind from two owners accepted");
+        var gauge=new NativeChipGauge{Kind="wild-planted",Value=.5f,Until=4};
+        Check(!NativeCombatMarks.Valid(null,new[]{gauge,gauge}),"duplicate gauge rejected");
         wire.TechniqueMarks[0].Until=float.NaN;Check(!NativeCombatMarks.Valid(wire.TechniqueMarks,wire.ChipGauges),"corrupt mark rejected");
         Check(!NativeCombatMarks.Valid(null,new[]{new NativeChipGauge{Kind="wild-planted",Value=2}}),"out of range gauge rejected");
         Console.WriteLine("PASS expansion foundation: "+n+" checks");

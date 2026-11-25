@@ -9,16 +9,22 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<string,int> splitWatching=new Dictionary<string,int>();
         private NativeArena splitSpectatorArena;
-        private void SyncSplitSpectators()
+        private void SyncSplitSpectators(ExpeditionSnapshot party=null)
         {
-            var party=splitRun.PartySnapshot();
+            party??=splitRun.PartySnapshot();
             foreach(var member in splitCohorts.Members.Where(m=>m.Connected&&m.Pending==null))
             {
                 var state=party.members.FirstOrDefault(m=>m.account==member.Account);
+                if(state==null||state.alive||state.extracted)
+                {
+                    splitWatching.Remove(member.Account);
+                    splitCohorts.Observe(member.Account,member.Area);
+                    continue;
+                }
                 var targets=party.members.Where(m=>m.account!=member.Account&&m.alive&&m.connected&&!m.extracted&&
                     splitCohorts.Member(m.account)?.Pending==null&&SplitPilotArena(m.account)?.Pilots.Any(p=>p.Seat.id==SplitSeat(m.account)&&p.Hp>0)==true).OrderBy(m=>SplitSeat(m.account)).ToArray();
                 int wanted=splitWatching.TryGetValue(member.Account,out var prior)?prior:0;
-                var target=state!=null&&!state.alive&&!state.extracted?(targets.FirstOrDefault(m=>SplitSeat(m.account)==wanted)??targets.FirstOrDefault()):null;
+                var target=targets.FirstOrDefault(m=>SplitSeat(m.account)==wanted)??targets.FirstOrDefault();
                 if(target==null)splitWatching.Remove(member.Account);else splitWatching[member.Account]=SplitSeat(target.account);
                 splitCohorts.Observe(member.Account,target==null?member.Area:splitCohorts.Member(target.account).Area);
             }

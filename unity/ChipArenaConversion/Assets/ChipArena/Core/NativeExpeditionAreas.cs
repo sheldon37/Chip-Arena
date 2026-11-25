@@ -23,6 +23,15 @@ namespace ChipArena.UnityConversion
         private string[] ExitVotes {get=>scope?.ExitVotes??s.exitVotes;set{if(scope==null)s.exitVotes=value;else scope.ExitVotes=value;}}
         private bool InArea(ExpeditionMember p)=>!SplitAreas||p.area==Area;
         private bool AllHome=>!SplitAreas||s.members.Where(p=>!p.extracted).All(p=>p.area==s.world&&!p.transferring);
+        public int ConnectedPartyCount
+        {
+            get
+            {
+                int count=0;
+                foreach(var member in s.members)if(member.connected&&!member.extracted)count++;
+                return count;
+            }
+        }
         public ExpeditionSnapshot PartySnapshot()=>s.Copy();
         private ExpeditionSnapshot ScopedSnapshot()
         {

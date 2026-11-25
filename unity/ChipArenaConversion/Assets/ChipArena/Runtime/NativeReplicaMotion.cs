@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
     {
         private readonly List<NativeGameFrame> replicaHistory=new List<NativeGameFrame>();
         private readonly NativeSnapshotClock replicaClock=new NativeSnapshotClock();
+        private readonly NativeFrameIndex<int, NativeMinionFrame> earlierMinions = new NativeFrameIndex<int, NativeMinionFrame>(m => m.id);
+        private readonly NativeFrameIndex<int, NativeMinionFrame> laterMinions = new NativeFrameIndex<int, NativeMinionFrame>(m => m.id);
         private readonly NativePrediction predictor=new NativePrediction();
         private float predictionAirJumpAt=-100;private int predictionAirJumpCount;
         private Vector3 predictionCorrection;private float predictionPoseAt=-100,predictionPoseOffset;
@@ -112,9 +114,11 @@ namespace ChipArena.UnityConversion
                 SetReplicaPosition(p.Body,continuous?Vector3.Lerp(x.position,y.position,blend):y.position);
                 p.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);p.Pitch=Mathf.Lerp(x.pitch,y.pitch,blend);
             }
+            earlierMinions.Bind(a.minions);
+            laterMinions.Bind(b.minions);
             foreach(var m in Minions)
             {
-                var x=a.minions.FirstOrDefault(f=>f.id==m.Id);var y=b.minions.FirstOrDefault(f=>f.id==m.Id);
+                var x=earlierMinions.Find(m.Id);var y=laterMinions.Find(m.Id);
                 if(x!=null&&y!=null){SetReplicaPosition(m.Body,Vector3.Distance(x.position,y.position)<5?Vector3.Lerp(x.position,y.position,blend):y.position);m.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);if(IsZoneBoss(m))m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);}
             }
             Physics.SyncTransforms();
