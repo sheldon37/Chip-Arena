@@ -39,12 +39,14 @@ namespace ChipArena.UnityConversion
         public int ShownFar { get; private set; }
 
         /// <summary>Builds a layout's pieces (any earlier build is released first). False without the bank or the shaders: nothing
-        /// draws then and the greybox stays.</summary>
-        public bool Build(NativeMeridianLandmarks.Layout layout, Camera camera)
+        /// draws then and the greybox stays. bankName: the bank the pieces' keys name (the landmarks' own by default; Meridian's
+        /// route draws its pieces from ChipArenaCityRoute through this drawer, NativeMeridianRoute).</summary>
+        public bool Build(NativeMeridianLandmarks.Layout layout, Camera camera, string bankName = null)
         {
             Release();
             if (layout == null) return false;
-            var bank = NativePackBanks.Bank(NativeMeridianLandmarks.Bank);
+            bankName = bankName ?? NativeMeridianLandmarks.Bank;
+            var bank = NativePackBanks.Bank(bankName);
             if (bank == null) return false;
             var stage = Resources.Load<Shader>("NativeStageLit");
             var far = Resources.Load<Shader>("NativeMeridianFar");
@@ -61,7 +63,7 @@ namespace ChipArena.UnityConversion
                 root.transform.SetParent(transform, false);
                 foreach (var piece in layout.Pieces)
                 {
-                    Mesh fine = MeshOf(bank, piece.Key + "/0"), low = MeshOf(bank, piece.Key + "/2"), farMesh = MeshOf(bank, piece.Key + "/far");
+                    Mesh fine = MeshOf(bank, bankName, piece.Key + "/0"), low = MeshOf(bank, bankName, piece.Key + "/2"), farMesh = MeshOf(bank, bankName, piece.Key + "/far");
                     if (fine == null && low == null && farMesh == null) continue;
                     var go = new GameObject(piece.Key);
                     go.transform.SetParent(root.transform, false);
@@ -87,11 +89,11 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        private static Mesh MeshOf(NativePackBank.Bank bank, string name)
+        private static Mesh MeshOf(NativePackBank.Bank bank, string bankName, string name)
         {
             var prop = bank.Find(name);
             if (prop == null || prop.Parts.Length == 0) return null;
-            return NativePackBanks.Mesh(NativeMeridianLandmarks.Bank, prop.Parts[0].Mesh);
+            return NativePackBanks.Mesh(bankName, prop.Parts[0].Mesh);
         }
 
         // The piece's place (Core's 3 x 4 rows: a turn about +y, the scales along its local x and z, a translation).

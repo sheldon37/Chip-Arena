@@ -120,7 +120,12 @@ def _ascii(text):
 
     def scalar(tok):
         if tok.startswith('"'):
-            return tok[1:-1].encode('utf-8').replace(b'::', b'\x00\x01') if '::' in tok else tok[1:-1].encode('utf-8')
+            raw = tok[1:-1].encode('utf-8')
+            if b'::' in raw:
+                # "Class::Name" in ASCII; binary FBX stores Name, NUL SOH, Class (the order _name reads)
+                cls, _, name = raw.partition(b'::')
+                return name + b'\x00\x01' + cls
+            return raw
         try:
             return int(tok)
         except ValueError:
@@ -141,6 +146,18 @@ def _ascii(text):
             props, children = [], []
             while pos < len(tokens):
                 tok = tokens[pos]
+                if tok.startswith('*') and pos + 1 < len(tokens) and tokens[pos + 1] == '{':  # an array: Name: *N { a: v, v, ... }
+                    pos += 2
+                    arr = []
+                    while tokens[pos] != '}':
+                        if tokens[pos] in ('a', ':', ','):
+                            pos += 1
+                            continue
+                        arr.append(scalar(tokens[pos]))
+                        pos += 1
+                    pos += 1
+                    props.append(arr)
+                    break
                 if tok == '{':
                     pos += 1
                     if pos < len(tokens) and tokens[pos].startswith('*'):  # an array: *N { a: v, v, ... }

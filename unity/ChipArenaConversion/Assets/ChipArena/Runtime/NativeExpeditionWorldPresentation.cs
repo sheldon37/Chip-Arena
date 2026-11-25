@@ -88,6 +88,8 @@ namespace ChipArena.UnityConversion
         private NativeMeridianDressDraw liveStreets;
         private NativeCityBleedDraw liveBleed;
         private NativeMeridianLandmarksDraw liveLandmarks;
+        private NativeMeridianRouteDraw liveRoute;
+        private NativeMeridianRoute.Plan liveRoutePlan;
 
         private void ShowMeridian(ExpeditionRunBundle bundle)
         {
@@ -95,6 +97,8 @@ namespace ChipArena.UnityConversion
             if(ReferenceEquals(world,dressedMeridian))return;
             if(liveStreets!=null)Destroy(liveStreets.gameObject);
             if(liveLandmarks!=null){liveLandmarks.Release();Destroy(liveLandmarks.gameObject);}
+            if(liveRoute!=null){liveRoute.Release();Destroy(liveRoute.gameObject);}
+            liveRoutePlan=null;
             if(liveBleed!=null)liveBleed.Close();
             StreetLifeClose();
             dressedMeridian=world;
@@ -105,12 +109,21 @@ namespace ChipArena.UnityConversion
             var bleed=world.Bleed;
             var dress=NativeCityBleedDress.ForWalk(city,bleed,seed);
             liveBleed=NativeCityBleedDraw.Open(bleed,dress,city.Map,cameraView,()=>presentation!=null&&presentation.LowGraphics);
+            // Meridian's described route (docs/expedition/MERIDIAN-ROUTE.md): placed with the landmarks it replaces two wing bays of;
+            // its shop's faces, keep-outs and replaced pieces apply only while its bank is there to draw them.
+            var landmarks=NativeMeridianLandmarks.Place(plan.Seed,city.Map,city.Routes.Select(route=>route.Destination).ToArray(),world.HallSlots,1);
+            liveRoutePlan=NativeMeridianRouteDraw.HasBank?NativeMeridianRoute.Place(plan.Seed,city.Map,landmarks):null;
             try
             {
                 if(liveBleed!=null){
                     NativeMeridianDress.ThemeAt=bleed.ThemeAt;
                     NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(dress,p,14);
                     NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(dress,p,n);
+                }
+                if(liveRoutePlan!=null&&liveRoutePlan.Facades.Count>0)
+                {
+                    var bleedCovers=NativeMeridianDress.FacadeCovered;var route=liveRoutePlan;
+                    NativeMeridianDress.FacadeCovered=(p,n)=>route.Covers(p,n)||bleedCovers!=null&&bleedCovers(p,n);
                 }
                 liveStreets=new GameObject("Expedition streets").AddComponent<NativeMeridianDressDraw>();
                 liveStreets.Prepare(new NativeMeridianDress.Input{Map=city.Map,Layout=plan.Seed,Run=seed,
@@ -121,8 +134,15 @@ namespace ChipArena.UnityConversion
             {
                 NativeMeridianDress.ThemeAt=null;NativeMeridianDress.LampsReplaced=null;NativeMeridianDress.FacadeCovered=null;
             }
+            if(liveRoutePlan!=null)foreach(var piece in liveRoutePlan.Replaced)landmarks.Pieces.Remove(piece);
             liveLandmarks=new GameObject("Expedition landmarks").AddComponent<NativeMeridianLandmarksDraw>();
-            liveLandmarks.Build(NativeMeridianLandmarks.Place(plan.Seed,city.Map,city.Routes.Select(route=>route.Destination).ToArray(),world.HallSlots,1),cameraView);
+            liveLandmarks.Build(landmarks,cameraView);
+            if(liveRoutePlan!=null)
+            {
+                liveRoute=new GameObject("Expedition route").AddComponent<NativeMeridianRouteDraw>();
+                bool drawn=liveRoute.Build(liveRoutePlan,cameraView);
+                Debug.Log("Meridian route "+plan.Name+": "+(drawn?liveRoute.Pieces+" pieces, "+liveRoutePlan.Art.Covers.Count+" blocks replaced, "+liveRoutePlan.Replaced.Count+" landmark pieces replaced, "+liveRoute.Plumes+" plumes":"nothing drawn"));
+            }
             StreetLifeOpen(world,plan.Seed,liveBleed!=null?bleed:null,liveBleed!=null?dress:null);
         }
         private const int MaxLabelled=256;
