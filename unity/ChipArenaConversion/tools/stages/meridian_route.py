@@ -83,7 +83,7 @@ def finishes():
     a = mk._add_fin
     D = sk
     X['rail'] = a('route-rail', 0x1E2422, D.DETAIL_IRON, .42, .35, .7, 0, .30)
-    X['tactile'] = a('route-tactile', 0xB8925A, D.DETAIL_TILE, .30, 0, .8, .05, .15, .08)
+    X['tactile'] = a('route-tactile', 0x7E705E, D.DETAIL_TILE, .30, 0, .9, .05, .15, .08)
     X['york'] = a('route-york', 0x8A8376, D.DETAIL_FLAG, .30, 0, .9, .10, .15, .6)
     X['shop'] = a('route-shop-green', 0x1F4A3A, D.DETAIL_WOOD, .50, 0, .7, .05, .30)
     X['shop-cream'] = a('route-shop-cream', 0xE6DCC0, D.DETAIL_WOOD, .45, 0, .7, .05, .30)
@@ -630,7 +630,7 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
         bx(g, T, a, b, .62, .7, -.06, 0.0, stone, bevel=.005, cell=0, skip=('+z',))           # the sill
         # the frame round the glazing, the glazing bars, the lit back
         bx(g, T, a, b, 2.95, 3.1, -.05, 0.0, green, bevel=.005, cell=0, skip=('+z',))
-        g.face(((a, .7, rec), (b, .7, rec), (b, 2.95, rec), (a, 2.95, rec)), glow(WARM, .95), (0, 0, -1))
+        g.face(((a, .7, rec), (b, .7, rec), (b, 2.95, rec), (a, 2.95, rec)), glow(0xF2C890, .5), (0, 0, -1))
         g.face(((a, .7, 0.0), (a, .7, rec), (a, 2.95, rec), (a, 2.95, 0.0)), green, (1, 0, 0))
         g.face(((b, .7, rec), (b, .7, 0.0), (b, 2.95, 0.0), (b, 2.95, rec)), green, (-1, 0, 0))
         g.face(((a, 2.95, 0.0), (b, 2.95, 0.0), (b, 2.95, rec), (a, 2.95, rec)), green, (0, -1, 0))
@@ -664,7 +664,7 @@ def _shopfront(t, L, door, fascia, sub_text, awning, corner_left, tints, seed):
     if door:
         a, b = door
         dr = .25
-        g.face(((a, 0.0, dr), (b, 0.0, dr), (b, 3.1, dr), (a, 3.1, dr)), glow(WARM, 1.25), (0, 0, -1))
+        g.face(((a, 0.0, dr), (b, 0.0, dr), (b, 3.1, dr), (a, 3.1, dr)), glow(0xF2C890, .7), (0, 0, -1))
         g.face(((a, 0.0, 0.0), (a, 0.0, dr), (a, 3.1, dr), (a, 3.1, 0.0)), stone, (1, 0, 0))
         g.face(((b, 0.0, dr), (b, 0.0, 0.0), (b, 3.1, 0.0), (b, 3.1, dr)), stone, (-1, 0, 0))
         g.face(((a, 3.1, 0.0), (b, 3.1, 0.0), (b, 3.1, dr), (a, 3.1, dr)), stone, (0, -1, 0))
@@ -871,7 +871,7 @@ def loading(t, R, tints):
     g.face(((.4, wy0, rec - .003), (4.6, wy0, rec - .003), (4.6, wy1, rec - .003), (.4, wy1, rec - .003)), glow(FURNACE, 1.1), (0, 0, -1))
     m_ = fit(OI, OI_WINDOW, (.4, wy0, rec - .1), (4.6, wy1, rec - .005), keep_aspect=False)
     if m_ is not None:
-        pack_part(g, tints, OI, OI_WINDOW, m_, fin=E['pack-metal'], keep=lambda nm: 'glass' not in nm.lower() or 'opaque' in nm.lower(), cell=.02)
+        pack_part(g, tints, OI, OI_WINDOW, m_, fin=E['pack-metal'], keep=lambda nm: 'glass' not in nm.lower(), cell=.02)
     else:
         for k in range(1, 6):
             x = .4 + 4.2 * k / 6

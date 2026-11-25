@@ -108,7 +108,7 @@ namespace ChipArena.UnityConversion
         private void Smoke(float t, bool first)
         {
             int n = puffV.Length, tris = puffT.Length, solid = 0, glow = 0, v = 0;
-            var warm = new Color(1f, .42f, .12f); var soot = new Color(.24f, .23f, .25f); var pale = new Color(.46f, .45f, .47f);
+            var warm = new Color(1f, .46f, .16f); var soot = new Color(.34f, .32f, .34f); var pale = new Color(.62f, .6f, .62f);
             for (int p = 0; p < plan.Plumes.Count; p++)
             {
                 var plume = plan.Plumes[p];
@@ -118,8 +118,8 @@ namespace ChipArena.UnityConversion
                     float age = NativeMeridianRoute.AgeOf(plume, i, t);
                     var rot = Quaternion.Euler(0, (p * 53 + i * 37) % 360 + t * (6 + i % 3 * 2), 0);
                     var centre = new Vector3(c.x, c.y, c.z);
-                    bool hot = age < .12f;
-                    var tint = hot ? Color.Lerp(warm, soot, age / .12f) : Color.Lerp(soot, pale, Mathf.Clamp01((age - .12f) / .7f));
+                    bool hot = age < .16f;
+                    var tint = hot ? Color.Lerp(warm, soot, age / .16f) : Color.Lerp(soot, pale, Mathf.Clamp01((age - .16f) / .6f));
                     int baseV = v;
                     for (int k = 0; k < n; k++)
                     {

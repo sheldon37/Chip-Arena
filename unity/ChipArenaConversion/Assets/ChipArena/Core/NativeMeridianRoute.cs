@@ -196,8 +196,8 @@ namespace ChipArena.UnityConversion
         // transparency, so no sorting and nothing to fade). Pure: a puff's place and size at a time.
 
         /// <summary>The puffs a plume keeps in the air, each one's life (s), its rise (m), its drift (m) and its largest radius (m).</summary>
-        public const int PuffsPerPlume = 14;
-        public const float PuffLife = 21f, PuffRise = 52f, PuffDrift = 30f, PuffRadius = 6.2f;
+        public const int PuffsPerPlume = 16;
+        public const float PuffLife = 24f, PuffRise = 72f, PuffDrift = 42f, PuffRadius = 9f;
         /// <summary>The wind the smoke leans down (unit, level): off the sea, toward the north-east.</summary>
         public static readonly V3 Wind = new V3(.55f, 0, .835f);
 

@@ -29,7 +29,7 @@ Without the route bank every drawer keeps its look.
   Ironworks front's buff brick is the kit's.
 - **Polygon Arsenal** (owned since 2026-11-25) is a particle-system pack; the game's effects do not run pack particle systems.
   Its `SmokestackDark` (opaque low-poly puffs: 6 s lives, 3.5 m/s, 4 m, 12 a second, a slight lift) is the audition's model,
-  scaled to the far stacks and drawn by the route's drawer: 14 puffs a plume, 21 s lives, 52 m of rise, 6.2 m at their fullest.
+  scaled to the far stacks and drawn by the route's drawer: 16 puffs a plume, 24 s lives, 72 m of rise, 9 m at their fullest.
 
 Pack meshes are read as data by `tools/pack_bank` (unity_assets, fbx; the FBX reader now reads ASCII arrays written
 `Name: *N { a: ... }` and ASCII names in binary order, which Old Industry's Houdini exports need) and their albedo baked into the
