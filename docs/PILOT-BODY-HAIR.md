@@ -38,4 +38,23 @@ account load on another PC brings back today's pilot. Astra's needs are in DEV_L
 
 ## 2. The first hair sample
 
-See DEV_LOG 2026-11-25 (B1) for the inventory, the bake mapping, the cloth tuning and what is still to do.
+- **Styles (proposed Locker ids, Astra's to add to `NativeLook`):** `bob` (Bob: the pack's `HairFront_MinorFringe` +
+  `HairBack_RoundBob`) and `high-ponytail` (High ponytail: `HairFront_SweaptBack` + `HairBack_LongPonyTail`). The same pieces
+  on both bodies (the hair rides the head, which keeps its size).
+- **Bake mapping** (the local tool's Wardrobe table, wardrobe bake): `hair|bob|HairFront/HairFront_MinorFringe,HairBack/HairBack_RoundBob`,
+  `hair|high-ponytail|HairFront/HairFront_SweaptBack,HairBack/HairBack_LongPonyTail`, and the female face pieces
+  `face|female-lashes|EyeLashes/EyeLashes_LongLashes`, `face|female-brows|EyeBrows/Brows_ThinBrows`. The bake keeps each chain
+  under the head (`HairBack` > `Hair_Back` > `Hair_Back1` for the bob; `HairBack` > `Hair_Back` > `Hair_Back1` > `Hair_Back2` for the
+  ponytail; `HairFront` > `Hair_Front` > `Hair_Front2` for the fringe).
+- **Cloth (the local bridge, `--with-cloth`):** BoneCloth on each chain, the root fixed. The bob runs on the ShortHair preset
+  with restrained tips (restoration .3 falling to .15 at the tips, a 30 degree limit, damping .16); the ponytail on the LongHair
+  preset with a longer recovery (restoration .1, an 85 degree limit, damping .04). The colliders are the bridge's own: head,
+  upper back, upper arms, collarbones and neck.
+- **Headgear:** a visor leaves the hair as styled; a beanie tucks what is under its band (the ponytail's high tie takes the
+  whole tail in); the robot's full helmet hides it all and its hair cloth is held (`NativeVisualCloth.EnableHair`, an optional
+  bridge hook); taking any of them off restores the style.
+- **Rules:** no hair simulation in first person (that body has no cloth); remote pilots hold their cloth past 30 m from the
+  camera, while not drawn and on the low tier; a gap in a body's frames or a jump of over 2 m (respawn, teleport) resets it.
+- **Until the ids land:** a look naming a hairstyle the bake lacks draws the default hair, and the Locker lists a hairstyle
+  only once the bake carries it. `ArenaPresentation.HairPreview` (set only by the local capture tool) dresses every model body
+  in a baked hair piece for filming.
