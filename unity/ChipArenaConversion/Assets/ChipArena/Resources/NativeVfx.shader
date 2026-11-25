@@ -45,8 +45,8 @@
 // image's top left; _MagicGrid: columns, rows, atlas, frame aspect), two frames blended; TEXCOORD1.y = flipbook x 256 + frame. 16 glow: the
 // alpha is the light, in TEXCOORD2.w's tint, running white-hot by COLOR.g where it is brightest (COLOR = gain, hot share, occlusion,
 // opacity: occlusion 0 adds); 17 fire and 18 smoke: as 13 and 14 on the magic flipbooks. A camera-facing magic sprite keeps its frame's
-// aspect; one with a segment lies along it (17: its flipbook's up toward the segment's tail, a flame licking back; 16, 18: its width
-// along it, an arc or a spray). Without the atlases the runtime queues none of these.
+// aspect; one with a segment lies with its frame's long side along it (a tall frame, the flame or plasma, its up toward the segment's
+// tail: a flame licking back; a wide one, the arcs or spray, across). Without the atlases the runtime queues none of these.
 Shader "ChipArena/NativeVfx"
 {
     Properties
@@ -441,11 +441,11 @@ Shader "ChipArena/NativeVfx"
                 o.alt=float4(VfxHexLinear(mode>8.5?v.axis.w:v.axis.y),0);
                 if(fx&&mode>15.5)
                 {
-                    // A magic flipbook: its rect and grid, two frames blended; along a segment the fire's up runs toward the tail.
+                    // A magic flipbook: its rect and grid, two frames blended; along a segment its frame's long side runs along it (a tall frame's up toward the tail).
                     float frame=v.life.y-magicId*256.0,frames=magicGrid.x*magicGrid.y;
                     float fa=min(floor(frame),frames-1.0),fb=min(fa+1.0,frames-1.0);
                     float along=coords.x/(coords.z+1.0);
-                    float2 q=fxAlong?(mode>16.5&&mode<17.5?float2(coords.y,-along):float2(along,coords.y)):v.shape.xy;float2 inTile=q*0.49+0.5;
+                    float2 q=fxAlong?(magicGrid.w<1.0?float2(coords.y,-along):float2(along,coords.y)):v.shape.xy;float2 inTile=q*0.49+0.5;
                     o.uv.zw=MagicTile(fa,magicRect,magicGrid,inTile);o.toon=float4(magicGrid.z,frame-fa,MagicTile(fb,magicRect,magicGrid,inTile));
                 }
                 else if(fx)

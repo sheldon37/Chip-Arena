@@ -381,7 +381,7 @@ namespace ChipArena.UnityConversion
     public enum NativeMagicLook:byte{Glow,Fire,Smoke,CodeGlow,CodeStreak,Drop}
     /// <summary>One sprite of a magic recipe at one moment: where and how big, its flipbook (Sub) and frame, its colour (a packed sRGB hex for
     /// the flipbooks, linear HDR Tint for the code's), gain, white-hot share (Hot), heat (fire), self light, occlusion (0 adds, 1 blends),
-    /// opacity, and a segment it lies along (fire: its tip toward the tail; glow and smoke: their width along it).</summary>
+    /// opacity, and a segment it lies along (a tall frame, the flames and plasma, its tip toward the tail; a wide one, arcs and spray, its width).</summary>
     public struct NativeMagicSprite
     {
         public NativeMagicLook Look;public int Sheet,Hex,Profile;public Vector3 At,Segment,Velocity,Tint;
