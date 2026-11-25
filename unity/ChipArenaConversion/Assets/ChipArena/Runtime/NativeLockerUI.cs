@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
     {
         private int lockerTab,lockerTabNext=-1,lockerN;private bool lockerConfirm,lockerBlocked,lockerViewHot,lockerTurned,lockerSavedAccount;
         private float lockerFade=1,lockerW=500,lockerYaw,lockerTurnAt=-9,lockerDragX,lockerSavedAt=-9,lockerListsAt=-9,lockerKillAt;private bool lockerListsModel;
-        private readonly Vector2[] lockerScroll=new Vector2[NativeLocker.Count];private readonly Rect[] lockerSlots=new Rect[28];private Action lockerDraw;
+        private readonly Vector2[] lockerScroll=new Vector2[NativeLocker.Count];private readonly Rect[] lockerSlots=new Rect[32];private Action lockerDraw;
         // This repaint's hovered item, shown on the pilot (null: the equipped one).
         private string lockerHat,lockerPose,lockerBody,lockerAccent,lockerWeapon,lockerKill,lockerBack;
         private readonly List<string> lockerHats=new List<string>(16),lockerKills=new List<string>(32),lockerIntros=new List<string>(32),lockerSkins=new List<string>(16);

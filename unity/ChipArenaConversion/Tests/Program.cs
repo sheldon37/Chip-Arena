@@ -151,7 +151,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--backrooms-boss-rules"){BackroomsBossRuleChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--guard"){GuardChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hotdog-friends"){HotdogFriendsChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--body-kind"){BodyKindChecks.Run(ProjectRoot());SkinToneChecks.Run(ProjectRoot());RobotSuitChecks.Run(ProjectRoot());LookContractChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--body-kind"){BodyKindChecks.Run(ProjectRoot());SkinToneChecks.Run(ProjectRoot());RobotSuitChecks.Run(ProjectRoot());LookContractChecks.Run(ProjectRoot());LockerChecks.Run(ProjectRoot(),System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--costume"){CostumeChecks.Run(ProjectRoot());BodyStyleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hot-dog"){LookContractChecks.Run(ProjectRoot());HotDogChecks.Run(ProjectRoot());Console.WriteLine("PASS hot dog");return 0;}
             if(args.Length==1&&args[0]=="--cutscene-skip"){CutsceneSkipChecks.Run(ProjectRoot());return 0;}
