@@ -43,6 +43,8 @@ internal static class BodyKindChecks
         Check(kind.Contains("chest.localScale*=NativeBodyKind.ChestScale;")&&kind.Contains("head.localScale/=NativeBodyKind.ChestScale;")&&R("NativeRobotSuitPresentation.cs").Contains("sourceModels.Queue(SuitModelOf(root,rig),"),"the Chest Size and the fitted plates");
         Check(locker.Contains("prefs.look=NativeBodyKind.With(prefs.look,k);lockerSpinAt=Time.unscaledTime;")&&ui.Contains("LkHeading(lockerSlots[k++],\"BODY\",")&&ui.Contains("return lockerYaw+LkSpin()+")&&outfit.Contains("lookShown=NativeBodyKind.Keep(lookShown,look);"),"the Locker's BODY row, its turntable and the shown look");
         Check(R("NativeColorWheelUI.cs").Contains("prefs.look=NativeBodyKind.Keep(prefs.look,was);")&&R("NativeLockerCostumeUI.cs").Contains("prefs.look=NativeBodyKind.Keep(NativeVoxelCostume.With(prefs.look,k==1),prefs.look);"),"the Locker's other writers keep the body");
+        // Save Pilot keeps the pick in this PC's prefs; what leaves the PC (the profile, the seat) is GatedLook, normalised, without it.
+        Check(R("NativeProfileUI.cs").Contains("prefs.look=NativeBodyKind.Keep(GatedLook(),prefs.look);")&&R("NativeNetwork.cs").Contains("look=GatedLook()")&&R("NativeNetwork.cs").Contains("private string GatedLook()=>NativeLook.Gate(prefs.look,"),"Save Pilot keeps the pick locally; the wire takes the normalised look");
         // Presentation only: nothing that simulates reads it.
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))
         {

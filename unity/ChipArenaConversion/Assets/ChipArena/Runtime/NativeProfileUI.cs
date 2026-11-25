@@ -97,7 +97,9 @@ namespace ChipArena.UnityConversion
         public void ReloadSavedPilot()=>account?.ReloadSavedProfile();
         private void SavePilot()
         {
-            prefs.name=NativeCosmeticRules.Name(prefs.name);prefs.introText=NativeCosmeticRules.IntroText(prefs.introText);prefs.weaponTechniques=NativeTechniqueLoadout.Normalize(prefs.weaponTechniques);prefs.weaponSkins=GatedSkins();prefs.look=GatedLook();prefs.pod=NativePodRun.Look(prefs.pod);prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");
+            // (The body pick stays in this PC's prefs, Core NativeBodyKind; the profile and a room take GatedLook, without it, until
+            // NativeLook carries the key: Astra's part.)
+            prefs.name=NativeCosmeticRules.Name(prefs.name);prefs.introText=NativeCosmeticRules.IntroText(prefs.introText);prefs.weaponTechniques=NativeTechniqueLoadout.Normalize(prefs.weaponTechniques);prefs.weaponSkins=GatedSkins();prefs.look=NativeBodyKind.Keep(GatedLook(),prefs.look);prefs.pod=NativePodRun.Look(prefs.pod);prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");
             if(account.Account!=null)prefs.pendingEffects=NativePendingEffect.Remember(prefs.pendingEffects,account.Account.id,prefs.killEffect,account.LoadedPilot.profile?.cosmetics?.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e));
             // Remember the actual pre-save value on the native-aware service; only an acknowledged or changed remote choice clears a pending pick.
             if(account.Account!=null)prefs.pendingIntros=NativePendingEffect.Remember(prefs.pendingIntros,account.Account.id,prefs.intro,account.Account.profileSchema>=2?account.LoadedPilot.profile?.cosmetics?.intro:NativeIntroRules.ServiceIntro(prefs.intro),i=>NativeCosmeticRules.PickableIntro(i,account.Access));

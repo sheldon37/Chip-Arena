@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     // (NativeBodyKind.With: Revert and the unsaved-changes baseline cover it with the rest of the look) and turns the stage's
     // pilot once round on its turntable (LkSpin, in LockerYawShown) so the new body shows from every side. Every hairstyle and
     // outfit fits both. Under the voxel costume the row is dimmed and says so. Until NativeLook carries the key (Astra's part of
-    // the contract, docs/DEV_LOG.md 2026-11-25), Save Pilot, the account and a room drop the pick: this PC shows it until then.
+    // the contract, docs/DEV_LOG.md 2026-11-25), Save Pilot keeps the pick on this PC only: the account and a room take the look
+    // without it, so other players see today's pilot until then.
     public sealed partial class ConversionGame
     {
         // The body hovered in the row this repaint (-1 none: reset with the other try-ons), and when the last pick was made.

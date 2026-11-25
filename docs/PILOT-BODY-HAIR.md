@@ -32,8 +32,9 @@ both bodies and every hairstyle keep the same hit volumes, reach, shot origins, 
 ### Until Astra's half of the contract lands
 
 `NativeLook` normalisation drops keys it does not know, so the presentation keeps the body at its own edges
-(`NativeBodyKind.Keep`): the Locker's writers, the shown look and this client's own pilot's bodies (its seat look). Save
-Pilot, the account and a room drop the pick, and peers draw today's pilot. Astra's needs are in DEV_LOG (2026-11-25, B1).
+(`NativeBodyKind.Keep`): the Locker's writers, Save Pilot's local prefs, the shown look and this client's own pilot's bodies
+(its seat look). The account profile and a room take the normalised look without the key, so peers draw today's pilot and an
+account load on another PC brings back today's pilot. Astra's needs are in DEV_LOG (2026-11-25, B1).
 
 ## 2. The first hair sample
 
