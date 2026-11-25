@@ -3,6 +3,29 @@ using System.Collections.Generic;
 
 namespace ChipArena.UnityConversion
 {
+    // Each generated map owns its block array. Area and cache IDs are reused by the next run.
+    public sealed class NativeCacheBlockIndex
+    {
+        private const string Suffix="-block";
+        private ContentBlock[] indexed;
+        private readonly Dictionary<string,ContentBlock> lockers=new Dictionary<string,ContentBlock>(StringComparer.Ordinal);
+        public void Bind(ContentBlock[] blocks)
+        {
+            if(ReferenceEquals(indexed,blocks))return;
+            indexed=blocks;lockers.Clear();
+            if(blocks==null)return;
+            foreach(var block in blocks)
+                if(block?.id!=null&&block.id.EndsWith(Suffix,StringComparison.Ordinal))
+                    lockers[block.id.Substring(0,block.id.Length-Suffix.Length)]=block;
+        }
+        public ContentBlock At(ExpeditionWorldAnchor anchor)
+        {
+            if(anchor?.id==null||!lockers.TryGetValue(anchor.id,out var block))return null;
+            float dx=block.pos.x-anchor.x,dz=block.pos.z-anchor.z;
+            return dx*dx+dz*dz<.15f*.15f&&Math.Abs(block.pos.y-block.size.y*.5f-anchor.y)<.1f?block:null;
+        }
+    }
+
     /// <summary>What a cache shows: for sale, opening (since its open moment, the held shut after it), restocking (shut and red,
     /// a late joiner's cache already opened), sold (bought, waiting for the restock).</summary>
     public enum NativeCacheState { ForSale, Opening, Restocking, Sold }

@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count=0;
-            Adapter(root);Words();Beats();Ladder();FloorAndRings();Blooms();Pulses();Budget();OnItsLine();Reduced();Determinism();Sounds();Locker();Clock();Hologram();Preview();NoAllocation();Sources(root);
+            Adapter(root);Words();Beats();Ladder();FloorAndRings();Blooms();Pulses();Budget();OnItsLine();Reduced();Determinism();Sounds();Locker();MapBinding();Clock();Hologram();Preview();NoAllocation();Sources(root);
             Console.WriteLine("PASS Cache openings ("+count+" checks; the locker's triangles a tier "+string.Join(", ",Tiers.Select(t=>NativeCacheLockerModels.Triangles(t)))+"; FX quads at peak "+string.Join(", ",Tiers.Select(t=>Peak(O(t))))+"; particles "+string.Join(", ",Tiers.Select(t=>O(t).ParticleCount))+")");
         }
 
@@ -314,6 +314,25 @@ namespace ChipArena.UnityConversion
         private static NativeExpedition Party()
         {
             var run=NativeExpedition.Create("cache-run","city","p0","sword",91,new[]{new ExpeditionInstance{id="ward-zero",target=3}});Check(run.Join("p1","sword"),"join");return run;
+        }
+        private static void MapBinding()
+        {
+            var index=new NativeCacheBlockIndex();
+            var anchor=new ExpeditionWorldAnchor{id="exp-city:cache:1",x=2,y=1,z=4};
+            var map=new ContentMap{id="exp-city",blocks=Array.Empty<ContentBlock>()};
+            index.Bind(map.blocks);Check(index.At(anchor)==null,"unsupported anchor uses the hologram");
+            var locker=NativeExpeditionGeneratedWorld.CacheBlock(anchor);
+            var reroll=map.WithCacheBlocks(new[]{locker});
+            index.Bind(reroll.blocks);Check(index.At(anchor)==locker,"same map and cache IDs resolve the new run's locker");
+            anchor.x+=5;Check(index.At(anchor)==null,"previous location cannot hide a block for a different placement");
+            index.Bind(map.blocks);Check(index.At(anchor)==null,"switching back drops the previous run's block");
+            foreach(var plan in NativeCityLayout.Plans)
+            {
+                var city=new NativeLayeredCityWalk(plan,17);
+                index.Bind(city.Map.blocks);
+                foreach(var cache in city.Caches)
+                    Check(index.At(cache)!=null,plan.Name+" resolves generated locker "+cache.id);
+            }
         }
         private static void Clock()
         {

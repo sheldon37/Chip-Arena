@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         private readonly NativeCacheClock cacheClock=new NativeCacheClock();
         private readonly List<NativeCacheShow> cachePreviewShows=new List<NativeCacheShow>(8),cachePreviewClicks=new List<NativeCacheShow>(8);
         private readonly Dictionary<string,float> cacheHeard=new Dictionary<string,float>(StringComparer.Ordinal);
-        private readonly Dictionary<string,bool> cacheSolidAt=new Dictionary<string,bool>(StringComparer.Ordinal);private string cacheSolidMap;
+        private readonly NativeCacheBlockIndex cacheBlocks=new NativeCacheBlockIndex();
         private Func<ExpeditionWorldAnchor,bool> cacheSolid;private double cachePreviewPrevious=double.NaN;
         private readonly ExpeditionLabels cacheLabels=new ExpeditionLabels();
 
@@ -39,25 +39,17 @@ namespace ChipArena.UnityConversion
             }
             cachePreviewPrevious=double.NaN;cachePreviewWorld?.Clear();
             if(LiveExpedition==null||!ExpeditionWorldShown||!expeditionMapReady){cacheClock.Observe(null,0);presentation.CacheShows=null;cacheHeard.Clear();return;}
+            cacheBlocks.Bind(arena.Map?.blocks);
             cacheClock.Solid=cacheSolid??=CacheSolid;cacheClock.Observe(LiveExpedition,Time.unscaledTimeAsDouble);
             // the steel locker stands for A2's solid block, so the block's own box is left undrawn (its collider stays)
-            foreach(var id in cacheSolidBlocks)NativeArenaDressing.Hidden.Add(id);
             presentation.CacheShows=cacheClock.Items;CacheSounds(cacheClock.Items,cacheClock.Clicks);
         }
-        private readonly HashSet<string> cacheSolidBlocks=new HashSet<string>(StringComparer.Ordinal);
-        /// <summary>A2's solid chest block at an anchor: a map block of the chest's size (0.92 x 0.62 x 0.58 m, turned by the anchor's
-        /// yaw) centred on it and standing on its floor. None exists before A2, so the live cache keeps its hologram.</summary>
-        private bool CacheSolid(ExpeditionWorldAnchor a)
+        private bool CacheSolid(ExpeditionWorldAnchor anchor)
         {
-            if(arena==null||a?.id==null)return false;if(cacheSolidMap!=arena.MapId){cacheSolidMap=arena.MapId;cacheSolidAt.Clear();cacheSolidBlocks.Clear();}
-            if(cacheSolidAt.TryGetValue(a.id,out bool solid))return solid;var b=NativeCacheLockerModels.Block;
-            foreach(var k in arena.Map?.blocks??Array.Empty<ContentBlock>())
-            {
-                if(k==null)continue;float dx=k.pos.x-a.x,dz=k.pos.z-a.z,lo=k.pos.y-k.size.y*.5f;
-                bool size=Mathf.Abs(k.size.y-b.Y)<.03f&&(Mathf.Abs(k.size.x-b.X)<.03f&&Mathf.Abs(k.size.z-b.Z)<.03f||Mathf.Abs(k.size.x-b.Z)<.03f&&Mathf.Abs(k.size.z-b.X)<.03f);
-                if(size&&dx*dx+dz*dz<.15f*.15f&&Mathf.Abs(lo-a.y)<.1f){solid=true;if(k.id!=null)cacheSolidBlocks.Add(k.id);break;}
-            }
-            if(cacheSolidAt.Count>64)cacheSolidAt.Clear();cacheSolidAt[a.id]=solid;return solid;
+            var block=cacheBlocks.At(anchor);
+            if(block==null)return false;
+            NativeArenaDressing.Hidden.Add(block.id);
+            return true;
         }
         // The cache.* cues on R9's beats, once each as the opening's clock crosses them (none for a late joiner's opened cache),
         // and the restock's click. Positional at the cache.
