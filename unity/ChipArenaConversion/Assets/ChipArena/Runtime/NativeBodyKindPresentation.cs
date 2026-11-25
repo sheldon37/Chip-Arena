@@ -135,9 +135,9 @@ namespace ChipArena.UnityConversion
                 return total>0?sum/total:Vector3.zero;
             }
         }
-        private void SuitFemaleEnsure(GameObject root,SuitRig rig)
+        private void SuitFemaleEnsure(GameObject root,SuitRig suit)
         {
-            if(suitFemaleTried||sourceModels==null||rig==null)return;suitFemaleTried=true;
+            if(suitFemaleTried||sourceModels==null||suit==null)return;suitFemaleTried=true;
             var d=VisualLookData();if(d?.pieces==null)return;
             var skins=new Dictionary<string,SkinnedMeshRenderer>(StringComparer.Ordinal);foreach(var s in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))skins[s.name]=s;
             var grids=new FemaleGrid[NativeLook.Slots.Length];
@@ -154,17 +154,17 @@ namespace ChipArena.UnityConversion
                 {
                     var g=bone>=0&&bone<NativeRobotSuit.BoneSlot.Length?grids[NativeRobotSuit.BoneSlot[bone]]:null;if(g==null)return v;
                     // The plate's frame (its rig's bind) to the garment's (its own bind for that bone; the same space when it has none).
-                    int b=Array.IndexOf(g.Bones,rig.Bones[bone]);var toGarment=b>=0&&b<g.Binds.Length?g.Binds[b].inverse*rig.Bind[bone]:Matrix4x4.identity;
+                    int b=Array.IndexOf(g.Bones,suit.Bones[bone]);var toGarment=b>=0&&b<g.Binds.Length?g.Binds[b].inverse*suit.Bind[bone]:Matrix4x4.identity;
                     return v+toGarment.inverse.MultiplyVector(g.At3(toGarment.MultiplyPoint3x4(v)));
                 });
             }
             catch(Exception e){Debug.LogWarning("Visual body: the robot suit's female fit failed: "+e.Message);}
         }
         // The suit model a body's plates draw from: the female fit on a female body (once it is made), else today's.
-        private string SuitModelOf(GameObject root,SuitRig rig)
+        private string SuitModelOf(GameObject root,SuitRig suit)
         {
             if(!femaleRoots.Contains(root.GetInstanceID()))return NativeSourceModels.Suit;
-            if(!sourceModels.Has(NativeSourceModels.SuitFemale))SuitFemaleEnsure(root,rig);
+            if(!sourceModels.Has(NativeSourceModels.SuitFemale))SuitFemaleEnsure(root,suit);
             return sourceModels.Has(NativeSourceModels.SuitFemale)?NativeSourceModels.SuitFemale:NativeSourceModels.Suit;
         }
 
