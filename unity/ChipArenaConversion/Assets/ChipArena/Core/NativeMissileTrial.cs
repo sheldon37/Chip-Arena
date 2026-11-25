@@ -2,8 +2,8 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// The Magic Missiles visual trial (Claude C2, 2026-11-25; Astra's revamp brief §4: "a separate visual trial for one existing PvP
-    /// spell. Preserve its projectile trajectory, impact timing and damage rules"): the fire staff's primary bolt drawn as Archanor
-    /// VFX's Magic Missiles FireMissile (a flame core with its fire and smoke trails streaming behind, a light-free copy) and its hits
+    /// spell. Preserve its projectile trajectory, impact timing and damage rules"): the fire staff's primary bolt drawn as the
+    /// Magic Missiles pack's FireMissile (a flame core with its fire and smoke trails streaming behind, a light-free copy) and its hits
     /// as the pack's FireExplosion, both scaled to the game's bolt. The missile rides the bolt's own replicated head each frame
     /// (NativeShotViews: the authority's path, the guest's carried-on head), so its trajectory is the bolt's; the explosion plays at
     /// the same Impact or direct Hit event, on the same frame, the pack sprite burst would have (NativeMagicPackPresentation), so

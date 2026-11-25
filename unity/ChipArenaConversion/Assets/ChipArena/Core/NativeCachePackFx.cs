@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// The caches' licensed effects layer (Claude C2, 2026-11-25; Astra's revamp brief §4, owner: "lets get work started"):
-    /// Archanor VFX's Action RPG FX chest glows and chest openings, its four levels on the four tiers (Lv1 STANDARD, Lv2 RARE,
+    /// the Action RPG FX pack's chest glows and chest openings, its four levels on the four tiers (Lv1 STANDARD, Lv2 RARE,
     /// Lv3 EPIC, Lv4 LEGENDARY), on the CD-647 steel locker, beside the procedural opening (<see cref="NativeCacheOpenFx"/>),
     /// which stays as it is. While a cache is for sale, a small glow and its sparkles sit at the latch line on the locker's
     /// front (a localized cue, nothing on the floor); at the confirmed open moment, as the lid lifts (<see cref="BurstAt"/>),
