@@ -11,8 +11,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeSourceModels
     {
         public const string Suit="pilot-suit";
-        /// <summary>The plates fitted to the female body (Core/NativeBodyKind; ArenaPresentation SuitFemaleEnsure).</summary>
+        /// <summary>The plates fitted to the female body at a level (Core/NativeBodyKind; ArenaPresentation SuitFemaleEnsure).</summary>
         public const string SuitFemale="pilot-suit-female";
+        public static string SuitFemaleOf(int level)=>SuitFemale+"-"+level;
         private Material suitMaterial;
         private void SuitModels()
         {
@@ -37,9 +38,9 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The suit fitted to the female body: today's plates, each vertex where `carry` moves it (the garment under it, by
         /// that garment's own shape deltas), on the same instanced material. Made once.</summary>
-        public void SuitFemaleModels(Func<int,Vector3,Vector3> carry)
+        public void SuitFemaleModels(string id,Func<int,Vector3,Vector3> carry)
         {
-            if(suitMaterial==null||carry==null||models.ContainsKey(SuitFemale))return;models[SuitFemale]=SuitParts(suitMaterial,carry);
+            if(suitMaterial==null||carry==null||models.ContainsKey(id))return;models[id]=SuitParts(suitMaterial,carry);
         }
     }
 

@@ -40,6 +40,9 @@ namespace ChipArena.UnityConversion
             public string Look=""; public Matrix4x4 Emblem=EmblemFrame;
             // Its hair and cloth simulation (NativeVisualCloth: the local install's; null without one) and whether it runs (-1 unset).
             public object ClothSim; public int ClothOn=-1; public bool HairHeld;
+            // Whether it was made female, at which level (Core NativeBodyKind; NativeBodyKindPresentation.cs), and its stance's bones, share and
+            // last place (the owner's match option).
+            public bool FemaleMade; public int FemaleLevel=-1; public Transform[] Stance; public float StanceAmount; public Vector3 StanceAt;
             // Its hair under a hat (VisualHatHair): the renderers, each one's hood shape (-1: none) and the outfit's weight on it, each
             // one's own mesh, and the hat they are worn under (null: as styled).
             public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public Mesh[] HatHairMesh; public string HatHairWorn;
@@ -248,6 +251,7 @@ namespace ChipArena.UnityConversion
             var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle,body.Motion!=null&&body.Motion.Weight>=1?VisualArms.Reach:VisualArms.Live);
             VisualStridePose(body,rig,a,time,roll,juggle);
             VisualMotionPose(body,rig,a,time);
+            VisualFemaleMatchStance(body,a);
             VisualHandFit(body,rig,held);
             VisualBigHead(body);
             HotDogJiggle(body);
@@ -630,6 +634,7 @@ namespace ChipArena.UnityConversion
             // Under it the hair, the head and the face are hidden (VisualUnderHood: the void covers the opening).
             if(hoodRenderer!=null)VisualUnderHood(root);
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
+            if(femaleRoots.TryGetValue(root.GetInstanceID(),out int femaleAt)){body.FemaleMade=true;body.FemaleLevel=femaleAt;}
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];VisualCutWarm(body.All);
             // Its skeleton, off until a wound opens into it (an arena pilot's body; not the view body, busts, ghosts or portraits).
             if(simulate&&id!=ViewBodyId){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
@@ -870,7 +875,7 @@ namespace ChipArena.UnityConversion
             if(NativeHotDog.Worn(look))HotDogWear(root);
             if(NativeVoxelCostume.Worn(look))CostumeWear(root,look);
             // The female body (Core NativeBodyKind; NativeBodyKindPresentation.cs), under any outfit but the Hot Dog and the costume.
-            else if(NativeBodyKind.IsFemale(look)&&!NativeHotDog.Worn(look))VisualFemale(root);
+            else if(NativeBodyKind.IsFemale(look)&&!NativeHotDog.Worn(look))VisualFemale(root,FemaleLevel);
         }
         // The pilot's skin tone (Core NativeLook's skin entry; owner 2026-10-28: "Give skin color customization"): written on the
         // skin parts when a body is dressed, and again in place when only the tone changes (VisualRetone), never per frame. A
@@ -918,6 +923,7 @@ namespace ChipArena.UnityConversion
         {
             if(string.Equals(body.Look,look,StringComparison.Ordinal))return true;
             if(!NativeLook.SameOutfit(body.Look,look)||NativeBodyKind.Of(body.Look)!=NativeBodyKind.Of(look))return false; // (another body: made again)
+            if(body.FemaleMade&&body.FemaleLevel!=FemaleLevel)return false; // (another female level: made again)
             if(NativeVoxelCostume.Worn(look)&&(CostumeSkinIn(body.Look)!=CostumeSkinIn(look)||CostumeTierIn(body.Look)!=CostumeTierIn(look)))return false; // (another costume variant or tier)
             int tone=NativeLook.SkinOf(look);if(body.All!=null)foreach(var r in body.All)VisualSkinToneOne(r,tone);body.Look=look;return true;
         }

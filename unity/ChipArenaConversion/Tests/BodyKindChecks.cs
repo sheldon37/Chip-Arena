@@ -3,7 +3,7 @@ using System.IO;
 using ChipArena.UnityConversion;
 // The pilot's body (Core/NativeBodyKind; Astra's brief 2026-11-24 section 1): the look map's optional "body:female" key, omitted
 // for today's pilot; the presentation keeps it at its own edges until NativeLook carries it (Astra's part); the female preset is
-// the pack's Default_Girl; presentation only.
+// the pack's female directions at three levels; presentation only.
 internal static class BodyKindChecks
 {
     public static void Run(string root)
@@ -30,17 +30,23 @@ internal static class BodyKindChecks
         Check(NativeBodyKind.Keep("upper:tee","")=="upper:tee"&&NativeBodyKind.Keep("upper:tee,body:female","")=="upper:tee","Keep takes today's pilot back off");
         // The dressing (robot pieces under their garments) keeps the outfit's meaning; the body rides on top of it.
         Check(NativeBodyKind.Of(NativeBodyKind.Keep(NativeRobotSuit.Dress("body:female"),"body:female"))==NativeBodyKind.Female,"dressed robot pieces keep the body");
-        // The female preset is the pack's Default_Girl (BoZo CustomCharacters/Anime/Default_Girl): its shapes, face, bone modifier.
-        Check(NativeBodyKind.BodyShapes.Length==2&&NativeBodyKind.BodyShapes[0]=="Chest"&&NativeBodyKind.BodyWeights[0]==60&&NativeBodyKind.BodyShapes[1]=="Curvy"&&NativeBodyKind.BodyWeights[1]==100,"Default_Girl's body shapes");
-        Check(NativeBodyKind.FaceShapes.Length==1&&NativeBodyKind.FaceShapes[0]=="EyeRoundness"&&NativeBodyKind.FaceWeights[0]==57&&NativeBodyKind.ChestBone=="spine_04"&&Math.Abs(NativeBodyKind.ChestScale-.97103566f)<1e-6,"Default_Girl's face and Chest Size");
+        // The female levels (owner 2026-11-25: "more feminine"): the pack's female directions past Default_Girl, every level further than
+        // the last on each lever; the whole body never under .95; the shape names the pack's (matched by name on every worn mesh).
+        var L=NativeBodyKind.Levels;Check(L.Length==3&&NativeBodyKind.DefaultLevel==NativeBodyKind.Medium&&NativeBodyKind.LevelOf(-1)==L[NativeBodyKind.DefaultLevel]&&NativeBodyKind.LevelOf(9)==L[NativeBodyKind.DefaultLevel],"three levels, Medium by default");
+        string[] names={"BodyType","Weight","Chest","Curvy","WaistSize","ButtSize","NeckThickness","EyeRoundness","Roundness"};
+        foreach(var level in L)Check(level.Shapes.Length==names.Length&&level.Weights.Length==names.Length&&level.Root>=.95f&&level.Root<1&&level.Span<1&&level.Hand<1&&level.Chest<1&&level.ArmY<=1&&level.ArmZ<=1&&level.Chin<=1,"level "+level.Name+": every lever toward the pack's female");
+        for(int k=0;k<names.Length;k++)Check(L[0].Shapes[k]==names[k],"the pack's shape names");
+        for(int k=0;k<names.Length;k++){float a=L[0].Weights[k],b=L[1].Weights[k],c=L[2].Weights[k];bool down=k<2||k==6;Check(down?(a<=0&&b<=a&&c<=b):(a>=0&&b>=a&&c>=b),"each level further than the last: "+names[k]);}
+        Check(L[0].Root>L[1].Root&&L[1].Root>L[2].Root&&L[0].Span>L[1].Span&&L[1].Span>L[2].Span&&NativeBodyKind.ChestBone=="spine_04","the bones, level by level");
+        Check(NativeBodyKind.StanceLegsIn>0&&NativeBodyKind.StanceKneesIn>0&&NativeBodyKind.StanceChestUp>0&&NativeBodyKind.MatchStanceLegsIn<NativeBodyKind.StanceLegsIn,"the lobby stance; the match option lighter");
         Check(NativeBodyKind.Ids[0]=="male"&&NativeBodyKind.Ids[1]=="female"&&NativeBodyKind.Labels[0]=="Male"&&NativeBodyKind.Labels[1]=="Female","the Locker's ids and labels");
         // Wiring: every body made dresses through VisualDress, which takes the female preset; the local pilot carries its pick; the
         // Locker's writers keep it; the suit and the core are fitted to it; it changes no rule.
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
         string body=R("NativeVisualBodyPresentation.cs"),kind=R("NativeBodyKindPresentation.cs"),locker=R("NativeLockerBodyUI.cs"),ui=R("NativeLockerUI.cs"),outfit=R("NativeLockerOutfitUI.cs");
-        Check(body.Contains("else if(NativeBodyKind.IsFemale(look)&&!NativeHotDog.Worn(look))VisualFemale(root);")&&body.Contains("if(NativeBodyKind.IsFemale(look))robotDressed[look]=dressed=NativeBodyKind.Keep(dressed,look);"),"bodies dress in the female preset through the robot dressing");
+        Check(body.Contains("else if(NativeBodyKind.IsFemale(look)&&!NativeHotDog.Worn(look))VisualFemale(root,FemaleLevel);")&&body.Contains("if(body.FemaleMade&&body.FemaleLevel!=FemaleLevel)return false;")&&body.Contains("VisualFemaleMatchStance(body,a);\n            VisualHandFit(body,rig,held);")&&body.Contains("if(NativeBodyKind.IsFemale(look))robotDressed[look]=dressed=NativeBodyKind.Keep(dressed,look);"),"bodies dress in the female preset through the robot dressing");
         Check(body.Contains("if(id==LocalId&&LocalBodyOwn(out var own))return own;")&&body.Contains("NativeBodyKind.Of(body.Look)!=NativeBodyKind.Of(look))return false;")&&body.Contains("VisualFemaleCore(body);"),"the local pilot's pick, a new body on a change, the core");
-        Check(kind.Contains("chest.localScale*=NativeBodyKind.ChestScale;")&&kind.Contains("head.localScale/=NativeBodyKind.ChestScale;")&&R("NativeRobotSuitPresentation.cs").Contains("sourceModels.Queue(SuitModelOf(root,rig),"),"the Chest Size and the fitted plates");
+        Check(kind.Contains("chest.localScale*=L.Chest;")&&kind.Contains("head.localScale/=L.Chest;")&&kind.Contains("public static bool FemaleMatchStance;")&&kind.Contains("skin.SetBlendShapeWeight(index[k],Mathf.Clamp(L.Weights[k],0,100));")&&R("NativeVisualPortraitPresentation.cs").Contains("else if(pose!=NativeLobbyPoses.Chair)VisualFemaleLobbyStance(body);")&&locker.Contains("private const string LkFemaleHair=\"tied-back\";")&&R("NativeRobotSuitPresentation.cs").Contains("sourceModels.Queue(SuitModelOf(root,rig),"),"the Chest Size and the fitted plates");
         Check(locker.Contains("prefs.look=NativeBodyKind.With(prefs.look,k);lockerSpinAt=Time.unscaledTime;")&&ui.Contains("LkHeading(lockerSlots[k++],\"BODY\",")&&ui.Contains("return lockerYaw+LkSpin()+")&&outfit.Contains("lookShown=NativeBodyKind.Keep(lookShown,look);"),"the Locker's BODY row, its turntable and the shown look");
         Check(R("NativeColorWheelUI.cs").Contains("prefs.look=NativeBodyKind.Keep(prefs.look,was);")&&R("NativeLockerCostumeUI.cs").Contains("prefs.look=NativeBodyKind.Keep(NativeVoxelCostume.With(prefs.look,k==1),prefs.look);"),"the Locker's other writers keep the body");
         // Save Pilot keeps the pick in this PC's prefs; what leaves the PC (the profile, the seat) is GatedLook, normalised, without it.
@@ -54,6 +60,6 @@ internal static class BodyKindChecks
         }
         foreach(var file in new[]{"Core/ArenaWorld.cs","Core/NativeCombatRules.cs","Core/NativeMeleeRules.cs","Core/NativePrediction.cs","Core/NativeLook.cs"})
             Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena",file)).Contains("NativeBodyKind"),"authority and the look contract are untouched: "+file);
-        Console.WriteLine("PASS body kind: the body:female key, its keeping, the Default_Girl preset and the Locker's BODY row");
+        Console.WriteLine("PASS body kind: the body:female key, its keeping, the female levels, stance and the Locker's BODY row");
     }
 }
