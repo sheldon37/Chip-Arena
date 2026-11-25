@@ -49,6 +49,9 @@ namespace ChipArena.UnityConversion
         public static int Frames(int sub)=>Sheets[sub].Columns*Sheets[sub].Rows;
         /// <summary>A frame's width over its height (a camera-facing sprite keeps it: the flames are tall, the arcs and waves wide).</summary>
         public static float Aspect(int sub){var s=Sheets[sub];return s.W*AtlasWidth[s.Atlas]/s.Columns/(s.H*AtlasHeight[s.Atlas]/s.Rows);}
+        /// <summary>A school bolt's HDR ribbon lasts this long (s) with this look (today's NativeTrailFx.RibbonLife .1: ten metres of line behind a
+        /// 100 m/s bolt): the flipbook trail carries the path; the ribbon keeps the motion streak at the head.</summary>
+        public const float RibbonLife=.04f;
         /// <summary>The layer's switch (a DEV and capture comparison; the game leaves it on).</summary>
         public static bool On=true;
 
@@ -124,12 +127,10 @@ namespace ChipArena.UnityConversion
                     // A white-hot core in the fire's yellow, a warm halo, and three flames rolling round it, licking back along the flight.
                     Add(into,Light(at,FireHot*3.4f,r*2.6f,1));
                     Add(into,Light(at,Lerp(halo,FireHot,.3f)*.65f,r*7f,1,0));
-                    for(int k=0;k<3;k++)
-                    {
-                        float ph=H(seed,k,2),frame=Loop(Flame,t,26,6,14,ph),size=r*(5.2f-.8f*k);var p=at+back*(r*(.15f+.6f*k));
-                        var seg=moving?dir*(r*(1.6f+1.2f*k)):Vector3.Zero;
-                        Add(into,Fire(frame,p,size,spin+k*2.1f+t*(k%2==0?2.4f:-3.1f),1.55f-.25f*k,2.3f,FireSmokeHex,.08f,.78f,.95f-.12f*k,seg));
-                    }
+                    // The ball: two flames facing the camera, turning opposite ways.
+                    for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,24,8,12,H(seed,k,2)),at+back*(r*.3f),r*(7.5f-1.5f*k),spin+k*2.6f+t*(k==0?2.2f:-2.9f),1.7f,2.6f,FireSmokeHex,.08f,.9f,1));
+                    // Two flames licking back along the flight.
+                    if(moving)for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,28,6,14,H(seed,k+2,2)),at+back*(r*(1.2f+1.4f*k)),r*(4.6f-.8f*k),0,1.45f-.3f*k,2.3f,FireSmokeHex,.08f,.85f,.95f-.15f*k,dir*(r*(3f+2f*k))));
                     break;
                 }
                 case NativeMagicSchool.Water:
@@ -184,18 +185,18 @@ namespace ChipArena.UnityConversion
         // A step of .3 m at a .2 m radius: wider bolts shed bigger sprites further apart. The fastest bolts (100-120 m/s) shed every ~.3 m.
         private static readonly Layer[] FireTrail=
         {
-            new Layer{Look=NativeMagicLook.Fire,Sheet=Flame,Step=.5f,Life0=.07f,Life1=.13f,Size0=3.2f,Size1=4.2f,Spread=.35f,Rise=.6f,Back=1.2f,Gain=2.1f,Heat=1.4f,Self=.08f,Occlusion=.8f,
-                From=6,Span=18,HeatCurve=new[]{1f,.8f,.45f},Alpha=new[]{.9f,1f,.7f,0},Grow=new[]{.8f,1.1f,1.2f},Along=1.4f},
-            new Layer{Look=NativeMagicLook.Smoke,Sheet=Smoke,Step=2f,Phase=.5f,Life0=.3f,Life1=.45f,Size0=3f,Size1=4.4f,Spread=.6f,Rise=.9f,Back=6,Gain=.75f,Self=.12f,Hex=FireSmokeHex,
-                From=8,Span=48,Alpha=new[]{0f,.55f,.4f,0},Grow=new[]{.6f,1.1f,1.6f}},
+            new Layer{Look=NativeMagicLook.Fire,Sheet=Flame,Step=.5f,Life0=.09f,Life1=.16f,Size0=4.6f,Size1=6f,Spread=.35f,Rise=.8f,Back=2.5f,Gain=2.3f,Heat=1.45f,Self=.08f,Occlusion=.85f,
+                From=6,Span=18,HeatCurve=new[]{1f,.8f,.45f},Alpha=new[]{1f,1f,.75f,0},Grow=new[]{.8f,1.1f,1.25f},Along=2.5f},
+            new Layer{Look=NativeMagicLook.Smoke,Sheet=Smoke,Step=2f,Phase=.5f,Life0=.3f,Life1=.45f,Size0=3.5f,Size1=5f,Spread=.6f,Rise=.9f,Back=6,Gain=.8f,Self=.15f,Hex=FireSmokeHex,
+                From=8,Span=48,Alpha=new[]{0f,.7f,.5f,0},Grow=new[]{.6f,1.1f,1.6f}},
             new Layer{Look=NativeMagicLook.CodeStreak,Step=1.5f,Phase=.3f,Life0=.2f,Life1=.4f,Size0=.12f,Size1=.18f,Spread=.5f,Gain=4,HaloWhite=-1,Gravity=.25f,Speed=2.5f,Alpha=new[]{1f,1f,0}},
         };
         private static readonly Layer[] WaterTrail=
         {
             new Layer{Look=NativeMagicLook.Smoke,Sheet=Waves,Step=.7f,Life0=.12f,Life1=.2f,Size0=2.6f,Size1=3.4f,Spread=.25f,Back=1.2f,Gain=1.2f,Self=.55f,HaloWhite=.5f,From=0,Span=128,Fps=30,
                 Alpha=new[]{.75f,.6f,.3f,0},Grow=new[]{.9f,1.2f},Along=3.5f},
-            new Layer{Look=NativeMagicLook.Smoke,Sheet=Smoke,Step=2f,Phase=.5f,Life0=.3f,Life1=.45f,Size0=2.4f,Size1=3.4f,Spread=.5f,Rise=.2f,Back=5,Gain=1.25f,Self=.6f,HaloWhite=.7f,From=10,Span=44,
-                Alpha=new[]{0f,.45f,.3f,0},Grow=new[]{.6f,1.2f,1.6f}},
+            new Layer{Look=NativeMagicLook.Smoke,Sheet=Smoke,Step=2f,Phase=.5f,Life0=.3f,Life1=.45f,Size0=3f,Size1=4.2f,Spread=.5f,Rise=.2f,Back=5,Gain=1.3f,Self=.65f,HaloWhite=.7f,From=10,Span=44,
+                Alpha=new[]{0f,.7f,.45f,0},Grow=new[]{.6f,1.2f,1.6f}},
             new Layer{Look=NativeMagicLook.Drop,Step=1.4f,Phase=.2f,Life0=.25f,Life1=.4f,Size0=.18f,Size1=.26f,Spread=.4f,Gravity=1,Speed=1.8f,HaloWhite=.6f,Opacity=.75f,Alpha=new[]{1f,1f,0}},
         };
         private static readonly Layer[] LightningTrail=
@@ -344,7 +345,7 @@ namespace ChipArena.UnityConversion
         public static void DarkSmoke(NativeMagicList into,Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed)
         {
             long k=(long)seed;var c=albedo.LengthSquared()>1e-8f?albedo:new Vector3(.02f,.01f,.03f);
-            Add(into,SmokeOf(Smoke,Play(Smoke,Clamp01(u)*.8f+.2f*H(k,1,60),2,60),at,size*1.7f,H(k,2,61)*6.2831853f,Hex(c),Math.Max(c.X,Math.Max(c.Y,c.Z))*1.6f,.35f,opacity*.95f));
+            Add(into,SmokeOf(Smoke,Play(Smoke,Clamp01(u)*.8f+.2f*H(k,1,60),2,60),at,size*2.4f,H(k,2,61)*6.2831853f,Hex(c),Math.Max(c.X,Math.Max(c.Y,c.Z))*1.6f,.35f,Math.Min(1,opacity*1.1f)));
         }
         /// <summary>Black flames licking back off a darkness orb in flight (at its presented position, flying along `dir`), each with a dark
         /// violet glow inside it (the orb's rim colour); `radius` the orb's shot radius, `key` its shot key.</summary>
@@ -353,10 +354,10 @@ namespace ChipArena.UnityConversion
             float r=Math.Max(.1f,radius),t=time;bool moving=dir.LengthSquared()>.25f;var fwd=moving?Vector3.Normalize(dir):Vector3.Zero;int n=Keep(3,quality,low);
             for(int k=0;k<n;k++)
             {
-                float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(4.4f-.6f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.4f+.7f*k))+new Vector3(0,r*.15f*k,0);
+                float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(6.5f-1f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.4f+.7f*k))+new Vector3(0,r*.15f*k,0);
                 var seg=moving?fwd*(r*(2f+1.5f*k)):Vector3.Zero;
-                Add(into,Fire(frame,p,size,roll,0,1,BlackFireHex,.05f,1,.9f-.15f*k,seg));
-                Add(into,Glow(Flame,frame,p,size*.8f,roll,Rim,.9f,0,0,.55f-.1f*k,seg*.8f));
+                Add(into,Fire(frame,p,size,roll,0,1,BlackFireHex,.05f,1,1-.15f*k,seg));
+                Add(into,Glow(Flame,frame,p,size*.8f,roll,Rim,1.3f,0,0,.7f-.12f*k,seg*.8f));
             }
         }
         /// <summary>The void orb's rim violet (NativeVoidOrbFx.RimHex), linear.</summary>

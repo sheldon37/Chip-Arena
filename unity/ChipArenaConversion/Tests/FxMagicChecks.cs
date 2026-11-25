@@ -166,6 +166,8 @@ namespace ChipArena.UnityConversion
             Check(Regex.Matches(shader,@"\bsampler2D\b[^;]*;").Cast<Match>().Sum(m=>m.Value.Split(',').Length)+1<=16,"the shader stays within sixteen samplers (with the depth texture)");
             Check(pack.Contains("private bool PackLooks=>vfx!=null&&(vfx.PackSprites||vfx.PackMagic);")&&pack.Contains("private bool RealMagic=>vfx!=null&&vfx.PackMagic;"),"the realistic look rides the magic sheet's hooks (the model gives way, the generic shards too)");
             Check(pack.Contains("if(RealMagic||!(age>=0&&age<p.Life))return;")&&pack.Contains("magicList.Clear();magicTrails.Draw(magicList,now,q,low);"),"the trail is the recorded path's, not the pack trail sprites");
+            var wfx=Code(R("Runtime/NativeWeaponFxPresentation.cs"));
+            Check(wfx.Contains("float ribbon=school!=NativeMagicSchool.None&&RealMagic?NativeMagicFxPack.RibbonLife:(float)NativeTrailFx.RibbonLife;")&&NativeMagicFxPack.RibbonLife>0&&NativeMagicFxPack.RibbonLife<NativeTrailFx.RibbonLife,"a realistic bolt keeps a shorter ribbon; every other shot today's");
             Check(pack.Contains("magicTrails.Clear();}")&&pack.Contains("magicHits[i].Born=-100;magicTrails.Clear();}"),"a new arena or a reset clears the trails");
             Check(fx.Contains("if(!vfx.MagicSmoke(U(at),C(albedo),opacity,size,u,seed))vfx.Smoke(U(at),C(albedo),opacity,size,u,seed,floor);")&&fx.Contains("DarkFlames(now);")&&fx.Contains("if(vfx==null||!vfx.PackMagic||magicScene==null)return;"),"darkness: realistic smoke and black flames only with the atlases");
             // Nothing reaches a rule: the recipes read no arena, match, network or damage type.

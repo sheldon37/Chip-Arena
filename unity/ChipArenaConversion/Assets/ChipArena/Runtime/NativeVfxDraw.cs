@@ -214,6 +214,7 @@ namespace ChipArena.UnityConversion
         private static readonly int[] FxSheetIds={Shader.PropertyToID("_FxSheet0"),Shader.PropertyToID("_FxSheet1"),Shader.PropertyToID("_FxSheet2"),Shader.PropertyToID("_FxSheet3"),
             Shader.PropertyToID("_FxSheet4"),Shader.PropertyToID("_FxSheet5"),Shader.PropertyToID("_FxSheet6"),Shader.PropertyToID("_FxSheet7")};
         private readonly NativeFxList fxList=new NativeFxList();
+        private readonly NativeMagicList magicOne=new NativeMagicList();
         // The realistic magic atlases (Core NativeMagicFxPack.Path; Resources textures, never released here), read once a process.
         private static Texture2D[] magicSheets;private static bool magicRead,magicLoaded;
         private static readonly int[] MagicSheetIds={Shader.PropertyToID("_MagicSheet0"),Shader.PropertyToID("_MagicSheet1")};
@@ -779,21 +780,6 @@ namespace ChipArena.UnityConversion
         {
             if(!PackMagic)return false;magicOne.Clear();NativeMagicFxPack.DarkSmoke(magicOne,new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(albedo.r,albedo.g,albedo.b),opacity,size,u,seed);Magic(magicOne);return true;
         }
-        private readonly NativeMagicList magicOne=new NativeMagicList();
-        // The atlases, read once a process (outside the per-frame queueing); each flipbook's rect and grid for the shader.
-        private static void MagicSheets()
-        {
-            if(magicRead)return;magicRead=true;magicSheets=new Texture2D[NativeMagicFxPack.Atlases];magicLoaded=true;
-            for(int k=0;k<NativeMagicFxPack.Atlases;k++){var t=Resources.Load<Texture2D>(NativeMagicFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;else magicLoaded=false;magicSheets[k]=t;}
-        }
-        private static void MagicBind(Material m)
-        {
-            var rect=new Vector4[8];var grid=new Vector4[8];
-            for(int k=0;k<NativeMagicFxPack.Subs;k++){var s=NativeMagicFxPack.Sheets[k];rect[k]=new Vector4(s.X,s.Y,s.W,s.H);grid[k]=new Vector4(s.Columns,s.Rows,s.Atlas,NativeMagicFxPack.Aspect(k));}
-            for(int k=NativeMagicFxPack.Subs;k<8;k++)grid[k]=new Vector4(1,1,0,1);
-            for(int k=0;k<NativeMagicFxPack.Atlases;k++)m.SetTexture(MagicSheetIds[k],magicSheets[k]);m.SetVectorArray(MagicRectId,rect);m.SetVectorArray(MagicGridId,grid);
-        }
-
         // ---- submission ----
         private void Upload()
         {
@@ -866,6 +852,19 @@ namespace ChipArena.UnityConversion
             if(fxRead)return;fxRead=true;fxSheets=new Texture2D[NativeFxPack.Sheets];
             for(int k=0;k<NativeFxPack.Sheets;k++){var t=Resources.Load<Texture2D>(NativeFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;fxSheets[k]=t;}
             fxBlasts=true;fxBlood=true;for(int k=0;k<NativeFxPack.Sheets;k++)if(fxSheets[k]==null){if(NativeFxPack.Blood(k))fxBlood=false;else fxBlasts=false;}
+        }
+        // The atlases, read once a process (outside the per-frame queueing); each flipbook's rect and grid for the shader.
+        private static void MagicSheets()
+        {
+            if(magicRead)return;magicRead=true;magicSheets=new Texture2D[NativeMagicFxPack.Atlases];magicLoaded=true;
+            for(int k=0;k<NativeMagicFxPack.Atlases;k++){var t=Resources.Load<Texture2D>(NativeMagicFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;else magicLoaded=false;magicSheets[k]=t;}
+        }
+        private static void MagicBind(Material m)
+        {
+            var rect=new Vector4[8];var grid=new Vector4[8];
+            for(int k=0;k<NativeMagicFxPack.Subs;k++){var s=NativeMagicFxPack.Sheets[k];rect[k]=new Vector4(s.X,s.Y,s.W,s.H);grid[k]=new Vector4(s.Columns,s.Rows,s.Atlas,NativeMagicFxPack.Aspect(k));}
+            for(int k=NativeMagicFxPack.Subs;k<8;k++)grid[k]=new Vector4(1,1,0,1);
+            for(int k=0;k<NativeMagicFxPack.Atlases;k++)m.SetTexture(MagicSheetIds[k],magicSheets[k]);m.SetVectorArray(MagicRectId,rect);m.SetVectorArray(MagicGridId,grid);
         }
         /// <summary>The unit box Block draws: six faces of four corners each (their own normals), wound as the other lit meshes.</summary>
         private static NativeVfxMesh BoxMesh()
