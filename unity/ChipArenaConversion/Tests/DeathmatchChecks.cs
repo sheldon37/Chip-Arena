@@ -10,6 +10,9 @@ internal static class DeathmatchChecks
     {
         int checks=0;
         void Check(bool passed,string message){if(!passed)throw new Exception(message);checks++;}
+        Check(Math.Abs(NativeMatch.DeathmatchReplayStart(90,100,2.4)-98.35f)<.001f,"normal respawn leaves time to see the killing hit");
+        Check(NativeMatch.DeathmatchReplayStart(90,100,.4)==100,"late replay starts at the hit");
+        Check(NativeMatch.DeathmatchReplayStart(99.9f,100,2.4)==99.9f,"short history starts at the oldest frame");
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new JsonSerializerOptions{IncludeFields=true});
         var a=new NativeSeat{id=1,team=0,spec="pistol",name="A"};
         var b=new NativeSeat{id=2,team=1,spec="sword",name="B"};
