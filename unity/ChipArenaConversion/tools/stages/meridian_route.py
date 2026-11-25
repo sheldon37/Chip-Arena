@@ -62,6 +62,7 @@ from meridian_gates_kit import F, Geo, glow, bx  # noqa: E402
 PI = math.pi
 WARM, FURNACE = 0xFFD9A0, 0xFF6418
 TIER_NAME = {0: '0', 2: '2'}
+PAINT_LAYERED, PAINT_LAYER = ('route/647/crossing', 'route/647/footway'), 9
 LOW_FROM = 2500       # Fine triangles from which a piece also banks a Low tier
 CAPS = {'route/647/rails': (24000, 5000), 'route/647/crossing': (4000, 1500), 'route/647/footway': (6000, 2000),
         'route/647/corner': (26000, 6000), 'route/647/sign': (6000, 1500), 'route/647/roofs': (9000, 3000),
@@ -975,6 +976,11 @@ def build_all(R, only=None):
                 ao = sk.bake_ao([g], distance=.8, samples=12)[0]
             bk = sk.Bake(g, ao=ao, floors=floors_of(g), seed=len(key))
             tints.apply(bk)
+            if key in PAINT_LAYERED:
+                # the crossing's and footways' flat paint over the street dress's own (its pavements and kerbs are layers 1 to 8)
+                P_, N_, S_, F_ = g.arrays()
+                up = np.repeat(N_[np.cumsum(np.concatenate([[0], S_[:-1]]))][:, 1] > .9, S_)
+                bk.uv1[up, 0] += PAINT_LAYER / 32.0
             name = key + '/' + TIER_NAME[t]
             om = sk.to_mesh(name, g, bk)
             if om is None:
