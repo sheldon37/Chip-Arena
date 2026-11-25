@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
                 ("Debris/Rock/HotDebris","case NativeFxRole.Debris:case NativeFxRole.Rock:case NativeFxRole.HotDebris:Chunk(o,w,(int)seed,u,color,role);"),("Shard","Crystal(o,w,(int)seed,color);")
             };
             foreach(var (role,code) in expect){Check(draw.Contains(code),role+" draws as its primitive");n++;}
-            Check(draw.Contains("public void Blasts(NativeBlastSim sim){if(sim==null)return;Pool(sim.Solid);Pool(sim.Glow);Shocks(sim);}")&&draw.Contains("var shape=s.Dome?dome:shell;"),"each front is one shell, a dome or a sphere");n++;
+            Check(draw.Contains("try{Pool(sim.Solid);Pool(sim.Glow);}finally{fxCover=null;}")&&draw.Contains("Shocks(sim);if(PackBlasts)PackLayer(sim);")&&draw.Contains("var shape=s.Dome?dome:shell;"),"each front is one shell, a dome or a sphere");n++;
             Check(draw.Contains("chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants]")&&draw.Contains("new Shape(NativeVfxMeshes.Shard)"),"rubble picks a chunk by seed; ice is the crystal shard");n++;
             Check(draw.Contains("Array.Sort(linkSeed,linkIndex,0,links);")&&draw.Contains("if(!NativeBlastPool.Linked(o,a,b))continue;")&&!draw.Contains("gap>(bolt?2:1)"),"bolt and line points join their seed neighbours within one strand (Core's rule)");n++;
             // The look fixes of the review (2026-10-11).

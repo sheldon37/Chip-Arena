@@ -34,6 +34,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The source BurstPool the event sparks and streaks go into (NativeShotPresentation.SparkPool, drawn and stepped
         /// with the projectile visuals). Null: no sparks.</summary>
         public NativeBurstPool Sparks;
+        /// <summary>The fires the effects bank draws this frame (Core NativeFxPack.Fire; Claude X1, 2026-11-25): burning bodies (RenderStatus),
+        /// the camp's drums and brazier and the town's fires (their scenery's frame), filled while the bank is loaded and drawn here into the
+        /// shared batch, then emptied.</summary>
+        public readonly NativePackFires StageFires=new NativePackFires();
         /// <summary>The projectile trails setting: the source streaks an impact from its from point only with trails on.</summary>
         public bool Trails=true;
         /// <summary>The destruction kit draws Break events as material bursts (NativeStructureFxPresentation): skip the source's
@@ -290,6 +294,7 @@ namespace ChipArena.UnityConversion
             Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Globes(arena,now,q);Fields(fields,q);sim.Update(dt);
             // Every particle as its role's primitive and every front as one shell (NativeVfxDraw); no cube per voxel.
             if(ownsVfx)vfx.Begin();vfx.Blasts(sim);if(ownsVfx)vfx.Submit(camera);
+            StageFiresFx(now,(float)q);
             // The blast lights with the drop pods' crash flashes in them (NativePodPresentation.cs PodFlashMerge: presentation only).
             var lit=PodFlashes!=null?PodFlashes(sim.Flashes):sim.Flashes;
             for(int i=0;i<lights.Length;i++)
@@ -301,5 +306,11 @@ namespace ChipArena.UnityConversion
             NativeArenaDressing.Flashes(lit);
         }
         public void Dispose(){Clear();if(ownsVfx)vfx.Dispose();CapturedAnimation.Release(root);}
+        // The stage fires into the shared batch (drawn at RenderGlow's Submit), each a looping flame with its embers.
+        private void StageFiresFx(float now,float quality)
+        {
+            for(int i=0;i<StageFires.Count;i++){var f=StageFires.Items[i];vfx.PackFire(new Vector3(f.X,f.Y,f.Z),f.Size,now,f.Seed,f.Large,quality,true,f.Smoke);}
+            StageFires.Clear();
+        }
     }
 }

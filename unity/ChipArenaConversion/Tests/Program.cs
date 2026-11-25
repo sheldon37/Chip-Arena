@@ -276,6 +276,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--pack-fx-hits"){PackFxHitsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--blood-pack"){BloodPackChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--fx-blasts-blood"){FxBlastsBloodChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--polar"){PolarChecks.Run(ProjectRoot());return 0;}
@@ -509,6 +510,7 @@ internal static class Program
             PackFxHitsChecks.Run(root);
             BloodPackChecks.Run(root);
             PackFxBlastsChecks.Run(root);
+            FxBlastsBloodChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);
             EmporiumChecks.Run(root);
