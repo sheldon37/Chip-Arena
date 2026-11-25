@@ -921,9 +921,9 @@ namespace ChipArena.UnityConversion
         /// tone, which it then takes in place (no new instance while a colour is dragged on the wheel).</summary>
         private static bool VisualRetone(VisualBody body,string look)
         {
+            if(body.FemaleMade&&body.FemaleLevel!=FemaleLevel)return false; // (another female level: made again)
             if(string.Equals(body.Look,look,StringComparison.Ordinal))return true;
             if(!NativeLook.SameOutfit(body.Look,look)||NativeBodyKind.Of(body.Look)!=NativeBodyKind.Of(look))return false; // (another body: made again)
-            if(body.FemaleMade&&body.FemaleLevel!=FemaleLevel)return false; // (another female level: made again)
             if(NativeVoxelCostume.Worn(look)&&(CostumeSkinIn(body.Look)!=CostumeSkinIn(look)||CostumeTierIn(body.Look)!=CostumeTierIn(look)))return false; // (another costume variant or tier)
             int tone=NativeLook.SkinOf(look);if(body.All!=null)foreach(var r in body.All)VisualSkinToneOne(r,tone);body.Look=look;return true;
         }
