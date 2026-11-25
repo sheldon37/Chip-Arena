@@ -187,7 +187,7 @@ namespace ChipArena.UnityConversion
             var life = Src("Runtime/NativeMeridianStreetLifeLive.cs");
             Check(life.Contains("if(liveRoutePlan!=null)input.KeepOut.AddRange(liveRoutePlan.KeepOut);"), "the street life keeps off the route's pieces");
             var draw = Src("Runtime/NativeMeridianRoute.cs");
-            Check(draw.Contains("art.Build(route.Art, camera, NativeMeridianRoute.Bank)") && draw.Contains("public static bool HasBank => NativePackBanks.Bank(NativeMeridianRoute.Bank) != null;"), "the route's pieces come from its own bank, through the landmarks' drawer");
+            Check(draw.Contains("art.Build(route.Art, camera, NativeMeridianRoute.Bank, false)") && draw.Contains("public static bool HasBank => NativePackBanks.Bank(NativeMeridianRoute.Bank) != null;"), "the route's pieces come from its own bank, through the landmarks' drawer");
             var lm = Src("Runtime/NativeMeridianLandmarks.cs");
             Check(lm.Contains("bankName = bankName ?? NativeMeridianLandmarks.Bank;") && lm.Contains("return NativePackBanks.Mesh(bankName, prop.Parts[0].Mesh);"), "the landmarks' drawer reads the bank it is given");
             Check(!Src("Core/NativeMeridianRoute.cs").Contains("UnityEngine"), "the placement is pure");

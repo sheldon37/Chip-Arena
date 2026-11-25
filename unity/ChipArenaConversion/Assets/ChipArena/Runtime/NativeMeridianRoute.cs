@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeMeridianRouteDraw : MonoBehaviour
     {
-        private NativeMeridianLandmarksDraw art;
+        private NativeMeridianLandmarksDraw art, fronts;
         private NativeMeridianRoute.Plan plan;
         private Mesh puff, smoke;
         private Vector3[] puffV, puffN, smokeV, smokeN;
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether the route's bank is present (the plan's facades, keep-outs and replaced pieces apply only then).</summary>
         public static bool HasBank => NativePackBanks.Bank(NativeMeridianRoute.Bank) != null;
         /// <summary>The pieces drawn and the plumes smoking (the captures' log line).</summary>
-        public int Pieces => art != null ? art.Pieces : 0;
+        public int Pieces => (art != null ? art.Pieces : 0) + (fronts != null ? fronts.Pieces : 0);
         public int Plumes => smoke != null && plan != null ? plan.Plumes.Count : 0;
 
         /// <summary>Builds the plan (any earlier build is released first). False without the bank: nothing draws.</summary>
@@ -40,8 +40,14 @@ namespace ChipArena.UnityConversion
             if (route == null || !HasBank) return false;
             try
             {
+                // the street's pieces fog as the street does; a door front's piece takes the far material with the front it stands in
+                var street = new NativeMeridianLandmarks.Layout { Plan = route.Art.Plan }; var front = new NativeMeridianLandmarks.Layout { Plan = route.Art.Plan };
+                foreach (var p in route.Art.Pieces) (p.Kind == NativeMeridianLandmarks.Kind.Front ? front : street).Pieces.Add(p);
+                foreach (var c in route.Art.Covers) street.Covers.Add(c);
                 art = gameObject.AddComponent<NativeMeridianLandmarksDraw>();
-                bool drawn = art.Build(route.Art, camera, NativeMeridianRoute.Bank);
+                bool drawn = art.Build(street, camera, NativeMeridianRoute.Bank, false);
+                fronts = gameObject.AddComponent<NativeMeridianLandmarksDraw>();
+                drawn |= fronts.Build(front, camera, NativeMeridianRoute.Bank);
                 bool smoking = route.Plumes.Count > 0 && BuildSmoke();
                 return drawn || smoking;
             }
@@ -147,7 +153,8 @@ namespace ChipArena.UnityConversion
         public void Release()
         {
             if (art != null) { art.Release(); Destroy(art); }
-            art = null;
+            if (fronts != null) { fronts.Release(); Destroy(fronts); }
+            art = fronts = null;
             if (smokeRoot != null) Destroy(smokeRoot);
             if (smoke != null) Destroy(smoke);
             if (smokeSolid != null) Destroy(smokeSolid);

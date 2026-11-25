@@ -31,6 +31,7 @@ namespace ChipArena.UnityConversion
         private Material solid, glow, farSolid, farGlow;
         private Material[] one = new Material[1], two = new Material[2], farOne = new Material[1], farTwo = new Material[2];
         private Camera eye;
+        private bool farLayer = true;
         private GameObject root;
         /// <summary>The pieces built, and the frame's counts at each tier (the walk's budget line and the captures read them).</summary>
         public int Pieces => draws.Count;
@@ -40,10 +41,12 @@ namespace ChipArena.UnityConversion
 
         /// <summary>Builds a layout's pieces (any earlier build is released first). False without the bank or the shaders: nothing
         /// draws then and the greybox stays. bankName: the bank the pieces' keys name (the landmarks' own by default; Meridian's
-        /// route draws its pieces from ChipArenaCityRoute through this drawer, NativeMeridianRoute).</summary>
-        public bool Build(NativeMeridianLandmarks.Layout layout, Camera camera, string bankName = null)
+        /// route draws its pieces from ChipArenaCityRoute through this drawer, NativeMeridianRoute). farLayer false: no piece takes
+        /// the fog-capped far material at distance (street furniture fogs as the street round it does).</summary>
+        public bool Build(NativeMeridianLandmarks.Layout layout, Camera camera, string bankName = null, bool farLayer = true)
         {
             Release();
+            this.farLayer = farLayer;
             if (layout == null) return false;
             bankName = bankName ?? NativeMeridianLandmarks.Bank;
             var bank = NativePackBanks.Bank(bankName);
@@ -123,7 +126,7 @@ namespace ChipArena.UnityConversion
             var at = cam.transform.position;
             bool low = NativeAdvancedLighting.Tier == NativeGraphicsTier.Low;
             float farFrom = float.MaxValue;
-            if (RenderSettings.fog)
+            if (RenderSettings.fog && farLayer)
                 farFrom = RenderSettings.fogMode == FogMode.Linear
                     ? NativeMeridianLandmarks.FarFrom(RenderSettings.fogStartDistance, RenderSettings.fogEndDistance)
                     : Mathf.Log(1f / (1f - NativeMeridianLandmarks.FarFogCap)) / Mathf.Max(1e-5f, RenderSettings.fogDensity);
