@@ -841,6 +841,12 @@ namespace ChipArena.UnityConversion
         }
         private static readonly HashSet<string> lookCovers=new HashSet<string>(StringComparer.Ordinal),lookTags=new HashSet<string>(StringComparer.Ordinal);
         private static readonly Dictionary<string,Renderer> lookNamed=new Dictionary<string,Renderer>(StringComparer.Ordinal);
+        /// <summary>A local preview only: the hairstyle every model body is dressed in (a hair piece the bake carries, by its look-data
+        /// id; null, as always in the game: each look's own). The local tool sets it to film the bake's hair sample (Astra's brief section
+        /// 2: the bob and the high ponytail) before NativeLook lists those ids (Astra's part of the contract); nothing in the game does.</summary>
+        public static string HairPreview;
+        // Whether `look` wears the bake's piece `p` (the hair as HairPreview has it while that is set).
+        private static bool VisualWears(string look,LookPiece p)=>HairPreview!=null&&p.slot==NativeLook.Hair?p.id==HairPreview:NativeLook.Of(look,p.slot)==p.id;
         // A model instance in the outfit `look`: each wardrobe piece's renderers on when worn and off otherwise, the body parts
         // the worn pieces cover off (the rest on), the tag shapes full where a worn piece sets their tag, and the Sheldon pieces in
         // their palette (VisualSheldonPalette; their renderers added to `sheldon`), and the skin parts in the pilot's tone
@@ -850,10 +856,10 @@ namespace ChipArena.UnityConversion
             var d=VisualLookData();if(d==null||root==null)return;
             lookNamed.Clear();foreach(var r in root.GetComponentsInChildren<Renderer>(true))lookNamed[r.name]=r;
             lookCovers.Clear();lookTags.Clear();if(d.always!=null)lookTags.UnionWith(d.always);
-            foreach(var p in d.pieces)if(p!=null&&NativeLook.Of(look,p.slot)==p.id){if(p.covers!=null)lookCovers.UnionWith(p.covers);if(p.tags!=null)lookTags.UnionWith(p.tags);}
+            foreach(var p in d.pieces)if(p!=null&&VisualWears(look,p)){if(p.covers!=null)lookCovers.UnionWith(p.covers);if(p.tags!=null)lookTags.UnionWith(p.tags);}
             // Every piece off, then the worn ones on (two ids may share a piece, as two hair styles share a fringe).
             foreach(var p in d.pieces)if(p?.renderers!=null)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(false);
-            foreach(var p in d.pieces)if(p?.renderers!=null&&NativeLook.Of(look,p.slot)==p.id)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(true);
+            foreach(var p in d.pieces)if(p?.renderers!=null&&VisualWears(look,p))foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(true);
             if(d.body!=null)foreach(var b in d.body)if(b!=null&&lookNamed.TryGetValue(b.renderer,out var r))r.gameObject.SetActive(!lookCovers.Contains(b.part));
             if(d.shapes!=null)foreach(var t in d.shapes)if(t!=null&&lookNamed.TryGetValue(t.renderer,out var r)&&r is SkinnedMeshRenderer skin&&skin.sharedMesh!=null&&t.shape>=0&&t.shape<skin.sharedMesh.blendShapeCount)skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);
             foreach(var p in d.pieces)if(p?.renderers!=null&&NativeSheldonWear.IsSheldon(p.id)&&NativeLook.Of(look,p.slot)==p.id)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r)){VisualSheldonPalette(r);sheldon?.Add(r);}
