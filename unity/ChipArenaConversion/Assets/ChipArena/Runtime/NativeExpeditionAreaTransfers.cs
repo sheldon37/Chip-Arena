@@ -28,16 +28,17 @@ namespace ChipArena.UnityConversion
             Cohorts.Advance(elapsed);
             // A death or extraction during loading cancels its immutable cohort.
             foreach(var transfer in Cohorts.Active)
-                if(transfer.Members.Any(a=>member(a)==null||!member(a).alive||member(a).extracted))Cohorts.Cancel(transfer.Id);
+                if(transfer.Members.Any(a=>{var state=member(a);return state==null||!state.alive||state.extracted;}))Cohorts.Cancel(transfer.Id);
             foreach(var transfer in Cohorts.Active)Cohorts.Commit(transfer.Id);
             var roster=new List<ExpeditionJoinMember>();
-            foreach(var m in Cohorts.Members)
+            var members=Cohorts.Members;
+            foreach(var m in members)
             {
                 var state=member(m.Account);var area=runtimes.Find(m.Area);var pilot=area?.Arena.Pilots.SingleOrDefault(p=>p.Seat.id==seat(m.Account));
                 if(state==null||pilot==null)continue;
                 roster.Add(new ExpeditionJoinMember{Account=m.Account,Area=m.Area,Feet=NativeArena.Vec(pilot.Body.position)-new V3(0,.85f,0),
                     Alive=state.alive&&pilot.Hp>0,Connected=m.Connected&&state.connected,Extracted=state.extracted,Loading=m.Pending!=null||!m.Ready,Transferring=m.Pending!=null,
-                    Choosing=state.choosing,Carrying=state.carriedBy!=null||Cohorts.Members.Any(other=>member(other.Account)?.carriedBy==m.Account)||!area.Arena.CanTransferPilot(pilot)});
+                    Choosing=state.choosing,Carrying=state.carriedBy!=null||members.Any(other=>member(other.Account)?.carriedBy==m.Account)||!area.Arena.CanTransferPilot(pilot)});
             }
             Joins.Step(elapsed,roster,admission,(door,destination,accounts)=>Begin("join:"+checked(++nextCohort),layout.world,destination,door,accounts));
             foreach(var ring in Joins.Views.Where(r=>r.joinBlocked>0))foreach(var m in roster.Where(m=>m.Area==layout.world&&m.Alive&&m.Connected))

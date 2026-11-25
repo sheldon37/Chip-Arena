@@ -108,10 +108,24 @@ namespace ChipArena.UnityConversion
             view.closures=view.closures.Where(c=>c.area==area).ToArray();view.bossArrivals=view.bossArrivals.Where(c=>c.area==area).ToArray();
             string prefix=view.loop+":"+area+":";view.loot=view.loot.Where(r=>r.id.StartsWith(prefix,StringComparison.Ordinal)).ToArray();view.dice=view.dice.Where(d=>d.boss.StartsWith(prefix,StringComparison.Ordinal)).ToArray();
             var own=splitCohorts.Member(who);
-            if(own!=null&&own.Area!=area)view.mine=NativeExpeditionView.Build(splitSessions[own.Area].Run,who,splitSessions[own.Area].Sources).mine;
+            // Reuse detached projections within this recipient only. Never share personal fields across recipients or ticks.
+            Dictionary<string, ExpeditionView> otherAreas = null;
+            ExpeditionView RosterArea(string id)
+            {
+                if(id==area)return view;
+                otherAreas ??= new Dictionary<string, ExpeditionView>(StringComparer.Ordinal);
+                if(!otherAreas.TryGetValue(id,out var projected))
+                {
+                    var other=splitSessions[id];
+                    projected=NativeExpeditionView.Build(other.Run,own?.Area==id?who:null,other.Sources);
+                    otherAreas.Add(id,projected);
+                }
+                return projected;
+            }
+            if(own!=null&&own.Area!=area)view.mine=RosterArea(own.Area).mine;
             view.members=splitCohorts.Members.Select(m=>
             {
-                var projected=NativeExpeditionView.Build(splitSessions[m.Area].Run,null,splitSessions[m.Area].Sources).Member(m.Account);
+                var projected=RosterArea(m.Area).Member(m.Account);
                 expeditionLoadReports.Apply(projected,m);return projected;
             }).Where(m=>m!=null).ToArray();
             return view;
@@ -129,7 +143,7 @@ namespace ChipArena.UnityConversion
             long splitAt=System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
-                SyncSplitSpectators();var own=splitCohorts.Member(account.Access.AccountId);
+                SyncSplitSpectators(state);var own=splitCohorts.Member(account.Access.AccountId);
                 // Present the ticket destination while the actor remains reserved at source.
                 // Local readiness requires the same collision and presentation gate as a guest.
                 BindSplitLocal(own.Ticket.area);
@@ -150,7 +164,9 @@ namespace ChipArena.UnityConversion
                 if(StepPodCountdown())return;
                 TickPodDepartures();
                 var before=splitCohorts.Members;
-                splitTransfers.Step(splitRun.Elapsed,id=>splitRun.PartySnapshot().members.FirstOrDefault(m=>m.account==id),id=>splitRun.PartySnapshot().instances.Single(i=>i.id==id).cleared?ExpeditionJoinClosedReason.Cleared:ExpeditionJoinClosedReason.Open);
+                // Pod departures can change the ledger. Capture it after departures, for this transfer step.
+                var transferState=splitRun.PartySnapshot();
+                splitTransfers.Step(splitRun.Elapsed,id=>transferState.members.FirstOrDefault(m=>m.account==id),id=>transferState.instances.Single(i=>i.id==id).cleared?ExpeditionJoinClosedReason.Cleared:ExpeditionJoinClosedReason.Open);
                 foreach(var group in splitCohorts.Members.Where(m=>before.Single(p=>p.Account==m.Account).Area!=m.Area).GroupBy(m=>(source:before.Single(p=>p.Account==m.Account).Area,destination:m.Area)))
                     if(!splitRun.MoveMembers(group.Key.source,group.Key.destination,group.Select(m=>m.Account).ToArray()))throw new InvalidOperationException("Transfer membership commit failed.");
                 foreach(var m in splitCohorts.Members)
@@ -186,7 +202,7 @@ namespace ChipArena.UnityConversion
                         Debug.LogWarning("Expedition return blocked ["+area.id+" -> "+expeditionM1Layout.world+", party="+returning.Length+"]: "+splitTransfers.LastFailure);
                     }
                 }
-                if(splitRun.PartySnapshot().loop!=splitLoop)ResetSplitLoop();
+                if(splitRun.Loop!=splitLoop)ResetSplitLoop();
                 splitSessions[expeditionM1Layout.world].Sources.Director.TryBeginFinal();
                 ExpeditionView=SplitView(account.Access.AccountId);pending=pending.HeldOnly();
             }
@@ -195,7 +211,7 @@ namespace ChipArena.UnityConversion
         }
         private void ResetSplitLoop()
         {
-            splitLoop=splitRun.PartySnapshot().loop;splitPods?.CancelDepartures();
+            splitLoop=splitRun.Loop;splitPods?.CancelDepartures();
             foreach(var area in expeditionM1Layout.areas)
             {
                 var sim=splitAreas.Find(area.id).Arena;

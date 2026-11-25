@@ -15,7 +15,23 @@ namespace ChipArena.UnityConversion
     public static class NativeCombatMarks
     {
         public const int MaxMarks=6,MaxGauges=8;
-        public static bool Valid(NativeTechniqueMark[] marks,NativeChipGauge[] gauges)=>(marks==null||marks.Length<=MaxMarks&&marks.All(x=>x.Valid())&&marks.Select(x=>(x.Kind,x.By)).Distinct().Count()==marks.Length)&&(gauges==null||gauges.Length<=MaxGauges&&gauges.All(x=>x.Valid())&&gauges.Select(x=>x.Kind).Distinct().Count()==gauges.Length);
+        public static bool Valid(NativeTechniqueMark[] marks,NativeChipGauge[] gauges)
+        {
+            int markCount=marks?.Length??0, gaugeCount=gauges?.Length??0;
+            if(markCount>MaxMarks||gaugeCount>MaxGauges)return false;
+            for(int i=0;i<markCount;i++)
+            {
+                if(!marks[i].Valid())return false;
+                for(int j=0;j<i;j++)
+                    if(marks[i].By==marks[j].By&&marks[i].Kind==marks[j].Kind)return false;
+            }
+            for(int i=0;i<gaugeCount;i++)
+            {
+                if(!gauges[i].Valid())return false;
+                for(int j=0;j<i;j++)if(gauges[i].Kind==gauges[j].Kind)return false;
+            }
+            return true;
+        }
         public static bool Has(NativeTechniqueMark[] marks,string kind,float now)
         {if(marks!=null)foreach(var x in marks)if(x.Kind==kind&&now>=x.At&&now<x.Until)return true;return false;}
         public static NativeTechniqueMark[] Put(NativeTechniqueMark[] marks,string kind,int by,float now,float until)

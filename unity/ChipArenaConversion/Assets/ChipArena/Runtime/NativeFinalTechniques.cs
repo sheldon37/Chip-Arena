@@ -136,10 +136,29 @@ namespace ChipArena.UnityConversion
         {
             foreach(var p in Pilots)
             {bool crouch=p.Hp>0&&ChannelLive(p,"slide-shot")&&p.Technique.Phase=="slide";if(crouch!=p.ExpansionCrouched){float scale=crouch?.55f:1/.55f;p.Collider.height*=scale;p.Collider.center=crouch?Vector3.down*(.865f-p.Collider.height*.5f):Vector3.zero;p.ExpansionCrouched=crouch;}}
-            foreach(var p in Pilots)foreach(var mark in p.TechniqueMarks.Where(m=>m.Kind=="dread"&&m.Until>Time))
-            {var owner=Pilots.Find(q=>q.Seat.id==mark.By);if(owner==null)continue;var dir=p.Body.position-owner.Body.position;dir.y=0;MobilityPush(owner,p.Seat.id,dir.normalized,3f/60);p.MoveVelocity=p.Knockback=Vector3.zero;}
-            foreach(var m in Minions.Where(m=>m.Hp>0).ToArray())foreach(var mark in m.TechniqueMarks.Where(x=>x.Kind=="dread"&&x.Until>Time))
-            {var owner=Pilots.Find(q=>q.Seat.id==mark.By);if(owner!=null)MobilityPush(owner,m.Id,(m.Body.position-owner.Body.position).normalized,3f/60);}
+            foreach(var p in Pilots)
+            {
+                foreach(var mark in p.TechniqueMarks)
+                {
+                    if(mark.Kind!="dread"||!(mark.Until>Time))continue;
+                    var owner=Pilots.Find(q=>q.Seat.id==mark.By);
+                    if(owner==null)continue;
+                    var dir=p.Body.position-owner.Body.position;
+                    dir.y=0;
+                    MobilityPush(owner,p.Seat.id,dir.normalized,3f/60);
+                    p.MoveVelocity=p.Knockback=Vector3.zero;
+                }
+            }
+            foreach(var m in Minions)
+            {
+                if(!(m.Hp>0))continue;
+                foreach(var mark in m.TechniqueMarks)
+                {
+                    if(mark.Kind!="dread"||!(mark.Until>Time))continue;
+                    var owner=Pilots.Find(q=>q.Seat.id==mark.By);
+                    if(owner!=null)MobilityPush(owner,m.Id,(m.Body.position-owner.Body.position).normalized,3f/60);
+                }
+            }
         }
         private bool StepExpansionMinion(NativeMinion m)
         {

@@ -25,6 +25,7 @@ namespace ChipArena.UnityConversion
                 mutators=mutators??Array.Empty<string>(),instances=instances?.Select(i=>i.Copy()).ToArray(),members=new[]{new ExpeditionMember{account=host,weapon=weapon,connected=true}}});
         }
         public ExpeditionSnapshot Snapshot()=>ScopedSnapshot();
+        public int Loop=>s.loop;
         public double Elapsed=>s.elapsed;
         public uint Seed=>s.seed;
         public string[] Mutators=>(string[])s.mutators.Clone();

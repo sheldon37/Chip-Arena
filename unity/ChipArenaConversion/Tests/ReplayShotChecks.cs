@@ -9,6 +9,15 @@ internal static class ReplayShotChecks
     private static bool Near(float a,float b)=>Math.Abs(a-b)<.0001f;
     public static void Run(ConversionContent data)
     {
+        var index=new NativeFrameIndex<int,Shot>(row=>row.Id);
+        var first=new Shot{Id=7};var second=new Shot{Id=9};var duplicate=new Shot{Id=7};
+        var rows=new[]{first,second,duplicate};
+        index.Bind(rows);index.Bind(rows);
+        Check(index.Find(7)==first&&index.Find(9)==second&&index.Find(8)==null,"indexed frame preserves first match and missing IDs");
+        index.Bind(new[]{second,duplicate});
+        Check(index.Find(7)==duplicate&&index.Find(9)==second,"reordered next frame replaces old rows");
+        index.Bind(null);
+        Check(index.Find(7)==null,"ending a replay releases the previous frame");
         // Reproduce the reported visual overshoot: a shot stops at x=1 at 10.01, between 20 Hz captures.
         var old=new NativeShotTracker();var owner=new object();var view=new NativeShotView{Id=1,X=-5,VX=100};
         old.Begin(owner,1,true,9.95);old.Remember(view);old.Present(ref view,9.95);

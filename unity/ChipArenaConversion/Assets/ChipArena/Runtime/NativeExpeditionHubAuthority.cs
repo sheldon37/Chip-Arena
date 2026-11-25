@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         private bool hubNav;
         private sealed class HubMob{public string Ring;public Vector3 Home;public ExpeditionHubZone Zone;public Vector3[] Points;public HubZombieBrain Brain;public int Visible,Sound;public float SenseAt,FarAt=-1,IdleAt,LostAt=-1;}
         private bool HubOn=>Expedition!=null&&hubAuthority!=null&&expeditionArea?.role=="world";
-        private double HubClock=>Expedition.Session.Run.Snapshot().elapsed;
+        private double HubClock=>Expedition.Session.Run.Elapsed;
         private bool HubInside(Vector3 p)=>HubOn&&ExpeditionHubRules.Inside(expeditionArea.sanctuary,Vec(p));
         private bool HubCross(Vector3 a,Vector3 b,float radius=0)=>HubOn&&ExpeditionHubRules.Crosses(expeditionArea.sanctuary,Vec(a),Vec(b),radius);
         private void ResetHub()
@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
             if(state.phase!=ExpeditionPhase.Town)return;StepHubNoise();
             hubLiving.Clear();foreach(var member in state.members)if(member.alive&&member.connected&&!member.extracted)
             {var p=Pilots.Find(pilot=>pilot.Seat.id==Expedition.Session.Sources.Seat?.Invoke(member.account));if(p!=null&&p.Hp>0)hubLiving.Add(p);}
-            int lobby=Expedition.Session.Run.PartySnapshot().members.Count(m=>m.connected&&!m.extracted);
+            int lobby=Expedition.Session.Run.ConnectedPartyCount;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if(DevLoadLobbyCount>0)lobby=DevLoadLobbyCount;
 #endif

@@ -14,6 +14,7 @@ namespace ChipArena.UnityConversion
             Check(!root.Enter("ward"),"legacy party teleport disabled");
             Check(root.MoveMembers("hub","ward",new[]{"a","b"}),"captured subset commits");
             Check(root.Snapshot().members.Select(m=>m.account).SequenceEqual(new[]{"host","c"})&&ward.Snapshot().members.Length==2,"bystanders remain hub members");
+            Check(root.ConnectedPartyCount==4&&ward.ConnectedPartyCount==4,"population counts connected party across all areas");
             Check(ward.Snapshot().instances.Single(i=>i.id=="ward").scalingParty==2,"first cohort locks encounter scaling");
             Check(root.MoveMembers("hub","station",new[]{"c"}),"second independent cohort");
             Check(root.HoldMembers(new[]{"a"},true)&&!ward.Spend("a","held",1)&&root.SetSafe("host",true),"transfer hold leaves hub active");

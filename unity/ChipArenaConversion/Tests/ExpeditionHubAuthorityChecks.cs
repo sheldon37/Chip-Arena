@@ -67,7 +67,7 @@ internal static class ExpeditionHubAuthorityChecks
         Check(ExpeditionHubRules.Cap(1,1)==40&&ExpeditionHubRules.Cap(2,1)==56&&ExpeditionHubRules.Cap(4,1)==88&&ExpeditionHubRules.Cap(8,1)==96,"hub population scales well above the previous eight-to-thirty-two limit");
         Check(ExpeditionHubRules.Cap(8,8)==ExpeditionHubRules.Cap(8,1)&&ExpeditionHubRules.Cap(40,1)==96,"lobby is the population scale, not only the number of residents in the city");
         Check(Math.Abs(ExpeditionHubRules.SpawnInterval-.5)<1e-6&&ExpeditionHubRules.SpawnBurst==4,"spawn rate ramps the larger city without unbounded single-tick bursts");
-        Check(runtime.Contains("Run.PartySnapshot().members.Count(m=>m.connected&&!m.extracted)")&&runtime.Contains("ExpeditionHubRules.Cap(lobby,hubLiving.Count)"),"split-area city population uses the whole lobby");
+        Check(runtime.Contains("Run.ConnectedPartyCount")&&runtime.Contains("ExpeditionHubRules.Cap(lobby,hubLiving.Count)"),"split-area city population uses the whole lobby");
         Check(runtime.Contains("Math.Min(8,excess.Length-Pve.Cap)")&&runtime.Contains("SpawnBurst"),"population trims and refill are tick-bounded");
         Check(ExpeditionHubRules.SpawnWeight(36,0,true)>0&&ExpeditionHubRules.SpawnWeight(35,0,true)==0,"rare spawn still clears six metres");
         Check(ExpeditionHubRules.SpawnWeight(100,0)==0&&ExpeditionHubRules.SpawnWeight(144,0)>0,"ordinary twelve-metre exclusion");
