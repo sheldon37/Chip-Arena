@@ -88,6 +88,9 @@ namespace ChipArena.UnityConversion
             if(!replayRunning&&replayDeath>=0&&(arena.Time>=replayDeath+.6f||Time.unscaledTime>=replayWait))
             {
                 if(replayFrames.Count<2){replayDeath=-1;return false;}replayStart=Math.Max((float)replayFrames[0].time,replayDeath-3);replayEnd=replayDeath+1.25f;replayStarted=Time.unscaledTime;replayRunning=true;replayBody=false;
+                var seat = arena.Local.Seat;
+                if (!finalOn && match.DeathmatchTarget > 0 && match.Phase == NativePhase.Fight && seat.respawnAt >= 0)
+                    replayStart = NativeMatch.DeathmatchReplayStart((float)replayFrames[0].time, replayDeath, seat.respawnAt - match.Time);
                 long at=System.Diagnostics.Stopwatch.GetTimestamp();
                 try{PrepareReplayArena(replayFrames[0]);replayArena.Root.SetActive(true);presentation.ResetPresentation(true);nativeAudio.ResetCursor();}
                 finally{hitchReplayPrepare+=HitchMs(at);}

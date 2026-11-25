@@ -9,6 +9,14 @@ namespace ChipArena.UnityConversion
         public bool ComebackChips;
         public Action<NativeSeat> StartingChip;
 
+        // Reserve enough of the remaining countdown to show the hit and its reaction.
+        public static float DeathmatchReplayStart(float historyStart, float death, double secondsLeft)
+        {
+            const float reactionSeconds = .75f;
+            float lead = (float)Math.Max(0, Math.Min(3, secondsLeft - reactionSeconds));
+            return Math.Max(historyStart, death - lead);
+        }
+
         public void RecordDeathmatchDeath(NativeSeat victim, NativeSeat killer, int seed)
         {
             if (DeathmatchTarget <= 0 || Phase != NativePhase.Fight || victim.respawnAt >= 0) return;
