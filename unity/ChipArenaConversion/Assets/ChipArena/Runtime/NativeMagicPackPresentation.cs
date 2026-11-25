@@ -38,6 +38,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void MagicPackHits(NativeArena arena,float now,float q,bool low)
         {
+            MissileTrialFrame(now);
             if(!PackLooks||arena==null)return;
             if(!ReferenceEquals(magicHitArena,arena)||magicHitGeneration!=arena.Generation){magicHitArena=arena;magicHitGeneration=arena.Generation;magicHitEvent=0;for(int i=0;i<magicHits.Length;i++)magicHits[i].Born=-100;}
             int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest<magicHitEvent)magicHitEvent=0;
@@ -49,6 +50,8 @@ namespace ChipArena.UnityConversion
                 if(!surface&&!pilot)continue;
                 var school=NativeMagicPackFx.School(NativeMagicFx.Spec(actors,e.Source));if(school==NativeMagicSchool.None)continue;
                 var normal=NativeArena.Vec(e.Normal);normal=surface?(normal.sqrMagnitude>.25f?normal.normalized:Vector3.zero):(normal.sqrMagnitude>.25f?-normal.normalized:Vector3.zero);
+                // The Magic Missiles trial's hit: the pack explosion on this event, in place of the sprite burst (NativeMissileTrialPresentation.cs).
+                if(MissileTrialHit(school,NativeArena.Vec(e.Position),normal,now-e.Time,now))continue;
                 var weapon=WeaponLoadout?.Content?.Weapon(NativeMagicFx.Spec(actors,e.Source));int color=e.Color!=0?e.Color:weapon!=null?(int)weapon.color:0xffffff;
                 magicHits[magicHitNext]=new MagicHit{At=NativeArena.Vec(e.Position),Normal=normal,Born=e.Time,Seed=e.Id*1000003L+11,Tint=NativeWeaponFxShapes.Lin(color),School=school,Scale=surface?1.3f:1.1f};
                 magicHitNext=(magicHitNext+1)%magicHits.Length;

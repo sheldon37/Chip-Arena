@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
     //   tiers, where the glow and the burst stand on the locker, the gates (Reduced effects, the hologram, the chip machines), one
     //   burst per opening on the host and on a guest, of the tier the offer awarded, none for a late joiner, the DEV preview, and the
     //   runtime's hook, fallback and presentation-only sources;
+    // - the Magic Missiles trial (Core NativeMissileTrial): the fire staff's primary bolt only, riding the bolt's head, its hits on the same
+    //   events, nothing without the prefab or on the low tier, presentation only;
     // - the Glaive's recorded throw, ricochet and catch: contract keys the bank is asked for first, today's stand-ins as the fallback,
     //   and the cues on the record's throw, ricochet and catch.
     internal static class CacheGlaiveFxChecks
@@ -22,10 +24,10 @@ namespace ChipArena.UnityConversion
 
         public static void Run(string root)
         {
-            count=0;bool was=NativeCachePackFx.On;
-            try{Levels();Placement();Gates();Bursts();HostAndGuest();Preview();Sources(root);GlaiveCues(root);}
-            finally{NativeCachePackFx.On=was;}
-            Console.WriteLine("PASS cache and Glaive effects: "+count+" checks: the pack's four levels on the four tiers, the glow at the latch and the burst at the mouth, the gates, one burst per opening on host and guest of the awarded tier, the preview, hooks and fallbacks; the Glaive's throw, ricochet and catch keys and stand-ins");
+            count=0;bool was=NativeCachePackFx.On,trial=NativeMissileTrial.On;
+            try{Levels();Placement();Gates();Bursts();HostAndGuest();Preview();Sources(root);GlaiveCues(root);MissileTrial(root);}
+            finally{NativeCachePackFx.On=was;NativeMissileTrial.On=trial;}
+            Console.WriteLine("PASS cache and Glaive effects: "+count+" checks: the pack's four levels on the four tiers, the glow at the latch and the burst at the mouth, the gates, one burst per opening on host and guest of the awarded tier, the preview, hooks and fallbacks; the Glaive's throw, ricochet and catch keys and stand-ins; the Magic Missiles trial on the fire staff's bolt");
         }
 
         // The pack's Lv1-4 on STANDARD to LEGENDARY: every number rises (or holds) with the tier, LEGENDARY above STANDARD on each; a
@@ -152,6 +154,35 @@ namespace ChipArena.UnityConversion
             Check(run.Contains("if(LowGraphics||CacheReduced||!NativeCachePackFx.On||!CachePackBank())return;"),"off on the low graphics tier and with Reduced effects");
             Check(run.Contains("cacheBursts.Fire(s,CacheReduced)")&&run.Contains("NativeCachePackFx.Glowing(s,CacheReduced)"),"the runtime asks Core's gates");
             Check(run.Contains("private void LateUpdate(){if(Off!=null&&Drawn<Time.frameCount-1)Off();}"),"put away when the caches stop drawing");
+        }
+        // The Magic Missiles trial draws the fire staff's primary bolt and its hits only; it rides the bolt's replicated head and its
+        // hits' own events (so the path and the hit's moment are the authority's); nothing without the prefab or on the low tier.
+        private static void MissileTrial(string root)
+        {
+            NativeMissileTrial.On=true;
+            NativeShotView Bolt(string spec,NativeShotKind kind=NativeShotKind.Bullet,string cls="magic")=>new NativeShotView{Kind=kind,Spec=spec,Class=cls};
+            Check(NativeMissileTrial.Draws(Bolt("fire")),"the fire staff's primary bolt");
+            foreach(var spec in new[]{"water","lightning","leet","darkness"})Check(!NativeMissileTrial.Draws(Bolt(spec)),spec+"'s bolt keeps its look");
+            Check(!NativeMissileTrial.Draws(Bolt("fire",NativeShotKind.Ability))&&!NativeMissileTrial.Draws(Bolt("fire",cls:"ranged")),"the fire staff's ability shots and other classes keep theirs");
+            var beam=Bolt("fire");beam.SwordBeam=true;Check(!NativeMissileTrial.Draws(beam),"a sword beam keeps its look");
+            Check(NativeMissileTrial.DrawsHit(NativeMagicSchool.Fire)&&!NativeMissileTrial.DrawsHit(NativeMagicSchool.Water)&&!NativeMissileTrial.DrawsHit(NativeMagicSchool.None),"the fire school's hits only");
+            NativeMissileTrial.On=false;Check(!NativeMissileTrial.Draws(Bolt("fire"))&&!NativeMissileTrial.DrawsHit(NativeMagicSchool.Fire),"the switch turns the trial off");NativeMissileTrial.On=true;
+            Check(NativeMissileTrial.MissileScale>0&&NativeMissileTrial.MissileScale<1&&NativeMissileTrial.ExplosionScale>0&&NativeMissileTrial.ExplosionScale<1,"the pack's effects scaled down to the game's bolt");
+            Check(NativeMissileTrial.Stale<=NativeMagicPackFx.ImpactLife&&NativeMissileTrial.ExplosionLife>0&&NativeMissileTrial.TrailFade>0,"an explosion only for a fresh event");
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
+            string run=R("Runtime/NativeMissileTrialPresentation.cs"),core=R("Core/NativeMissileTrial.cs");
+            foreach(var (name,src) in new[]{("Core/NativeMissileTrial.cs",core),("Runtime/NativeMissileTrialPresentation.cs",run)})
+            {
+                Check(!Regex.IsMatch(src,@"\b(arena|Arena|authority)\s*\.\s*(Damage|Send|Fire|Spawn|Hit|Kill)\("),name+" reaches no authority");
+                Check(!src.Contains("System.Random")&&!src.Contains("UnityEngine.Random"),name+" draws no randomness of its own");
+            }
+            Check(run.Contains("Resources.Load<GameObject>(NativeMissileTrial.Resource);if(prefab==null)return false;"),"without the effects prefab the bolt draws as today");
+            Check(run.Contains("if(LowGraphics||!NativeMissileTrial.Draws(v)||!TrialBank())return false;")&&run.Contains("if(LowGraphics||!NativeMissileTrial.DrawsHit(school)||!TrialBank())return false;"),"off on the low graphics tier");
+            Check(run.Contains("var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);"),"the missile rides the bolt's own head (its replicated path)");
+            string fx=R("Runtime/NativeWeaponFxPresentation.cs");int owns=fx.IndexOf("if(MagicLooks&&NativeMagicFx.Owns(v))return;",StringComparison.Ordinal),trial=fx.IndexOf("if(MissileTrialShot(v))return;",StringComparison.Ordinal),energy=fx.IndexOf("bool energy=NativeTrailFx.Energy(v);if(!energy)return;",StringComparison.Ordinal);
+            Check(owns>0&&trial>owns&&energy>trial,"ShotFx gives the trial's bolt to the trial before drawing any energy core, head, trail or ribbon");
+            string hits=R("Runtime/NativeMagicPackPresentation.cs");int frame=hits.IndexOf("MissileTrialFrame(now);",StringComparison.Ordinal),gate=hits.IndexOf("if(!PackLooks||arena==null)return;",StringComparison.Ordinal);
+            Check(frame>0&&gate>frame&&hits.Contains("if(MissileTrialHit(school,NativeArena.Vec(e.Position),normal,now-e.Time,now))continue;"),"the trial's hits on the same events the sprite bursts use");
         }
         // The Glaive's throw, ricochet and catch ask the bank for their own recordings first (topdog.ring-*: contract keys,
         // positional, long enough for the clips), then today's recorded stand-ins, then the synthesized cue; the record's throw,

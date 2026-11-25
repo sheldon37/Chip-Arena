@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
             public GameObject Go;public ParticleSystem Root,Halo,Sparkles,Rays,Splash,Linger;public bool Burst,Stopping;public NativeCacheTier Tier;
             public string Cache;public float Until=float.PositiveInfinity;public int Claimed=-1;
         }
-        private GameObject cachePackGlow,cachePackOpen;private bool cachePackRead;private NativeCachePackLife cachePackRoot;private int cachePackFrame=-1;
+        private GameObject cachePackGlow,cachePackOpen;private bool cachePackRead;private NativeFxLife cachePackRoot;private int cachePackFrame=-1;
         private readonly List<CachePackLive> cachePackLive=new List<CachePackLive>(16);
         private readonly NativeCacheBursts cacheBursts=new NativeCacheBursts();
         private readonly List<(float d,int i)> cachePackNear=new List<(float,int)>(16);
@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             var prefab=Resources.Load<GameObject>(NativeCachePackFx.Resource);if(prefab==null)return false;
             var glow=prefab.transform.Find(NativeCachePackFx.Glow);var open=prefab.transform.Find(NativeCachePackFx.Open);if(glow==null||open==null)return false;
             cachePackGlow=glow.gameObject;cachePackOpen=open.gameObject;var root=new GameObject("Cache pack effects");root.transform.SetParent(transform,false);
-            cachePackRoot=root.AddComponent<NativeCachePackLife>();cachePackRoot.Off=CachePackOff;return true;
+            cachePackRoot=root.AddComponent<NativeFxLife>();cachePackRoot.Off=CachePackOff;return true;
         }
         private void CachePackOff(){foreach(var l in cachePackLive)if(l.Go!=null&&l.Go.activeSelf){l.Go.SetActive(false);l.Cache=null;}}
 
@@ -121,8 +121,9 @@ namespace ChipArena.UnityConversion
         }
         private static Color CachePackColor(int hex)=>new Color(((hex>>16)&255)/255f,((hex>>8)&255)/255f,(hex&255)/255f,1);
     }
-    // The caches' effects root: puts every effect away a frame after the presentation stops drawing the caches (no arena, the menu).
-    internal sealed class NativeCachePackLife:MonoBehaviour
+    // A licensed effects root (the caches', the missile trial's): puts every effect away a frame after the presentation stops drawing
+    // them (no arena, the menu).
+    internal sealed class NativeFxLife:MonoBehaviour
     {
         internal int Drawn=-1;internal System.Action Off;
         private void LateUpdate(){if(Off!=null&&Drawn<Time.frameCount-1)Off();}

@@ -368,6 +368,8 @@ namespace ChipArena.UnityConversion
         {
             // The darkness orb draws its own core, tail and lens (NativeMagicFx); its energy trail here is skipped.
             if(MagicLooks&&NativeMagicFx.Owns(v))return;
+            // The Magic Missiles trial draws the fire staff's primary bolt as its own missile (NativeMissileTrialPresentation.cs).
+            if(MissileTrialShot(v))return;
             bool energy=NativeTrailFx.Energy(v);if(!energy)return;
             long key=NativeShotScene.Key(v.Kind,v.Id);var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
             if(!emitters.TryGetValue(key,out var e))
