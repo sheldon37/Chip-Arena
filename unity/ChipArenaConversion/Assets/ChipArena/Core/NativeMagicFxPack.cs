@@ -128,9 +128,9 @@ namespace ChipArena.UnityConversion
                     Add(into,Light(at,FireHot*3.4f,r*2.6f,1));
                     Add(into,Light(at,Lerp(halo,FireHot,.3f)*.65f,r*7f,1,0));
                     // The ball: two flames facing the camera, turning opposite ways.
-                    for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,24,8,12,H(seed,k,2)),at+back*(r*.3f),r*(7.5f-1.5f*k),spin+k*2.6f+t*(k==0?2.2f:-2.9f),1.7f,2.6f,FireSmokeHex,.08f,.9f,1));
+                    for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,24,8,12,H(seed,k,2)),at+back*(r*.3f),r*(7.5f-1.5f*k),(H(seed,k,3)-.5f)*.6f+t*(k==0?1.2f:-1.6f),2.6f,3f,FireSmokeHex,.08f,.95f,1));
                     // Two flames licking back along the flight.
-                    if(moving)for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,28,6,14,H(seed,k+2,2)),at+back*(r*(1.2f+1.4f*k)),r*(4.6f-.8f*k),0,1.45f-.3f*k,2.3f,FireSmokeHex,.08f,.85f,.95f-.15f*k,dir*(r*(3f+2f*k))));
+                    if(moving)for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,28,6,14,H(seed,k+2,2)),at+back*(r*(1.2f+1.4f*k)),r*(5.4f-.8f*k),0,2.3f-.4f*k,2.8f,FireSmokeHex,.08f,.9f,1-.15f*k,dir*(r*(3f+2f*k))));
                     break;
                 }
                 case NativeMagicSchool.Water:
@@ -185,7 +185,7 @@ namespace ChipArena.UnityConversion
         // A step of .3 m at a .2 m radius: wider bolts shed bigger sprites further apart. The fastest bolts (100-120 m/s) shed every ~.3 m.
         private static readonly Layer[] FireTrail=
         {
-            new Layer{Look=NativeMagicLook.Fire,Sheet=Flame,Step=.5f,Life0=.09f,Life1=.16f,Size0=4.6f,Size1=6f,Spread=.35f,Rise=.8f,Back=2.5f,Gain=2.3f,Heat=1.45f,Self=.08f,Occlusion=.85f,
+            new Layer{Look=NativeMagicLook.Fire,Sheet=Flame,Step=.5f,Life0=.09f,Life1=.16f,Size0=4.6f,Size1=6f,Spread=.15f,Rise=.8f,Back=2.5f,Gain=2.6f,Heat=2.2f,Self=.08f,Occlusion=.9f,
                 From=6,Span=18,HeatCurve=new[]{1f,.8f,.45f},Alpha=new[]{1f,1f,.75f,0},Grow=new[]{.8f,1.1f,1.25f},Along=2.5f},
             new Layer{Look=NativeMagicLook.Smoke,Sheet=Smoke,Step=2f,Phase=.5f,Life0=.3f,Life1=.45f,Size0=3.5f,Size1=5f,Spread=.6f,Rise=.9f,Back=6,Gain=.8f,Self=.15f,Hex=FireSmokeHex,
                 From=8,Span=48,Alpha=new[]{0f,.7f,.5f,0},Grow=new[]{.6f,1.1f,1.6f}},
@@ -279,7 +279,7 @@ namespace ChipArena.UnityConversion
                     // A flash, two flame bursts rolling out of the point (the staff's 1.5 m blast is the blast sim's), embers, a little smoke.
                     if(t<.12f)Add(into,Light(c,FireHot*(4f*(1-t/.12f)),s*2.4f,1));
                     for(int k=0;k<2;k++){float life=.5f+.12f*k,u=t/life;if(u<1){var p=c+Out(seed,k,n,surface,.8f)*(.18f*s*k)+new Vector3(0,.5f*t,0);
-                        Add(into,Fire(Play(Flame,u,4,26),p,s*(1.25f+.35f*k)*(.75f+.4f*(float)Math.Sqrt(u)),H(seed,k,20)*6.2831853f,1.7f*(1-.6f*u),2.4f,FireSmokeHex,.1f,.8f,u<.75f?1:(1-u)/.25f));}}
+                        Add(into,Fire(Play(Flame,u,4,26),p,s*(1.25f+.35f*k)*(.75f+.4f*(float)Math.Sqrt(u)),(H(seed,k,20)-.5f)*.8f,2.4f*(1-.6f*u),2.8f,FireSmokeHex,.1f,.9f,u<.75f?1:(1-u)/.25f));}}
                     Embers(into,c,n,surface,seed,t,Keep(14,quality,low),FireHot,4.5f,6,10,s);
                     for(int k=0;k<Keep(3,quality,low);k++){float life=.8f+.2f*H(seed,k,21),u=(t-.12f)/life;if(u>0&&u<1)Add(into,SmokeOf(Smoke,Play(Smoke,u,6,50),c+Out(seed,k+9,n,surface)*(.4f*s)+new Vector3(0,.6f*t,0),s*(1.1f+.6f*u),H(seed,k,22)*6.2831853f,FireSmokeHex,.8f,.12f,Curve(new[]{0f,.6f,.35f,0},u)));}
                     break;
@@ -354,7 +354,7 @@ namespace ChipArena.UnityConversion
             float r=Math.Max(.1f,radius),t=time;bool moving=dir.LengthSquared()>.25f;var fwd=moving?Vector3.Normalize(dir):Vector3.Zero;int n=Keep(3,quality,low);
             for(int k=0;k<n;k++)
             {
-                float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(6.5f-1f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.4f+.7f*k))+new Vector3(0,r*.15f*k,0);
+                float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(7.5f-1f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.4f+.7f*k))+new Vector3(0,r*.15f*k,0);
                 var seg=moving?fwd*(r*(2f+1.5f*k)):Vector3.Zero;
                 Add(into,Fire(frame,p,size,roll,0,1,BlackFireHex,.05f,1,1-.15f*k,seg));
                 Add(into,Glow(Flame,frame,p,size*.8f,roll,Rim,1.3f,0,0,.7f-.12f*k,seg*.8f));
