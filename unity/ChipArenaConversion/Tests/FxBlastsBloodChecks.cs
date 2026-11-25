@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))
             {
                 var sim=Sim();int s0=sim.Solid.Spawned,g0=sim.Glow.Spawned;int n=sim.Blast(style,1,.95,2,3,1,false,null,0);
-                bool restyled=NativeFxPack.Restyled(style,NativeBlastLook.Default,false);
+                bool restyled=NativeFxPack.Restyled(style,null);
                 Check(sim.Bursts.Count==(restyled?1:0),style+": a record only for a restyled blast");
                 // The same blast in a sim that never records draws the same random sequence: the counts and the shock fronts match.
                 var twin=Sim();int n2=twin.Blast(style,1,.95,2,3,1,false,null,0);Check(n==n2&&twin.Shocks.Count==sim.Shocks.Count,style+": the record changes no spawn");
@@ -43,6 +43,9 @@ namespace ChipArena.UnityConversion
             }
             var t=Sim();t.Blast(NativeBlastStyle.Fire,0,1,0,3,1,false,new NativeBlastTint(0xffffff,0xff0000,0x00ff00),0);Check(t.Bursts.Count==0,"a tinted Fire blast keeps today's look");
             t.Blast(NativeBlastStyle.Kinetic,0,1,0,3,1,false,NativeBlastSim.TintOf("tidal-wave"),0);Check(t.Bursts.Count==0,"the Tidal Wave keeps its water pop");
+            t.Blast(NativeBlastStyle.Kinetic,0,1,0,3,1,false,NativeBlastSim.TintOf("dashBlast"),0);t.Blast(NativeBlastSim.StyleOf("frag"),0,1,0,3,1,false,NativeBlastSim.TintOf("frag"),0);
+            Check(t.Bursts.Count==2&&t.Bursts[1].Style==NativeBlastStyle.Kinetic&&t.Bursts[1].Tinted,"the frag (its own tint) and the dash blast take the smoke and dust");
+            t.Clear();t.Blast(NativeBlastStyle.Kinetic,0,1,0,3,1,false,new NativeBlastTint(0xffffff,0x52c7ff,0x2266ff),0);Check(t.Bursts.Count==0,"a tinted pulse keeps its look");
             t.Blast(NativeBlastStyle.Fire,0,1,0,3);t.Clear();Check(t.Bursts.Count==0,"Clear empties the records");
             var w=new NativeBlastBurst{GlowFrom=NativeBlastPool.SeedMask-2,GlowTo=3};Check(w.Owns(true,NativeBlastPool.SeedMask-1)&&w.Owns(true,0)&&w.Owns(true,2)&&!w.Owns(true,3)&&!w.Owns(true,NativeBlastPool.SeedMask-3),"seed ranges wrap at the mask");
             Check(NativeFxPack.Replaced(NativeFxRole.Fireball)&&NativeFxPack.Replaced(NativeFxRole.Smoke)&&NativeFxPack.Replaced(NativeFxRole.Flash)&&NativeFxPack.Replaced(NativeFxRole.Lick)
@@ -73,8 +76,8 @@ namespace ChipArena.UnityConversion
                 var low=new NativeFxList();a.Clear();NativeFxPack.Blast(a,b,.3f,false);NativeFxPack.Blast(low,b,.3f,true);Check(low.Count<a.Count,style+": the low tier draws fewer");
             }
             Check(NativeFxPack.Keep(4,1,false)==4&&NativeFxPack.Keep(4,.3f,false)==1&&NativeFxPack.Keep(30,1,true)==15&&NativeFxPack.Keep(1,.1f,true)==1,"Keep scales by quality and halves on the low tier");
-            Check(NativeFxPack.Fireball(NativeBlastStyle.Fire,false)&&!NativeFxPack.Fireball(NativeBlastStyle.Fire,true)&&NativeFxPack.Dusty(NativeBlastStyle.Kinetic,NativeBlastLook.Default,false)&&!NativeFxPack.Dusty(NativeBlastStyle.Kinetic,NativeBlastLook.Tide,false)
-                &&!NativeFxPack.Restyled(NativeBlastStyle.Shock,NativeBlastLook.Default,false)&&!NativeFxPack.Restyled(NativeBlastStyle.Frost,NativeBlastLook.Default,false)&&!NativeFxPack.Restyled(NativeBlastStyle.Void,NativeBlastLook.Default,false),
+            Check(NativeFxPack.Fireball(NativeBlastStyle.Fire,false)&&!NativeFxPack.Fireball(NativeBlastStyle.Fire,true)&&NativeFxPack.Dusty(NativeBlastStyle.Kinetic,null)&&NativeFxPack.Dusty(NativeBlastStyle.Kinetic,NativeBlastSim.TintOf("frag"))&&!NativeFxPack.Dusty(NativeBlastStyle.Kinetic,NativeBlastSim.TintOf("tidal-wave"))
+                &&!NativeFxPack.Restyled(NativeBlastStyle.Shock,null)&&!NativeFxPack.Restyled(NativeBlastStyle.Frost,null)&&!NativeFxPack.Restyled(NativeBlastStyle.Void,null)&&!NativeFxPack.Restyled(NativeBlastStyle.Fire,NativeBlastSim.TintOf("flame-lance")),
                 "the fireball on the untinted Fire family, the dust on the frag and Quake; magic styles keep theirs");
             // A bigger blast scales its layer (the sim's own scale, clamp(R/3, .45, 2.2)).
             var small=new NativeFxList();var big=new NativeFxList();NativeFxPack.Blast(small,Burst(NativeBlastStyle.Fire,1.5),.3f,false);NativeFxPack.Blast(big,Burst(NativeBlastStyle.Fire,6),.3f,false);

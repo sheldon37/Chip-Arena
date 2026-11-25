@@ -733,7 +733,7 @@ namespace ChipArena.UnityConversion
                     Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(40),pal.Core,style);Debris(6,R*2,pal.Debris);Flash(cx,cy,cz,pal.Hot,R,7,.35,compat,q);break;
                 }
             }
-            if(NativeFxPack.Restyled(style,look,tint.HasValue))
+            if(NativeFxPack.Restyled(style,tint))
             {
                 bursts.Add(new NativeBlastBurst{Style=style,Look=look,Tinted=tint.HasValue,Near=near,X=cx,Y=cy,Z=cz,Ground=ground,Radius=R,Scale=sc,Quality=q,Born=Time,Seed=nextBurst,
                     SolidFrom=solidFrom,SolidTo=Solid.NextSeed,GlowFrom=glowFrom,GlowTo=Glow.NextSeed});

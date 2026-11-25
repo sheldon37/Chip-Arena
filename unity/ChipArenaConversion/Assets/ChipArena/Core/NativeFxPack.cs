@@ -43,9 +43,12 @@ namespace ChipArena.UnityConversion
         // ---- which effects the pack restyles ----
         /// <summary>The blasts that take the fireball (rockets, barrels, mines, meteors: the Fire family, untinted).</summary>
         public static bool Fireball(NativeBlastStyle style,bool tinted)=>!tinted&&(style==NativeBlastStyle.Fire||style==NativeBlastStyle.Mine||style==NativeBlastStyle.Meteor);
-        /// <summary>The blasts that take the smoke-and-dust burst: the frag's Kinetic poof (untinted, not the Tidal Wave) and the Quake slam.</summary>
-        public static bool Dusty(NativeBlastStyle style,NativeBlastLook look,bool tinted)=>!tinted&&look==NativeBlastLook.Default&&(style==NativeBlastStyle.Kinetic||style==NativeBlastStyle.Quake);
-        public static bool Restyled(NativeBlastStyle style,NativeBlastLook look,bool tinted)=>Fireball(style,tinted)||Dusty(style,look,tinted);
+        /// <summary>The frag's own tint (NativeBlastSim.TintOf("frag"): its warm greys).</summary>
+        public static bool Frag(NativeBlastTint? tint)=>tint.HasValue&&tint.Value.Core==0xfff3e2&&tint.Value.Hot==0xcfc8bc&&tint.Value.Cool==0x676b72&&tint.Value.Look==NativeBlastLook.Default;
+        /// <summary>The blasts that take the smoke-and-dust burst: the Kinetic poof (the frag's, and the untinted dash blast, kinetic and
+        /// bubble mine; not the Tidal Wave or a tinted pulse) and the Quake slam (quake, aftershock, trampoline).</summary>
+        public static bool Dusty(NativeBlastStyle style,NativeBlastTint? tint)=>style==NativeBlastStyle.Kinetic&&(!tint.HasValue||Frag(tint))||style==NativeBlastStyle.Quake&&!tint.HasValue;
+        public static bool Restyled(NativeBlastStyle style,NativeBlastTint? tint)=>Fireball(style,tint.HasValue)||Dusty(style,tint);
         /// <summary>A restyled blast's pool particles the pack draws instead: its toon puffs, toon flashes and crescent licks. Its halo and core
         /// glows, sparks, embers, rubble, slabs, shell voxels (never drawn) and its shock front stay code-drawn.</summary>
         public static bool Replaced(NativeFxRole role)=>role==NativeFxRole.Fireball||role==NativeFxRole.Smoke||role==NativeFxRole.Flash||role==NativeFxRole.Lick;

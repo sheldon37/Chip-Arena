@@ -393,6 +393,38 @@ and the licensed-assets zip carries them as textures the game loads by id.
   - the soft smoke atlas (mode 5: mist, vapour, the bosses' fireballs) is still procedural;
   - the fire staff's hit uses Magic Arsenal's ring and embers, not the Sci-Fi fire flipbook the sheet carries for L33t H4x.
 
+## Explosions, fire and the blood spray from the flipbooks (2026-11-25, `claude/fx-blasts-blood`)
+
+Owner (2026-11-25, on V1's effects gallery): "go with recommended". Plan phase 4. Core `NativeFxPack` rebuilds V1's lab recipes
+(`F:/Chip Arena Development/scratch/fx-audit/fx-audit-review.md`) as pure functions of an effect's age and seed; `NativeVfxDraw` draws
+them in its one sorted batch as `NativeVfx.shader` modes 13 (fire: a heat ramp, its cool part a lit smoke), 14 (smoke and dust, lit,
+with a self-light floor) and 15 (blood, lit; drops lie along their flight).
+
+| Effect | Look with the sheets | What stays code-drawn | Without the sheets |
+|---|---|---|---|
+| Fire, Mine, Meteor blasts (untinted: rockets, barrels, mines, meteors) and the Bombadier's charges | the fireball: a wide flash glow, an ignition burst at full size from the first frame (V1's fault 1), four burst flipbooks, five aftermath smoke flipbooks, 30 embers | halo, core glows, sparks, hot rubble, the three lights, the shock front (it ends on the gameplay radius), the Bombadier's flash, grit, ring and ground dust | today's toon puffs, flashes, licks |
+| Kinetic (the frag's own tint, and untinted: dash blast, kinetic, bubble mine) | smoke and dust: a flash glow, an opaque fire core, seven lighter smoke flipbooks and a ten-puff dust ring, never darker than a self-light floor (V1's fault 2: it hardly read on dark stages) | core glows, sparks, rubble, lights, shock front | today's white poof |
+| Quake (quake, aftershock, trampoline) and melee slam landings | a dust ring and a low smoke | the slam wave, slabs, rubble, the slam's stones | today's toon dust |
+| Fire fields | one to seven large-flame flipbooks by the field's size, smoke, embers | the field's telegraph motes and embers | today's toon tongues |
+| Burning bodies; the camp's drums and brazier; the town's brazier, bus and burning windows | the campfire (the town's bus and windows: the large flame) with embers | halos, light pools, the camp's and town's smoke, every light | today's status flames, flame quads and embers |
+| Gun hits (punctures) and every kill | the blood spray over the RVFX splashes: a mist, two splatters, 24 stretched drops | the RVFX splashes (the hit cue), drops, decals | nothing extra |
+
+Restyled blasts are recorded by `NativeBlastSim` after their spawns, with no random draw: the pools, the pinned frames and the shock front
+are unchanged, and the record's seed ranges let the drawer leave out exactly that blast's toon puffs, flashes and licks.
+
+- **Sheets:** `tools/fx_bank/flipbooks.py SRC OUT` writes them from the packs' source sheets (the effects audit's lab subset in the
+  Editor, `Assets/LocalAssets/V1FxLab`): 8 x 8 flipbooks at 1024 (128 px frames) stored as grey + alpha, the splatters as a grey 2 x 2
+  atlas at 1024 and the mist at 512, each with its `.meta`. The sheets the bake made on 2026-11-25 are kept in
+  `F:/Chip Arena Development/scratch/x1/out`.
+- **Where they ship:**
+  - the effects bank: `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaBlastFx/` (burst, smoke, dust, flame, large, flamesmoke;
+    3,433,792 bytes with metas), the folder C2's cache effects use, packed by Astra's effects-bank packer;
+  - the licensed-assets zip: `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaBloodSpray/` (splatters, mist; 395,165 bytes unpacked
+    with the metas and `visual-body.json`'s two lines), packed by `tools/pack_visual_body.py` (it takes every PNG under that folder).
+- **Off switch:** `NativeFxPack.On` (DEV and captures); without a sheet its layer is off and every effect keeps today's look.
+- **Also restyled:** any other untinted Fire-family blast, such as the fire staff's 1.5 m hit blast (the fireball at its size).
+- **Not yet:** Meridian's half-drum fires (their own drawer), Ward Zero's vent flames, the intros' scripted fires, and a Windows build.
+
 ## Candidates from the same drive (not started)
 
 - **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles (Epic Toon FX's blood splats, the explosions, smoke and fire,

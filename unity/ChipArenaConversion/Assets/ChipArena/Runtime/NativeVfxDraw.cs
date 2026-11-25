@@ -668,12 +668,6 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the effects bank (Core NativeFxPack; Claude X1, 2026-11-25) ----
-        private static void FxSheets()
-        {
-            if(fxRead)return;fxRead=true;fxSheets=new Texture2D[NativeFxPack.Sheets];
-            for(int k=0;k<NativeFxPack.Sheets;k++){var t=Resources.Load<Texture2D>(NativeFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;fxSheets[k]=t;}
-            fxBlasts=true;fxBlood=true;for(int k=0;k<NativeFxPack.Sheets;k++)if(fxSheets[k]==null){if(NativeFxPack.Blood(k))fxBlood=false;else fxBlasts=false;}
-        }
         // A pool particle the pack draws instead: one of a restyled blast's replaced roles, or a flame tongue inside a fire field.
         private static bool Covered(NativeBlastSim sim,bool glow,NativeFxRole role,int seed,Vector3 at)
         {
@@ -801,6 +795,13 @@ namespace ChipArena.UnityConversion
             CapturedAnimation.Release(billboards.Mesh);CapturedAnimation.Release(lit.Mesh);CapturedAnimation.Release(shocks.Mesh);
             CapturedAnimation.Release(billboardMaterial);CapturedAnimation.Release(litMaterial);CapturedAnimation.Release(shockMaterial);
             if(atlas!=null)CapturedAnimation.Release(atlas);if(noise!=null)CapturedAnimation.Release(noise);if(toon!=null)CapturedAnimation.Release(toon);atlas=null;noise=null;toon=null;
+        }
+        // The effects bank's sheets, read once a process (Core NativeFxPack.Path; outside the per-frame queueing).
+        private static void FxSheets()
+        {
+            if(fxRead)return;fxRead=true;fxSheets=new Texture2D[NativeFxPack.Sheets];
+            for(int k=0;k<NativeFxPack.Sheets;k++){var t=Resources.Load<Texture2D>(NativeFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;fxSheets[k]=t;}
+            fxBlasts=true;fxBlood=true;for(int k=0;k<NativeFxPack.Sheets;k++)if(fxSheets[k]==null){if(NativeFxPack.Blood(k))fxBlood=false;else fxBlasts=false;}
         }
         /// <summary>The unit box Block draws: six faces of four corners each (their own normals), wound as the other lit meshes.</summary>
         private static NativeVfxMesh BoxMesh()
