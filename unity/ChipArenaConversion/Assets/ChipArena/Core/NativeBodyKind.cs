@@ -37,6 +37,10 @@ namespace ChipArena.UnityConversion
         public const float ChestScale=.97103566f;
         /// <summary>The pack's stance for it (its Animator's female idle blend; not used by the game's motion).</summary>
         public const float Stance=.95f;
+        /// <summary>Its face pieces in the bake's look data (slot FaceSlot, never a wardrobe slot, so no outfit wears them): the pack's
+        /// long lashes and thin brows, each worn in place of the head's own of its kind.</summary>
+        public const string FaceSlot="face";
+        public static readonly string[] FacePieces={"female-lashes","female-brows"};
 
         /// <summary>The map's body (Male when absent, unknown or malformed; the last valid entry wins). Allocation free.</summary>
         public static int Of(string map)

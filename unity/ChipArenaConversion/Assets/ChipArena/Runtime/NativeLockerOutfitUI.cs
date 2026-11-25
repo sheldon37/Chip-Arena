@@ -15,7 +15,8 @@ namespace ChipArena.UnityConversion
     {
         private readonly NativeOutfitPicker.Motion lockerOutfitMotion=new NativeOutfitPicker.Motion();
         // The pieces a slot lists: all of them with live DEV access, else those before its DEV pieces (each slot's last).
-        private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;return n;}
+        // (A hairstyle shows once the bake carries it: ArenaPresentation.VisualLookHas.)
+        private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;if(slot==0)while(n>1&&!ArenaPresentation.VisualLookHas(NativeLook.Hair,ids[n-1]))n--;return n;}
         private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length);
         private void LkOutfit(Rect grid)
         {

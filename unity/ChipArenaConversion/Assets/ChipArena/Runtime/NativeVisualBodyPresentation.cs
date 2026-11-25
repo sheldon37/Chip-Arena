@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
             // The outfit it wears (Core/NativeLook.cs; VisualDress) and its back emblem's frame on the chest bone for that top.
             public string Look=""; public Matrix4x4 Emblem=EmblemFrame;
             // Its hair and cloth simulation (NativeVisualCloth: the local install's; null without one) and whether it runs (-1 unset).
-            public object ClothSim; public int ClothOn=-1;
+            public object ClothSim; public int ClothOn=-1; public bool HairHeld;
             // Its hair under a hat (VisualHatHair): the renderers, each one's hood shape (-1: none) and the outfit's weight on it, each
             // one's own mesh, and the hat they are worn under (null: as styled).
             public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public Mesh[] HatHairMesh; public string HatHairWorn;
@@ -98,6 +98,8 @@ namespace ChipArena.UnityConversion
                 if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);
                 // (The body pick through the dressing, which normalises the key away until NativeLook carries it: Core NativeBodyKind.)
                 if(NativeBodyKind.IsFemale(look))robotDressed[look]=dressed=NativeBodyKind.Keep(dressed,look);
+                // (A hairstyle this bake does not carry: the default's, never a bare head.)
+                if(!VisualLookHas(NativeLook.Hair,NativeLook.Of(dressed,NativeLook.Hair)))robotDressed[look]=dressed=NativeBodyKind.Keep(NativeLook.With(dressed,NativeLook.Hair,NativeLook.Ids[0][0]),dressed);
             }
             // The voxel costume in its variant (the skin map's body entry: NativeVoxelCostumePresentation.cs).
             if(!NativeVoxelCostume.Worn(dressed))return dressed;int skin=CostumeSkinOf(id);return CostumeLook(dressed,skin,CostumeTierOf(id,skin));
@@ -820,6 +822,13 @@ namespace ChipArena.UnityConversion
         [Serializable] public sealed class LookData{public LookPiece[] pieces;public LookPart[] body;public LookShape[] shapes;public LookAnchor[] anchors;public string[] always;}
         public const string VisualLookResource="ChipArenaVisualLook";
         private static LookData lookData;private static int lookState; // 0 unread, 1 read, -1 none
+        /// <summary>Whether the bake's look data carries piece `id` of `slot` (true without look data: nothing is dressed then).</summary>
+        public static bool VisualLookHas(string slot,string id)
+        {
+            var d=VisualLookData();if(d?.pieces==null)return true;
+            foreach(var p in d.pieces)if(p!=null&&p.slot==slot&&p.id==id)return true;
+            return false;
+        }
         private static LookData VisualLookData()
         {
             if(lookState==0)
@@ -1849,11 +1858,14 @@ namespace ChipArena.UnityConversion
                 var body=pair.Value;
                 if(body.Root==null){VisualStrideRelease(body);VisualMotionRelease(body);visualBodiesGone.Add(pair.Key);continue;}
                 if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);
-                // Its cloth runs while it shows, off the low tier and within Far of the arena's camera.
+                // Its cloth runs while it shows, off the low tier and within Far of the arena's camera; its hair held while the robot's
+                // helmet hides it all (with a bridge that has the hair switch; the rest runs), back from its pose as drawn after.
                 if(body.ClothSim!=null)
                 {
                     bool sim=body.Seen&&!LowGraphics&&(VisualEye==null||(VisualEye.transform.position-body.At).sqrMagnitude<NativeVisualCloth.Far*NativeVisualCloth.Far);
+                    bool held=sim&&body.Helm&&NativeVisualCloth.EnableHair!=null;
                     if((sim?1:0)!=body.ClothOn){body.ClothOn=sim?1:0;NativeVisualCloth.Enable?.Invoke(body.ClothSim,sim);}
+                    if(held!=body.HairHeld){body.HairHeld=held;NativeVisualCloth.EnableHair?.Invoke(body.ClothSim,!held);}
                 }
                 VisualWeaponShown(body);body.Seen=false;
             }

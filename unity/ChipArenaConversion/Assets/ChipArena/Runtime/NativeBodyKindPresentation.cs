@@ -35,6 +35,24 @@ namespace ChipArena.UnityConversion
         // counter-scaled to its own size (the hair, hats and face gear with it). Runs when a body is made, never per frame.
         private static void VisualFemale(GameObject root)
         {
+            // Its face pieces (the pack's female lashes and brows, baked off as the look data's "face" pieces): each worn in place of
+            // the piece of its kind the head wears (the renderer with the same slot prefix). None in an older bake.
+            var d=VisualLookData();
+            if(d?.pieces!=null)
+            {
+                Dictionary<string,Renderer> named=null;
+                foreach(var p in d.pieces)
+                {
+                    if(p?.renderers==null||p.slot!=NativeBodyKind.FaceSlot||Array.IndexOf(NativeBodyKind.FacePieces,p.id)<0)continue;
+                    if(named==null){named=new Dictionary<string,Renderer>(StringComparer.Ordinal);foreach(var r in root.GetComponentsInChildren<Renderer>(true))named[r.name]=r;}
+                    foreach(var n in p.renderers)
+                    {
+                        if(!named.TryGetValue(n,out var mine))continue;int dot=n.IndexOf('.');if(dot<=0)continue;
+                        foreach(var r in named.Values)if(r!=mine&&r.gameObject.activeSelf&&string.CompareOrdinal(r.name,0,n,0,dot+1)==0)r.gameObject.SetActive(false);
+                        mine.gameObject.SetActive(true);
+                    }
+                }
+            }
             foreach(var skin in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
                 var mesh=skin.sharedMesh;if(mesh==null||mesh.blendShapeCount==0)continue;var index=FemaleShapeIndex(mesh);
