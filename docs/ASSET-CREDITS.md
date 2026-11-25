@@ -105,6 +105,8 @@ textures ship in the licensed-assets zip only, under the visual body's rules: ne
 Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle effects and bullet-hole textures from
 kripto289's Impacts and Muzzle Flashes. The effects are its concrete, metal and wood impacts, and the textures, meshes and
 materials the bake uses ship in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
+Since 2026-11-25 its brick, glass and dirt impacts too: converted the same way into the separate effects bank (git-ignored
+`Assets/LocalAssets/ChipArenaFx`, its own copies of the textures and meshes), which ships beside the zip under the same rules.
 
 ### Hits and motion effects through the pack bank (2026-10-28, owner licence)
 
