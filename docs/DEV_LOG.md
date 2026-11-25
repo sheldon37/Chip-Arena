@@ -1,3 +1,6 @@
+## 2026-11-24 — Astra: Meridian public stairs and city art handoff
+Branch `codex/meridian-street-continuity`, base `48adf4ca`. Restore the half-metre shoulders clipped by the ground raster on Crown Hill and The Yards. Bind handrail solids to the treads and level landings of the 23 main-route stair flights across the five plans. The layered walk passed all 20 Hulk routes and 190 exit comparisons, the live stair suite passed 83,870 checks, grounds 28,184, and hub surface overlap 29 without the optional bank. Windows walk, frame capture and licensed modules outstanding. Claude's visual pass starts at Crown Hill's north gate in `docs/expedition/MERIDIAN-CITY-WALK.md`, with owned kit candidates and review points.
+
 ## 2026-11-24 — Astra: Expedition cache locker lookup across runs
 Branch `codex/expedition-cache-map-binding`, base `59b930f4`. Resolve lockers against the current generated block array and anchor placement when runs reuse area and cache IDs. Unsupported anchors keep their hologram. Core build passed and the cache-opening suite passed 19,737 checks including all five Meridian plans and same-ID map replacement. Windows playthrough pending.
 

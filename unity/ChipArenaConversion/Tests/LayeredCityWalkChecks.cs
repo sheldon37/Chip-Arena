@@ -87,6 +87,7 @@ internal static class LayeredCityWalkChecks
                     if (high > GeneratedFrameChecks.GateHighTris || low > GeneratedFrameChecks.GateLowTris)
                         throw new Exception("Meridian greybox exceeds the block triangle budget");
                     Console.WriteLine($"{map.name}: greybox block-pass triangles High {high}, Low {low}");
+                    CheckStreetStairs(walk);
                     CheckEscapeClearance(map,solids);
                     MeridianHulkChecks.Run(walk);
                     MeasureCorridors(walk);
@@ -110,6 +111,80 @@ internal static class LayeredCityWalkChecks
                 pairs++;
             }
         Console.WriteLine("PASS " + pairs + " exit pairs at 2 m intervals");
+    }
+
+    private static void CheckStreetStairs(NativeLayeredCityWalk walk)
+    {
+        var map = walk.Map;
+        var terraces = map.blocks.Where(b => b.id.StartsWith("terrace-")).ToArray();
+        var byId = map.blocks.Where(b => b.id.StartsWith("stair-guard-")).ToDictionary(b => b.id);
+        foreach (var route in walk.Routes)
+        for (int i = 0; i < route.Kinds.Length; i++)
+        {
+            var a = route.Points[i];
+            var b = route.Points[i + 1];
+            bool stair = route.Kinds[i] == "stair";
+            bool landing = i > 0 && i + 1 < route.Kinds.Length && route.Kinds[i] == "flat"
+                && route.Kinds[i - 1] == "stair" && route.Kinds[i + 1] == "stair"
+                && (a.x == b.x ? route.Points[i - 1].x == a.x && route.Points[i + 2].x == b.x
+                                : route.Points[i - 1].z == a.z && route.Points[i + 2].z == b.z);
+            if (!stair && !landing) continue;
+            var delta = b - a;
+            bool alongX = delta.x != 0;
+            float run = Math.Abs(alongX ? delta.x : delta.z);
+            float width = route.Widths[i];
+            var flight = stair ? map.ramps.Single(r => (r.low - a).Length + (r.high - b).Length < .01f ||
+                                                       (r.low - b).Length + (r.high - a).Length < .01f) : null;
+            if (stair && delta.y < 0) { a = b; delta = delta * -1; }
+            string stem = flight?.id ?? "nesw"[walk.Routes.IndexOf(route)] + "-landing-" + i;
+            foreach (int side in new[] { -1, 1 })
+            {
+                string prefix = "stair-guard-" + stem + (side < 0 ? "-left" : "-right");
+                int spans = (int)Math.Ceiling(run / 2);
+                for (int k = 0; k < spans; k++)
+                {
+                    var grip = byId[prefix + "-grip-" + k];
+                    var rotation = new System.Numerics.Quaternion(grip.rotation.x, grip.rotation.y, grip.rotation.z, grip.rotation.w);
+                    var half = System.Numerics.Vector3.Transform(alongX
+                        ? new System.Numerics.Vector3(grip.size.x/2,0,0)
+                        : new System.Numerics.Vector3(0,0,grip.size.z/2), rotation);
+                    foreach (int end in new[] { -1, 1 })
+                    {
+                        var p = grip.pos + new V3(half.X,half.Y,half.Z)*end;
+                        float t = alongX ? (p.x-a.x)/delta.x : (p.z-a.z)/delta.z;
+                        float inset = alongX ? p.z-a.z : p.x-a.x;
+                        if (Math.Abs(p.y-(a.y+delta.y*t)-1.05f) > .002f ||
+                            Math.Abs(inset-side*(width/2-.25f)) > .002f ||
+                            Math.Abs(t*spans-k-.5f) > .501f)
+                            throw new Exception("Misaligned handrail " + grip.id);
+                    }
+                }
+                for (int k = 0; k <= spans; k++)
+                {
+                    var post = byId[prefix + "-post-" + k];
+                    float baseY = post.pos.y-post.size.y/2;
+                    if (flight == null)
+                    {
+                        if (Math.Abs(baseY-a.y) > .002f) throw new Exception("Floating landing post " + post.id);
+                        continue;
+                    }
+                    bool seated = flight.blocks.Select(id => map.blocks.First(t => t.id == id)).Any(t =>
+                        Math.Abs(t.pos.x-post.pos.x) < t.size.x/2 && Math.Abs(t.pos.z-post.pos.z) < t.size.z/2 &&
+                        Math.Abs(t.pos.y+t.size.y/2-baseY) < .002f);
+                    if (!seated) throw new Exception("Unseated handrail post " + post.id);
+                }
+                // The odd-width stairs formerly lost half a metre of their floor on both edges.
+                if (width != 5) continue;
+                for (float d = .25f; d < run; d += .5f)
+                {
+                    var p = a + delta*(d/run);
+                    if (alongX) p.z += side*(width/2-.05f); else p.x += side*(width/2-.05f);
+                    float top = terraces.Where(t => Math.Abs(p.x-t.pos.x) <= t.size.x/2 &&
+                        Math.Abs(p.z-t.pos.z) <= t.size.z/2).Max(t => t.pos.y+t.size.y/2);
+                    if (Math.Abs(top-a.y) > .01f) throw new Exception("Wrong stair shoulder at " + stem);
+                }
+            }
+        }
     }
 
     private static void CheckEscapeClearance(ContentMap map, ContentBlock[] solids)

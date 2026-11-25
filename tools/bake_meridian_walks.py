@@ -20,6 +20,48 @@ def vec(point):
     return "new V3(" + ", ".join(map(num, point)) + ")"
 
 
+def stair_landings(route):
+    segments = route["segments"]
+    for i in range(1, len(segments)-1):
+        before, flat, after = segments[i-1:i+2]
+        if (flat["kind"] == "flat" and before["kind"] == after["kind"] == "stair"
+                and before["heading"] == flat["heading"] == after["heading"]
+                and before["width"] == flat["width"] == after["width"]):
+            yield i, flat, *route["points"][i:i+2]
+
+
+def stair_ground(spec):
+    # The one-metre raster rounds half-metre street edges. Restore the exact
+    # footprint where a public stair or its intermediate landing crosses a cell.
+    patches = [(r["x0"], r["z0"], r["x1"], r["z1"], r["ylo"])
+               for r in spec["ramps"] if r["kind"] == "stair" and r.get("route")]
+    for route in spec["routes"]:
+        for _, seg, a, b in stair_landings(route):
+            half = seg["width"]/2
+            wx, wz = (half, 0) if a[0] == b[0] else (0, half)
+            patches.append((min(a[0],b[0])-wx, min(a[2],b[2])-wz,
+                            max(a[0],b[0])+wx, max(a[2],b[2])+wz, a[1]))
+    for block in spec["ground"]:
+        pieces = [(block["x0"], block["z0"], block["x1"], block["z1"], block["top"])]
+        for left, near, right, far, level in patches:
+            if all(float(v).is_integer() for v in (left, near, right, far)):
+                continue
+            updated = []
+            for x, z, X, Z, y in pieces:
+                l, n, r, f = max(x,left), max(z,near), min(X,right), min(Z,far)
+                if l >= r or n >= f or y == level:
+                    updated.append((x,z,X,Z,y))
+                    continue
+                updated.extend(piece for piece in (
+                    (x,z,X,n,y), (x,f,X,Z,y), (x,n,l,f,y), (r,n,X,f,y),
+                    (l,n,r,f,level)) if piece[0] < piece[2] and piece[1] < piece[3])
+            pieces = updated
+        pieces.sort(key=lambda p: (p[4] == block["top"], (p[2]-p[0])*(p[3]-p[1])), reverse=True)
+        for i, (x,z,X,Z,y) in enumerate(pieces):
+            yield dict(block, x0=x,z0=z,x1=X,z1=Z,top=y,
+                       id=block["id"] if i == 0 else f"{block['id']}-stair-edge-{i}")
+
+
 def bake(spec, seed):
     lines = [f"        private MapBounds StreetPlan{seed}()", "        {"]
     def emit(statement):
@@ -30,7 +72,8 @@ def bake(spec, seed):
         emit(f'Box({json.dumps(key)}, {", ".join(map(num, args))});')
 
     doors = {d["hall"]: d for d in spec["doors"]}
-    for b in spec["ground"] + spec["blocks"]:
+    ground = list(stair_ground(spec))
+    for b in ground + spec["blocks"]:
         key = b["id"]
         x, z, X, Z, y, Y = [b[k] for k in ("x0", "z0", "x1", "z1", "bottom", "top")]
         if seed == 1058 and key == "n-lid-1":
@@ -66,6 +109,12 @@ def bake(spec, seed):
         stair = str(r["kind"] == "stair").lower()
         emit(f'Ramp("{r["id"]}", {vec(r["low"])}, {vec(r["high"])}, {num(r["width"])}, {stair});')
 
+        if r["kind"] == "stair" and r.get("route"):
+            emit(f'StreetHandrails("{r["id"]}", {vec(r["low"])}, {vec(r["high"])}, {num(r["width"])});')
+    for route in spec["routes"]:
+        for i, seg, a, b in stair_landings(route):
+            emit(f'StreetHandrails("{route["id"]}-landing-{i}", {vec(a)}, {vec(b)}, {num(seg["width"])});')
+
     # Guard only continuous exposed pavement. At a crossing keep the other road open.
     for r in spec["routes"]:
         for i,seg in enumerate(r["segments"]):
@@ -83,7 +132,7 @@ def bake(spec, seed):
                     x = a[0]+station*ux+nx*seg["width"]/2
                     z = a[2]+station*uz+nz*seg["width"]/2
                     def ground_height(distance):
-                        return max((g["top"] for g in spec["ground"]
+                        return max((g["top"] for g in ground
                             if g["x0"] <= x+distance*nx <= g["x1"]
                             and g["z0"] <= z+distance*nz <= g["z1"]), default=-100)
                     exposed = (seg["width"]/2 < station < length-seg["width"]/2
