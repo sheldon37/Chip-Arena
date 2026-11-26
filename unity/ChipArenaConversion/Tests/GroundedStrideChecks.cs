@@ -127,6 +127,29 @@ internal static class GroundedStrideChecks
         foreach(var muscle in new[]{"Spine Twist Left-Right","Chest Front-Back","UpperChest Twist Left-Right","Left Shoulder Down-Up","Right Arm Twist In-Out","Left Hand In-Out","LeftHand.Index.1 Stretched","Left Upper Leg Front-Back"})
             Check(!NativeVisualMotion.HeadMuscle(muscle),"the carry still takes "+muscle);
         Check(motion.Contains("carryMuscles[i]=up[i]&&!NativeVisualMotion.HeadMuscle(n[i]);")&&motion.Contains("float e=Mathf.Clamp01(w);var mask=CarryMuscles;"),"the run carry lays its muscles by CarryMuscles (the upper body's without the neck and head)");
+        // Owner 2026-11-26: "it doesn't look like they're looking where they are aiming anymore": the neck and head take back the
+        // carry's torso twist and lean, half each, within their limits (so the face keeps the body's heading and level, the aim's in
+        // third person).
+        Check(NativeVisualMotion.TorsoTwist("Spine Twist Left-Right")&&NativeVisualMotion.TorsoTwist("Chest Twist Left-Right")&&NativeVisualMotion.TorsoTwist("UpperChest Twist Left-Right")
+            &&!NativeVisualMotion.TorsoTwist("Spine Front-Back")&&!NativeVisualMotion.TorsoTwist(NativeVisualMotion.NeckTurn)&&!NativeVisualMotion.TorsoTwist("Left Arm Twist In-Out"),"the torso's twists: spine, chest, upper chest");
+        Check(NativeVisualMotion.TorsoLean("Spine Front-Back")&&NativeVisualMotion.TorsoLean("Chest Front-Back")&&NativeVisualMotion.TorsoLean("UpperChest Front-Back")
+            &&!NativeVisualMotion.TorsoLean("Spine Left-Right")&&!NativeVisualMotion.TorsoLean(NativeVisualMotion.NeckNod)&&!NativeVisualMotion.TorsoLean("Spine Twist Left-Right"),"the torso's leans: spine, chest, upper chest");
+        Check(NativeVisualMotion.NeckTurn=="Neck Turn Left-Right"&&NativeVisualMotion.HeadTurn=="Head Turn Left-Right"&&NativeVisualMotion.NeckNod=="Neck Nod Down-Up"&&NativeVisualMotion.HeadNod=="Head Nod Down-Up","the neck's and head's turns and nods by Unity's names");
+        Check(Math.Abs(NativeVisualMotion.MuscleDegrees(.5f,-40,40)-20)<1e-4f&&Math.Abs(NativeVisualMotion.MuscleDegrees(-.5f,-20,40)+10)<1e-4f
+            &&Math.Abs(NativeVisualMotion.MuscleUnits(20,-40,40)-.5f)<1e-4f&&Math.Abs(NativeVisualMotion.MuscleUnits(-10,-20,40)+.5f)<1e-4f,"a muscle's degrees by its range, and back");
+        Check(NativeVisualMotion.MuscleUnits(400,-40,40)==1&&NativeVisualMotion.MuscleUnits(-400,-40,40)==-1&&NativeVisualMotion.MuscleUnits(5,-40,0)==0,"a muscle's value held within its limits");
+        foreach(var deg in new[]{-80f,-50f,-1f,0f,30f,60f})
+        {
+            float half=-deg*.5f,n=NativeVisualMotion.MuscleUnits(half,-40,40),h=NativeVisualMotion.MuscleUnits(half,-40,40);
+            Check(Math.Abs(NativeVisualMotion.MuscleDegrees(n,-40,40)+NativeVisualMotion.MuscleDegrees(h,-40,40)+deg)<1e-3f,"a torso twist of "+deg+" degrees taken back by the neck and head");
+        }
+        int measured=motion.IndexOf("float twist=TorsoChange(m,torsoTwists,twistMin,twistMax,e),lean=TorsoChange(m,torsoLeans,leanMin,leanMax,e);",StringComparison.Ordinal);
+        int laid=motion.IndexOf("if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.RunUpperMix[k]-m.Mix[k])*e;}",measured<0?0:measured,StringComparison.Ordinal);
+        int taken=motion.IndexOf("TakeBack(m,neckTurnRange,headTurnRange,twist);TakeBack(m,neckNodRange,headNodRange,lean);",StringComparison.Ordinal);
+        Check(measured>0&&laid>measured&&taken>laid,"the carry's twist and lean measured before it is laid, taken back on the neck and head after");
+        Check(motion.Contains("d+=(NativeVisualMotion.MuscleDegrees(m.RunUpperMix[k],min[t],max[t])-NativeVisualMotion.MuscleDegrees(m.Mix[k],min[t],max[t]))*e;")
+            &&motion.Contains("m.Mix[kn]=NativeVisualMotion.MuscleUnits(NativeVisualMotion.MuscleDegrees(m.Mix[kn],neck.Min,neck.Max)-degrees*.5f,neck.Min,neck.Max);")
+            &&motion.Contains("m.Mix[kh]=NativeVisualMotion.MuscleUnits(NativeVisualMotion.MuscleDegrees(m.Mix[kh],head.Min,head.Max)-degrees*.5f,head.Min,head.Max);"),"the change in degrees by each muscle's range, taken back half each within the limits");
         Check(motion.Contains("m.RunUpperShare=e;m.CarryShare=Mathf.Max(m.CarryShare,e);")&&motion.Contains("NativeRunArm.RunShare(m.LocoWeights)*loco*wgt*(1-m.Upper)*(1-m.CarryShare)"),"the carry holds the arms (the free arm's run lowering stands down under it)");
         Check(motion.Contains("Mathf.Repeat(m.Phase+m.RunUpperOffset,1)")&&motion.Contains("m.RunUpperOffset=Mathf.Repeat(NativeVisualMotionClips.StridePhase(m.Clips[m.RunUpper],lk,rk)-first,1);"),"the carry steps with the stride (its own stride's offset onto the first run's)");
         Check(visual.Contains("public static string[] Stride(Set s,IClips clips)=>Grounds(s,clips)?s.Grounded:s.Locomotion;"),"the stride's choice");
