@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 import wave
 import zipfile
 
@@ -80,12 +81,14 @@ class SoundRequestImport(unittest.TestCase):
         # Do not bridge to a distinct second event inside the proposed extension.
         second = array('f', [.2] * int(.32 * RATE) + [0] * int(.05 * RATE) + [.2] * RATE)
         # Force a first-event boundary for this narrowly scoped trimming fixture.
-        from unittest.mock import patch
         with patch.dict(importer.EVENT_GAP, {'boss': .04}):
             with self.assertRaises(ValueError):
                 importer.edit(second, request, 'boss', -50, .02)
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix='sound-import-test-'))
+        queue_env = patch.dict(os.environ, {'LOCALAPPDATA': str(self.tmp / 'appdata')})
+        queue_env.start()
+        self.addCleanup(queue_env.stop)
         self.manifest = self.tmp / 'sound-requests.json'
         self.manifest.write_text(json.dumps(REQUESTS, indent=1) + '\n')
         self.sha = hashlib.sha256(self.manifest.read_bytes()).hexdigest()

@@ -10,17 +10,31 @@ namespace ChipArena.UnityConversion
     // (NativeVfxDraw.Pack). Only while the magic sheet is loaded (NativeVfxDraw.PackSprites); without it the bolts keep their
     // energy core, model and soft trail sprites. Reads the replicated shots, events and actors on the presentation clock, as
     // the other weapon effects do; hit timing, hitboxes, damage, cooldowns, movement and the network frame are untouched.
+    // Realistic magic (Claude MG1, 2026-11-25; effects plan phase 3, Core NativeMagicFxPack): while the effects bank's magic atlases are
+    // loaded (NativeVfxDraw.PackMagic) they take precedence over the magic sheet: the head is the realistic one, the trail is drawn from
+    // the bolt's recorded path (NativeMagicTrails, in place of the pack trail sprites) and the hits are the realistic bursts, on the same
+    // events and frames; the darkness orb burns with black flames and bursts in them (NativeMagicFxPresentation.cs). The same hooks: the
+    // model gives way, the surface impact's generic shards give way to the school's own burst, as with the sheet.
     public sealed partial class ArenaPresentation
     {
         private struct MagicHit{public Vector3 At,Normal;public float Born,Scale;public long Seed;public Color Tint;public NativeMagicSchool School;}
         private readonly NativePackSprite[] packSprites=new NativePackSprite[NativeMagicPackFx.ImpactMax];
         private readonly MagicHit[] magicHits=new MagicHit[32];private int magicHitNext,magicHitEvent;private NativeArena magicHitArena;private int magicHitGeneration=-1;
-        private bool PackLooks=>vfx!=null&&vfx.PackSprites;
+        private bool PackLooks=>vfx!=null&&(vfx.PackSprites||vfx.PackMagic);
+        /// <summary>The realistic magic draws (its atlases are loaded and on).</summary>
+        private bool RealMagic=>vfx!=null&&vfx.PackMagic;
+        private readonly NativeMagicTrails magicTrails=new NativeMagicTrails();private readonly NativeMagicList magicList=new NativeMagicList();
         private static FxColor Fx(Color c)=>new FxColor(c.r,c.g,c.b,0);
 
         /// <summary>A school bolt's head at `at` (in place of the energy core), on the presentation clock.</summary>
         private void PackHead(NativeMagicSchool school,Vector3 at,Color halo,float radius,long seed,float now)
         {
+            if(RealMagic)
+            {
+                // The bolt's presented head recorded for its trail; the head rides it, flying the way the path goes.
+                var h=new NVector3(halo.r,halo.g,halo.b);var trail=magicTrails.Seen(seed,school,new NVector3(at.x,at.y,at.z),now,radius,h);
+                magicList.Clear();NativeMagicFxPack.Head(magicList,school,new NVector3(at.x,at.y,at.z),trail.Dir,trail.Speed,radius,h,seed,now,BlastQuality,LowGraphics);vfx.Magic(magicList);return;
+            }
             int n=NativeMagicPackFx.Head(school,new NVector3(at.x,at.y,at.z),radius,Fx(halo),seed,now,packSprites);
             for(int i=0;i<n;i++)vfx.Pack(packSprites[i]);
         }
@@ -28,7 +42,7 @@ namespace ChipArena.UnityConversion
         /// colour ramp and spin.</summary>
         private void PackTrailSprite(in TrailSprite p,float age)
         {
-            if(!(age>=0&&age<p.Life))return;float u=age/p.Life;var c=NativeMagicPackFx.TrailColor(p.School,Fx(p.Color),u,p.Tile);
+            if(RealMagic||!(age>=0&&age<p.Life))return;float u=age/p.Life;var c=NativeMagicPackFx.TrailColor(p.School,Fx(p.Color),u,p.Tile);
             vfx.Pack(p.At+p.Drift*age,new Color(c.R,c.G,c.B,0),p.Size*NativeTrailFx.SpriteSize(u),p.Roll+p.Spin*age,p.Tile,NativeMagicPackFx.HotOf(p.Tile));
         }
         /// <summary>
@@ -38,22 +52,36 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void MagicPackHits(NativeArena arena,float now,float q,bool low)
         {
+            MissileTrialFrame(now);
             if(!PackLooks||arena==null)return;
-            if(!ReferenceEquals(magicHitArena,arena)||magicHitGeneration!=arena.Generation){magicHitArena=arena;magicHitGeneration=arena.Generation;magicHitEvent=0;for(int i=0;i<magicHits.Length;i++)magicHits[i].Born=-100;}
+            if(!ReferenceEquals(magicHitArena,arena)||magicHitGeneration!=arena.Generation){magicHitArena=arena;magicHitGeneration=arena.Generation;magicHitEvent=0;for(int i=0;i<magicHits.Length;i++)magicHits[i].Born=-100;magicTrails.Clear();}
             int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest<magicHitEvent)magicHitEvent=0;
             var actors=weaponSnapshot?.Actors;
             foreach(var e in arena.Events)
             {
-                if(e.Id<=magicHitEvent||now-e.Time>=NativeMagicPackFx.ImpactLife)continue;
+                if(e.Id<=magicHitEvent||now-e.Time>=(RealMagic?NativeMagicFxPack.ImpactLife:NativeMagicPackFx.ImpactLife))continue;
                 bool surface=e.Kind==EventKind.Impact&&!string.IsNullOrEmpty(e.SurfaceId),pilot=(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Target>0&&(e.Detail=="direct"||e.Detail=="reflected");
                 if(!surface&&!pilot)continue;
                 var school=NativeMagicPackFx.School(NativeMagicFx.Spec(actors,e.Source));if(school==NativeMagicSchool.None)continue;
                 var normal=NativeArena.Vec(e.Normal);normal=surface?(normal.sqrMagnitude>.25f?normal.normalized:Vector3.zero):(normal.sqrMagnitude>.25f?-normal.normalized:Vector3.zero);
+                // The Magic Missiles trial's hit: the pack explosion on this event, in place of the sprite burst (NativeMissileTrialPresentation.cs).
+                if(MissileTrialHit(school,NativeArena.Vec(e.Position),normal,now-e.Time,now))continue;
                 var weapon=WeaponLoadout?.Content?.Weapon(NativeMagicFx.Spec(actors,e.Source));int color=e.Color!=0?e.Color:weapon!=null?(int)weapon.color:0xffffff;
                 magicHits[magicHitNext]=new MagicHit{At=NativeArena.Vec(e.Position),Normal=normal,Born=e.Time,Seed=e.Id*1000003L+11,Tint=NativeWeaponFxShapes.Lin(color),School=school,Scale=surface?1.3f:1.1f};
                 magicHitNext=(magicHitNext+1)%magicHits.Length;
             }
             magicHitEvent=Math.Max(magicHitEvent,newest);
+            if(RealMagic)
+            {
+                // The realistic trails (every bolt's recorded path, live or living out) and hits, in one list.
+                magicList.Clear();magicTrails.Draw(magicList,now,q,low);
+                for(int i=0;i<magicHits.Length;i++)
+                {
+                    ref var m=ref magicHits[i];float age=now-m.Born;if(!(age>=0&&age<NativeMagicFxPack.ImpactLife))continue;
+                    NativeMagicFxPack.Impact(magicList,m.School,new NVector3(m.At.x,m.At.y,m.At.z),new NVector3(m.Normal.x,m.Normal.y,m.Normal.z),m.Seed,age,m.Scale,new NVector3(m.Tint.r,m.Tint.g,m.Tint.b),q,low);
+                }
+                vfx.Magic(magicList);return;
+            }
             for(int i=0;i<magicHits.Length;i++)
             {
                 ref var m=ref magicHits[i];double age=now-m.Born;if(!(age>=0&&age<NativeMagicPackFx.ImpactLife))continue;
@@ -61,6 +89,6 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<n;k++)vfx.Pack(packSprites[k]);
             }
         }
-        private void ClearMagicPack(){magicHitArena=null;magicHitGeneration=-1;magicHitEvent=0;for(int i=0;i<magicHits.Length;i++)magicHits[i].Born=-100;}
+        private void ClearMagicPack(){magicHitArena=null;magicHitGeneration=-1;magicHitEvent=0;for(int i=0;i<magicHits.Length;i++)magicHits[i].Born=-100;magicTrails.Clear();}
     }
 }

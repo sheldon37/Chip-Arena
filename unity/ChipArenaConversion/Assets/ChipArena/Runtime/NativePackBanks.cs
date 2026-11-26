@@ -27,9 +27,9 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        private static Loaded Load(string name)
+        private static Loaded Load(string name, bool forCollision=false)
         {
-            if(Off||string.IsNullOrEmpty(name))return null;
+            if((Off&&!forCollision)||string.IsNullOrEmpty(name))return null;
             if(banks.TryGetValue(name,out var loaded))return loaded;
             loaded=null;
             var asset=Resources.Load<TextAsset>(name);
@@ -48,6 +48,9 @@ namespace ChipArena.UnityConversion
         }
 
         public static NativePackBank.Bank Bank(string name)=>Load(name)?.Bank;
+
+        // The developer graphics comparison switch must never remove shipped geometry from the physics scene.
+        public static NativePackBank.Bank CollisionBank(string name)=>Load(name,true)?.Bank;
 
         public static Mesh Mesh(string name,int index)
         {

@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import os
+from unittest.mock import patch
 import unittest
 import zipfile
 
@@ -68,6 +70,9 @@ class LicensedTree:
 class EffectsAudioTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
+        queue_env = patch.dict(os.environ, {'LOCALAPPDATA': str(self.tmp / 'appdata')})
+        queue_env.start()
+        self.addCleanup(queue_env.stop)
         self.project = self.tmp / 'project'
         (self.project / 'Assets').mkdir(parents=True)
         self.tree = LicensedTree(self.tmp / 'licensed')

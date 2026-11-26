@@ -278,6 +278,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--blood-pack"){BloodPackChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--fx-blasts-blood"){FxBlastsBloodChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--fx-magic"){FxMagicChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--polar"){PolarChecks.Run(ProjectRoot());return 0;}
@@ -332,7 +333,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--tactical-view"){TacticalViewChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--gun-sounds"){GunSoundChecks.Run(ProjectRoot());return 0;}
-            StationBossBodyChecks.Run(ProjectRoot());TacticalViewChecks.Run(ProjectRoot());GunSoundChecks.Run(ProjectRoot());ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());BackroomsEntityChecks.Run();DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());DeploySparkChecks.Run(ProjectRoot());PodRunChecks.Run(ProjectRoot());PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());BackroomsChecks.Run(ProjectRoot());PoolroomsChecks.Run(ProjectRoot());PoolroomsRulesChecks.Run();BackroomsGeneratorChecks.Run(ProjectRoot());DeploySoundChecks.Run(ProjectRoot());DeployPerformanceChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
+            if(args.Length==1&&args[0]=="--cache-glaive-fx"){CacheGlaiveFxChecks.Run(ProjectRoot());return 0;}
+            StationBossBodyChecks.Run(ProjectRoot());TacticalViewChecks.Run(ProjectRoot());GunSoundChecks.Run(ProjectRoot());CacheGlaiveFxChecks.Run(ProjectRoot());ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());BackroomsEntityChecks.Run();DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());DeploySparkChecks.Run(ProjectRoot());PodRunChecks.Run(ProjectRoot());PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());BackroomsChecks.Run(ProjectRoot());PoolroomsChecks.Run(ProjectRoot());PoolroomsRulesChecks.Run();BackroomsGeneratorChecks.Run(ProjectRoot());DeploySoundChecks.Run(ProjectRoot());DeployPerformanceChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
@@ -512,6 +514,7 @@ internal static class Program
             BloodPackChecks.Run(root);
             PackFxBlastsChecks.Run(root);
             FxBlastsBloodChecks.Run(root);
+            FxMagicChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);
             EmporiumChecks.Run(root);

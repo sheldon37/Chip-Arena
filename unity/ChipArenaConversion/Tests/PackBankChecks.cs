@@ -66,7 +66,9 @@ namespace ChipArena.UnityConversion
             string src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativePackBanks.cs"));
             Check(src.Contains("Resources.Load<TextAsset>(name)")&&src.Contains("Resources.Load<Texture2D>(TextureFolder+"),"banks and textures come from Resources");
             Check(src.Contains("catch(Exception e){Why=")&&src.Contains("banks[name]=loaded;"),"a bank that fails to read is null, once");
-            Check(src.Contains("OffArgument=\"--ca-no-pack-banks\"")&&src.Contains("if(Off||string.IsNullOrEmpty(name))return null;"),"the off switch");
+            // The off switch hides the pack banks' drawing only: the Meridian route's collision (Astra, 2026-11-26) reads its bank through CollisionBank.
+            Check(src.Contains("OffArgument=\"--ca-no-pack-banks\"")&&src.Contains("if((Off&&!forCollision)||string.IsNullOrEmpty(name))return null;")
+                &&src.Contains("public static NativePackBank.Bank Bank(string name)=>Load(name)?.Bank;")&&src.Contains("public static NativePackBank.Bank CollisionBank(string name)=>Load(name,true)?.Bank;"),"the off switch (drawing only; collision ignores it)");
             foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
             {
                 string text=File.ReadAllText(file);

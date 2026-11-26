@@ -56,6 +56,31 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(self.run_queue(), output); self.assertEqual(len(self.calls), 1)
         self.base.write_bytes(b'NEW BASE'); self.assertNotEqual(self.run_queue(), output)
         self.assertEqual(len(self.calls), 1)
+    def test_two_jobs_keep_one_zip_and_reuse_it(self):
+        second = dict(self.job, id='sample-two', variants=[2])
+        q.write(self.queue, dict(schema='chip-arena.sound-queue/1', jobs=[self.job, second]))
+        current = self.run_queue()
+        self.assertEqual(list(self.root.glob('assets-*.zip')), [current])
+        with patch.object(q, 'command', wraps=self.command) as commands:
+            self.assertEqual(self.run_queue(), current)
+            self.assertFalse(any('--out' in args[0][0] for args in commands.call_args_list))
+        self.assertEqual(len(self.calls), 2)
+
+    def test_prune_only_obsolete_cache_after_complete_import(self):
+        original = self.run_queue()
+        snapshot_dir = self.root / 'install'
+        snapshot_dir.mkdir()
+        snapshot = q.process(self.base, self.root, self.queue, self.repo, snapshot_dir=snapshot_dir)
+        other = self.root / 'assets-handmade.zip'
+        other.write_bytes(b'private')
+        self.base.write_bytes(b'changed')
+        current = self.run_queue()
+        self.assertTrue(current.is_file() and current.with_suffix('.receipt.json').is_file())
+        self.assertFalse(original.exists() or original.with_suffix('.receipt.json').exists())
+        self.assertEqual(snapshot.read_bytes(), b'IMPORTED')
+        self.assertEqual(other.read_bytes(), b'private')
+        self.assertEqual(len(self.calls), 1)
+
     def test_disabled_and_empty_do_not_generate(self):
         q.write(self.queue, dict(schema='chip-arena.sound-queue/1', jobs=[]))
         self.assertEqual(self.run_queue(), self.base)

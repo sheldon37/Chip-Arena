@@ -274,6 +274,11 @@ no decal, scripts or lights in `Effect`):
 Each `Decal` is the same 0.14 m alpha-blended quad as the first three's. Until an entry is baked, its kind plays the stone
 entry (with the bank's hole where listed above), so the bake can add them one at a time.
 
+**Since 2026-11-25, brick, glass and dirt take the effects bank's route instead** (the section "Guns: the muzzle flipbooks
+installed, brick, glass and dirt from the effects bank", below). The visual body's `VisualImpacts` keeps stone, metal and wood,
+because the licensed-assets zip has no room: each particle system is about 0.11 MB of the prefab's YAML. The table above
+still describes rock, plaster and water.
+
 ## Afterimage trails (2026-10-28, `claude/pack-fx-hits`)
 
 Owner (2026-10-28): "Im fine with using Kronnect Trails FX wherever it fits".
@@ -393,6 +398,76 @@ and the licensed-assets zip carries them as textures the game loads by id.
   - the soft smoke atlas (mode 5: mist, vapour, the bosses' fireballs) is still procedural;
   - the fire staff's hit uses Magic Arsenal's ring and embers, not the Sci-Fi fire flipbook the sheet carries for L33t H4x.
 
+## Guns: the muzzle flipbooks installed, brick, glass and dirt from the effects bank (2026-11-25, `claude/fx-guns`)
+
+Owner (2026-11-25), after V1's effects gallery (`F:/Chip Arena Development/scratch/fx-audit`): "go with recommended". This is
+phase 2 of the effects plan: kripto289's muzzle flipbooks and its brick, dirt and glass impacts.
+
+- **Muzzle flashes, in the licensed-assets zip.** The textures the code already loads (`fx-muzzle.json`, the section "Muzzle
+  flashes from the pack" above) are installed, with no code change. Each gun family's flash draws the photographic flame along
+  the barrel and the burst over the fireball. The code core, star, vents, pods, sparks, smoke and the muzzle light are as before.
+  The flipbook flame replaces the plume, so a flash draws one quad fewer: at its peak the pistol draws 8 world quads against 9,
+  the rifle 14 against 15 and the machine gun 11 against 12.
+- **Bullet holes, in the zip.** The three `impact-hole-*` textures (`fx-impacts.json`) are installed. A brick, glass or dirt hit
+  leaves its own hole on the stone hole's quad (`Core/NativeSurfaceImpacts.HoleTexture`), with no code change.
+- **Brick, glass and dirt impacts, in the separate effects bank** (git-ignored `Assets/LocalAssets/ChipArenaFx`, C2's
+  convention, shipped by Astra's effects-bank packer).
+  - `Core/NativeSurfaceImpacts.FxResource` names the prefab `ChipArenaFx/Resources/ChipArenaImpactFx`, with an entry per kind
+    holding an `Effect`.
+  - `Runtime/NativeSurfaceImpactPresentation` plays that `Effect` for a kind the visual body's `VisualImpacts` lacks.
+  - The hole stays the stone quad with the kind's bank texture.
+  - Without the prefab, or for a kind it lacks, the stone effect plays exactly as today.
+  - The visual body's bake is untouched.
+- **The bake** is the local tool's `bozo-impacts.request` with a line `fx=1`, added by G1's tool patch
+  (`F:/Chip Arena Development/scratch/fx-guns/tools/patch_tool.py`). The conversion is the visual body's:
+  - scripts, lights and decal objects dropped;
+  - dust on `Legacy Shaders/Particles/Alpha Blended`;
+  - debris on `Standard`;
+  - scale 0.6 with hierarchy scaling;
+  - debris at most 1.6 s.
+
+  Differences:
+  - **Self-contained.** Every material, texture and mesh is a copy inside the folder. The dust sheets are 1024 copies; the lit
+    debris textures 128 px opaque copies; the meshes mesh assets.
+  - **Smaller duplicate systems left out.** Each particle system is about 0.11 MB of the prefab's YAML.
+    - Brick keeps `DustVertical`, the 8x8 `Dust` and `rocks`, dropping the smaller `Dust` and `rocks (1)`.
+    - Dirt keeps `DustVertical` and one `rocks (1)`, dropping the one-particle `Dust` and the second `rocks (1)`.
+    - Glass keeps the 30 small shards, dropping the six 0.8 m shards.
+  - **Dust tints halved in linear terms, alpha kept.**
+    - The legacy particle shaders draw 2 x the tint in rgb and alpha. The pack's dust shader draws 1 x its rgb (lit, at most 1)
+      and 2 x its alpha.
+    - The project renders in linear space, so halving the stored sRGB value draws about 0.44 of the pack's colour at half its
+      opacity. The first bake did that, and brick and dirt read as dark grey smoke.
+    - The visual body's stone, metal and wood bake (released) still uses the sRGB halving.
+  - **Glass shards:** the pack's glass material takes the same alpha-blended path. Its HDR pale blue tint draws them as small
+    bright glints, clear on dark stages and faint on bright ones, as the pack's own are.
+- **Counts per hit** (the lab's peak, the round's code star and sparks plus live particles; see below):
+  - today, a brick, dirt or glass hit plays the stone effect, 39;
+  - with the effects bank: brick 32, dirt 40, glass 44;
+  - the pack's prefabs as authored: 35, 38 and 36.
+
+  The per-kind caps are unchanged: 6 live a kind (3 with Reduced effects), none on the low tier, and the machine gun's debris
+  on 1 hit in 3.
+- **Kept, the readability guardrails:**
+  - the code muzzle core, star, fireball halo and the muzzle light;
+  - the round's impact star and its sparks under every surface effect;
+  - the hit flash, hitmarkers and tracers are untouched.
+- **Where they show:** brick on Brickfall (94 brick props), the Expedition city, Central Station and the Ironworks. Dirt and
+  glass have no trigger on a map players can pick today:
+  - dirt comes from the ground of the snow and gravel maps (moonlit, frozen, outpost), legacy maps that a saved selection
+    migrates to Brickfall;
+  - no map has a glass prop yet.
+
+  They show once content uses those surfaces.
+- **Animation and rules impacts:** none. This is presentation only: hit timing, hitboxes, damage, cooldowns, movement and the
+  wire are unchanged.
+- **Checks:** `CoreTests --pack-fx-hits` pins the loader, including only the kinds the bake lacks and the stone fallback.
+- **Proof** (`F:/Chip Arena Development/scratch/fx-guns`):
+  - `sheets/` are the lab's before/after renders, from V1's rig on the dark and bright stages. The impact sheets carry the
+    zip-only step and the pack as authored.
+  - `clips/` are game captures in first and third person on Brickfall: the machine gun at a brick wall in the dusk light, and
+    the pistol at the stone stairs in the dim hotel interior (the muzzle in the dark).
+
 ## Explosions, fire and the blood spray from the flipbooks (2026-11-25, `claude/fx-blasts-blood`)
 
 Owner (2026-11-25, on V1's effects gallery): "go with recommended". Plan phase 4. Core `NativeFxPack` rebuilds V1's lab recipes
@@ -424,6 +499,44 @@ are unchanged, and the record's seed ranges let the drawer leave out exactly tha
 - **Off switch:** `NativeFxPack.On` (DEV and captures); without a sheet its layer is off and every effect keeps today's look.
 - **Also restyled:** any other untinted Fire-family blast, such as the fire staff's 1.5 m hit blast (the fireball at its size).
 - **Not yet:** Meridian's half-drum fires (their own drawer), Ward Zero's vent flames, the intros' scripted fires, and a Windows build.
+
+## Realistic magic from the flipbooks (2026-11-25, `claude/fx-magic`)
+
+Owner (2026-11-25): "go with recommended" on V1's effects gallery, and "Yes, download it" for kripto289's Realistic Effects Pack 4 (plan
+phase 3). Core `NativeMagicFxPack` draws every magic school's bolt, trail and hit from that pack's photographic flipbooks, as pure
+functions of a bolt's recorded path (`NativeMagicTrails`), the presentation clock, the shot key and the replicated event id.
+`NativeVfxDraw.Magic` queues them in the one sorted batch as `NativeVfx.shader` modes 16 (a glowing flipbook in the school's colour,
+white-hot where it is brightest), 17 (a flame through the fire ramp, as 13) and 18 (a lit smoke, as 14), on two grey + alpha atlases.
+
+| School | Bolt (head) | Trail | Hit | Stays code-drawn |
+|---|---|---|---|---|
+| Fire | a white-hot core in a rolling ball of flame, two flames licking back along the flight | flames turning to grey smoke, embers | a flash, two flame bursts, embers, smoke (the staff's 1.5 m blast stays the blast sim's: the bank's fireball where installed) | the ribbon, halo, lights |
+| Water | a bright core in two shimmering water shells, spray streaming back | spray waves, mist, falling droplets | a flash, the shell bursting, mist, spray waves thrown out, droplets falling | the ribbon, halo, lights |
+| Lightning | a white core in a crackling plasma ball, arcs re-struck every 50 ms | arcs along the path, plasma sparks | a flash, a plasma burst, five arcs thrown out (re-struck every 40 ms), sparks | the ribbon, halo, lights |
+| L33t H4x | a bright core in a green plasma ball and two turning energy shells | glowing green energy wisps, plasma sparks, sparks | a flash, two green flame bursts, the shell popping, sparks | the ribbon, halo, lights |
+| Darkness | the void orb's black core, lens, swirl and motes, with black flames (a violet glow in them) licking back | the void orb's tail puffs as realistic dark smoke wisps | black flames rolling out after the implosion, over the void orb's smoke (realistic), glows, embers, ink and scorch | core, lens, swirl, motes, ink, drain, cast |
+
+Every colour is the shot's own (`NativeShotRules.HaloColor`, the weapon's), so each school keeps its colour identity. The cast charge,
+every telegraph, the bolt's halo, spill and contact lights, the trajectory and the impact timing are unchanged: a head rides the bolt's
+presented position and a hit plays on the same Impact or direct Hit event the magic sheet's burst used. The HDR ribbon stays as the
+motion streak at the head, shortened from .1 s to .04 s (`NativeMagicFxPack.RibbonLife`: today's ten metres of line behind a 100 m/s
+bolt read as a laser); the flipbook trail carries the path behind it.
+
+- **Hooks:** the look rides the magic sheet's (`PackLooks` is the sheet or the atlases): the bolt's model gives way, the surface
+  impact's generic shards give way to the school's own burst, the static-world hits (`BoltEnded`) land it. With the atlases the head is
+  the realistic one, `PackTrailSprite` draws nothing (the trail is the recorded path's) and the hits are the realistic bursts. Darkness:
+  `MagicSink.Smoke` draws `NativeVfxDraw.MagicSmoke` in place of the toon puff; `DarkFlames` adds the black flames and bursts.
+- **Sheets:** `tools/fx_bank/magic.py SRC OUT` writes `ChipArenaMagicFx/magic0.png` (2048 x 2048: the flame burst 8 x 4, smoke wisps
+  8 x 8, the plasma ball 16 x 8, lightning arcs 4 x 8) and `magic1.png` (2048 x 1024: the energy shell 8 x 8, spray waves 8 x 16), each
+  source flipbook resized whole into a 1024 quadrant, grey + alpha. Core `NativeMagicFxPack.Sheets` is the layout (pinned against the
+  tool by CoreTests `--fx-magic`).
+- **Where they ship:** the effects bank only: `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaMagicFx/` (3,136,454 bytes with metas),
+  packed by Astra's effects-bank packer. Nothing goes into the Drive zip.
+- **Fallback:** without both atlases (or with `NativeMagicFxPack.On` off, the DEV and capture switch) nothing changes: the bolts keep
+  today's energy core, soft sprites and ribbon, darkness its toon puffs.
+- **The Magic Missiles trial** (C2, `claude/cache-glaive-fx`, unmerged): where installed it takes the fire bolt before this look does
+  (its `ShotFx` return comes first, its hit replaces the burst); the other four schools are unaffected.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation only).
 
 ## Candidates from the same drive (not started)
 

@@ -37,6 +37,7 @@ import tempfile
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import effects_bank
 import local_cloth
 import private_addons
 
@@ -62,6 +63,10 @@ MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 6000, 512 * 1024 * 1024, 24 * 102
 VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 480 * 1000 * 1000
 VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.controller', '.bytes', '.meta'}
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
+
+
+if __name__ == "__main__":
+    sys.modules["install_local_assets"] = sys.modules[__name__]
 
 
 class Problem(Exception):
@@ -256,6 +261,9 @@ def verify_visual_body(content):
         if not parts or '\\' in rel or rel.startswith('/') or ':' in rel or '..' in parts or '.' in parts:
             problems.append(f'visual body: unsafe path {rel!r}')
             continue
+        if effects_bank.owns(rel):
+            problems.append(f'visual body: {rel} belongs to the separate effects bank')
+            continue
         if parts[0] == 'Resources':
             problems.append(f'visual body: {rel} is in the effects bank\'s Resources folder')
             continue
@@ -318,12 +326,26 @@ def safe_extract(archive, destination):
     """Extracts a zip member by member, refusing absolute or parent paths, links and oversized content."""
     with zipfile.ZipFile(archive) as z:
         members = [m for m in z.infolist() if not m.is_dir()]
-        total = sum(m.file_size for m in members)
+        audio = 'Resources/EffectsAudio/manifest.json'
+        prefixes = [m.filename[:-len(audio)] for m in members if m.filename.endswith(audio)
+                    and (m.filename == audio or m.filename.split('/', 1)[-1] == audio)]
+        prefix = prefixes[0] if len(prefixes) == 1 else None
+        def is_fx(name):
+            return prefix is not None and name.startswith(prefix) and effects_bank.owns(name[len(prefix):])
+        fx_size = sum(m.file_size for m in members if is_fx(m.filename))
+        manifest_bytes = sum(m.file_size for m in members if prefix is not None and m.filename == prefix + effects_bank.MANIFEST)
+        if manifest_bytes > 1_000_000 or fx_size - manifest_bytes > effects_bank.BUDGET:
+            raise Problem('effects bank and manifest exceed unpacked limit')
+        total = sum(m.file_size for m in members) - fx_size
+        seen = set()
         if len(members) > MAX_ZIP_FILES or total > MAX_ZIP_BYTES:
             raise Problem(f'zip is too large ({len(members)} members of {MAX_ZIP_FILES}, {total} bytes of {MAX_ZIP_BYTES} unpacked)')
         for m in members:
             name = m.filename
             parts = PurePosixPath(name).parts
+            if name.casefold() in seen or '/'.join(parts) != name:
+                raise Problem('duplicate or noncanonical zip path: ' + name)
+            seen.add(name.casefold())
             if '\\' in name or name.startswith('/') or ':' in name or '..' in parts or not parts:
                 raise Problem('unsafe zip path: ' + name)
             if stat.S_ISLNK(m.external_attr >> 16):
@@ -403,19 +425,23 @@ def main(argv=None):
     if not args.source:
         parser.error('SOURCE is required')
     source = Path(args.source).resolve()
-    if not args.check:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        import sound_queue
-        try:
-            source = sound_queue.process(source)
-        except (ValueError, OSError) as error:
-            print('Sound queue blocked: ' + (str(error) if isinstance(error, ValueError) else type(error).__name__), file=sys.stderr)
-            return 1
     with tempfile.TemporaryDirectory(prefix='licensed-assets-') as scratch:
+        if not args.check:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import sound_queue
+            try:
+                snapshot_dir = Path(scratch) / 'queue'
+                snapshot_dir.mkdir()
+                source = sound_queue.process(source, snapshot_dir=snapshot_dir)
+            except (ValueError, OSError) as error:
+                print('Sound queue blocked: ' + (str(error) if isinstance(error, ValueError) else type(error).__name__), file=sys.stderr)
+                return 1
         try:
             if source.is_file() and zipfile.is_zipfile(source):
-                safe_extract(source, Path(scratch))
-                content = content_root(Path(scratch))
+                extracted = Path(scratch) / 'bundle'
+                extracted.mkdir()
+                safe_extract(source, extracted)
+                content = content_root(extracted)
             elif source.is_dir():
                 content = content_root(source)
             else:
@@ -423,6 +449,7 @@ def main(argv=None):
             keys, clips, total = verify(content)
             if args.check:
                 print_audio_coverage(content, 'source only; sound queue not run')
+            fx_files = effects_bank.verify(content)
             body = verify_visual_body(content)
             cloth = local_cloth.verify(content)
             addons = private_addons.verify(content)
@@ -436,11 +463,14 @@ def main(argv=None):
                 install_visual_body(content, project, body)
                 install_visual_body(content, project, cloth)
                 install_visual_body(content, project, addons)
+                effects_bank.install(content, project, fx_files)
         except Problem as problem:
             print('Licensed assets rejected:\n' + str(problem), file=sys.stderr)
             return 1
     action = 'Verified' if args.check else 'Installed'
     print(f'{action} {keys} keys, {clips} clips, {total / 1e6:.2f} MB of licensed effects audio' + ('' if args.check else ' into Assets/LocalAssets/Resources/EffectsAudio (git-ignored).'))
+    if fx_files:
+        print(f'{action} effects bank: {len(fx_files)} files in ChipArenaFx')
     if body:
         print(f'{action} the visual body: {len(body)} files, {body_bytes / 1e6:.2f} MB' + ('' if args.check else ' into Assets/LocalAssets (git-ignored).'))
     else:

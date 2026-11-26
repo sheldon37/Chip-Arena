@@ -145,7 +145,7 @@ namespace ChipArena.UnityConversion
         // ---- the effects pass (RenderGlow, before the muzzle lights resolve): the openings' light, glows, streaks and puffs ----
         private void CacheFx(NativeArena arena,Camera camera)
         {
-            CacheBuild(arena);if(vfx==null||cacheFrameCount==0)return;
+            CacheBuild(arena);CachePackFx(camera);if(vfx==null||cacheFrameCount==0)return;
             for(int i=0;i<cacheFrameCount;i++)
             {
                 var s=cacheAll[i];var f=cacheFrames[i];

@@ -368,6 +368,8 @@ namespace ChipArena.UnityConversion
         {
             // The darkness orb draws its own core, tail and lens (NativeMagicFx); its energy trail here is skipped.
             if(MagicLooks&&NativeMagicFx.Owns(v))return;
+            // The Magic Missiles trial draws the fire staff's primary bolt as its own missile (NativeMissileTrialPresentation.cs).
+            if(MissileTrialShot(v))return;
             bool energy=NativeTrailFx.Energy(v);if(!energy)return;
             long key=NativeShotScene.Key(v.Kind,v.Id);var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
             if(!emitters.TryGetValue(key,out var e))
@@ -402,7 +404,9 @@ namespace ChipArena.UnityConversion
                     e.Carry=distance-travelled;
                 }
                 if(e.Count==0||Vector3.Distance(e.Points[e.Count-1],at)>.02f)e.Push(at,now);else{e.Points[e.Count-1]=at;e.Times[e.Count-1]=now;}
-                int first=0;while(first<e.Count-1&&now-e.Times[first]>NativeTrailFx.RibbonLife)first++;
+                // Realistic magic (NativeMagicFxPack) keeps the ribbon short: the flipbook trail carries the path, the ribbon only the motion at the head.
+                float ribbon=school!=NativeMagicSchool.None&&RealMagic?NativeMagicFxPack.RibbonLife:(float)NativeTrailFx.RibbonLife;
+                int first=0;while(first<e.Count-1&&now-e.Times[first]>ribbon)first++;
                 // A pack head covers the bolt: the ribbon's newest point steps back into it and draws as an older one, so the
                 // ribbon grows out of the head instead of ending in a bright square cut across it (the model hid that end).
                 if(school!=NativeMagicSchool.None&&e.Count>1&&velocity.sqrMagnitude>1e-6f)

@@ -1,6 +1,102 @@
+## 2026-11-26 — Astra: effects bank, builder retention, pilot verification and Meridian collision
+
+Task branch `codex/fx-bank-builder-retention` from shared `e0f06639`. Integrator handoff; Claude owns merges, candidate zip and publication.
+
+1. **Effects.** From the Editor checkout's `unity/ChipArenaConversion`, after adding G1's muzzle/hole files, run `py -3 tools/pack_effects_bank.py "G:/My Drive/Chip Arena Build Logs/LocalAssets.zip" "F:/Chip Arena Development/scratch/LocalAssets-with-fx.zip"`. The packer checks the candidate before publishing it to that output path. Independent check: `py -3 tools/install_local_assets.py "F:/Chip Arena Development/scratch/LocalAssets-with-fx.zip" --check`. Only the optional effects section is replaced, with a 64,000,000-byte payload cap and separately bounded manifest. Ordinary members retain the 512 MiB limit. The updater accepts player archives up to 2 GiB compressed / 4 GiB unpacked. The builder installs the exact LocalAssets-relative paths and Unity embeds the Resources in the compiled player. A loose licensed source tree on a player's PC is not part of the existing updater format. A synthetic packed zip passed check, install, replacement, hash/metadata and independent-budget tests. The Editor's private 113-file candidate still needs Claude's real pack and check. No effects code or Drive changes.
+2. **Disk.** The standalone builder is outside Git. From this project's folder run once on the build PC: `py -3 tools/builder_retention.py --install-hook "F:/Chip Arena Builder/Builder"`. It backs up the installed script, recognizes the publication receipt and installs an idempotent hook under the builder lock. After successful publication it archives old build logs and removes clean, registered, detached builder worktrees, protecting the newest success, Unity locks and edits. Installation verified twice against a copy of the October standalone kit; worktree removal exercised with real disposable Git worktrees. SoundQueue validates and retains the final composite plus its input receipt and deletes obsolete fingerprint zips after a successful queue pass. An in-flight installer holds a snapshot. Originals, approvals, reports and credentials stay local. The Windows paths have not been pruned or measured here.
+3. **Pilot.** Drive status independently confirms successful build and publication at 06:50 UTC, November 26; the Unity build log identifies the e0f06639 worktree. The 20 local account tests passed, including the second-login Female/high-ponytail round trip, as did the managed body, outfit, skin and Locker checks. Schema 4 deployment still needs owner approval. Two Windows clients must verify the lobby, match and sign-out/sign-in on the deployed account service; no peer rendering observation yet.
+4. **Meridian.** NativeArena now builds static prop-layer collision in its own physics scene from the shipped route bank's fine roof/chimney and balustrade meshes, the raised beacon triangles and the loading bay's projecting canopy/brackets. It uses the dealt hall transform, independently of camera distance or graphics tier. The 15,540 route checks passed with ChipArenaCityRoute recovered from the released player, including actual mesh selection and height bounds. Windows physics playthrough remains open.
+5. **Tool tests.** Effects-audio, intro-music, sound-import and visual-body fixtures now isolate LOCALAPPDATA by construction, including subprocesses and the cloth/private-addon fixtures. The six reported modules passed here before the fix with an isolated environment; the owner's Windows failures and timings were not reproduced. The add-on module also avoids collecting the cloth tests a second time.
+
 ## 2026-11-26 — Astra: B1 body and hair account and peer contract
 
 `codex/pilot-look-sync` on shared `86b86bed`. NativeLook keeps the body key and the bob/high ponytail across wardrobe edits, host gating, lobby and match seat normalization. The account Worker advertises schema 4 and uses Unity's wardrobe defaults and DEV restrictions. Schema 3 accepts remote costume resets while retaining unsupported local body and hair. Schema 4 accepts remote body and hair resets. The owner already picked Strong. Nine isolated Worker canonicalization cases passed locally. Account second-login and native regression checks are included. Two Windows clients, the live Worker deployment and the test-channel build require separate verification.
+
+## 2026-11-26 — Claude (MG1): realistic magic, round 2 (the integrator's review: fire, darkness, game clips)
+**Branch:** `claude/fx-magic`, shared `f7c1e996` merged in. Pushed; not merged, not released.
+- **Fire:** the bolt is a rolling fireball (a glowing flame body in the school's orange, real flames rolling over it, three flame tongues licking
+  back, about 2 m across at a .2 m bolt); the trail is the pack's flame tongues (its Effect23 look) then smoke; the hit has its own burst (a
+  roaring column of tongues, flames thrown out along the surface, two flame bursts, 18 embers, smoke) over the staff's blast. The tongues
+  flipbook joins `magic1.png`, now 2048 x 2048.
+- **Darkness:** the black flames carry a violet flame a little larger than themselves (rim and glow read on dark stages), set further back so
+  the void orb's core stays clear.
+- **Bytes:** `ChipArenaMagicFx` 3,340,478 bytes with metas (`magic0.png` 1,835,459; `magic1.png` 1,500,280). Drive zip: +0.
+- **Counts** (`--fx-magic`): fire head 9 sprites, trail 79 (today about 53), hit peak 33; the other schools as round 1.
+- **Game clips:** the captures now fire (B1's arena-clock `akeep`, a dummy `keep=999` so its windows close, and a new arena-clock weapon switch
+  `aweapon=T:spec` added to the local BoZo tool, the original kept in `scratch/mg1/tool/`): one capture holds all five schools in turn.
+  Third person, before | after, 2x slow, bolts into a wall about 15 m away: `scratch/mg1/clips/game-{fire,water,lightning,darkness,leet}-tp-2x-slow.mp4`.
+  First person: queued in hold B (`scratch/mg1/capclips2.sh fp` builds them). Raw frames deleted after each clip.
+- **Sheets:** `scratch/mg1/sheets/r7-fire.jpg`, `r7-darkness.jpg` (darkness before its last tone-down; `r8` follows in hold B).
+- **Checks:** full CoreTests the relgen5 way at `eb6d0ad0`: 1,112 PASS, exit 0; `--fx-magic` (11,245 checks) at `c5bafad1`; Unity compile check;
+  `git diff --check`. PrototypeBuild.Validate: queued last in hold B (it runs only with ten minutes left in the hold).
+
+## 2026-11-25 — Claude (MG1): realistic magic: every school's bolt, trail and hit from the effects pack's flipbooks (effects plan phase 3)
+Owner, 2026-11-25: "go with recommended", and "Yes, download it" for kripto289's Realistic Effects Pack 4. Integrator brief `agents-fx-2026-11-25.md`.
+**Branch:** `claude/fx-magic` from X1's `claude/fx-blasts-blood` `448b9b65` (shared merged in up to `729b5890`, which carries X1's merge). Pushed; not merged, not released.
+Doc: `docs/PACK-EFFECTS.md` "Realistic magic from the flipbooks". Presentation only.
+- **What changed** (Core `NativeMagicFxPack`: recipes as pure functions of a bolt's recorded path (`NativeMagicTrails`), the clock, the shot key
+  and the event id; `NativeVfxDraw.Magic` draws them in the one sorted batch as `NativeVfx.shader` modes 16 glow, 17 fire, 18 smoke on two atlases):
+  - **Fire:** a white-hot core in a rolling ball of flame, two flames licking back; a trail of flames turning to grey smoke, embers; a hit
+    of a flash, two flame bursts, embers and smoke (the staff's 1.5 m blast stays the blast sim's, X1's fireball with the bank).
+  - **Water:** a bright core in two shimmering water shells, spray streaming back; spray waves, mist and falling droplets; a hit of a flash,
+    the shell bursting, mist, spray thrown out and droplets.
+  - **Lightning:** a crackling plasma ball with arcs re-struck every 50 ms; arcs along the path and plasma sparks; a flash, a plasma burst,
+    five arcs thrown out (re-struck every 40 ms) and sparks.
+  - **L33t H4x:** a green plasma core in two turning energy shells; glowing green energy wisps; a flash, two green flame bursts, the shell popping, sparks.
+  - **Darkness:** the void orb keeps its black core, lens, swirl, motes, ink, drain and cast; its toon puffs (tail, wisps, burst) are
+    realistic dark smoke wisps; it burns with black flames (a violet glow in them) and bursts in them at each impact.
+  - Colours are the shot's own halo colour, so every school keeps its identity. The HDR ribbon stays as the motion streak at the head,
+    shortened from .1 s to .04 s for realistic bolts (ten metres of line behind a 100 m/s bolt read as a laser).
+  - The look rides the old magic sheet's hooks (`PackLooks` = the sheet or the atlases): the model gives way, the surface impact's
+    generic shards give way to the school's burst, static-world hits land it. No edit to G1's muzzle or impact paths or X1's parts.
+  - **Fallback:** without both atlases (or `NativeMagicFxPack.On` off) every bolt keeps today's energy core, soft sprites and ribbon,
+    darkness its toon puffs.
+- **Gameplay, networking, animation:** none. Trajectories, impact timing (the same events and frames), damage, telegraphs, cast charge, the
+  wire and every rule are untouched. No animation change.
+- **Bytes:** the effects bank only: `ChipArenaFx/Resources/ChipArenaMagicFx/` 3,136,454 bytes with metas (`magic0.png` 1,835,459, 2048 x 2048:
+  flame burst, smoke wisps, plasma ball, arcs; `magic1.png` 1,296,256, 2048 x 1024: energy shell, spray waves; grey + alpha). Drive zip: +0.
+- **Counts** (sprites; CoreTests `--fx-magic` prints them; the lab's drawn quads in the sheets' n):
+  - CoreTests `--fx-magic`, per bolt at its speed: fire head 6, trail 63 (today about 53 soft sprites + core, glow, ribbon), hit peak 19;
+    water 5 / 68 (52) / 28; lightning 5 / 29 (52) / 18; L33t 5 / 47 (17) / 16; darkness +6 black-flame sprites per orb, +6 at a burst's
+    peak, each toon puff one smoke wisp (same count).
+  - The lab's drawn quads (dark stage, today -> after; columns as the sheets): fire 21->21, 37->33, 104->103, 91->92, 65->81, 23->34;
+    water 18->21, 33->34, 43->59, 33->55, 12->36, 3->14; lightning 17->19, 31->29, 42->36, 32->26, 12->20, 3->10; darkness 90->96, 135->141,
+    97->97, 132->138, 86->92, 27->33; L33t 25->40, 29->56, 32->65, 24->53, 12->24, 3->10.
+- **Proof** (V1's rig, same camera, dark and bright; X1's lab conventions):
+  - Sheets (today, after and the pack's own prefabs as candidates A/B, dark and bright): `F:/Chip Arena Development/scratch/mg1/sheets/final-{fire,water,lightning,darkness,leet}.jpg`
+    (the first pass before tuning: `sheets/r1-*.jpg`). Candidates as authored (scripts and lights off): fire Effect15/Effect23, water
+    Effect8/Effect18, lightning Effect10/Effect16, darkness Effect21/Effect13, L33t Effect12. Picked per school: fire Effect15/23's flame
+    burst, water Effect8's spray waves and Effect12's shell, lightning Effect10's plasma ball and arcs, darkness Effect21's black smoke and
+    Effect15_Collision's black fire, L33t Effect12's energy shell and green flame burst, rebuilt on the game's drawer.
+  - Clips (lab, 9 m, 4x slow, today | after): `F:/Chip Arena Development/scratch/mg1/clips/magic-{school}-{dark,bright}-4x-slow.mp4`.
+  - Play captures (Brickfall, third and first person, target 10 m): queued in MG1's hold 3 (`scratch/mg1/hold2.sh`, plan `ctl/plan`);
+    frames land in `scratch/mg1/cap/<school>-<tp|fp>-<before|after>`; `scratch/mg1/capclips.sh` makes the side-by-side MP4s. Not reviewed
+    at handoff (see Not done).
+- **Checks:**
+  - Full CoreTests the relgen5 way (clean LF worktree, `expedition_path.patch`, the 14 stage banks) at `e85e8e7f`: 1,111 PASS lines, exit 0.
+  - New group `FxMagicChecks` (`--fx-magic`, 9,652 checks): the atlas layout against the tool, heads, trails, hits and darkness layers
+    (finite, deterministic, in their flipbooks, capped, fewer on Reduced and low), trail life-out and rewind, the loaders' fallback, no
+    pack name in game code. Pins updated: `PackFxBlastsChecks` (PackLooks, the hit life).
+  - `tools/check_unity_compile.py` passed; `git diff --check` clean; the Editor compiled `ed4d2f6f`, `ab51157a`, `197daa44`, `d710b0eb`.
+  - Not run: PrototypeBuild.Validate (load paths: two new Resources.Load names), a Windows build.
+- **Ship steps:**
+  - **Effects folder (with Astra's effects-bank packer, DEV_LOG `87076cc7`):** the two atlases and metas are installed in the Editor at
+    `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaMagicFx/`; source copy `F:/Chip Arena Development/scratch/mg1/out/ChipArenaFx/`. The packer
+    takes the `ChipArenaFx` folder whole. Until then builds keep today's magic.
+  - **Rebuild:** `python -I tools/fx_bank/magic.py <pack root holding Effects/Textures> <out>` (deterministic, keeps existing metas). The pack's
+    six source sheets are extracted in `F:/Chip Arena Development/scratch/mg1/x/rfx`.
+  - **Zip:** nothing.
+- **C2's Magic Missiles trial** (`claude/cache-glaive-fx`, unmerged; files untouched): a stylised Shuriken missile on Unity's particle
+  shader, fire only, replacing head, trail and ribbon; this look is realistic flipbooks through the game's drawer for all five schools and
+  keeps the ribbon short. Where the trial is installed its `ShotFx` return comes first, so it wins the fire bolt; its `MissileTrialHit`
+  sits in the same `MagicPackHits` loop (a small merge in `NativeMagicPackPresentation.cs`). The owner picks one for fire.
+- **Not done:** PrototypeBuild.Validate; the play-capture clips (hold 3 was still queued at handoff; one earlier capture fired nothing:
+  `keep` started after the first shot time); frame cost in a build; the fire head still reads modestly at 9 m (the trail and hit carry
+  it); darkness's burst flames hardly show on the dark stage.
+- **Editor holds:** hold 1 17:36-17:56; hold 2 18:57-19:22 (25 min: a request-path bug in the hold script left it waiting).
+- **Risks:** the Editor keeps the magic atlases installed in `ChipArenaFx` (inert on shared until this code lands). Each move of the Editor
+  onto this branch re-imports for ~3 min (the shader and the atlases).
+- **Next:** the integrator reviews the sheets and clips; the owner picks fire (this or C2's trial); the atlases ship with the effects bank.
 
 ## 2026-11-26 — Claude: release 30: the Female pilot at Strong, and the zip member cap raised to 6,000 (integrator)
 - **Published:** shared and the builder at `86b86bed`. Test channel revision `639312660795293099` (build `7505d443`, 398.3 MiB).
@@ -128,6 +224,92 @@ Integrator brief from Astra's asset handoff (`docs/CLAUDE-UNITY-ASSETS.md`, issu
 - **Fix (owner: "Yes, clear them"):** removed 41 work folders, freeing 44 GB. Kept the newest successful build's folder (`729b5890`) and the 2026-11-01 `.rar`. F: now has 44 GB free.
 - **This commit** re-runs the builder on `34ea6eb8` plus this note.
 - **Astra:** each build leaves its work folder behind, so F: will fill again. Consider pruning old `Work/` folders after a successful publish. The sound queue's cache on C: (`AppData/Local/ChipArena/SoundQueue`) is 83 GB of `assets-*.zip` versions.
+
+## 2026-11-25 — Claude (G1): guns: kripto289 muzzle flipbooks and impact holes (zip); brick, glass and dirt impacts (effects bank)
+Owner, 2026-11-25, after V1's effects gallery: "go with recommended" (effects plan phase 2). The integrator then cut G1's zip
+allowance to about 1.1 MB, since B1's female pilot measured +2.51 MB. The impacts therefore moved to the separate effects bank.
+**Branch:** `claude/fx-guns` from shared `4a2b5c4f`. Pushed; not merged, not released. The Drive zip was not swapped.
+Doc: `docs/PACK-EFFECTS.md`, section "Guns: the muzzle flipbooks installed, brick, glass and dirt from the effects bank".
+- **Code:**
+  - `Core/NativeSurfaceImpacts.FxResource` names the effects bank's prefab, `ChipArenaFx/Resources/ChipArenaImpactFx`.
+  - `Runtime/NativeSurfaceImpactPresentation` plays that prefab's `Effect` for any kind the visual body's bake lacks. The stone
+    quad stays, with the kind's bank hole.
+  - Without the prefab, the stone effect plays as today.
+  - `PackFxHitsChecks` pins this. The muzzle flashes and the holes need no code change.
+- **Bytes:**
+  - **Drive zip, ready to ship:** 20 files (the muzzle textures are 916,746 bytes, the holes 202,787). Unpacked size grows by
+    1,122,185 bytes (1.122 MB, 1.070 MiB), from 473.108 to 474.178 MiB.
+    - Measured on release 27's Drive zip: `pack_visual_body.py` on a copy, with the files in the Editor's Resources. Adding the
+      files alone gives the same members. `install_local_assets.py --check` passes.
+    - Release 28 then measured the real room at about 3.1 MB, and B1's female pilot (2.5 MB) takes most of it.
+    - If both do not fit, the same 20 files work unchanged from the effects folder, in
+      `Assets/LocalAssets/ChipArenaFx/Resources/PackBank/`. Resources folders merge, and `NativePackBanks.Texture` loads
+      `PackBank/<id>`, so no code change is needed.
+  - **Effects bank, waits for Astra's packer:** 32 files, 1,913,306 bytes.
+    - The prefab is 693,234 bytes and holds 6 particle systems.
+    - The textures are 1,181,025 bytes; the two dust sheets copied at 1024 make up 1.10 MB of that.
+    - Meshes are 14,896 bytes, materials 8,548, metas 15,603.
+- **Counts:**
+  - **Muzzle**, peak world quads per shot (pistol / rifle / machine gun): 9 / 15 / 12 today, 8 / 14 / 11 with the flipbook flame
+    replacing the plume.
+  - **Impacts**, peak per hit (the code star and sparks plus live particles): 39 today, where these kinds play the stone stand-in.
+    - With the bank: brick 32, dirt 40, glass 44.
+    - The pack's prefabs as authored: 35, 38 and 36.
+    - The caps are unchanged: 6 live per kind, 3 with Reduced, none on the low tier, and the machine gun's debris on 1 hit in 3.
+- **Guardrails kept:** the code muzzle core, star, halo and light; the round's impact star and sparks; the hit flash,
+  hitmarkers and tracers.
+- **Finding, a bake bug:** the impacts bake halved the dust tints in sRGB. In this linear-space project that draws about 0.44 of
+  the pack's colour at half its opacity, so the first brick and dirt bake read as dark grey smoke.
+  - The effects bank's kinds now halve the tint in linear terms and keep the alpha.
+  - The released stone, metal and wood dust still use the old rule. Fixing them is a possible follow-up for the owner.
+- **Finding, no triggers yet:** dirt and glass have no trigger on a map players can pick.
+  - Dirt is the ground of the legacy snow and gravel maps, and a saved selection of those maps migrates to Brickfall.
+  - No map has a glass prop.
+  - Brick shows on Brickfall and the Expedition's brick districts.
+- **Animation and rules impacts:** none. This is presentation only: hit timing, hitboxes, damage, cooldowns, movement and the
+  wire are unchanged.
+- **Checks:**
+  - full CoreTests the relgen5 way at `309d8b3f` (1,109 groups, exit 0), and again after merging shared (release 28, #451) at
+    `bd13a830` (1,110 groups, exit 0; `--pack-fx-hits` 2,174 checks);
+  - `tools/check_unity_compile.py` at `bd13a830` (all four assemblies pass);
+  - `git diff --check` against shared;
+  - the pin scan (0 broken);
+  - **Not run: PrototypeBuild.Validate.**
+    - Hold E sent it on `309d8b3f` with the files installed.
+    - The Editor stalled for about 20 minutes, from about 20:16, behind a modal Unity dialog: "Low disk space", because F: had
+      dropped to 351 MB free. G1 withdrew the request before the tool took it.
+    - G1 then deleted its own capture frames, bringing F: to 1.5 GB, and closed the dialog with its OK command at 20:38. The
+      Editor resumed.
+    - The alert is in the side-session notes, `g1-disk-alert-2026-11-25.md`. F: still needs space freed.
+    - The new load path is one `Resources.Load` that returns null without the asset. CoreTests and the Unity compile cover
+      it; the integrator's release validate will run it.
+- **Proof** (`F:/Chip Arena Development/scratch/fx-guns`):
+  - `sheets/`: the lab's before/after on V1's rig, dark and bright stages. The impact sheets also show the zip-only step and the
+    pack as authored.
+  - `clips/`: Brickfall game captures, 2x slow, in first and third person, full screen and a 2.5x close-up.
+    - Dusk: the machine gun at a brick wall 8 m away.
+    - The dim hotel interior: the pistol at the stone stairs.
+  - `clips/lab-*`: the lab's slow-motion brick, dirt and muzzle clips.
+- **Ship steps (integrator):**
+  1. **Zip, when it has room** (else these files go into the effects bank, as in step 2; see Bytes):
+     - Copy the files in `F:/Chip Arena Development/scratch/fx-guns/ship/zip/ChipArenaLocal/Resources/PackBank/` into the
+       Editor checkout's `Assets/LocalAssets/ChipArenaLocal/Resources/PackBank/`. These are 10 PNGs and their metas:
+       `muzzle-flame-{pistol,rifle,machinegun,turret}`, `muzzle-burst-{star,fire,smoke}` and `impact-hole-{brick,glass,dirt}`.
+       Copy the files only, not the folder metas.
+     - Then run `tools/pack_visual_body.py <Drive zip> <new zip> --project <Editor project>`, then
+       `install_local_assets.py <new> --check`.
+     - Shared code already loads these, so they do not need this branch merged.
+     - The tool rebuilds them from the pack with `tools/pack_bank/build_pack_bank.py` with `fx-muzzle.json` and `fx-impacts.json`.
+  2. **Effects bank, when Astra's packer lands:**
+     - `Assets/LocalAssets/ChipArenaFx/Impacts/**` and `ChipArenaFx/Resources/ChipArenaImpactFx.prefab` are already in the
+       Editor checkout. A copy is in `F:/Chip Arena Development/scratch/fx-guns/ship/fx/ChipArenaFx`.
+     - Merge this branch for the loader.
+     - To rebuild: apply `F:/Chip Arena Development/scratch/fx-guns/tools/patch_tool.py` to the BoZo tool, send
+       `bozo-impacts.request` with the lines `<outDir>` and `fx=1`, then apply the patch again with `--revert`.
+- **Not done:**
+  - dirt and glass seen in a match (no trigger, above);
+  - the dark-stage game clips are an indoor Brickfall scene, because `map=moonlit` migrates to Brickfall;
+  - Hivemind shell casings and the reload, bolt and slide sounds (phase 2's optional parts).
 
 ## 2026-11-25 — Astra: Deathmatch bot frame pacing (PR #451)
 `codex/deathmatch-bot-frame-pacing`, shared base `729b5890`, implementation `e943c27b`. Bot focus queries keep the closest eligible candidate in roster order. A* computes straight-line heuristics only for discovered nodes. Killcam/network frames share immutable stat rows until a value changes. Target priority, AI cadence, snapshots, scoring and respawn timing retain the same rules.

@@ -25,6 +25,8 @@ namespace ChipArena.UnityConversion
     { public string id,material,role,parent,segment; public float hp; public float[] stages; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
     [Serializable] public sealed class ContentMap
     {
+        [NonSerialized] public NativeMeridianRoute.PieceCollisionInput routeCollision;
+
         public ContentMap WithCacheBlocks(ContentBlock[] additions)
         {
             var copy=(ContentMap)MemberwiseClone();

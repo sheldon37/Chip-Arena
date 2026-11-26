@@ -7,6 +7,8 @@ import json
 import shutil
 import sys
 import tempfile
+import os
+from unittest.mock import patch
 import unittest
 import zipfile
 
@@ -69,6 +71,9 @@ class Bake:
 class VisualBodyTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
+        queue_env = patch.dict(os.environ, {'LOCALAPPDATA': str(self.tmp / 'appdata')})
+        queue_env.start()
+        self.addCleanup(queue_env.stop)
         self.dev = self.tmp / 'dev'
         self.bake = Bake(self.dev)
         self.tree = LicensedTree(self.tmp / 'licensed')
