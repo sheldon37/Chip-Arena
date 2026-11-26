@@ -8,8 +8,8 @@ usage: python -I tools/fx_bank/magic.py SRC OUT
        kept when a meta exists), and OUT/magic-bytes.json.
 Each source flipbook is resized whole into its quadrant (1024 x 1024; its own grid kept, so frames may be non-square) as grey + alpha:
 the flame's grey is its density (its heat), the smoke's and spray's a soft shading from their density, and the additive art (plasma,
-arcs, energy shell) stores its light as both grey and alpha; resized premultiplied (no dark fringes). magic0 is 2048 x 2048, magic1
-2048 x 1024. The layout is Core NativeMagicFxPack.Sheets (pinned by CoreTests --fx-magic).
+arcs, energy shell) stores its light as both grey and alpha; resized premultiplied (no dark fringes). magic0 and magic1 are 2048 x 2048
+(magic1's last quadrant empty). The layout is Core NativeMagicFxPack.Sheets (pinned by CoreTests --fx-magic).
 Deterministic for the same sources (PNG, compress level 9).
 """
 import sys, os, json, uuid
@@ -29,8 +29,9 @@ LAYOUT = [
     (0, 1, 1, 'Lightning2.png', 'grey'),  # 3 arcs, 4 x 8
     (1, 0, 0, 'EnergyBall.png', 'grey'),  # 4 energy shell, 8 x 8
     (1, 1, 0, 'Fog1.png', 'fog'),         # 5 waves, 8 x 16
+    (1, 0, 1, 'Fire4.png', 'mask'),       # 6 flame tongues, 16 x 8
 ]
-SIZES = {0: (2048, 2048), 1: (2048, 1024)}
+SIZES = {0: (2048, 2048), 1: (2048, 2048)}
 
 def grey_alpha(path, alpha):
     im = Image.open(path); im.load()

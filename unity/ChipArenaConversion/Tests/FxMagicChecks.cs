@@ -36,25 +36,25 @@ namespace ChipArena.UnityConversion
         // ---- the atlases: Core's table is the tool's layout, each flipbook inside its atlas, none overlapping ----
         private static void Layout(string root)
         {
-            Check(NativeMagicFxPack.Sheets.Length==NativeMagicFxPack.Subs&&NativeMagicFxPack.Subs<=8,"six flipbooks, at most the shader's eight slots");
+            Check(NativeMagicFxPack.Sheets.Length==NativeMagicFxPack.Subs&&NativeMagicFxPack.Subs==7&&NativeMagicFxPack.Subs<=8,"seven flipbooks, at most the shader's eight slots");
             for(int k=0;k<NativeMagicFxPack.Subs;k++)
             {
                 var s=NativeMagicFxPack.Sheets[k];Check(s.Atlas>=0&&s.Atlas<NativeMagicFxPack.Atlases&&s.X>=0&&s.Y>=0&&s.X+s.W<=1.0001f&&s.Y+s.H<=1.0001f&&s.Columns>0&&s.Rows>0,"flipbook "+k+" inside its atlas");
                 Check(NativeMagicFxPack.Frames(k)<=255,"flipbook "+k+" frames fit the shader's encoding (x 256)");
                 for(int j=0;j<k;j++){var o=NativeMagicFxPack.Sheets[j];if(o.Atlas!=s.Atlas)continue;Check(s.X>=o.X+o.W-1e-4f||o.X>=s.X+s.W-1e-4f||s.Y>=o.Y+o.H-1e-4f||o.Y>=s.Y+s.H-1e-4f,"flipbooks "+j+" and "+k+" do not overlap");}
             }
-            Check(Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Flame)-.5f)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Plasma)-.5f)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Arcs)-2)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Waves)-2)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Smoke)-1)<1e-4f,"frame aspects: flames and plasma tall, arcs and waves wide");
+            Check(Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Flame)-.5f)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Plasma)-.5f)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Arcs)-2)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Waves)-2)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Smoke)-1)<1e-4f&&Math.Abs(NativeMagicFxPack.Aspect(NativeMagicFxPack.Tongues)-.5f)<1e-4f,"frame aspects: flames, tongues and plasma tall, arcs and waves wide");
             // The tool writes the same layout: atlas, quadrant (1024 px) and source, in Core's flipbook order.
             var tool=File.ReadAllText(Path.Combine(root,"tools/fx_bank/magic.py"));var rows=Regex.Matches(tool,@"\((\d), (\d), (\d), '(\w+)\.png', '(\w+)'\),\s+# (\d) ");
             Check(rows.Count==NativeMagicFxPack.Subs,"the tool lays out "+rows.Count+" flipbooks");
-            string[] sources={"Fire2","Fog5","PlasmaBall1","Lightning2","EnergyBall","Fog1"};
+            string[] sources={"Fire2","Fog5","PlasmaBall1","Lightning2","EnergyBall","Fog1","Fire4"};
             foreach(Match m in rows)
             {
                 int k=int.Parse(m.Groups[6].Value),atlas=int.Parse(m.Groups[1].Value),qx=int.Parse(m.Groups[2].Value),qy=int.Parse(m.Groups[3].Value);var s=NativeMagicFxPack.Sheets[k];
                 float w=NativeMagicFxPack.AtlasWidth[atlas],h=NativeMagicFxPack.AtlasHeight[atlas];
                 Check(s.Atlas==atlas&&Math.Abs(s.X-qx*1024/w)<1e-4f&&Math.Abs(s.Y-qy*1024/h)<1e-4f&&Math.Abs(s.W-1024/w)<1e-4f&&Math.Abs(s.H-1024/h)<1e-4f&&m.Groups[4].Value==sources[k],"flipbook "+k+" where the tool writes it");
             }
-            Check(tool.Contains("SIZES = {0: (2048, 2048), 1: (2048, 1024)}")&&NativeMagicFxPack.AtlasWidth.SequenceEqual(new[]{2048,2048})&&NativeMagicFxPack.AtlasHeight.SequenceEqual(new[]{2048,1024}),"the atlases' sizes");
+            Check(tool.Contains("SIZES = {0: (2048, 2048), 1: (2048, 2048)}")&&NativeMagicFxPack.AtlasWidth.SequenceEqual(new[]{2048,2048})&&NativeMagicFxPack.AtlasHeight.SequenceEqual(new[]{2048,2048}),"the atlases' sizes");
             Check(tool.Contains("'ChipArenaFx', 'Resources', 'ChipArenaMagicFx'")&&NativeMagicFxPack.Folder=="ChipArenaMagicFx"&&NativeMagicFxPack.Path(0)=="ChipArenaMagicFx/magic0"&&NativeMagicFxPack.Path(1)=="ChipArenaMagicFx/magic1","the effects bank's folder and names");
             Check(NativeMagicFxPack.Hex(Vector3.One)==0xffffff&&NativeMagicFxPack.Hex(NativeMagicMath.Lin(0xff7d3e))==0xff7d3e&&NativeMagicFxPack.Hex(NativeMagicMath.Lin(0x52ff83))==0x52ff83&&NativeMagicFxPack.Hex(Vector3.Zero)==0,"the tint hex round-trips the school colours");
         }
@@ -68,8 +68,8 @@ namespace ChipArena.UnityConversion
                 for(float t=0;t<2;t+=.031f)
                 {
                     a.Clear();b.Clear();NativeMagicFxPack.Head(a,s,at,dir,Speed(s),.2f,Halo(s),77,t,1,false);NativeMagicFxPack.Head(b,s,at,dir,Speed(s),.2f,Halo(s),77,t,1,false);
-                    Check(a.Count>=3&&a.Count<=8,s+" head: "+a.Count+" sprites");Check(Same(a,b),s+" head deterministic");
-                    for(int i=0;i<a.Count;i++){Check(Good(a.Items[i]),s+" head sprite "+i+" at "+t);Check(Vector3.Distance(a.Items[i].At,at)<=.2f*3+1e-3f,s+" head rides the bolt");}
+                    Check(a.Count>=3&&a.Count<=10,s+" head: "+a.Count+" sprites");Check(Same(a,b),s+" head deterministic");
+                    for(int i=0;i<a.Count;i++){Check(Good(a.Items[i]),s+" head sprite "+i+" at "+t);Check(Vector3.Distance(a.Items[i].At,at)<=.2f*6+1e-3f,s+" head rides the bolt (its tongues lick back up to six radii)");}
                 }
                 a.Clear();b.Clear();NativeMagicFxPack.Head(a,s,at,dir,Speed(s),.2f,Halo(s),77,.4f,1,false);NativeMagicFxPack.Head(b,s,at,dir,Speed(s),.4f,Halo(s),77,.4f,1,false);
                 Check(a.Count==b.Count&&Enumerable.Range(0,a.Count).All(i=>Math.Abs(b.Items[i].Size-2*a.Items[i].Size)<1e-3f),s+" head scales with the radius");

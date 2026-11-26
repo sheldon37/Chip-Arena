@@ -31,8 +31,9 @@ namespace ChipArena.UnityConversion
         public const int Atlases=2;
         public static string Path(int atlas)=>Folder+"/"+Names[atlas];
         /// <summary>The flipbooks in the atlases (tools/fx_bank/magic.py's layout): the flame burst (8 x 4, tall frames), smoke wisps (8 x 8),
-        /// the plasma ball (16 x 8), lightning arcs (4 x 8, wide frames), the energy shell (8 x 8) and spray waves (8 x 16, wide frames).</summary>
-        public const int Flame=0,Smoke=1,Plasma=2,Arcs=3,Shell=4,Waves=5,Subs=6;
+        /// the plasma ball (16 x 8), lightning arcs (4 x 8, wide frames), the energy shell (8 x 8), spray waves (8 x 16, wide frames) and flame
+        /// tongues (16 x 8, tall frames: a flame licking up and burning out).</summary>
+        public const int Flame=0,Smoke=1,Plasma=2,Arcs=3,Shell=4,Waves=5,Tongues=6,Subs=7;
         /// <summary>A flipbook's place: its atlas, its rect in it (fractions, from the image's top left) and its grid (row 0 at the top).</summary>
         public struct Sub{public int Atlas,Columns,Rows;public float X,Y,W,H;}
         public static readonly Sub[] Sheets=
@@ -41,11 +42,12 @@ namespace ChipArena.UnityConversion
             new Sub{Atlas=0,X=.5f,Y=0,W=.5f,H=.5f,Columns=8,Rows=8},
             new Sub{Atlas=0,X=0,Y=.5f,W=.5f,H=.5f,Columns=16,Rows=8},
             new Sub{Atlas=0,X=.5f,Y=.5f,W=.5f,H=.5f,Columns=4,Rows=8},
-            new Sub{Atlas=1,X=0,Y=0,W=.5f,H=1,Columns=8,Rows=8},
-            new Sub{Atlas=1,X=.5f,Y=0,W=.5f,H=1,Columns=8,Rows=16},
+            new Sub{Atlas=1,X=0,Y=0,W=.5f,H=.5f,Columns=8,Rows=8},
+            new Sub{Atlas=1,X=.5f,Y=0,W=.5f,H=.5f,Columns=8,Rows=16},
+            new Sub{Atlas=1,X=0,Y=.5f,W=.5f,H=.5f,Columns=16,Rows=8},
         };
         /// <summary>The atlases' pixel sizes (width, height).</summary>
-        public static readonly int[] AtlasWidth={2048,2048},AtlasHeight={2048,1024};
+        public static readonly int[] AtlasWidth={2048,2048},AtlasHeight={2048,2048};
         public static int Frames(int sub)=>Sheets[sub].Columns*Sheets[sub].Rows;
         /// <summary>A frame's width over its height (a camera-facing sprite keeps it: the flames are tall, the arcs and waves wide).</summary>
         public static float Aspect(int sub){var s=Sheets[sub];return s.W*AtlasWidth[s.Atlas]/s.Columns/(s.H*AtlasHeight[s.Atlas]/s.Rows);}
@@ -124,13 +126,14 @@ namespace ChipArena.UnityConversion
             {
                 case NativeMagicSchool.Fire:
                 {
-                    // A white-hot core in the fire's yellow, a warm halo, and three flames rolling round it, licking back along the flight.
-                    Add(into,Light(at,FireHot*3.4f,r*2.6f,1));
-                    Add(into,Light(at,Lerp(halo,FireHot,.3f)*.65f,r*7f,1,0));
-                    // The ball: two flames facing the camera, turning opposite ways.
-                    for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,24,8,12,H(seed,k,2)),at+back*(r*.3f),r*(7.5f-1.5f*k),(H(seed,k,3)-.5f)*.6f+t*(k==0?1.2f:-1.6f),2.6f,3f,FireSmokeHex,.08f,.95f,1));
-                    // Two flames licking back along the flight.
-                    if(moving)for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,28,6,14,H(seed,k+2,2)),at+back*(r*(1.2f+1.4f*k)),r*(5.4f-.8f*k),0,2.3f-.4f*k,2.8f,FireSmokeHex,.08f,.9f,1-.15f*k,dir*(r*(3f+2f*k))));
+                    // A rolling fireball: a white-hot core, a glowing body of flame in the school's orange (two layers turning opposite ways),
+                    // real flames rolling over it, three tongues licking back along the flight, and a warm halo. About 2 m across at a .2 m bolt.
+                    var orange=Lerp(halo,FireHot,.35f);
+                    Add(into,Light(at,FireHot*4.5f,r*3.2f,1));
+                    for(int k=0;k<2;k++)Add(into,Glow(Flame,Loop(Flame,t,22,8,12,H(seed,k,4)),at+back*(r*.25f),r*(10.5f-2f*k),(H(seed,k,5)-.5f)*.5f+t*(k==0?1.4f:-1.9f),k==0?orange:FireHot,3.2f-.6f*k,.75f,.25f,1));
+                    for(int k=0;k<2;k++)Add(into,Fire(Loop(Flame,t,26,8,12,H(seed,k,2)),at+back*(r*.4f),r*(8.5f-1.5f*k),(H(seed,k,3)-.5f)*.6f+t*(k==0?1.2f:-1.6f),2.8f,3.2f,FireSmokeHex,.08f,.85f,.9f));
+                    if(moving)for(int k=0;k<3;k++)Add(into,Glow(Tongues,Loop(Tongues,t,48,20,60,H(seed,k+2,2)),at+back*(r*(1.5f+1.8f*k)),r*(6.5f-1.2f*k),0,orange,3f-.5f*k,.6f,.3f,1-.2f*k,dir*(r*(5f+3f*k))));
+                    Add(into,Light(at,orange*1.1f,r*11f,1,0));
                     break;
                 }
                 case NativeMagicSchool.Water:
@@ -185,7 +188,9 @@ namespace ChipArena.UnityConversion
         // A step of .3 m at a .2 m radius: wider bolts shed bigger sprites further apart. The fastest bolts (100-120 m/s) shed every ~.3 m.
         private static readonly Layer[] FireTrail=
         {
-            new Layer{Look=NativeMagicLook.Fire,Sheet=Flame,Step=.5f,Life0=.09f,Life1=.16f,Size0=4.6f,Size1=6f,Spread=.15f,Rise=.8f,Back=2.5f,Gain=2.6f,Heat=2.2f,Self=.08f,Occlusion=.9f,
+            new Layer{Look=NativeMagicLook.Glow,Sheet=Tongues,Step=.6f,Life0=.14f,Life1=.24f,Size0=5f,Size1=6.5f,Spread=.2f,Rise=1.2f,Back=3f,Gain=2.6f,Hot=.5f,Occlusion=.35f,HaloWhite=-2,
+                From=16,Span=100,Alpha=new[]{1f,1f,.7f,0},Grow=new[]{.7f,1.1f,1.3f},Along=3f},
+            new Layer{Look=NativeMagicLook.Fire,Sheet=Flame,Step=1f,Phase=.5f,Life0=.09f,Life1=.16f,Size0=4.6f,Size1=6f,Spread=.15f,Rise=.8f,Back=2.5f,Gain=2.6f,Heat=2.2f,Self=.08f,Occlusion=.9f,
                 From=6,Span=18,HeatCurve=new[]{1f,.8f,.45f},Alpha=new[]{1f,1f,.75f,0},Grow=new[]{.8f,1.1f,1.25f},Along=2.5f},
             new Layer{Look=NativeMagicLook.Smoke,Sheet=Smoke,Step=2f,Phase=.5f,Life0=.3f,Life1=.45f,Size0=3.5f,Size1=5f,Spread=.6f,Rise=.9f,Back=6,Gain=.8f,Self=.15f,Hex=FireSmokeHex,
                 From=8,Span=48,Alpha=new[]{0f,.7f,.5f,0},Grow=new[]{.6f,1.1f,1.6f}},
@@ -238,7 +243,7 @@ namespace ChipArena.UnityConversion
                     float behind=trail.Live?trail.Travel-d:1e9f;if(behind<l.Back*r)continue;
                     var jitter=Sphere(seed,k,10)*(l.Spread*r*(float)Math.Sqrt(H(seed,k,2)));var p=at+jitter+new Vector3(0,l.Rise*a,0);
                     float size=Mix(l.Size0,l.Size1,H(seed,k,3))*r*Curve(l.Grow,u),opacity=Curve(l.Alpha,u)*l.Opacity,roll=H(seed,k,4)*6.2831853f+(H(seed,k,5)-.5f)*1.2f*u;
-                    var tint=l.HaloWhite>=0?Lerp(halo,White,l.HaloWhite):FireHot;
+                    var tint=l.HaloWhite>=0?Lerp(halo,White,l.HaloWhite):l.HaloWhite<-1.5f?Lerp(halo,FireHot,.35f):FireHot;
                     float frame=l.Sheet<0?0:l.Fps>0?Loop(l.Sheet,a,l.Fps,l.From,l.Span,H(seed,k,6)):Play(l.Sheet,u,l.From,l.Span);
                     if(l.Sheet==Arcs)frame=l.From+(int)(H(seed,k,6)*l.Span);
                     var seg=l.Along>0&&dir.LengthSquared()>.25f?dir*(l.Along*r):Vector3.Zero;
@@ -276,12 +281,17 @@ namespace ChipArena.UnityConversion
             {
                 case NativeMagicSchool.Fire:
                 {
-                    // A flash, two flame bursts rolling out of the point (the staff's 1.5 m blast is the blast sim's), embers, a little smoke.
-                    if(t<.12f)Add(into,Light(c,FireHot*(4f*(1-t/.12f)),s*2.4f,1));
+                    // Its own flame burst over the staff's 1.5 m blast (the blast sim's): a flash, a roaring column of flame tongues, flames thrown
+                    // out along the surface, two flame bursts rolling out of the point, embers and smoke.
+                    var orange=Lerp(tint,FireHot,.35f);
+                    if(t<.14f)Add(into,Light(c,FireHot*(5f*(1-t/.14f)),s*3.2f,1));
+                    for(int k=0;k<3;k++){float life=.75f+.15f*k,u=(t-.03f*k)/life;if(u>0&&u<1)Add(into,Glow(Tongues,Play(Tongues,u,8,110),c+Out(seed,k+30,n,surface,1.2f)*(.2f*s)+new Vector3(0,s*(.35f+.25f*k)+.6f*t,0),s*(2.2f-.3f*k)*(.8f+.3f*(float)Math.Sqrt(u)),(H(seed,k,36)-.5f)*.5f,k==1?FireHot:orange,3.2f*(1-.4f*u),.6f,.3f,u<.7f?1:(1-u)/.3f));}
+                    for(int k=0;k<Keep(6,quality,low);k++){float life=.4f+.15f*H(seed,k,37),u=t/life;if(u>=1)continue;var d=surface?Vector3.Normalize(Out(seed,k+40,n,true,.05f)-n*.6f*Vector3.Dot(Out(seed,k+40,n,true,.05f),n)):Out(seed,k+40,n,false);
+                        Add(into,Glow(Flame,Play(Flame,u,6,22),c+d*(s*(.35f+.9f*(float)Math.Sqrt(u))),s*.9f,0,orange,2.6f*(1-u*.5f),.5f,.4f,u<.6f?1:(1-u)/.4f,d*(s*1.1f)));}
                     for(int k=0;k<2;k++){float life=.5f+.12f*k,u=t/life;if(u<1){var p=c+Out(seed,k,n,surface,.8f)*(.18f*s*k)+new Vector3(0,.5f*t,0);
                         Add(into,Fire(Play(Flame,u,4,26),p,s*(1.25f+.35f*k)*(.75f+.4f*(float)Math.Sqrt(u)),(H(seed,k,20)-.5f)*.8f,2.4f*(1-.6f*u),2.8f,FireSmokeHex,.1f,.9f,u<.75f?1:(1-u)/.25f));}}
-                    Embers(into,c,n,surface,seed,t,Keep(14,quality,low),FireHot,4.5f,6,10,s);
-                    for(int k=0;k<Keep(3,quality,low);k++){float life=.8f+.2f*H(seed,k,21),u=(t-.12f)/life;if(u>0&&u<1)Add(into,SmokeOf(Smoke,Play(Smoke,u,6,50),c+Out(seed,k+9,n,surface)*(.4f*s)+new Vector3(0,.6f*t,0),s*(1.1f+.6f*u),H(seed,k,22)*6.2831853f,FireSmokeHex,.8f,.12f,Curve(new[]{0f,.6f,.35f,0},u)));}
+                    Embers(into,c,n,surface,seed,t,Keep(18,quality,low),FireHot,4.5f,6,11,s);
+                    for(int k=0;k<Keep(4,quality,low);k++){float life=.9f+.2f*H(seed,k,21),u=(t-.15f)/life;if(u>0&&u<1)Add(into,SmokeOf(Smoke,Play(Smoke,u,6,50),c+Out(seed,k+9,n,surface)*(.45f*s)+new Vector3(0,s*.6f+.7f*t,0),s*(1.4f+.8f*u),H(seed,k,22)*6.2831853f,FireSmokeHex,.8f,.12f,Curve(new[]{0f,.65f,.4f,0},u)));}
                     break;
                 }
                 case NativeMagicSchool.Water:
@@ -356,8 +366,9 @@ namespace ChipArena.UnityConversion
             {
                 float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(7.5f-1f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.4f+.7f*k))+new Vector3(0,r*.15f*k,0);
                 var seg=moving?fwd*(r*(2f+1.5f*k)):Vector3.Zero;
-                Add(into,Fire(frame,p,size,roll,0,1,BlackFireHex,.05f,1,1-.15f*k,seg));
-                Add(into,Glow(Flame,frame,p,size*.8f,roll,Rim,1.3f,0,0,.7f-.12f*k,seg*.8f));
+                // A violet flame a little larger than the black one: its rim (and, sorted over it, its glow) reads on a dark stage.
+                Add(into,Glow(Flame,frame,p,size*1.08f,roll,Rim,3.2f,.25f,0,1-.12f*k,seg*1.08f));
+                Add(into,Fire(frame,p,size*.85f,roll,0,1,BlackFireHex,.05f,1,1-.15f*k,seg*.85f));
             }
         }
         /// <summary>The void orb's rim violet (NativeVoidOrbFx.RimHex), linear.</summary>
@@ -371,8 +382,8 @@ namespace ChipArena.UnityConversion
             {
                 float life=.6f+.15f*H(seed,k,63),u=t/life;if(u>=1)continue;float frame=Play(Flame,u,4,26),size=s*(1.3f+.3f*k)*(.75f+.4f*(float)Math.Sqrt(u)),roll=H(seed,k,64)*6.2831853f,op=u<.7f?.95f:.95f*(1-u)/.3f;
                 var p=at+Out(seed,k,n,surface,.7f)*(.25f*s*k)+new Vector3(0,.4f*t,0);
-                Add(into,Fire(frame,p,size,roll,0,1,BlackFireHex,.05f,1,op));
-                Add(into,Glow(Flame,frame,p,size*.8f,roll,Rim,1.4f*(1-u),0,0,op*.7f));
+                Add(into,Glow(Flame,frame,p,size*1.08f,roll,Rim,3.4f*(1-.5f*u),.25f,0,op));
+                Add(into,Fire(frame,p,size*.85f,roll,0,1,BlackFireHex,.05f,1,op));
             }
         }
     }
