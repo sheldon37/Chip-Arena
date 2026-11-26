@@ -42,15 +42,18 @@ Doc: `docs/PACK-EFFECTS.md`, section "Guns: the muzzle flipbooks installed, bric
 - **Animation and rules impacts:** none. This is presentation only: hit timing, hitboxes, damage, cooldowns, movement and the
   wire are unchanged.
 - **Checks:**
-  - full CoreTests the relgen5 way at `309d8b3f` (1,109 groups, exit 0);
-  - `--pack-fx-hits` at the head (2,174 checks);
-  - `tools/check_unity_compile.py` (all four assemblies pass);
-  - `git diff --check`;
+  - full CoreTests the relgen5 way at `309d8b3f` (1,109 groups, exit 0), and again after merging shared (release 28, #451) at
+    `bd13a830` (1,110 groups, exit 0; `--pack-fx-hits` 2,174 checks);
+  - `tools/check_unity_compile.py` at `bd13a830` (all four assemblies pass);
+  - `git diff --check` against shared;
   - the pin scan (0 broken);
   - **Not run: PrototypeBuild.Validate.**
     - Hold E sent it on `309d8b3f` with the files installed.
-    - After the move, the Editor spent about 10 minutes re-importing out-of-date assets. G1 withdrew the request before the
-      tool took it, so the lock would not overrun its limit.
+    - The Editor stalled for about 20 minutes, from about 20:16, behind a modal Unity dialog: "Low disk space", because F: had
+      dropped to 351 MB free. G1 withdrew the request before the tool took it.
+    - G1 then deleted its own capture frames, bringing F: to 1.5 GB, and closed the dialog with its OK command at 20:38. The
+      Editor resumed.
+    - The alert is in the side-session notes, `g1-disk-alert-2026-11-25.md`. F: still needs space freed.
     - The new load path is one `Resources.Load` that returns null without the asset. CoreTests and the Unity compile cover
       it; the integrator's release validate will run it.
 - **Proof** (`F:/Chip Arena Development/scratch/fx-guns`):
