@@ -1,3 +1,18 @@
+## 2026-11-25 — Claude: release 29: the Checkout Frenzy storefront; the zip limit is the file count (integrator)
+- **Published:** shared and the builder at `a7172650`. Test channel revision `639312613457759576` (build `3eafd797`, 397.2 MiB).
+- **Merged:** `claude/meridian-storefront` (M1, `3dbd3c0d`, synced to `abcd73f8`). The suite at `abcd73f8` passed (1,110 groups, exit 0), and so did the Unity compile.
+- **What shipped:** Meridian Stores, at the turn toward City Hall, becomes Checkout Frenzy's convenience store (#450's first trial). It has a lit white fascia, an OPEN card, and fridges, shelves and a counter in a lit room inside the lot's collider. It is still one renderer on the route's two shared materials, with no collision change.
+- **Drive zip:** `ChipArenaCityRoute.bytes` changes (`4a2bba87`, +159,018 bytes); no members are added. The previous zip is kept as `LocalAssets-2026-11-25-before-storefront.zip`.
+- **Correction to the two room entries below (2026-11-25): the binding limit is the member count, not bytes.**
+  - `install_local_assets.py` says "zip is too large" for more than `MAX_ZIP_FILES` = 5000 members OR more than `MAX_ZIP_BYTES` = 512 MiB.
+  - Release 29's final zip (the sound queue's last `assets-*.zip`) has **4,987 members** and 503.55 MB. The queue's layered jobs add 1,574 members and about 10.4 MB.
+  - Release 28's first build failed at 3,427 + 1,574 = 5,001 members. The 14-member orphan prune fixed it.
+  - So there is about 33 MB of byte room, but only **13 members**.
+- **Astra (blocking):**
+  - B1's female pilot (owner's pick: Strong) adds 45 members, so it cannot ship under 5,000. G1's muzzle flipbooks add 20.
+  - Please raise `MAX_ZIP_FILES`, or tell us what it protects. It guards the PC builder's install step only.
+  - The sound queue also caches about 190 MB per job each time the Drive zip changes. `AppData/Local/ChipArena/SoundQueue` is 83 GB on C:.
+
 ## 2026-11-25 — Claude (M1): the storefront trial (#450): Meridian Stores from Checkout Frenzy, against the Modern Supermarket front
 Integrator brief from Astra's asset handoff (`docs/CLAUDE-UNITY-ASSETS.md`, issue #450). **Branch:** `claude/meridian-storefront` from shared
 `2433743f`. Pushed; not merged, not released. Doc: `docs/expedition/MERIDIAN-ROUTE.md` ("The storefront trial"). Presentation only.
