@@ -1,3 +1,30 @@
+## 2026-11-26 — Claude: releases 32 and 33: the staff's head no longer spins, and looks where it aims while running (integrator)
+- **Owner reports:** "With magic, the head seems to be doing 360s when moving" (with a screen recording). Then, on the first fix's clip: "it doesn't look like they're looking where they are aiming anymore".
+- **Cause (measured in play):** the staff's run carry (`Set.RunUpper`, `Frank_RPG_Mage_8Way_Run_F~mirror`) holds Neck Turn about -4.4 and Head Turn about -3.6 in the motion bank `21eab500`; a muscle's range is -1..1.
+  - The probe: the BoZo tool's `motion.csv` with the neck, head and twist muscles, the head's rotation in the body frame, and the carry's share.
+  - While running, the head sat about 320 degrees round, which landed near the aim. Each time the carry eased in or out (start, stop, turns), it swept through about 170 degrees.
+  - The rifle, which has no carry, stays in range.
+- **Release 32** (shared and builder `44c982bd`, revision `639313214403852248`): the carry lays the upper body without the neck, head, eyes and jaw (`CarryMuscles`, `NativeVisualMotion.HeadMuscle`). That stopped the spin, but the face then followed the carry's twisted, leaning chest.
+- **Release 33** (shared and builder `04a99b8f`, revision `639313265351170380`, build `9ccba946`): the carry's torso twist and lean are taken back on the neck's and head's turns and nods.
+  - Twist and lean are the spine, chest and upper chest, in degrees by Unity's default muscle ranges, times the carry's share. They are measured before the carry is laid, and taken back half each within the limits (`TorsoChange`, `TakeBack`).
+  - Measured against the standing pose while running:
+
+    | Build | Heading | Level | Blends |
+    |---|---|---|---|
+    | Release 31 | 32.8 median (1..67) | 1.9 | 176 |
+    | Release 33 | 2.0 (-7..13) | -5.5 | about -5, no sweep |
+    | Rifle | 22.7 | -0.8 | none |
+
+  - The Bombadier's fists carry goes through the same path.
+- **Presentation only:** no hitbox, shot origin, timing, speed or wire change.
+- **Checks:**
+  - The full suite passed at `723474b5` and at `9e4a5ffa` (1,113 groups each), and so did the Unity compile.
+  - `--run-realistic` passed: 459 checks, including the head and torso muscle names, degrees and back, limits, and the order measure, lay, take back.
+  - In the Editor: probed third-person runs on release 31, `e2d0b09f`, `0f964c72` and the rifle. Clips were sent to the owner.
+- **Not checked:** first person (the head is not drawn there); the other schools' staffs (same set, same carry); the Bombadier in play; two clients.
+- **Also open:** the motion bank's carry clip still holds the out-of-range neck and head. A rebake of `Frank_RPG_Mage_8Way_Run_F` (or a check over the whole bank for muscles past about 1.5) would fix it at the source; the code no longer reads them.
+- **Builder:** F: has 24 GB free, with 9 work folders. The retention hook still removes none (release 31's entry).
+
 ## 2026-11-26 — Claude: release 31: Astra's effects bank, and the realistic effects it ships (integrator)
 - **Published:** shared and the builder at `4b34d6fc`. Test channel revision `639313172190700790` (build `63a5e98e`); publication succeeded at 19:17 UTC.
 - **Merged** as one integration branch, `claude/fx-bank-release`, so that one full suite covers it all (1,113 groups, exit 0; the Unity compile passed):
