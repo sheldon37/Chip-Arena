@@ -124,8 +124,11 @@ class QueueTests(unittest.TestCase):
         for path in bundle.rglob('*.json'):
             path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
         plans = q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
-        self.assertEqual(len(plans), 9)
-        row, path, manifest, digest, jobs = plans[0]
+        # Every queue row must survive a Windows checkout with the same hash and jobs.
+        original = q.plan(q.BUNDLE / 'docs/audio/sound-queue.json', q.BUNDLE)
+        self.assertEqual([(p[0]['id'], p[3], p[4]) for p in plans],
+                         [(p[0]['id'], p[3], p[4]) for p in original])
+        row, path, manifest, digest, jobs = next(p for p in plans if p[0]['id'] == 'boss-sample-20261105')
         self.assertEqual(len(jobs), 6)
         self.assertEqual(sum(j['durationSeconds'] for j in jobs), 11)
         self.assertEqual(hashlib.sha256(importer.load_manifest(path)[0]).hexdigest(), digest)
@@ -204,7 +207,7 @@ class QueueTests(unittest.TestCase):
         self.assertAlmostEqual(sum(j['durationSeconds'] for j in fresh), 148.6)
         self.assertEqual(len({j['file'] for j in fresh}), 92)
         self.assertEqual({j['file'] for j in fresh}, {j['file'] for j in q.gen.entries(noctiel[0][2], optional=True)})
-        plans = [p for p in plans if not p[0]['manifest'].endswith('sound-requests-noctiel.json')]
+        plans = [p for p in plans if p[0]['manifest'] == 'docs/audio/sound-requests-bosses.json']
         jobs = [job for row in plans for job in row[4]]
         self.assertEqual(len(jobs), 121)
         self.assertAlmostEqual(sum(job['durationSeconds'] for job in jobs), 195.3)

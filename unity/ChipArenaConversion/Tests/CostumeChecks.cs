@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             // A service that keeps the whole look (VA1's schema, NativeLook.ServiceKeepsLook): the account's look is the truth, so taking
             // the costume (or the Hot Dog) off on another PC sticks; the tone still comes back as before.
             Check(NativeLook.KeepSkin("hair:wild","upper:tee,costume:voxel",true)=="hair:wild"&&NativeLook.KeepSkin("","upper:hot-dog",true)==""&&NativeLook.KeepSkin("hair:wild","skin:c48a62",true)=="hair:wild,skin:c48a62"&&NativeLook.KeepSkin("hair:wild,costume:voxel","",true)=="hair:wild,costume:voxel","after VA1 a login takes the account's costume as it is");
-            Check(NativeLook.ServiceKeepsLook==3,"the account schema that keeps the look is VA1's (3; the deployed Worker says 2)");
+            Check(NativeLook.ServiceKeepsCostume==3,"the account schema that keeps the look is VA1's (3; the deployed Worker says 2)");
             // Blind pick: the host blanks the skin map in the lobby (NativeNetwork's lobby seats), so the lobby shows the costume in the
             // Standard variant without Prototype weapons and the match the real picks; the look's key is untouched by it.
             Check(NativeBodySkins.Of("")==NativeBodySkins.StandardIndex&&NativeBodySkins.Of("body:prototype")==NativeBodySkins.PrototypeIndex&&NativeVoxelCostume.Worn(a)&&!NativeVoxelCostume.SetOn(""),"blind pick: a blank skin map is the Standard costume without the voxel set");

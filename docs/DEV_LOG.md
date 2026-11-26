@@ -1,3 +1,7 @@
+## 2026-11-26 — Astra: B1 body and hair account and peer contract
+
+`codex/pilot-look-sync` on shared `86b86bed`. NativeLook keeps the body key and the bob/high ponytail across wardrobe edits, host gating, lobby and match seat normalization. The account Worker advertises schema 4 and uses Unity's wardrobe defaults and DEV restrictions. Schema 3 accepts remote costume resets while retaining unsupported local body and hair. Schema 4 accepts remote body and hair resets. The owner already picked Strong. Nine isolated Worker canonicalization cases passed locally. Account second-login and native regression checks are included. Two Windows clients, the live Worker deployment and the test-channel build require separate verification.
+
 ## 2026-11-26 — Claude: release 30: the Female pilot at Strong, and the zip member cap raised to 6,000 (integrator)
 - **Published:** shared and the builder at `86b86bed`. Test channel revision `639312660795293099` (build `7505d443`, 398.3 MiB).
 - **Merged:**
