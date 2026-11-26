@@ -1,3 +1,26 @@
+## 2026-11-26 — Claude: release 30: the Female pilot at Strong, and the zip member cap raised to 6,000 (integrator)
+- **Published:** shared and the builder at `86b86bed`. Test channel revision `639312660795293099` (build `7505d443`, 398.3 MiB).
+- **Merged:**
+  - `claude/zip-files-cap` (`0482868a`, shared `195b6c2c`): `install_local_assets.py` `MAX_ZIP_FILES` goes from 5000 to 6000 (owner: "Yes, raise it"), and "zip is too large" now names the members and bytes against both caps. The suite at `0482868a` passed (1,110 groups).
+  - `claude/pilot-body-hair` (B1, with `35c34f57` setting `NativeBodyKind.DefaultLevel=Strong`, owner: "Strong"; synced to `5985f599`). The suite passed (1,111 groups, exit 0), and so did the Unity compile.
+  - The pin scan flagged `NativeProfileUI.cs look=GatedLook()`. That pin is checked in `NativeNetwork.cs`, which is unchanged; B1's new Profile UI line has its own check. It is a false positive.
+- **What shipped:**
+  - The Locker's BODY row (Male / Female, kept on this PC). The Female body at Strong: blend shapes past 0..100 are baked into per-mesh copies, because `legacyClampBlendShapeWeights` is 1.
+  - The pack's female idle on the Locker, lobby and portrait poses. Match idles are unchanged; `ArenaPresentation.FemaleMatchStance` is off.
+  - Picking Female switches Spiky hair to Fringe tail.
+  - The bob and the high ponytail are baked, with the patched cloth bridge, but not yet pickable.
+- **Drive zip:** repacked with `--with-cloth` (the plain pack had kept the old bridge): +45 members, +2,511,687 bytes, 3,458 members. Adding the sound queue's 1,574 makes about 5,032, under the new 6,000. The previous zip is kept as `LocalAssets-2026-11-25-before-female-pilot.zip`. B1's bake and bridge are now in the Editor's LocalAssets (the released state).
+- **Astra, still open (B1's DEV_LOG entries):**
+  - NativeLook carries `body` (Female only; male is the default and never written).
+  - The `bob` and `high-ponytail` hair ids.
+  - The account load keeps the body.
+  - The Worker / service allowlist.
+  - Until then a peer sees the Male body and the pick lives in this PC's prefs.
+- **Not run or failing:**
+  - Three Python tool tests fail the same way on unmodified shared: `test_effects_audio` (1), `test_import_sound_requests` (5) and `test_intro_music` (1).
+  - `test_local_cloth`, `test_private_addons` and `test_visual_body_assets` hit a 300 s timeout here.
+  - No Windows match with two clients, and no account round trip.
+
 ## 2026-11-25 — Claude (B1): the female body, the owner's review round (levels, stance, face)
 Owner: "I think the body needs to look more feminine for the female body; Take your time to analyze this one." Release 28 on hold. Branch `claude/pilot-body-hair` (code `41daa60e`, `2d3ab48f`, `bccf8583`; docs after), pushed, not merged, not released. Presentation only: hit volumes, shot origins, reach, movement, timing and the wire unchanged; no clip, motion bank or bake change (the candidate zip is unchanged).
 - **Analysis (the integrator's, verified):** today's pilot is the pack's neutral middle (every shape 0, no bone modifiers). The pack's males push BodyType +26..+67, Weight +15, NeckThickness +19..+100, Sharpness +65..+85, the clavicles 1.07 and the root 1.03; its females BodyType 0..-15, Weight to -24, Curvy 100-115, Chest 42-60, the root .92-.98 and Hana's upper arm (1, .92, .73). So Default_Girl on the neutral base moved little.
