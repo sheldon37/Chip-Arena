@@ -101,6 +101,7 @@ namespace ChipArena.UnityConversion
         {
             var was = NativeMeridianRoute.Storefront;
             Check(NativeMeridianRoute.Storefronts.Distinct().Count() == 3 && NativeMeridianRoute.Storefronts.Contains(was), "three storefronts, the one in force among them");
+            Check(was == NativeMeridianRoute.StorefrontCf && route.CornerKey == NativeMeridianRoute.Corner + "-cf", "the trial's pick, Checkout Frenzy's convenience store, is in force");
             try
             {
                 foreach (var sf in NativeMeridianRoute.Storefronts)
@@ -108,6 +109,9 @@ namespace ChipArena.UnityConversion
                     NativeMeridianRoute.Storefront = sf;
                     var v = NativeMeridianRoute.Place(seed, map, landmarks);
                     var key = NativeMeridianRoute.CornerKeyOf(sf);
+                    NativeMeridianRoute.Storefront = was;
+                    var given = NativeMeridianRoute.Place(seed, map, landmarks, sf);
+                    Check(v.CornerKey == key && given.CornerKey == key && given.Art.Pieces.Select(p => p.Key).SequenceEqual(v.Art.Pieces.Select(p => p.Key)), "storefront '" + sf + "' given to Place as it is in force");
                     Check(key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal) && (sf == "") == (key == NativeMeridianRoute.Corner), "storefront '" + sf + "' draws " + key);
                     Check(v.Art.Pieces.Count(p => p.Key == key) == 1 && v.Art.Pieces.Count(p => p.Key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal)) == 1, "storefront '" + sf + "': one corner shop, its own");
                     Check(v.Art.Pieces.Select(p => p.Key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal) ? NativeMeridianRoute.Corner : p.Key).SequenceEqual(route.Art.Pieces.Select(p => p.Key.StartsWith(NativeMeridianRoute.Corner, StringComparison.Ordinal) ? NativeMeridianRoute.Corner : p.Key))
@@ -205,7 +209,7 @@ namespace ChipArena.UnityConversion
         {
             string Src(string rel) => File.ReadAllText(Path.Combine(root, "Assets/ChipArena", rel)).Replace("\r\n", "\n");
             var show = Src("Runtime/NativeExpeditionWorldPresentation.cs");
-            Check(show.Contains("liveRoutePlan=NativeMeridianRouteDraw.HasBank?NativeMeridianRoute.Place(plan.Seed,city.Map,landmarks):null;"), "ShowMeridian places the route with the landmarks it replaces pieces of");
+            Check(show.Contains("liveRoutePlan=NativeMeridianRouteDraw.HasBank?NativeMeridianRoute.Place(plan.Seed,city.Map,landmarks,NativeMeridianRouteDraw.StorefrontInBank()):null;"), "ShowMeridian places the route with the landmarks it replaces pieces of");
             Check(show.Contains("NativeMeridianDress.FacadeReplaced=(p,n)=>route.Covers(p,n);") && show.Contains("NativeMeridianDress.FacadeReplaced=null;"), "the street dress leaves the shop's ground storey to the route (and lets go after)");
             var lots = Src("Core/NativeMeridianDressLots.cs");
             Check(lots.Contains("if(BayReplaced(at,uh,N,w,fh))continue;"), "a replaced bay draws nothing of the street dress");
@@ -215,7 +219,8 @@ namespace ChipArena.UnityConversion
             Check(life.Contains("if(liveRoutePlan!=null)input.KeepOut.AddRange(liveRoutePlan.KeepOut);"), "the street life keeps off the route's pieces");
             var draw = Src("Runtime/NativeMeridianRoute.cs");
             Check(draw.Contains("art.Build(street, camera, NativeMeridianRoute.Bank, false)") && draw.Contains("fronts.Build(front, camera, NativeMeridianRoute.Bank)") && draw.Contains("public static bool HasBank => NativePackBanks.Bank(NativeMeridianRoute.Bank) != null;"), "the route's pieces come from its own bank, through the landmarks' drawer");
-            Check(show.Contains("liveRoutePlan.Facades.Count>0&&NativeMeridianRouteDraw.Has(NativeMeridianRoute.CornerKey)") && draw.Contains("public static bool Has(string key) => NativePackBanks.Bank(NativeMeridianRoute.Bank)?.Find(key + \"/0\") != null;"), "only a storefront the bank carries takes the ground storey");
+            Check(show.Contains("liveRoutePlan.Facades.Count>0&&NativeMeridianRouteDraw.Has(liveRoutePlan.CornerKey)") && draw.Contains("public static bool Has(string key) => NativePackBanks.Bank(NativeMeridianRoute.Bank)?.Find(key + \"/0\") != null;"), "only a storefront the bank carries takes the ground storey");
+            Check(draw.Contains("=> Has(NativeMeridianRoute.CornerKey) || !Has(NativeMeridianRoute.Corner) ? NativeMeridianRoute.Storefront : \"\";"), "a bank without the chosen storefront keeps the release-27 front");
             var lm = Src("Runtime/NativeMeridianLandmarks.cs");
             Check(lm.Contains("bankName = bankName ?? NativeMeridianLandmarks.Bank;") && lm.Contains("return NativePackBanks.Mesh(bankName, prop.Parts[0].Mesh);"), "the landmarks' drawer reads the bank it is given");
             Check(!Src("Core/NativeMeridianRoute.cs").Contains("UnityEngine"), "the placement is pure");

@@ -40,9 +40,11 @@ namespace ChipArena.UnityConversion
         public static readonly string[] RoofLots = { "lot-lower-hill-71", "lot-lower-hill-72", "lot-lower-hill-73", "lot-lower-hill-74" };
         /// <summary>The storefront trial (issue #450, docs/expedition/MERIDIAN-ROUTE.md): the corner shop's dressing. "" is the
         /// grocer's front with Modern Supermarket's produce (release 27, key Corner); StorefrontCf is Checkout Frenzy's convenience
-        /// store; StorefrontMix is the grocer's front with Checkout Frenzy's lit interior behind its windows. The same lot faces, keep-outs
-        /// and collision for every one; the bank carries the variants it was built with (tools/stages/meridian_route.py --storefronts).</summary>
-        public static string Storefront = "";
+        /// store (the trial's pick: a lit lightbox fascia and an open, lit shop that read from the steps' head); StorefrontMix is the
+        /// grocer's front with Checkout Frenzy's lit interior behind its windows. The same lot faces, keep-outs and collision for
+        /// every one; the bank carries the variants it was built with (tools/stages/meridian_route.py --storefronts), and the live
+        /// city falls back to the release-27 front when the bank has not this one (Runtime NativeMeridianRouteDraw.StorefrontInBank).</summary>
+        public static string Storefront = StorefrontCf;
         public const string StorefrontCf = "cf", StorefrontMix = "mix";
         public static readonly string[] Storefronts = { "", StorefrontCf, StorefrontMix };
         /// <summary>The corner shop's bank key for a storefront ("" Corner itself, otherwise Corner-variant).</summary>
@@ -81,6 +83,8 @@ namespace ChipArena.UnityConversion
         public sealed class Plan
         {
             public uint Layout;
+            /// <summary>The corner shop's bank key (the storefront placed).</summary>
+            public string CornerKey;
             public readonly NativeMeridianLandmarks.Layout Art = new NativeMeridianLandmarks.Layout();
             public readonly List<Facade> Facades = new List<Facade>();
             public readonly List<NativeCityBleedDress.KeepOut> KeepOut = new List<NativeCityBleedDress.KeepOut>();
@@ -92,9 +96,9 @@ namespace ChipArena.UnityConversion
 
         /// <summary>The route on a layout. landmarks: the layout's landmark placement (NativeMeridianLandmarks.Place, as its drawer
         /// builds it), for the Ironworks' door front and far stacks; null leaves them out.</summary>
-        public static Plan Place(uint layout, ContentMap map, NativeMeridianLandmarks.Layout landmarks)
+        public static Plan Place(uint layout, ContentMap map, NativeMeridianLandmarks.Layout landmarks, string storefront = null)
         {
-            var plan = new Plan { Layout = layout };
+            var plan = new Plan { Layout = layout, CornerKey = CornerKeyOf(storefront ?? Storefront) };
             if (map?.blocks == null) return plan;
             var byId = new Dictionary<string, ContentBlock>(StringComparer.Ordinal);
             foreach (var b in map.blocks) if (b?.id != null && !byId.ContainsKey(b.id)) byId[b.id] = b;
@@ -138,7 +142,7 @@ namespace ChipArena.UnityConversion
                 float z0 = corner.pos.z - corner.size.z / 2, z1 = corner.pos.z + corner.size.z / 2;
                 plan.Facades.Add(new Facade(new V3(1, 0, 0), x1, z0, z1, y, y + Storey));
                 plan.Facades.Add(new Facade(new V3(0, 0, 1), z1, x0, x1, y, y + Storey));
-                Add(plan, CornerKey, "Meridian Stores", new NativeMeridianLandmarks.Read(x1 + .3f, y + 4.6f, z1 - 3f, 4f), new NativeMeridianLandmarks.Read(x1 - 2f, y + 4.6f, z1 + .3f, 3f));
+                Add(plan, plan.CornerKey, "Meridian Stores", new NativeMeridianLandmarks.Read(x1 + .3f, y + 4.6f, z1 - 3f, 4f), new NativeMeridianLandmarks.Read(x1 - 2f, y + 4.6f, z1 + .3f, 3f));
                 // the shop's faces and their aprons keep the street life off (core: no poster or board on the shopfront)
                 plan.KeepOut.Add(new NativeCityBleedDress.KeepOut(new V3(x1 - .3f, y - .2f, z0 - .4f), new V3(x1 + ShopApron, y + 7.2f, z1 + ShopApron), true));
                 plan.KeepOut.Add(new NativeCityBleedDress.KeepOut(new V3(x0 - .4f, y - .2f, z1 - .3f), new V3(x1 + ShopApron, y + 7.2f, z1 + ShopApron), true));

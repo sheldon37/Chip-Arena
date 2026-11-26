@@ -4,7 +4,7 @@ docs/expedition/MERIDIAN-ROUTE.md).
 Run inside Blender 5.x (bpy, numpy), headless:
 
   blender --background --factory-startup --python tools/stages/meridian_route.py -- \
-      --route ROUTE.json --out OUT_DIR [--packs DIR] [--no-ao] [--preview DIR] [--only PREFIX,...]
+      --route ROUTE.json --out OUT_DIR [--packs DIR] [--no-ao] [--preview DIR] [--only PREFIX,...] [--storefronts ms,cf,mix]
 
 ROUTE.json is what the CoreTests flag `--meridian-route-dump ROUTE.json` writes: Crown Hill's blocks (the stair guards with their
 turns), ramps and placement, and the Ironworks' loading frame. The bank goes to OUT_DIR/ChipArenaLocal/Resources/
@@ -14,8 +14,10 @@ Industry): their meshes are read as data and their albedo textures baked into th
 those baked meshes, inside the bank). Without it the shop's produce and the loading bay's Old Industry parts are left out.
 
 Bank names (the runtime reads them): <key>/0 the Fine tier, <key>/2 the Low tier (only where the Fine mesh is big), group "route".
-Keys are Core's: route/647/{rails,crossing,footway,corner,sign,roofs} (in the world's frame), route/front/ironworks/loading (in a
-hall's door front frame, two 2.5 m bays wide, its face at z 0 facing -z), route/smoke/puff (a unit puff the runtime scales).
+Keys are Core's: route/647/{rails,crossing,footway,corner,sign,roofs} (in the world's frame; the corner shop's storefronts
+route/647/corner (ms), route/647/corner-cf, route/647/corner-mix, the ones --storefronts names, Core's pick by default),
+route/front/ironworks/loading (in a hall's door front frame, two 2.5 m bays wide, its face at z 0 facing -z), route/smoke/puff (a
+unit puff the runtime scales).
 
 The art rules (the common brief), checked here on the built meshes: art standing below 3.1 m over the floor beneath it lies within
 0.25 m of a collider, flat paint of 6 cm or less excepted. The balustrades' bars are the one known exception: they stand under the
@@ -779,7 +781,7 @@ def _wall_with_holes(g, x0, x1, y0, y1, z, holes, f, normal):
 # The room stands inside the corner lot's box (no pilot reaches it); its fittings are the pack's meshes read as data, their palette
 # and labels baked into the corners (one material, the route's). Nothing stands on the pavement.
 # ---------------------------------------------------------------------------------------------------------------------------
-STOREFRONT_DEFAULT = 'ms'
+STOREFRONT_DEFAULT = 'cf'      # Core NativeMeridianRoute.Storefront (the trial's pick)
 ROOM_H = 3.0
 CF = 'Checkout Frenzy'
 _CFP = 'Assets/CheckoutFrenzy/Prefabs/'
