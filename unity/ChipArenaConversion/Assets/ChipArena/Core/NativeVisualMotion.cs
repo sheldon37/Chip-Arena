@@ -301,6 +301,10 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
+        /// <summary>A humanoid muscle of the neck, head, eyes or jaw (by Unity's muscle name): the run carry (Set.RunUpper) leaves these
+        /// to the stride (owner 2026-11-26: the head "doing 360s" with magic; the staff carry's own neck and head turn nearly a whole
+        /// turn in the bank).</summary>
+        public static bool HeadMuscle(string muscle)=>muscle!=null&&(muscle.StartsWith("Neck ",StringComparison.Ordinal)||muscle.StartsWith("Head ",StringComparison.Ordinal)||muscle.StartsWith("Left Eye ",StringComparison.Ordinal)||muscle.StartsWith("Right Eye ",StringComparison.Ordinal)||muscle.StartsWith("Jaw ",StringComparison.Ordinal));
         private static string M(string clip)=>clip+Mirror;
         private static string[] Names(string prefix,params string[] parts)=>Array.ConvertAll(parts,p=>prefix+p);
         private static Set Build(Set s,string run,string walk,string sprint,bool mirrored=false)

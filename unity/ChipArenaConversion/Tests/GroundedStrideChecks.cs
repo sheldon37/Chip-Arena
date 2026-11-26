@@ -121,6 +121,12 @@ internal static class GroundedStrideChecks
         int carry=motion.IndexOf("VisualTacticalCarry(m,pick,time,carryWeight);VisualRunUpper(m,runUpper);",StringComparison.Ordinal),upper=motion.IndexOf("System.Array.Clear(m.UpperMix,0,m.UpperMix.Length);",StringComparison.Ordinal);
         Check(carry>0&&upper>carry,"the staff carry goes on before the upper layer (a cast lays over it)");
         Check(motion.Contains("float runUpper=m.RunUpper>=0&&covered?loco:0;bool keepLegs=upper||carryWeight>0||runUpper>0;"),"the stride's legs and hips kept under the carry");
+        // Owner 2026-11-26: the head "doing 360s" with magic: the carry leaves the neck, head, eyes and jaw to the stride.
+        foreach(var muscle in new[]{"Neck Nod Down-Up","Neck Tilt Left-Right","Neck Turn Left-Right","Head Nod Down-Up","Head Tilt Left-Right","Head Turn Left-Right","Left Eye Down-Up","Left Eye In-Out","Right Eye Down-Up","Right Eye In-Out","Jaw Close","Jaw Left-Right"})
+            Check(NativeVisualMotion.HeadMuscle(muscle),"the carry leaves "+muscle+" to the stride");
+        foreach(var muscle in new[]{"Spine Twist Left-Right","Chest Front-Back","UpperChest Twist Left-Right","Left Shoulder Down-Up","Right Arm Twist In-Out","Left Hand In-Out","LeftHand.Index.1 Stretched","Left Upper Leg Front-Back"})
+            Check(!NativeVisualMotion.HeadMuscle(muscle),"the carry still takes "+muscle);
+        Check(motion.Contains("carryMuscles[i]=up[i]&&!NativeVisualMotion.HeadMuscle(n[i]);")&&motion.Contains("float e=Mathf.Clamp01(w);var mask=CarryMuscles;"),"the run carry lays its muscles by CarryMuscles (the upper body's without the neck and head)");
         Check(motion.Contains("m.RunUpperShare=e;m.CarryShare=Mathf.Max(m.CarryShare,e);")&&motion.Contains("NativeRunArm.RunShare(m.LocoWeights)*loco*wgt*(1-m.Upper)*(1-m.CarryShare)"),"the carry holds the arms (the free arm's run lowering stands down under it)");
         Check(motion.Contains("Mathf.Repeat(m.Phase+m.RunUpperOffset,1)")&&motion.Contains("m.RunUpperOffset=Mathf.Repeat(NativeVisualMotionClips.StridePhase(m.Clips[m.RunUpper],lk,rk)-first,1);"),"the carry steps with the stride (its own stride's offset onto the first run's)");
         Check(visual.Contains("public static string[] Stride(Set s,IClips clips)=>Grounds(s,clips)?s.Grounded:s.Locomotion;"),"the stride's choice");

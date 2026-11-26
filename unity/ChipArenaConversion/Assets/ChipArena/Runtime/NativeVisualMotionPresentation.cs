@@ -79,6 +79,12 @@ namespace ChipArena.UnityConversion
         private static bool[] ArmMuscles{get{if(armMuscles==null){var n=HumanTrait.MuscleName;armMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)armMuscles[i]=n[i].Contains("Shoulder")||n[i].Contains("Arm")||n[i].Contains("Forearm")||n[i].Contains("Hand")||n[i].Contains("Thumb")||n[i].Contains("Index")||n[i].Contains("Middle")||n[i].Contains("Ring")||n[i].Contains("Little");}return armMuscles;}}
         private const float RestEase=.18f;
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
+        // The run carry's muscles (Set.RunUpper): the upper body's but the neck, head, eyes and jaw, which keep the stride's own. Owner
+        // 2026-11-26: "With magic, the head seems to be doing 360s when moving". The staff's carry (the Frank mage run, mirrored) holds
+        // Neck Turn about -4.4 and Head Turn about -3.6 in the bank (a muscle's range is -1..1): nearly a whole turn, so while running
+        // the head sat about 320 degrees round, and each time the carry eased in or out it swept through about 170 (measured in play).
+        private static bool[] carryMuscles;
+        private static bool[] CarryMuscles{get{if(carryMuscles==null){var n=HumanTrait.MuscleName;var up=UpperMuscles;carryMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)carryMuscles[i]=up[i]&&!NativeVisualMotion.HeadMuscle(n[i]);}return carryMuscles;}}
         // The Whirlwind's legs (NativeVisualMotion.SpinLegs), as muscle offsets: the sit's thigh raise and knee bend, and a
         // step's (each leg's Upper Leg Front-Back, Lower Leg Stretch; muscles left, then right).
         private const float SitThigh=.12f, SitKnee=.2f, StepThigh=.22f, StepKnee=.38f;
@@ -343,15 +349,15 @@ namespace ChipArena.UnityConversion
             return gaitSpeed>.05f?Mathf.Clamp(rate*speed/gaitSpeed,NativeVisualStride.RateMin,NativeVisualStride.RateMax):rate;
         }
         // The grounded stride's upper-body carry (Set.RunUpper; owner 2026-11-23: magic "staff held steady, not flailing"): by `w` (the
-        // locomotion's eased share), every muscle but the legs' takes the carry clip's at the stride's phase plus its offset (its arms
-        // step with the legs), over the stride's legs (their hips kept: keepLegs). Its share also stands the free arm's run lowering down
-        // (the carry holds the arms itself). A cast's upper layer still lays over it.
+        // locomotion's eased share), every muscle but the legs', neck and head (CarryMuscles) takes the carry clip's at the stride's phase
+        // plus its offset (its arms step with the legs), over the stride's legs (their hips kept: keepLegs). Its share also stands the free
+        // arm's run lowering down (the carry holds the arms itself). A cast's upper layer still lays over it.
         private static void VisualRunUpper(VisualMotion m,float w)
         {
             m.RunUpperShare=0;if(w<=0||m.RunUpper<0)return;var c=m.Clips[m.RunUpper];
             if(m.RunUpperMix==null||m.RunUpperMix.Length!=m.Mix.Length)m.RunUpperMix=new float[m.Mix.Length];
             System.Array.Clear(m.RunUpperMix,0,m.RunUpperMix.Length);NativeVisualMotionClips.Add(c,Mathf.Repeat(m.Phase+m.RunUpperOffset,1)*Mathf.Max(.1f,c.Length),1,m.RunUpperMix);NativeVisualMotionClips.Finish(m.RunUpperMix,1);
-            float e=Mathf.Clamp01(w);var mask=UpperMuscles;
+            float e=Mathf.Clamp01(w);var mask=CarryMuscles;
             for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.RunUpperMix[k]-m.Mix[k])*e;}
             m.RunUpperShare=e;m.CarryShare=Mathf.Max(m.CarryShare,e);
         }
