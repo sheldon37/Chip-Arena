@@ -31,13 +31,13 @@ namespace ChipArena.UnityConversion
         public static readonly string[] SlotLabels={"Hair","Top","Bottoms","Hands","Shoes"};
         /// <summary>Each slot's ids in Slots order (the first is the default: below the hair, the robot's piece) and their labels.</summary>
         public static readonly string[][] Ids={
-            new[]{"spiky","wild","side-swept","tied-back","fringe-tail"},
+            new[]{"spiky","wild","side-swept","tied-back","fringe-tail","bob","high-ponytail"},
             new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeHotDog.Id,NativeSheldonWear.Robe},
             new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
             new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
             new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
         public static readonly string[][] Labels={
-            new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail"},
+            new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail","Bob","High ponytail"},
             new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater",NativeHotDog.Label,"Sheldon robe"},
             new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
             new[]{"Robot gauntlets","Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
             map=Normalize(map);if(allowed||map.Length==0)return map;
             var picks=new int[Slots.Length];bool dropped=false;
             for(int s=0;s<Slots.Length;s++){int k=Index(map,Slots[s]);if(DevOnly(Ids[s][k])){k=0;dropped=true;}picks[s]=k;}
-            return dropped?Join(picks,CostumeOf(map),SkinOf(map)):map;
+            return dropped?Join(picks,NativeBodyKind.Of(map),CostumeOf(map),SkinOf(map)):map;
         }
 
         /// <summary>The canonical form of a map (see the class comment); never longer than MaxLength.</summary>
@@ -95,22 +95,28 @@ namespace ChipArena.UnityConversion
         {
             if(string.IsNullOrEmpty(map))return "";
             if(map.Length>4096)map=map.Substring(0,4096);
-            var picks=new int[Slots.Length];int skin=-1,costume=CostumeNone;
+            var picks=new int[Slots.Length];int body=NativeBodyKind.Male,skin=-1,costume=CostumeNone;
             foreach(var entry in map.Split(','))
             {
                 int colon=entry.IndexOf(':');if(colon<=0)continue;string key=entry.Substring(0,colon).Trim(),value=entry.Substring(colon+1).Trim();
                 if(key==Skin){int rgb=ParseHex(value,0,value.Length);if(rgb>=0)skin=rgb;continue;}
+                if(key==NativeBodyKind.Key)
+                {
+                    int index=Array.IndexOf(NativeBodyKind.Ids,value);
+                    if(index>=0)body=index;
+                    continue;
+                }
                 if(key==Costume){int c=Array.IndexOf(Costumes,value);if(c>=0)costume=c;continue;}
                 int s=SlotIndex(key);if(s<0)continue;
                 int k=Array.IndexOf(Ids[s],value);if(k<0)continue;picks[s]=k;
             }
-            return Join(picks,costume,skin);
+            return Join(picks,body,costume,skin);
         }
         /// <summary>The map with `slot` set to `id` (normalized; an unknown slot or id leaves the map as it was, normalized).</summary>
         public static string With(string map,string slot,string id)
         {
             int s=SlotIndex(slot),k=s<0?-1:Array.IndexOf(Ids[s],id);if(k<0)return Normalize(map);
-            var picks=new int[Slots.Length];for(int i=0;i<Slots.Length;i++)picks[i]=Index(map,Slots[i]);picks[s]=k;return Join(picks,CostumeOf(map),SkinOf(map));
+            var picks=new int[Slots.Length];for(int i=0;i<Slots.Length;i++)picks[i]=Index(map,Slots[i]);picks[s]=k;return Join(picks,NativeBodyKind.Of(map),CostumeOf(map),SkinOf(map));
         }
 
         // ---- the costume ----
@@ -136,7 +142,7 @@ namespace ChipArena.UnityConversion
         public static string WithCostume(string map,string id)
         {
             int c=Math.Max(CostumeNone,Array.IndexOf(Costumes,id));
-            var picks=new int[Slots.Length];for(int i=0;i<Slots.Length;i++)picks[i]=Index(map,Slots[i]);return Join(picks,c,SkinOf(map));
+            var picks=new int[Slots.Length];for(int i=0;i<Slots.Length;i++)picks[i]=Index(map,Slots[i]);return Join(picks,NativeBodyKind.Of(map),c,SkinOf(map));
         }
 
         // ---- the skin tone ----
@@ -157,7 +163,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The map (normalized) with the skin tone `rgb` (0xRRGGBB), or without one for a negative `rgb`.</summary>
         public static string WithSkin(string map,int rgb)
         {
-            var picks=new int[Slots.Length];for(int i=0;i<Slots.Length;i++)picks[i]=Index(map,Slots[i]);return Join(picks,CostumeOf(map),rgb<0?-1:rgb&0xffffff);
+            var picks=new int[Slots.Length];for(int i=0;i<Slots.Length;i++)picks[i]=Index(map,Slots[i]);return Join(picks,NativeBodyKind.Of(map),CostumeOf(map),rgb<0?-1:rgb&0xffffff);
         }
         /// <summary>Whether two maps dress the same pieces (they may differ in the skin tone only; a costume put on or off is
         /// another outfit). Allocation free.</summary>
@@ -165,13 +171,14 @@ namespace ChipArena.UnityConversion
         {
             if(string.Equals(a??"",b??"",StringComparison.Ordinal))return true;
             for(int s=0;s<Slots.Length;s++)if(Index(a,Slots[s])!=Index(b,Slots[s]))return false;
-            return CostumeOf(a)==CostumeOf(b);
+            return NativeBodyKind.Of(a)==NativeBodyKind.Of(b)&&CostumeOf(a)==CostumeOf(b);
         }
         /// <summary>The account service's profile schema from which it keeps the Unity look whole (the costume key and the Unity
         /// wardrobe's ids: Astra's VA1, docs/VOXEL-RETIREMENT-ASTRA.md). Below it the deployed Worker drops what it does not list,
         /// so a login keeps this PC's pick (KeepSkin); from it the account's look is the truth (taking the costume off on another
         /// PC sticks).</summary>
-        public const int ServiceKeepsLook=3;
+        public const int ServiceKeepsCostume=3;
+        public const int ServiceKeepsLook=4;
         /// <summary>An account's map `saved` with this PC's skin tone when it carries none. Until the account Worker keeps the
         /// skin entry (Astra's part: src/relay/accounts.ts drops keys it does not know) a signed-in pilot would otherwise lose
         /// the tone on every load. Once it does, a saved map without one means DEFAULT and this can go.</summary>
@@ -180,7 +187,17 @@ namespace ChipArena.UnityConversion
         /// whole Unity look: the Hot Dog top and the costume this PC picked come back only while the service drops them.</summary>
         public static string KeepSkin(string saved,string local,bool serviceKeeps)
         {
-            if(!serviceKeeps)
+            return KeepSkin(saved,local,serviceKeeps?ServiceKeepsLook:0);
+        }
+        public static string KeepSkin(string saved,string local,int profileSchema)
+        {
+            if(profileSchema<ServiceKeepsLook)
+            {
+                if(NativeBodyKind.IsFemale(local)&&!NativeBodyKind.IsFemale(saved))saved=NativeBodyKind.With(saved,NativeBodyKind.Female);
+                string hair=Of(local,Hair);
+                if((hair=="bob"||hair=="high-ponytail")&&Index(saved,Hair)==0)saved=With(saved,Hair,hair);
+            }
+            if(profileSchema<ServiceKeepsCostume)
             {
                 // (The Hot Dog likewise: the Worker drops an id it does not list, until it lists this one. The slot's pick, not
                 // NativeHotDog.Worn: that is false under the costume, which would lose the top at every login; review 2026-11-19.)
@@ -203,10 +220,11 @@ namespace ChipArena.UnityConversion
             }
             return v;
         }
-        private static string Join(int[] picks,int costume,int skin)
+        private static string Join(int[] picks,int body,int costume,int skin)
         {
             var sb=new StringBuilder();
             for(int s=0;s<Slots.Length;s++)if(picks[s]!=0){if(sb.Length>0)sb.Append(',');sb.Append(Slots[s]).Append(':').Append(Ids[s][picks[s]]);}
+            if(body==NativeBodyKind.Female){if(sb.Length>0)sb.Append(',');sb.Append(NativeBodyKind.Key).Append(':').Append(NativeBodyKind.Ids[body]);}
             if(costume>CostumeNone&&costume<Costumes.Length){if(sb.Length>0)sb.Append(',');sb.Append(Costume).Append(':').Append(Costumes[costume]);}
             if(skin>=0){if(sb.Length>0)sb.Append(',');sb.Append(Skin).Append(':').Append((skin&0xffffff).ToString("x6"));}
             return sb.ToString();

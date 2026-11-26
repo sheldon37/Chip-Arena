@@ -99,10 +99,8 @@ namespace ChipArena.UnityConversion
             if(!robotDressed.TryGetValue(look,out var dressed))
             {
                 if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);
-                // (The body pick through the dressing, which normalises the key away until NativeLook carries it: Core NativeBodyKind.)
-                if(NativeBodyKind.IsFemale(look))robotDressed[look]=dressed=NativeBodyKind.Keep(dressed,look);
                 // (A hairstyle this bake does not carry: the default's, never a bare head.)
-                if(!VisualLookHas(NativeLook.Hair,NativeLook.Of(dressed,NativeLook.Hair)))robotDressed[look]=dressed=NativeBodyKind.Keep(NativeLook.With(dressed,NativeLook.Hair,NativeLook.Ids[0][0]),dressed);
+                if(!VisualLookHas(NativeLook.Hair,NativeLook.Of(dressed,NativeLook.Hair)))robotDressed[look]=dressed=NativeLook.With(dressed,NativeLook.Hair,NativeLook.Ids[0][0]);
             }
             // The voxel costume in its variant (the skin map's body entry: NativeVoxelCostumePresentation.cs).
             if(!NativeVoxelCostume.Worn(dressed))return dressed;int skin=CostumeSkinOf(id);return CostumeLook(dressed,skin,CostumeTierOf(id,skin));
@@ -116,8 +114,6 @@ namespace ChipArena.UnityConversion
             if(id<RooftopIdTop&&id>RooftopIdTop-8)return NativeLook.Concept;
             if(DeployOutfit(id,out var deploy))return deploy;
             if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
-            // This client's own pilot in its own body pick (Core NativeBodyKind; NativeBodyKindPresentation.cs LocalBodyOwn).
-            if(id==LocalId&&LocalBodyOwn(out var own))return own;
             // Use the displayed arena, including replay/guest seats, rather than current local preferences.
             var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";
             return id==LocalId?LocalLook??"":"";

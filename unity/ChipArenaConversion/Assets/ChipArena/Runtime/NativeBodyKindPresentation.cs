@@ -286,18 +286,5 @@ namespace ChipArena.UnityConversion
             if(!sourceModels.Has(id))SuitFemaleEnsure(root,suit,level);
             return sourceModels.Has(id)?id:NativeSourceModels.Suit;
         }
-
-        // ---- this client's own body pick ----
-        // The local pilot's seat look carries its own body pick (prefs.look through LookShown, LocalLook), which the seat's
-        // normalisation drops until NativeLook carries the key (Astra's part): this client sees its own pilot in it; a peer draws
-        // today's pilot until then. Nothing to do once the seat carries it. Made again only when the seat's look or the pick changes.
-        private string localBodyFrom,localBodyLook;private int localBodyOf=-1;
-        private bool LocalBodyOwn(out string look)
-        {
-            look=null;var seat=WeaponLoadout?.Match?.Seat(LocalId);if(seat==null)return false;
-            int body=NativeBodyKind.Of(LocalLook);var from=seat.look??"";if(NativeBodyKind.Of(from)==body)return false;
-            if(!ReferenceEquals(from,localBodyFrom)||body!=localBodyOf){localBodyFrom=from;localBodyOf=body;localBodyLook=NativeBodyKind.With(from,body);}
-            look=localBodyLook;return true;
-        }
     }
 }
