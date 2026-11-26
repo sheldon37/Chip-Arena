@@ -364,10 +364,10 @@ namespace ChipArena.UnityConversion
             float r=Math.Max(.1f,radius),t=time;bool moving=dir.LengthSquared()>.25f;var fwd=moving?Vector3.Normalize(dir):Vector3.Zero;int n=Keep(3,quality,low);
             for(int k=0;k<n;k++)
             {
-                float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(7.5f-1f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.4f+.7f*k))+new Vector3(0,r*.15f*k,0);
+                float ph=H(key,k,62),frame=Loop(Flame,t,22,6,16,ph),size=r*(7.5f-1f*k),roll=ph*6.2831853f+t*(k%2==0?2:-2.6f);var p=at-fwd*(r*(.8f+.8f*k))+new Vector3(0,r*.15f*k,0);
                 var seg=moving?fwd*(r*(2f+1.5f*k)):Vector3.Zero;
                 // A violet flame a little larger than the black one: its rim (and, sorted over it, its glow) reads on a dark stage.
-                Add(into,Glow(Flame,frame,p,size*1.08f,roll,Rim,3.2f,.25f,0,1-.12f*k,seg*1.08f));
+                Add(into,Glow(Flame,frame,p,size*1.04f,roll,Rim,2.4f,.2f,0,.9f-.15f*k,seg*1.04f));
                 Add(into,Fire(frame,p,size*.85f,roll,0,1,BlackFireHex,.05f,1,1-.15f*k,seg*.85f));
             }
         }
