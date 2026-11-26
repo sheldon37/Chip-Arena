@@ -358,33 +358,49 @@ namespace ChipArena.UnityConversion
             if(m.RunUpperMix==null||m.RunUpperMix.Length!=m.Mix.Length)m.RunUpperMix=new float[m.Mix.Length];
             System.Array.Clear(m.RunUpperMix,0,m.RunUpperMix.Length);NativeVisualMotionClips.Add(c,Mathf.Repeat(m.Phase+m.RunUpperOffset,1)*Mathf.Max(.1f,c.Length),1,m.RunUpperMix);NativeVisualMotionClips.Finish(m.RunUpperMix,1);
             float e=Mathf.Clamp01(w);var mask=CarryMuscles;
-            // The carry twists the torso to hold the staff across it (about 50 degrees); the stride's neck and head look along the
-            // body, so they take that twist back (owner 2026-11-26: "it doesn't look like they're looking where they are aiming
-            // anymore"): the face keeps the body's heading, the aim's in third person, easing with the carry and never the long way.
-            TwistMuscles();float twist=0;
-            for(int t=0;t<torsoTwists.Length;t++){int k=NativeVisualMotionClips.Head+torsoTwists[t];if(k<m.Mix.Length)twist+=(NativeVisualMotion.MuscleDegrees(m.RunUpperMix[k],torsoMin[t],torsoMax[t])-NativeVisualMotion.MuscleDegrees(m.Mix[k],torsoMin[t],torsoMax[t]))*e;}
+            // The carry twists the torso to hold the staff across it (about 50 degrees) and leans it into the run; the stride's neck and
+            // head look along the body, so they take that twist and lean back (owner 2026-11-26: "it doesn't look like they're looking
+            // where they are aiming anymore"): the face keeps the body's heading and level, the aim's in third person, easing with the
+            // carry and never the long way round.
+            CarryTakeBackMuscles();
+            float twist=TorsoChange(m,torsoTwists,twistMin,twistMax,e),lean=TorsoChange(m,torsoLeans,leanMin,leanMax,e);
             for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.RunUpperMix[k]-m.Mix[k])*e;}
-            int kn=NativeVisualMotionClips.Head+neckTurn,kh=NativeVisualMotionClips.Head+headTurn;
-            if(neckTurn>=0&&headTurn>=0&&kn<m.Mix.Length&&kh<m.Mix.Length)
-            {
-                m.Mix[kn]=NativeVisualMotion.MuscleUnits(NativeVisualMotion.MuscleDegrees(m.Mix[kn],neckMin,neckMax)-twist*.5f,neckMin,neckMax);
-                m.Mix[kh]=NativeVisualMotion.MuscleUnits(NativeVisualMotion.MuscleDegrees(m.Mix[kh],headMin,headMax)-twist*.5f,headMin,headMax);
-            }
+            TakeBack(m,neckTurnRange,headTurnRange,twist);TakeBack(m,neckNodRange,headNodRange,lean);
             m.RunUpperShare=e;m.CarryShare=Mathf.Max(m.CarryShare,e);
         }
-        // The torso's twisting muscles and the neck's and head's turns (their indices and default ranges in degrees): the run carry's
-        // twist taken back on the neck and head (VisualRunUpper).
-        private static int[] torsoTwists;private static float[] torsoMin,torsoMax;private static int neckTurn=-1,headTurn=-1;private static float neckMin,neckMax,headMin,headMax;
-        private static void TwistMuscles()
+        // The carry's change to a set of torso muscles, in degrees (by each muscle's default range), times its share `e`: measured
+        // before the carry is laid.
+        private static float TorsoChange(VisualMotion m,int[] muscles,float[] min,float[] max,float e)
         {
-            if(torsoTwists!=null)return;var n=HumanTrait.MuscleName;int count=0;
-            for(int i=0;i<n.Length;i++)if(NativeVisualMotion.TorsoTwist(n[i]))count++;
-            var twists=new int[count];torsoMin=new float[count];torsoMax=new float[count];count=0;
-            for(int i=0;i<n.Length;i++)if(NativeVisualMotion.TorsoTwist(n[i])){twists[count]=i;torsoMin[count]=HumanTrait.GetMuscleDefaultMin(i);torsoMax[count]=HumanTrait.GetMuscleDefaultMax(i);count++;}
-            neckTurn=System.Array.IndexOf(n,NativeVisualMotion.NeckTurn);headTurn=System.Array.IndexOf(n,NativeVisualMotion.HeadTurn);
-            if(neckTurn>=0){neckMin=HumanTrait.GetMuscleDefaultMin(neckTurn);neckMax=HumanTrait.GetMuscleDefaultMax(neckTurn);}
-            if(headTurn>=0){headMin=HumanTrait.GetMuscleDefaultMin(headTurn);headMax=HumanTrait.GetMuscleDefaultMax(headTurn);}
-            torsoTwists=twists;
+            float d=0;
+            for(int t=0;t<muscles.Length;t++){int k=NativeVisualMotionClips.Head+muscles[t];if(k<m.Mix.Length)d+=(NativeVisualMotion.MuscleDegrees(m.RunUpperMix[k],min[t],max[t])-NativeVisualMotion.MuscleDegrees(m.Mix[k],min[t],max[t]))*e;}
+            return d;
+        }
+        // `degrees` of the torso taken back on a neck muscle and its head twin, half each, within their limits.
+        private static void TakeBack(VisualMotion m,MuscleRange neck,MuscleRange head,float degrees)
+        {
+            int kn=NativeVisualMotionClips.Head+neck.Index,kh=NativeVisualMotionClips.Head+head.Index;
+            if(neck.Index<0||head.Index<0||kn>=m.Mix.Length||kh>=m.Mix.Length)return;
+            m.Mix[kn]=NativeVisualMotion.MuscleUnits(NativeVisualMotion.MuscleDegrees(m.Mix[kn],neck.Min,neck.Max)-degrees*.5f,neck.Min,neck.Max);
+            m.Mix[kh]=NativeVisualMotion.MuscleUnits(NativeVisualMotion.MuscleDegrees(m.Mix[kh],head.Min,head.Max)-degrees*.5f,head.Min,head.Max);
+        }
+        // The torso's twisting and leaning muscles and the neck's and head's turns and nods (indices and default ranges in degrees): the
+        // run carry's twist and lean taken back on the neck and head (VisualRunUpper).
+        private struct MuscleRange{public int Index;public float Min,Max;}
+        private static int[] torsoTwists,torsoLeans;private static float[] twistMin,twistMax,leanMin,leanMax;private static MuscleRange neckTurnRange,headTurnRange,neckNodRange,headNodRange;
+        private static void CarryTakeBackMuscles()
+        {
+            if(torsoTwists!=null)return;var n=HumanTrait.MuscleName;
+            int[] Pick(System.Func<string,bool> which,out float[] min,out float[] max)
+            {
+                int count=0;for(int i=0;i<n.Length;i++)if(which(n[i]))count++;
+                var list=new int[count];min=new float[count];max=new float[count];count=0;
+                for(int i=0;i<n.Length;i++)if(which(n[i])){list[count]=i;min[count]=HumanTrait.GetMuscleDefaultMin(i);max[count]=HumanTrait.GetMuscleDefaultMax(i);count++;}
+                return list;
+            }
+            MuscleRange Named(string name){int i=System.Array.IndexOf(n,name);return i<0?new MuscleRange{Index=-1}:new MuscleRange{Index=i,Min=HumanTrait.GetMuscleDefaultMin(i),Max=HumanTrait.GetMuscleDefaultMax(i)};}
+            neckTurnRange=Named(NativeVisualMotion.NeckTurn);headTurnRange=Named(NativeVisualMotion.HeadTurn);neckNodRange=Named(NativeVisualMotion.NeckNod);headNodRange=Named(NativeVisualMotion.HeadNod);
+            torsoLeans=Pick(NativeVisualMotion.TorsoLean,out leanMin,out leanMax);torsoTwists=Pick(NativeVisualMotion.TorsoTwist,out twistMin,out twistMax);
         }
         // A weight eased in and out (a crossfade starts and ends gently instead of at a constant rate).
         private static float Ease(float w)=>w*w*(3-2*w);

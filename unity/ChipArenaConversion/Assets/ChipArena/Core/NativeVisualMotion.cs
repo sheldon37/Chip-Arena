@@ -308,8 +308,13 @@ namespace ChipArena.UnityConversion
         /// <summary>The neck's and head's turning muscles (Unity's names): under the run carry they take back the torso's twist
         /// (owner 2026-11-26: "it doesn't look like they're looking where they are aiming anymore").</summary>
         public const string NeckTurn="Neck Turn Left-Right",HeadTurn="Head Turn Left-Right";
+        /// <summary>The neck's and head's nodding muscles: under the run carry they take back the torso's lean (measured 2026-11-26:
+        /// with the twist alone taken back the face kept the aim's heading but looked about 24 degrees down while running).</summary>
+        public const string NeckNod="Neck Nod Down-Up",HeadNod="Head Nod Down-Up";
         /// <summary>A twisting muscle of the torso (spine, chest, upper chest), by Unity's muscle name.</summary>
         public static bool TorsoTwist(string muscle)=>muscle=="Spine Twist Left-Right"||muscle=="Chest Twist Left-Right"||muscle=="UpperChest Twist Left-Right";
+        /// <summary>A leaning (front-back) muscle of the torso (spine, chest, upper chest), by Unity's muscle name.</summary>
+        public static bool TorsoLean(string muscle)=>muscle=="Spine Front-Back"||muscle=="Chest Front-Back"||muscle=="UpperChest Front-Back";
         /// <summary>The degrees a muscle value stands for, by its range (`min` degrees at -1, `max` at +1).</summary>
         public static float MuscleDegrees(float value,float min,float max)=>value>=0?value*max:-value*min;
         /// <summary>The muscle value for `degrees` by its range, held within -1..1 (the muscle's own limits).</summary>
