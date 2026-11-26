@@ -214,8 +214,10 @@ namespace ChipArena.UnityConversion
         }
         private void ClearTechnique(){techniquePreview.Clear();if(ReferenceEquals(NativeTechniques.Source,techniquePreview))NativeTechniques.Source=null;}
 
-        private sealed class TechSink:ITechniqueFxSink
+        private sealed class TechSink:ITechniqueFxSink,INativeFxPackSink
         {
+            // The Bombadier's fireball from the effects bank (Core NativeFxPack.Fireball), when the bank is loaded.
+            public bool PackBlast(NVector at,float radius,float age,long seed,float quality,bool low)=>vfx!=null&&vfx.PackFireball(U(at),radius,age,seed,quality);
             private NativeVfxDraw vfx;private NativeWeaponFxDraw draw;private bool viewOk;
             public void Bind(NativeVfxDraw v,NativeWeaponFxDraw d,bool view){vfx=v;draw=d;viewOk=view;}
             private static Vector3 U(NVector v)=>new Vector3(v.X,v.Y,v.Z);private static Color C(NVector c,float a=0)=>new Color(c.X,c.Y,c.Z,a);

@@ -88,6 +88,25 @@ namespace ChipArena.UnityConversion
         {double t=(time-Born-FrontTime)/Math.Max(1e-6,Life-FrontTime);if(t<=0)return 1;if(t>=1)return 0;return 1-t*t*(3-2*t);}
     }
 
+    /// <summary>
+    /// A blast the effects bank restyles (Core NativeFxPack; Claude X1, 2026-11-25): its style and look, where it went off (the
+    /// centre the sim spawned round, its floor and whether it was near it), its size, quality and birth, and the pool seeds its own
+    /// particles took (from inclusive, to exclusive, wrapping at NativeBlastPool.SeedMask), so a renderer drawing the pack's layer can
+    /// leave out exactly that blast's toon puffs (NativeFxPack.Replaced). Recorded after the spawns, with no random draw: the pools,
+    /// the pinned frames and the shock front are what they were. Cosmetic only.
+    /// </summary>
+    public struct NativeBlastBurst
+    {
+        public NativeBlastStyle Style;public NativeBlastLook Look;public bool Tinted,Near;
+        public double X,Y,Z,Ground,Radius,Scale,Quality,Born;public int Seed,SolidFrom,SolidTo,GlowFrom,GlowTo;
+        /// <summary>Whether a particle of that pool and seed is one of this blast's.</summary>
+        public bool Owns(bool glow,int seed)
+        {int from=glow?GlowFrom:SolidFrom,to=glow?GlowTo:SolidTo,span=(to-from)&NativeBlastPool.SeedMask;return ((seed-from)&NativeBlastPool.SeedMask)<span;}
+    }
+    /// <summary>A live fire field as the sim last saw it (Field, kind "fire"): its id, floor centre, radius, birth and the sim time it was
+    /// last seen, for the effects bank's large flames (NativeFxPack). Cosmetic only.</summary>
+    public struct NativeFireView{public long Id;public double X,Ground,Z,Radius,Born,Seen;}
+
     /// <summary>The source's generator (chip-blasts.ts rng): a 32-bit LCG, so runs are repeatable.</summary>
     public sealed class NativeBlastRandom
     {
@@ -341,6 +360,10 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public IReadOnlyList<NativeBlastShock> Shocks=>shocks;
         private readonly List<NativeBlastShock> shocks=new List<NativeBlastShock>(32);private int nextShock;
+        /// <summary>The restyled blasts of the last NativeFxPack.BurstLife seconds, oldest first (NativeBlastBurst), and the live fire fields
+        /// (NativeFireView). Read only; the lists are reused.</summary>
+        public IReadOnlyList<NativeBlastBurst> Bursts=>bursts;public IReadOnlyList<NativeFireView> Fires=>fires;
+        private readonly List<NativeBlastBurst> bursts=new List<NativeBlastBurst>(16);private readonly List<NativeFireView> fires=new List<NativeFireView>(8);private int nextBurst;
         private Func<double> random;private int nextLight;
         private readonly Dictionary<long,double> fieldClock=new Dictionary<long,double>();
         private readonly HashSet<long> locked=new HashSet<long>();private readonly List<long> stale=new List<long>();
@@ -552,6 +575,7 @@ namespace ChipArena.UnityConversion
         public int Blast(NativeBlastStyle style,double px,double py,double pz,double radius,double quality=1,bool compat=false,NativeBlastTint? tint=null,double? floor=null)
         {
             double q=Clamp01(quality);if(q<=0)return 0;int spawned=Solid.Spawned+Glow.Spawned;var pal=Colors(style,tint);var look=tint?.Look??NativeBlastLook.Default;
+            int solidFrom=Solid.NextSeed,glowFrom=Glow.NextSeed;
             double R=Math.Max(.4,radius),k=q*(compat?.4:1)*Math.Min(1.6,.55+R*.18),ground=floor??py-.95,cx=px,cy=Math.Max(ground+.35,py),cz=pz,sc=Math.Max(.45,Math.Min(2.2,R/3));
             // On the ground the shell, the rings, the quake's chunks and the lightning rise from the floor. In the air they start at
             // the blast, and its airborne glow (core, shell, Nova's front) stops on the floor.
@@ -709,6 +733,12 @@ namespace ChipArena.UnityConversion
                     Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(40),pal.Core,style);Debris(6,R*2,pal.Debris);Flash(cx,cy,cz,pal.Hot,R,7,.35,compat,q);break;
                 }
             }
+            if(NativeFxPack.Restyled(style,tint))
+            {
+                bursts.Add(new NativeBlastBurst{Style=style,Look=look,Tinted=tint.HasValue,Near=near,X=cx,Y=cy,Z=cz,Ground=ground,Radius=R,Scale=sc,Quality=q,Born=Time,Seed=nextBurst,
+                    SolidFrom=solidFrom,SolidTo=Solid.NextSeed,GlowFrom=glowFrom,GlowTo=Glow.NextSeed});
+                nextBurst=(nextBurst+1)&NativeBlastPool.SeedMask;
+            }
             return Solid.Spawned+Glow.Spawned-spawned;
         }
         /// <summary>
@@ -812,6 +842,7 @@ namespace ChipArena.UnityConversion
             // Field emitters keep the source's colours (the Shock blasts' toon retint is not theirs: Field is drawn as the source draws it).
             var pal=Colors(style,TintOf(fx),true);
             if(fx=="orbital-mark"&&time>=lockAt&&!locked.Contains(f.Id)){locked.Add(f.Id);Impact(ax,ay,az,R,pal.Core,q,false,true,pal.Cool,f.Floor);Flash(ax,ay,az,pal.Hot,R,8,.3,compat,q);}
+            if(kind=="fire"&&!fused)SeeFire(f,ground,R);
             bool known=fieldClock.TryGetValue(f.Id,out double last);
             if(!known||time<last)
             {
@@ -865,6 +896,14 @@ namespace ChipArena.UnityConversion
         {
             stale.Clear();foreach(var id in fieldClock.Keys)if(!live.Contains(id))stale.Add(id);foreach(var id in stale)fieldClock.Remove(id);
             stale.Clear();foreach(var id in locked)if(!live.Contains(id))stale.Add(id);foreach(var id in stale)locked.Remove(id);
+            for(int i=fires.Count-1;i>=0;i--)if(!live.Contains(fires[i].Id))fires.RemoveAt(i);
+        }
+        // A fire field seen this frame: its record refreshed (or added).
+        private void SeeFire(NativeBlastField f,double ground,double radius)
+        {
+            var v=new NativeFireView{Id=f.Id,X=f.X,Ground=ground,Z=f.Z,Radius=radius,Born=f.Born,Seen=Time};
+            for(int i=0;i<fires.Count;i++)if(fires[i].Id==f.Id){fires[i]=v;return;}
+            fires.Add(v);
         }
         public void Update(double dt)
         {
@@ -873,8 +912,12 @@ namespace ChipArena.UnityConversion
             // Shock fronts expire like voxels (age >= life), keeping their order; no allocation.
             int keep=0;for(int i=0;i<shocks.Count;i++){var s=shocks[i];if(Time-s.Born>=s.Life)continue;if(keep!=i)shocks[keep]=s;keep++;}
             if(keep<shocks.Count)shocks.RemoveRange(keep,shocks.Count-keep);
+            keep=0;for(int i=0;i<bursts.Count;i++){var b=bursts[i];if(Time-b.Born>=NativeFxPack.BurstLife)continue;if(keep!=i)bursts[keep]=b;keep++;}
+            if(keep<bursts.Count)bursts.RemoveRange(keep,bursts.Count-keep);
+            // A fire field not seen for a quarter second is gone (its field ended or left the presented frame).
+            for(int i=fires.Count-1;i>=0;i--)if(Time-fires[i].Seen>.25)fires.RemoveAt(i);
         }
-        public void Clear(){Solid.Clear();Glow.Clear();fieldClock.Clear();locked.Clear();shocks.Clear();nextShock=0;foreach(var f in Flashes){f.At=-1e9;f.Intensity=0;}}
+        public void Clear(){Solid.Clear();Glow.Clear();fieldClock.Clear();locked.Clear();shocks.Clear();nextShock=0;bursts.Clear();fires.Clear();nextBurst=0;foreach(var f in Flashes){f.At=-1e9;f.Intensity=0;}}
         /// <summary>Clear() plus a rewound clock and generator: replaying the same spawns afterwards gives identical voxels.</summary>
         public void Reset(Func<double> random=null){Clear();Time=0;nextLight=0;this.random=random??new NativeBlastRandom().Next;}
 
