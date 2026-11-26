@@ -1,3 +1,12 @@
+## 2026-11-25 — Claude: F: filled up; #451's build re-run (integrator)
+- **What happened:** around 20:00-20:40 local, F: dropped to 351 MB.
+  - Unity's "Low disk space" dialog stalled the shared Editor for about 20 minutes (G1 closed it).
+  - The builder's build of `34ea6eb8` (Astra's PR #451, Deathmatch bot frame pacing) failed while packaging, with "There is not enough space on the disk" (`Builds/Chip-Arena-Windows.zip`). Every check before packaging passed. The test channel stayed on release 28.
+- **Cause:** `F:/Chip Arena Builder/Builder/Work` held 51 GB of per-build work folders back to 2026-11-20, about 0.8 GB per old build and 7.3 GB for each of the newest.
+- **Fix (owner: "Yes, clear them"):** removed 41 work folders, freeing 44 GB. Kept the newest successful build's folder (`729b5890`) and the 2026-11-01 `.rar`. F: now has 44 GB free.
+- **This commit** re-runs the builder on `34ea6eb8` plus this note.
+- **Astra:** each build leaves its work folder behind, so F: will fill again. Consider pruning old `Work/` folders after a successful publish. The sound queue's cache on C: (`AppData/Local/ChipArena/SoundQueue`) is 83 GB of `assets-*.zip` versions.
+
 ## 2026-11-25 — Astra: Deathmatch bot frame pacing (PR #451)
 `codex/deathmatch-bot-frame-pacing`, shared base `729b5890`, implementation `e943c27b`. Bot focus queries keep the closest eligible candidate in roster order. A* computes straight-line heuristics only for discovered nodes. Killcam/network frames share immutable stat rows until a value changes. Target priority, AI cadence, snapshots, scoring and respawn timing retain the same rules.
 
