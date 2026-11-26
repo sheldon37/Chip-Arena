@@ -102,9 +102,22 @@ namespace ChipArena.UnityConversion
             magicFx.Observe(arena.Events,now,magicScene.Actors);
             // The darkness pulse and wobble keep NativeShotScene's clock: the match clock on the host, this clock on a replica.
             magicFx.Draw(magicSink,magicScene,now,arena.Replica?now:arena.Time,Mathf.Clamp01(BlastQuality),LowGraphics);
+            DarkFlames(now);
             magicDraw.Submit(magicFx,camera,LowGraphics,vfx.NoiseTexture);
         }
         private void ClearMagicFx(){magicFx.Clear();magicArena=null;magicGeneration=-1;magicClock=-1;}
+        // Realistic magic (Claude MG1, Core NativeMagicFxPack): the darkness orbs burn with black flames in flight and burst in them at
+        // each of the void orb's impacts, over its own core, smoke and glows; its toon puffs are realistic smoke (MagicSink.Smoke). Only
+        // while the effects bank's magic atlases are loaded.
+        private readonly NativeMagicList darkList=new NativeMagicList();
+        private void DarkFlames(float now)
+        {
+            if(vfx==null||!vfx.PackMagic||magicScene==null)return;float q=Mathf.Clamp01(BlastQuality);darkList.Clear();
+            for(int i=0;i<magicScene.Orbs;i++){if(!magicScene.Orb(i,out var o))continue;NativeMagicFxPack.DarkFlames(darkList,o.Position,o.Velocity,o.Radius>0?o.Radius:NativeVoidOrbFx.ShotRadius,o.Key,now,q,LowGraphics);}
+            var impacts=magicFx.Void.Impacts;
+            for(int i=0;i<impacts.Count;i++){var m=impacts[i];if(m.Id==0)continue;NativeMagicFxPack.DarkBurst(darkList,m.At,m.Normal,m.Surface,m.Id*7919L+3,now-m.Time,m.Air?.7f:1,q,LowGraphics);}
+            vfx.Magic(darkList);
+        }
         private void DisposeMagicFx(){ClearMagicFx();magicDraw?.Dispose();magicDraw=null;}
 
         // What the Core effects read of this presentation (allocation-free once bound).
@@ -182,7 +195,7 @@ namespace ChipArena.UnityConversion
             private static Vector3 U(NVector v)=>new Vector3(v.X,v.Y,v.Z);private static Color C(NVector c,float a=0)=>new Color(c.X,c.Y,c.Z,a);
             public void Glow(NVector at,NVector color,float coverage,float size,int profile,float u,float seed)=>vfx.Glow(U(at),C(color,coverage),size,profile,u,seed);
             public void Streak(NVector head,NVector velocity,NVector color,float width,float minLength,float blur,float taper,float u,float seed)=>vfx.Streak(U(head),U(velocity),C(color),width,minLength,blur,taper,u,seed);
-            public void Smoke(NVector at,NVector albedo,float opacity,float size,float u,float seed,float floor)=>vfx.Smoke(U(at),C(albedo),opacity,size,u,seed,floor);
+            public void Smoke(NVector at,NVector albedo,float opacity,float size,float u,float seed,float floor){if(!vfx.MagicSmoke(U(at),C(albedo),opacity,size,u,seed))vfx.Smoke(U(at),C(albedo),opacity,size,u,seed,floor);}
             public void Water(NVector at,NVector lit,int shade,float opacity,float size,NVector segment,float u,float seed,float floor)=>vfx.Water(U(at),C(lit),shade,opacity,size,U(segment),u,seed,floor);
             public void Drop(NVector head,NVector segment,NVector color,float coverage,float width,float u,float seed)=>vfx.Drop(U(head),U(segment),C(color,coverage),width,u,seed);
             public void Sphere(NVector at,float radius,NVector albedo,NVector rim,NVector emissive)=>vfx.Sphere(U(at),radius,C(albedo),C(rim),C(emissive),0);

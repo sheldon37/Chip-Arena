@@ -40,6 +40,13 @@
 // its tint, lit by the ambient, the main light and the blast flashes, never darker than its self light; 15 blood: the same lit tint
 // on a splatter tile or the mist, along TEXCOORD2.xyz when it has a segment (a stretched drop). TEXCOORD1.y = sheet x 64 + frame;
 // COLOR = gain, self light, occlusion (1 a normal layer, less adds), opacity. Without the sheets the runtime queues none of these.
+// Realistic magic (Claude MG1, 2026-11-25; Core NativeMagicFxPack, Runtime NativeVfxDraw.Magic): the licensed effects pack's flipbooks in
+// two grey + alpha atlases (_MagicSheet0-1), each flipbook a rect of an atlas with its own grid (_MagicRect: x, y, width, height from the
+// image's top left; _MagicGrid: columns, rows, atlas, frame aspect), two frames blended; TEXCOORD1.y = flipbook x 256 + frame. 16 glow: the
+// alpha is the light, in TEXCOORD2.w's tint, running white-hot by COLOR.g where it is brightest (COLOR = gain, hot share, occlusion,
+// opacity: occlusion 0 adds); 17 fire and 18 smoke: as 13 and 14 on the magic flipbooks. A camera-facing magic sprite keeps its frame's
+// aspect; one with a segment lies with its frame's long side along it (a tall frame, the flame or plasma, its up toward the segment's
+// tail: a flame licking back; a wide one, the arcs or spray, across). Without the atlases the runtime queues none of these.
 Shader "ChipArena/NativeVfx"
 {
     Properties
@@ -59,6 +66,8 @@ Shader "ChipArena/NativeVfx"
         _FxSheet5("Effects bank: campfire smoke",2D)="black"{}
         _FxSheet6("Blood spray: splatters",2D)="black"{}
         _FxSheet7("Blood spray: mist",2D)="black"{}
+        _MagicSheet0("Realistic magic: flame, smoke, plasma, arcs",2D)="black"{}
+        _MagicSheet1("Realistic magic: shell, waves",2D)="black"{}
     }
     SubShader
     {
@@ -80,6 +89,7 @@ Shader "ChipArena/NativeVfx"
             sampler2D _VfxAtlas,_VfxToon,_VfxPack;float4 _VfxPackGrid;
             float _VfxAtlasReady,_VfxFlashGain,_VfxSoft;
             sampler2D _FxSheet0,_FxSheet1,_FxSheet2,_FxSheet3,_FxSheet4,_FxSheet5,_FxSheet6,_FxSheet7;
+            sampler2D _MagicSheet0,_MagicSheet1;float4 _MagicRect[8],_MagicGrid[8];
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // The three blast flashes (NativeArenaDressing.Flashes): position and range, colour times intensity as Unity applies it.
             float4 _ArenaFlashPos[3];
@@ -343,6 +353,22 @@ Shader "ChipArena/NativeVfx"
                 else rgb=tint*lit*color.r*lerp(0.55,1.15,sheet>5.5&&sheet<6.5?saturate(grey*1.6-0.4):grey);
                 return float4(rgb*shape,shape*color.b);
             }
+            // ---- realistic magic (modes 16-18) ----
+            float4 MagicSample(float atlas,float2 uv,float2 dx,float2 dy){return atlas<0.5?tex2Dgrad(_MagicSheet0,uv,dx,dy):tex2Dgrad(_MagicSheet1,uv,dx,dy);}
+            // Frame f of a flipbook (its rect and grid), t in 0..1 inside it.
+            float2 MagicTile(float f,float4 rect,float4 grid,float2 t)
+            {
+                float row=floor(f/grid.x),col=f-row*grid.x;
+                return float2(rect.x+(col+t.x)/grid.x*rect.z,1.0-(rect.y+(row+1.0-t.y)/grid.y*rect.w));
+            }
+            // A glowing magic flipbook, premultiplied: its alpha is the light, in tint, white-hot by hot where it is brightest; color = gain,
+            // hot share, occlusion (0 adds), opacity.
+            float4 MagicGlow(float4 t,float4 color,float3 tint)
+            {
+                float l=t.a,w=saturate((l-0.5)*2.0);
+                float3 col=lerp(tint,float3(1.0,1.0,1.0),w*w*color.g)*(color.r*l);
+                return float4(col*color.a,l*color.a*color.b);
+            }
             struct appdata
             {
                 float3 vertex:POSITION;
@@ -388,6 +414,9 @@ Shader "ChipArena/NativeVfx"
                 }
                 // A pack sprite faces the camera at its roll, as the glows do (the oriented branch above takes every mode past 10.5).
                 if(mode>11.5){float2 local=v.shape.xy*hw;float s=sin(v.shape.w),c=cos(v.shape.w);offset=float2(local.x*c-local.y*s,local.x*s+local.y*c);coords=float3(v.shape.xy,0.0);}
+                // A magic flipbook keeps its frame's aspect (the flames tall, the arcs and waves wide).
+                float magicId=mode>15.5?floor(v.life.y/256.0):0.0;float4 magicRect=_MagicRect[(int)magicId],magicGrid=_MagicGrid[(int)magicId];
+                if(mode>15.5){float2 local=v.shape.xy*hw*float2(min(magicGrid.w,1.0),min(1.0/max(magicGrid.w,0.01),1.0));float s=sin(v.shape.w),c=cos(v.shape.w);offset=float2(local.x*c-local.y*s,local.x*s+local.y*c);}
                 // The effects bank: a blood sprite with a segment lies along it (the streak's offset above), the rest face the camera.
                 bool fx=mode>12.5,fxAlong=mode>14.5&&dot(v.axis.xyz,v.axis.xyz)>1e-8;
                 if(fx&&fxAlong){offset=VfxStreakOffset(screenAxis,v.shape.xy,hw,coords);}
@@ -410,7 +439,16 @@ Shader "ChipArena/NativeVfx"
                 // The magic sheet's tile (zw): column t mod columns, rows from the top of the sheet (its image's order).
                 if(mode>11.5){float pt=v.life.w,pc=pt-_VfxPackGrid.x*floor(pt/_VfxPackGrid.x),pr=_VfxPackGrid.y-1.0-floor(pt/_VfxPackGrid.x);o.toon.zw=(float2(pc,pr)+v.shape.xy*0.48+0.5)/_VfxPackGrid.xy;}
                 o.alt=float4(VfxHexLinear(mode>8.5?v.axis.w:v.axis.y),0);
-                if(fx)
+                if(fx&&mode>15.5)
+                {
+                    // A magic flipbook: its rect and grid, two frames blended; along a segment its frame's long side runs along it (a tall frame's up toward the tail).
+                    float frame=v.life.y-magicId*256.0,frames=magicGrid.x*magicGrid.y;
+                    float fa=min(floor(frame),frames-1.0),fb=min(fa+1.0,frames-1.0);
+                    float along=coords.x/(coords.z+1.0);
+                    float2 q=fxAlong?(magicGrid.w<1.0?float2(coords.y,-along):float2(along,coords.y)):v.shape.xy;float2 inTile=q*0.49+0.5;
+                    o.uv.zw=MagicTile(fa,magicRect,magicGrid,inTile);o.toon=float4(magicGrid.z,frame-fa,MagicTile(fb,magicRect,magicGrid,inTile));
+                }
+                else if(fx)
                 {
                     // Two frames: the one now (uv.zw) and the next (toon.zw), blended by the fraction (toon.y); the sheet in toon.x.
                     float sheet=floor(v.life.y/64.0),frame=v.life.y-sheet*64.0,grid=sheet>5.5&&sheet<6.5?2.0:8.0;
@@ -472,6 +510,12 @@ Shader "ChipArena/NativeVfx"
                         else c=VfxToonWater(mask,toon,aa,i.color.a,i.color.rgb,i.alt.rgb,light);
                     }
                     c*=saturate(i.data.w);
+                }
+                else if(mode>15.5)
+                {
+                    float4 t=lerp(MagicSample(i.toon.x,i.uv.zw,fxDx,fxDy),MagicSample(i.toon.x,i.toon.zw,fxDx,fxDy),i.toon.y);
+                    float3 light=lerp(i.amb1.rgb,i.amb0.rgb,0.6)+i.sun.rgb*0.6+i.flash.rgb;
+                    c=mode<16.5?MagicGlow(t,i.color,i.alt.rgb):FxPack(mode-4.0,0.0,t,i.color,i.alt.rgb,light,i.flash.w);
                 }
                 else if(mode>12.5)
                 {

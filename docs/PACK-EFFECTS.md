@@ -500,6 +500,44 @@ are unchanged, and the record's seed ranges let the drawer leave out exactly tha
 - **Also restyled:** any other untinted Fire-family blast, such as the fire staff's 1.5 m hit blast (the fireball at its size).
 - **Not yet:** Meridian's half-drum fires (their own drawer), Ward Zero's vent flames, the intros' scripted fires, and a Windows build.
 
+## Realistic magic from the flipbooks (2026-11-25, `claude/fx-magic`)
+
+Owner (2026-11-25): "go with recommended" on V1's effects gallery, and "Yes, download it" for kripto289's Realistic Effects Pack 4 (plan
+phase 3). Core `NativeMagicFxPack` draws every magic school's bolt, trail and hit from that pack's photographic flipbooks, as pure
+functions of a bolt's recorded path (`NativeMagicTrails`), the presentation clock, the shot key and the replicated event id.
+`NativeVfxDraw.Magic` queues them in the one sorted batch as `NativeVfx.shader` modes 16 (a glowing flipbook in the school's colour,
+white-hot where it is brightest), 17 (a flame through the fire ramp, as 13) and 18 (a lit smoke, as 14), on two grey + alpha atlases.
+
+| School | Bolt (head) | Trail | Hit | Stays code-drawn |
+|---|---|---|---|---|
+| Fire | a white-hot core in a rolling ball of flame, two flames licking back along the flight | flames turning to grey smoke, embers | a flash, two flame bursts, embers, smoke (the staff's 1.5 m blast stays the blast sim's: the bank's fireball where installed) | the ribbon, halo, lights |
+| Water | a bright core in two shimmering water shells, spray streaming back | spray waves, mist, falling droplets | a flash, the shell bursting, mist, spray waves thrown out, droplets falling | the ribbon, halo, lights |
+| Lightning | a white core in a crackling plasma ball, arcs re-struck every 50 ms | arcs along the path, plasma sparks | a flash, a plasma burst, five arcs thrown out (re-struck every 40 ms), sparks | the ribbon, halo, lights |
+| L33t H4x | a bright core in a green plasma ball and two turning energy shells | glowing green energy wisps, plasma sparks, sparks | a flash, two green flame bursts, the shell popping, sparks | the ribbon, halo, lights |
+| Darkness | the void orb's black core, lens, swirl and motes, with black flames (a violet glow in them) licking back | the void orb's tail puffs as realistic dark smoke wisps | black flames rolling out after the implosion, over the void orb's smoke (realistic), glows, embers, ink and scorch | core, lens, swirl, motes, ink, drain, cast |
+
+Every colour is the shot's own (`NativeShotRules.HaloColor`, the weapon's), so each school keeps its colour identity. The cast charge,
+every telegraph, the bolt's halo, spill and contact lights, the trajectory and the impact timing are unchanged: a head rides the bolt's
+presented position and a hit plays on the same Impact or direct Hit event the magic sheet's burst used. The HDR ribbon stays as the
+motion streak at the head, shortened from .1 s to .04 s (`NativeMagicFxPack.RibbonLife`: today's ten metres of line behind a 100 m/s
+bolt read as a laser); the flipbook trail carries the path behind it.
+
+- **Hooks:** the look rides the magic sheet's (`PackLooks` is the sheet or the atlases): the bolt's model gives way, the surface
+  impact's generic shards give way to the school's own burst, the static-world hits (`BoltEnded`) land it. With the atlases the head is
+  the realistic one, `PackTrailSprite` draws nothing (the trail is the recorded path's) and the hits are the realistic bursts. Darkness:
+  `MagicSink.Smoke` draws `NativeVfxDraw.MagicSmoke` in place of the toon puff; `DarkFlames` adds the black flames and bursts.
+- **Sheets:** `tools/fx_bank/magic.py SRC OUT` writes `ChipArenaMagicFx/magic0.png` (2048 x 2048: the flame burst 8 x 4, smoke wisps
+  8 x 8, the plasma ball 16 x 8, lightning arcs 4 x 8) and `magic1.png` (2048 x 1024: the energy shell 8 x 8, spray waves 8 x 16), each
+  source flipbook resized whole into a 1024 quadrant, grey + alpha. Core `NativeMagicFxPack.Sheets` is the layout (pinned against the
+  tool by CoreTests `--fx-magic`).
+- **Where they ship:** the effects bank only: `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaMagicFx/` (3,136,454 bytes with metas),
+  packed by Astra's effects-bank packer. Nothing goes into the Drive zip.
+- **Fallback:** without both atlases (or with `NativeMagicFxPack.On` off, the DEV and capture switch) nothing changes: the bolts keep
+  today's energy core, soft sprites and ribbon, darkness its toon puffs.
+- **The Magic Missiles trial** (C2, `claude/cache-glaive-fx`, unmerged): where installed it takes the fire bolt before this look does
+  (its `ShotFx` return comes first, its hit replaces the burst); the other four schools are unaffected.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation only).
+
 ## Candidates from the same drive (not started)
 
 - **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles (Epic Toon FX's blood splats, the explosions, smoke and fire,
