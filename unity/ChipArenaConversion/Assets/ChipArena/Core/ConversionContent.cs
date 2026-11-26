@@ -96,6 +96,26 @@ namespace ChipArena.UnityConversion
         public double this[string key] { get=>values[key];set=>values[key]=value; }
         public double Get(string key,double fallback=0)=>values.TryGetValue(key,out var value)?value:fallback;
         public ChipStats(NumberValue[] defaults) { foreach(var v in defaults)values.Add(v.name,v.value); }
+
+        private NumberValue[] lastFrameStats;
+
+        // Network and killcam frames only read these records. Copy on change so a retained
+        // frame always sees the values from its own tick, including while a buff is active.
+        internal NumberValue[] FrameStats(NumberValue[] layout)
+        {
+            var previous = lastFrameStats;
+            var next = previous != null && previous.Length == layout.Length ? previous : new NumberValue[layout.Length];
+            for (int i = 0; i < layout.Length; i++)
+            {
+                string name = layout[i].name;
+                double value = values[name];
+                var row = next[i];
+                if (row != null && row.name == name && BitConverter.DoubleToInt64Bits(row.value) == BitConverter.DoubleToInt64Bits(value)) continue;
+                if (ReferenceEquals(next, previous)) next = (NumberValue[])previous.Clone();
+                next[i] = new NumberValue { name = name, value = value };
+            }
+            return lastFrameStats = next;
+        }
     }
     public static class NativeContentRules
     {

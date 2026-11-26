@@ -1,3 +1,10 @@
+## 2026-11-25 — Astra: Deathmatch bot frame pacing (PR #451)
+`codex/deathmatch-bot-frame-pacing`, shared base `729b5890`, implementation `e943c27b`. Bot focus queries keep the closest eligible candidate in roster order. A* computes straight-line heuristics only for discovered nodes. Killcam/network frames share immutable stat rows until a value changes. Target priority, AI cadence, snapshots, scoring and respawn timing retain the same rules.
+
+- Unity 6000.3.24f1 headless Linux Mono/PhysX, Brickfall, seed 1739, local pistol plus Normal bots (MG, sword, rifle, then fire, bow, daggers and lightning). Local pilot strafed and fired. Fixed ticks at 60 Hz, physics before/after hooks, one retained network frame every third tick, 120-frame ring. Five runs per build per roster, alternating order, 420 warm-up ticks then 1,800 measured. Median run p95/p99 includes input, simulation, physics and snapshots.
+- Three bots: 0.965/2.511 ms before, 0.984/2.465 ms after. Seven bots: 1.543/3.758 ms before, 1.231/3.031 ms after. Each roster had the same scores and snapshot pilot/event-count checksum on both builds. Render, GPU, HUD, audio and Windows player frame times are outside this measurement.
+- Eight stable pilot stat tables, 600 captures in .NET 8: 15,552,000 bytes before, zero after warm-up, equal checksum. Managed Release build, Deathmatch, bot difficulty, killcam, techniques, blades, runtime performance and navigation checks passed. Native test Update publication is tracked separately from the performance measurements.
+
 ## 2026-11-25 — Claude: release 28: the blood spray (X1), a zip-size build failure, and orphans pruned (integrator)
 - **Merged:** `claude/fx-blasts-blood` (X1, `448b9b65`, synced to `456920db`) into shared and the builder as `3dc364cd`. The suite at `456920db` passed (1,110 groups, exit 0), and so did the Unity compile.
 - **First build failed:** at "Install optional local assets", with "zip is too large" (install_local_assets' `MAX_ZIP_BYTES`, once the sound queue layered its generated originals). The test channel stayed on release 27.

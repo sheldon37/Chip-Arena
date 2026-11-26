@@ -81,7 +81,19 @@ namespace ChipArena.UnityConversion
         }
         private bool BotSentry(NativePilot p,out InputFrame input)
         {
-            input=default;var enemy=Pilots.Where(q=>q!=p&&Enemy(p,q)&&q.Technique?.Kind=="sentry-drop"&&NativeTechniqueRules.Live(q.Technique,Time)&&q.TechniqueHealth>0&&Vector3.Distance(p.Body.position,Vec(q.Technique.Point))<24&&MeleeVisible(p.Body.position,Vec(q.Technique.Point)+Vector3.up*.65f,p,null)).OrderBy(q=>(Vec(q.Technique.Point)-p.Body.position).sqrMagnitude).FirstOrDefault();
+            input=default;
+            NativePilot enemy=null;
+            var pos=p.Body.position;
+            float nearest=float.PositiveInfinity;
+            foreach(var q in Pilots)
+            {
+                var sentry=q.Technique;
+                if(sentry?.Kind!="sentry-drop"||q.TechniqueHealth<=0||!NativeTechniqueRules.Live(sentry,Time)||q==p||!Enemy(p,q))continue;
+                var at=Vec(sentry.Point);
+                float distance=(at-pos).sqrMagnitude;
+                if(distance<nearest&&Vector3.Distance(pos,at)<24&&MeleeVisible(pos,at+Vector3.up*.65f,p,null))
+                {enemy=q;nearest=distance;}
+            }
             if(enemy==null)return false;input=BotFocus(p,Vec(enemy.Technique.Point)+Vector3.up*.65f,Vector3.zero,null,null,false);return true;
         }
     }
