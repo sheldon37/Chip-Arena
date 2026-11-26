@@ -10,11 +10,14 @@ Doc: `docs/PACK-EFFECTS.md`, section "Guns: the muzzle flipbooks installed, bric
   - Without the prefab, the stone effect plays as today.
   - `PackFxHitsChecks` pins this. The muzzle flashes and the holes need no code change.
 - **Bytes:**
-  - **Drive zip, ships now:** 20 files (the muzzle textures are 916,746 bytes, the holes 202,787). Unpacked size grows by
+  - **Drive zip, ready to ship:** 20 files (the muzzle textures are 916,746 bytes, the holes 202,787). Unpacked size grows by
     1,122,185 bytes (1.122 MB, 1.070 MiB), from 473.108 to 474.178 MiB.
-    - Measured with `pack_visual_body.py` on a copy of today's Drive zip, with the files in the Editor's Resources. Adding the
-      files alone gives the same members.
-    - `install_local_assets.py --check` passes.
+    - Measured on release 27's Drive zip: `pack_visual_body.py` on a copy, with the files in the Editor's Resources. Adding the
+      files alone gives the same members. `install_local_assets.py --check` passes.
+    - Release 28 then measured the real room at about 3.1 MB, and B1's female pilot (2.5 MB) takes most of it.
+    - If both do not fit, the same 20 files work unchanged from the effects folder, in
+      `Assets/LocalAssets/ChipArenaFx/Resources/PackBank/`. Resources folders merge, and `NativePackBanks.Texture` loads
+      `PackBank/<id>`, so no code change is needed.
   - **Effects bank, waits for Astra's packer:** 32 files, 1,913,306 bytes.
     - The prefab is 693,234 bytes and holds 6 particle systems.
     - The textures are 1,181,025 bytes; the two dust sheets copied at 1024 make up 1.10 MB of that.
@@ -44,7 +47,12 @@ Doc: `docs/PACK-EFFECTS.md`, section "Guns: the muzzle flipbooks installed, bric
   - `tools/check_unity_compile.py` (all four assemblies pass);
   - `git diff --check`;
   - the pin scan (0 broken);
-  - PrototypeBuild.Validate: see the line below.
+  - **Not run: PrototypeBuild.Validate.**
+    - Hold E sent it on `309d8b3f` with the files installed.
+    - After the move, the Editor spent about 10 minutes re-importing out-of-date assets. G1 withdrew the request before the
+      tool took it, so the lock would not overrun its limit.
+    - The new load path is one `Resources.Load` that returns null without the asset. CoreTests and the Unity compile cover
+      it; the integrator's release validate will run it.
 - **Proof** (`F:/Chip Arena Development/scratch/fx-guns`):
   - `sheets/`: the lab's before/after on V1's rig, dark and bright stages. The impact sheets also show the zip-only step and the
     pack as authored.
@@ -53,7 +61,7 @@ Doc: `docs/PACK-EFFECTS.md`, section "Guns: the muzzle flipbooks installed, bric
     - The dim hotel interior: the pistol at the stone stairs.
   - `clips/lab-*`: the lab's slow-motion brick, dirt and muzzle clips.
 - **Ship steps (integrator):**
-  1. **Zip, now:**
+  1. **Zip, when it has room** (else these files go into the effects bank, as in step 2; see Bytes):
      - Copy the files in `F:/Chip Arena Development/scratch/fx-guns/ship/zip/ChipArenaLocal/Resources/PackBank/` into the
        Editor checkout's `Assets/LocalAssets/ChipArenaLocal/Resources/PackBank/`. These are 10 PNGs and their metas:
        `muzzle-flame-{pistol,rifle,machinegun,turret}`, `muzzle-burst-{star,fire,smoke}` and `impact-hole-{brick,glass,dirt}`.
