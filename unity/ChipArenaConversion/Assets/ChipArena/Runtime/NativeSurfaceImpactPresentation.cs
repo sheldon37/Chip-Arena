@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
     // which fades. The bake (the visual body's prefab, VisualImpacts: per kind an Effect of particle systems on the engine's
     // own particle shaders and a Decal quad) is read once; without its stone entry nothing draws. A kind the bake lacks plays the
     // stone entry, its hole the pack bank's texture for the kind where there is one (Core NativeSurfaceImpacts.HoleTexture),
-    // never switching the feature off. Pooled: effects per kind and a ring of holes, no allocation once warm. The low graphics
+    // never switching the feature off; its effect is the separate effects bank's for the kind when that is installed (Core
+    // NativeSurfaceImpacts.FxResource: brick, glass, dirt), else the stone one. Pooled: effects per kind and a ring of holes, no allocation once warm. The low graphics
     // tier draws the holes only; reduced effects play fewer at once. Presentation only.
     public sealed partial class ArenaPresentation
     {
@@ -29,10 +30,13 @@ namespace ChipArena.UnityConversion
             var prefab=Resources.Load<GameObject>(VisualBodyResource);var holder=prefab!=null?prefab.transform.Find("VisualImpacts"):null;if(holder==null)return false;
             var effects=new GameObject[NativeSurfaceImpacts.Kinds];var decals=new GameObject[NativeSurfaceImpacts.Kinds];var holes=new Material[NativeSurfaceImpacts.Kinds];
             var stone=holder.Find(NativeSurfaceImpacts.Names[NativeSurfaceImpacts.Stone]);if(stone==null)return false;
+            // The separate effects bank's impacts (Core NativeSurfaceImpacts.FxResource): the Effect of a kind the bake lacks, when there.
+            var bankFx=Resources.Load<GameObject>(NativeSurfaceImpacts.FxResource);
             for(int k=0;k<effects.Length;k++)
             {
                 var entry=holder.Find(NativeSurfaceImpacts.Names[k]);bool own=entry!=null;if(!own)entry=stone;
                 effects[k]=entry.Find("Effect")?.gameObject;decals[k]=NativeSurfaceImpacts.Holes(k)?entry.Find("Decal")?.gameObject:null;
+                var fxEffect=!own&&bankFx!=null?bankFx.transform.Find(NativeSurfaceImpacts.Names[k]+"/Effect"):null;if(fxEffect!=null)effects[k]=fxEffect.gameObject;
                 // The stone hole in the kind's own texture from the bank, where the bake has no entry for the kind.
                 var hole=!own&&decals[k]!=null?NativePackBanks.Texture(NativeSurfaceImpacts.HoleTexture(k)):null;var r=hole!=null?decals[k].GetComponent<Renderer>():null;
                 if(r!=null&&r.sharedMaterial!=null)holes[k]=new Material(r.sharedMaterial){name="Impact hole "+NativeSurfaceImpacts.Names[k],mainTexture=hole};
