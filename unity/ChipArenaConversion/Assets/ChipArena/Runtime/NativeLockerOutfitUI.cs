@@ -15,7 +15,8 @@ namespace ChipArena.UnityConversion
     {
         private readonly NativeOutfitPicker.Motion lockerOutfitMotion=new NativeOutfitPicker.Motion();
         // The pieces a slot lists: all of them with live DEV access, else those before its DEV pieces (each slot's last).
-        private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;return n;}
+        // (A hairstyle shows once the bake carries it: ArenaPresentation.VisualLookHas.)
+        private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;if(slot==0)while(n>1&&!ArenaPresentation.VisualLookHas(NativeLook.Hair,ids[n-1]))n--;return n;}
         private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length);
         private void LkOutfit(Rect grid)
         {
@@ -23,20 +24,23 @@ namespace ChipArena.UnityConversion
             {
                 string slot=NativeLook.Slots[s];var ids=NativeLook.Ids[s];int shown=LkOutfitCount(s),worn=NativeLook.Index(prefs.look,slot);if(worn>=shown)worn=0;
                 int k=NativeOutfitPicker.Row(NativeOutfitPicker.Cell(grid,lockerW,s),s,worn,shown,lockerFade,lockerViewHot&&!lockerBlocked,Time.unscaledTime,lockerOutfitMotion);
-                if(k!=worn){prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);Click();}
+                if(k!=worn){var was=prefs.look;prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);prefs.look=NativeBodyKind.Keep(prefs.look,was);Click();}
             }
         }
         // The outfit this pilot wears: prefs.look through the DEV gate (NativeLook.Gate), made again only when the pick or the
         // access changes (read every frame). A skin tone hovered in Appearance's SKIN TONE row (lockerToneTry: -1 DEFAULT, else
         // 0xRRGGBB; Runtime/NativeColorWheelUI.cs) is tried on it.
+        // The body pick (Core NativeBodyKind) rides through the gate and the tone, which normalise its key away until NativeLook
+        // carries it, and a body hovered in Appearance's BODY row (lockerBodyKindTry: -1 none; Runtime/NativeLockerBodyUI.cs) is
+        // tried on last.
         private string lookShownFrom,lookShown="",lookTriedFrom,lookTried;private int lookShownDev=-1,lookTriedTone=-2;
         private string LookShown()
         {
             var look=prefs.look??"";int dev=NativeBodySkins.LiveDeveloper(account?.Access??NativeAccess.Guest,System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())?1:0;
-            if(!ReferenceEquals(look,lookShownFrom)||dev!=lookShownDev){lookShownFrom=look;lookShownDev=dev;lookShown=NativeLook.Gate(look,dev==1);}
-            if(lockerToneTry==-2||menuScreen!=MenuScreen.Customize||lockerTab!=NativeLocker.Appearance)return lookShown;
-            if(!ReferenceEquals(lookShown,lookTriedFrom)||lookTriedTone!=lockerToneTry){lookTriedFrom=lookShown;lookTriedTone=lockerToneTry;lookTried=NativeLook.WithSkin(lookShown,lockerToneTry);}
-            return lookTried;
+            if(!ReferenceEquals(look,lookShownFrom)||dev!=lookShownDev){lookShownFrom=look;lookShownDev=dev;lookShown=NativeLook.Gate(look,dev==1);lookShown=NativeBodyKind.Keep(lookShown,look);}
+            if(lockerToneTry==-2||menuScreen!=MenuScreen.Customize||lockerTab!=NativeLocker.Appearance)return LookBodyTried(lookShown);
+            if(!ReferenceEquals(lookShown,lookTriedFrom)||lookTriedTone!=lockerToneTry){lookTriedFrom=lookShown;lookTriedTone=lockerToneTry;lookTried=NativeLook.WithSkin(lookShown,lockerToneTry);lookTried=NativeBodyKind.Keep(lookTried,lookShown);}
+            return LookBodyTried(lookTried);
         }
     }
 

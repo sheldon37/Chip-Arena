@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
             // The runtime.
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime",f)).Replace("\r\n","\n");
             string suit=R("NativeRobotSuitPresentation.cs"),body=R("NativeVisualBodyPresentation.cs"),bank=R("NativeSourceModels.cs"),skins=R("NativeWeaponSkinPresentation.cs"),outfit=R("NativeLockerOutfitUI.cs");
-            Check(bank.Contains("MachineSkins();ModelHats();SuitModels();")&&suit.Contains("models[Suit]=parts;"),"the suit in the bank");
+            Check(bank.Contains("MachineSkins();ModelHats();SuitModels();")&&suit.Contains("models[Suit]=SuitParts(material,null);"),"the suit in the bank");
             Check(suit.Contains("private int SuitShown(int id)=>NativeRobotSuit.Shown(VisualOutfitOf(id),HelmEars(id));")&&body.Contains("robotDressed[look]=dressed=NativeRobotSuit.Dress(look);")
                 &&body.Contains("if(id<RooftopIdTop&&id>RooftopIdTop-8)return NativeLook.Concept;")&&skins.Contains("private const string RooftopCrowdSkins=\"face:none\";"),
                 "the outfit's pieces worn (the first-person arms the local pilot's), each over its garment, the rooftop crowd in the concept's clothes");

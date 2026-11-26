@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         private int LkToneShown(){int t=NativeLook.SkinOf(prefs.look);return t<0?NativeColorWheel.ModelSkin:t;}
         // The one setter: the skin entry of prefs.look (a negative `rgb` removes it). A preset or DEFAULT moves the wheel to it;
         // a drag keeps the wheel where the pointer put it.
-        private void SetSkinTone(int rgb,bool fromWheel=false){prefs.look=NativeLook.WithSkin(prefs.look,rgb);if(fromWheel)lkToneFrom=rgb;GUIUtility.keyboardControl=0;}
+        private void SetSkinTone(int rgb,bool fromWheel=false){var was=prefs.look;prefs.look=NativeLook.WithSkin(prefs.look,rgb);prefs.look=NativeBodyKind.Keep(prefs.look,was);if(fromWheel)lkToneFrom=rgb;GUIUtility.keyboardControl=0;}
         private Texture2D LkWheelTexture()
         {
             if(lkWheel!=null)return lkWheel;const int n=160;var px=new Color[n*n];

@@ -155,6 +155,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--backrooms-boss-rules"){BackroomsBossRuleChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--guard"){GuardChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hotdog-friends"){HotdogFriendsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--body-kind"){BodyKindChecks.Run(ProjectRoot());SkinToneChecks.Run(ProjectRoot());RobotSuitChecks.Run(ProjectRoot());LookContractChecks.Run(ProjectRoot());LockerChecks.Run(ProjectRoot(),System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--costume"){CostumeChecks.Run(ProjectRoot());BodyStyleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hot-dog"){LookContractChecks.Run(ProjectRoot());HotDogChecks.Run(ProjectRoot());Console.WriteLine("PASS hot dog");return 0;}
             if(args.Length==1&&args[0]=="--cutscene-skip"){CutsceneSkipChecks.Run(ProjectRoot());return 0;}
@@ -455,7 +456,7 @@ internal static class Program
             BootIntroChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
-            LookContractChecks.Run(root);HotDogChecks.Run(root);GuardChecks.Run(root);HotdogFriendsChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieRunTurnChecks.Run(root);ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
+            LookContractChecks.Run(root);BodyKindChecks.Run(root);HotDogChecks.Run(root);GuardChecks.Run(root);HotdogFriendsChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieRunTurnChecks.Run(root);ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
             CostumeChecks.Run(root);BodyStyleChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
