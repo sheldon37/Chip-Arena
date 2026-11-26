@@ -104,8 +104,14 @@ namespace ChipArena.UnityConversion
         public void Find(string startId,string endId,Func<MapNavLink,bool> active,List<string> path)
         {
             path.Clear();int start=index[startId],end=index[endId];count=0;
-            for(int i=0;i<nodes.Length;i++){distance[i]=float.PositiveInfinity;previous[i]=-1;position[i]=-1;closed[i]=false;estimate[i]=(nodes[i].pos-nodes[end].pos).Length;}
-            distance[start]=0;PushOrDecrease(start);
+            // Most local routes visit only a fraction of the graph. Compute each
+            // straight-line estimate on first discovery, with the same heap tie-break.
+            Array.Fill(distance,float.PositiveInfinity);
+            Array.Fill(position,-1);
+            Array.Clear(closed,0,closed.Length);
+            var destination=nodes[end].pos;
+            previous[start]=-1;distance[start]=0;estimate[start]=(nodes[start].pos-destination).Length;
+            PushOrDecrease(start);
             while(count>0)
             {
                 int at=Pop();if(at==end){for(int p=end;p>=0;p=previous[p])path.Add(nodes[p].id);path.Reverse();return;}closed[at]=true;
@@ -114,7 +120,9 @@ namespace ChipArena.UnityConversion
                     int next=edge.Next;if(closed[next])continue;
                     float cost=distance[at]+edge.Cost;
                     // World/hazard queries are expensive. A non-improving edge cannot change the route.
-                    if(cost>=distance[next]||!active(edge.Link))continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
+                    if(cost>=distance[next]||!active(edge.Link))continue;
+                    if(position[next]<0)estimate[next]=(nodes[next].pos-destination).Length;
+                    distance[next]=cost;previous[next]=at;PushOrDecrease(next);
                 }
             }
         }
