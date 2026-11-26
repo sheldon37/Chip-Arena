@@ -165,6 +165,18 @@ The two composed textures ship in the licensed-assets zip under the visual body'
 published as files, and no pack shader, script or prefab ships. The selections (`tools/pack_bank/selections/fx-blasts.json`,
 `fx-magic.json`) name the files used.
 
+### Cache tiers and the Magic Missiles trial (2026-11-25, owner licence)
+
+Astra's revamp brief §4 (`docs/CACHE-GLAIVE-FX.md`), from two more of Archanor's packs the owner licensed:
+
+- Action RPG FX (38222): the chest glow (`ChestLv1Glow`) and chest opening (`ChestLv4Open`) particle systems, set to its four levels
+  per cache tier, with their `treasure_ray_mod`, `chestrays_mod`, `glow_basic` and `sparkle_atlas` materials and textures;
+- Magic Missiles (36250): the `FireMissile` and `FireExplosion` particle systems, with their `fire_ball`, `fire_flick`, `fire_dust`
+  and `shared_smoke` materials and textures.
+
+They are the packs' own particle systems on Unity's built-in particle shader, with no pack shader, script, sound or light. They ship
+in the licensed-assets zip's separate effects bank (`Assets/LocalAssets/ChipArenaFx`). They are never committed or published as files.
+
 ### Visual body locomotion clips (2026-10-24, owner licence)
 
 The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion
@@ -284,6 +296,18 @@ bolt from the Tactical Shooter Pack's recordings in KINEMATION's Tactical FPS An
 | `gun.rifle.reload.out`, `.in` | `SRM-12/Actions/S_SRM-12_TacticalReload.WAV` (from .725 and 1.925 s) |
 | `gun.machinegun.reload.out`, `.in`, `.bolt` | `TR15/Actions/S_TR15_Reload_Tactical.WAV` (from .82, 1.575 and 2.365 s) |
 | `gun.rifle.bolt` | `SRM-12/Actions/S_SRM-12_ShotBoltOnly.WAV` (from .445 s) |
+
+### The Glaive's throw, ricochet and catch (2026-11-25, owner licence)
+
+Astra's revamp brief §4 (`docs/CACHE-GLAIVE-FX.md`): three keys of the existing contract from Battle Sound Library - Magic & Melee
+(Infinity PBR / Magic Pig Games, 176417). 13 clips, 0.12 MB; the private zip's `LICENSES.md` names every source file. Paths are
+relative to its `Battle Sound Library/Battle/` folder.
+
+| Keys | Source |
+|---|---|
+| `topdog.ring-throw` | `Bow & Arrow/Arrow_Flight_Whoosh/Doppler Example/Arrow_Flight_Whoosh_Doppler_1-4` (from 0.9 s) |
+| `topdog.ring-ping` | `Sword/Sword_On_Metal/Sword/Sword_On_Metal_Sword_1-5` with its `Metal` layer and its `Impact` layer at -12 dB |
+| `topdog.ring-catch` | `Fist/Fist On Metal/Fist/Fist_On_Metal_Fist_1, 3-5` with its `Impact` layer and its `Metal` layer at -9 dB |
 
 ### Central Station enemy cues (2026-10-28)
 
