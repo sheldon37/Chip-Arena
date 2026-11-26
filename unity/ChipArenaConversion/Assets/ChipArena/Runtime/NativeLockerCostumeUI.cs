@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             {
                 var r=new Rect(grid.x+(k%cols)*(w+LkGap),grid.y+(k/cols)*(LkRowH+LkGap),w,LkRowH);bool on=(k==1)==lockerCostume;
                 bool click=LkRowCard(r,8290+k,on,"person-standing",U.Hex(0xefb587),LkCostumeLabels[k],LkCostumeTexts[k],null,out bool hot,k==1?LkVoxelThumb+BodySkinEquipped():-1);
-                if(click&&!on)prefs.look=NativeVoxelCostume.With(prefs.look,k==1);
+                if(click&&!on)prefs.look=NativeBodyKind.Keep(NativeVoxelCostume.With(prefs.look,k==1),prefs.look);
             }
             float y=grid.y+LkCostumeRows()*(LkRowH+LkGap);
             if(lockerCostume)

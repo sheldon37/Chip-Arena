@@ -100,7 +100,17 @@ namespace ChipArena.UnityConversion
             var victim=Pilots.Find(p=>p.Seat.id==target);if(victim!=null&&ChannelLive(victim,"war-cry"))amount*=.85f;
             if(BubbleHeld(target))amount*=.5f;return amount;
         }
-        private NativePilot PriorityTaunt(NativeTechniqueMark[] marks)=>Pilots.FirstOrDefault(p=>p.Hp>0&&p.Seat.connected&&marks!=null&&marks.Any(m=>m.Kind=="war-cry"&&m.By==p.Seat.id&&m.At<=Time&&Time<m.Until));
+        private NativePilot PriorityTaunt(NativeTechniqueMark[] marks)
+        {
+            if(!NativeCombatMarks.Has(marks,"war-cry",Time))return null;
+            foreach(var p in Pilots)
+            {
+                if(p.Hp<=0||!p.Seat.connected)continue;
+                foreach(var m in marks)
+                    if(m.Kind=="war-cry"&&m.By==p.Seat.id&&m.At<=Time&&Time<m.Until)return p;
+            }
+            return null;
+        }
         private void StepPriorityConstraints()
         {
             foreach(var m in Minions.Where(m=>m.Hp>0).ToArray())

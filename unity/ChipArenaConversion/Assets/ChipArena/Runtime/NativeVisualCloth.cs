@@ -17,6 +17,9 @@ namespace ChipArena.UnityConversion
         public static Action<object,bool> Enable;
         /// <summary>Back to the pose as drawn: a teleport, a respawn, a gap in the body's frames.</summary>
         public static Action<object> Reset;
+        /// <summary>Optional (a bridge that has it registers it): the hair alone held as drawn (false: fully hidden, under the robot's
+        /// helmet) or simulated again (true, back from its pose as drawn); the rest of the body's cloth as Enable left it.</summary>
+        public static Action<object,bool> EnableHair;
         /// <summary>The distance from the arena's camera past which a body's cloth holds still (m).</summary>
         public const float Far=30;
         /// <summary>All three hooks are needed: attachment alone does not prove enable/reset lifecycle support.</summary>

@@ -14,6 +14,22 @@ internal static class DeathmatchChecks
         Check(NativeMatch.DeathmatchReplayStart(90,100,.4)==100,"late replay starts at the hit");
         Check(NativeMatch.DeathmatchReplayStart(99.9f,100,2.4)==99.9f,"short history starts at the oldest frame");
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new JsonSerializerOptions{IncludeFields=true});
+        // Replay captures at 20 Hz. A chip or a temporary stat change must not edit earlier frames.
+        var layout=content.baseStats;
+        var stats=new ChipStats(layout);
+        var original=stats.FrameStats(layout);
+        Check(original.Select(row=>row.name).SequenceEqual(layout.Select(row=>row.name))&&
+            original.All(row=>row.value==stats[row.name]),"captured stat order and values");
+        long bytes=GC.GetAllocatedBytesForCurrentThread();
+        for(int i=0;i<600;i++)stats.FrameStats(layout);
+        Check(GC.GetAllocatedBytesForCurrentThread()==bytes,"stable replay stats allocate nothing");
+        string statName=original[0].name;
+        double baseValue=original[0].value;
+        stats[statName]=baseValue+2;
+        var buffed=stats.FrameStats(layout);
+        Check(original[0].value==baseValue&&buffed[0].value==baseValue+2&&ReferenceEquals(original[1],buffed[1]),"buff preserves past frames and shares unchanged rows");
+        stats[statName]=baseValue;
+        Check(stats.FrameStats(layout)[0].value==baseValue&&buffed[0].value==baseValue+2,"buff expiry preserves its replay frame");
         var a=new NativeSeat{id=1,team=0,spec="pistol",name="A"};
         var b=new NativeSeat{id=2,team=1,spec="sword",name="B"};
         var c=new NativeSeat{id=3,team=0,spec="pistol",name="C",bot=true};

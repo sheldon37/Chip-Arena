@@ -328,7 +328,7 @@ namespace ChipArena.UnityConversion
             string worn="upper:sheldon-robe,lower:sheldon-pants,hands:gloves,feet:barefoot";
             Check(NativeLook.Gate(worn,true)==worn&&NativeLook.Gate(worn,false)=="hands:gloves"&&NativeLook.Gate("feet:sneakers",false)=="feet:sneakers"&&NativeLook.Gate("",false)=="","the DEV gate keeps the pieces with live DEV access and drops only them otherwise");
             string outfit=R("Runtime/NativeLockerOutfitUI.cs"),game=R("Runtime/ConversionGame.cs"),portraitUi=R("Runtime/NativePortraitUI.cs");
-            Check(outfit.Contains("private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;return n;}")
+            Check(outfit.Contains("private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;if(slot==0)while(n>1&&!ArenaPresentation.VisualLookHas(NativeLook.Hair,ids[n-1]))n--;return n;}")
                 &&outfit.Contains("prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);")&&outfit.Contains("bool dev=NativeLook.DevOnly(ids[worn]);")&&outfit.Contains("\"DEV\",9,U.Hex(0xffd479,e)")
                 &&outfit.Contains("lookShown=NativeLook.Gate(look,dev==1);")&&outfit.Contains("NativeBodySkins.LiveDeveloper(account?.Access??NativeAccess.Guest,")&&game.Contains("presentation.LocalLook=LookShown();")&&portraitUi.Contains("own?LookShown():PortraitOutfit(key)"),
                 "the Locker lists the DEV pieces (marked) only with live DEV access, and the pilot wears its look through the gate");

@@ -66,6 +66,140 @@ Doc: `docs/PACK-EFFECTS.md` "Realistic magic from the flipbooks". Presentation o
   onto this branch re-imports for ~3 min (the shader and the atlases).
 - **Next:** the integrator reviews the sheets and clips; the owner picks fire (this or C2's trial); the atlases ship with the effects bank.
 
+## 2026-11-26 — Claude: release 30: the Female pilot at Strong, and the zip member cap raised to 6,000 (integrator)
+- **Published:** shared and the builder at `86b86bed`. Test channel revision `639312660795293099` (build `7505d443`, 398.3 MiB).
+- **Merged:**
+  - `claude/zip-files-cap` (`0482868a`, shared `195b6c2c`): `install_local_assets.py` `MAX_ZIP_FILES` goes from 5000 to 6000 (owner: "Yes, raise it"), and "zip is too large" now names the members and bytes against both caps. The suite at `0482868a` passed (1,110 groups).
+  - `claude/pilot-body-hair` (B1, with `35c34f57` setting `NativeBodyKind.DefaultLevel=Strong`, owner: "Strong"; synced to `5985f599`). The suite passed (1,111 groups, exit 0), and so did the Unity compile.
+  - The pin scan flagged `NativeProfileUI.cs look=GatedLook()`. That pin is checked in `NativeNetwork.cs`, which is unchanged; B1's new Profile UI line has its own check. It is a false positive.
+- **What shipped:**
+  - The Locker's BODY row (Male / Female, kept on this PC). The Female body at Strong: blend shapes past 0..100 are baked into per-mesh copies, because `legacyClampBlendShapeWeights` is 1.
+  - The pack's female idle on the Locker, lobby and portrait poses. Match idles are unchanged; `ArenaPresentation.FemaleMatchStance` is off.
+  - Picking Female switches Spiky hair to Fringe tail.
+  - The bob and the high ponytail are baked, with the patched cloth bridge, but not yet pickable.
+- **Drive zip:** repacked with `--with-cloth` (the plain pack had kept the old bridge): +45 members, +2,511,687 bytes, 3,458 members. Adding the sound queue's 1,574 makes about 5,032, under the new 6,000. The previous zip is kept as `LocalAssets-2026-11-25-before-female-pilot.zip`. B1's bake and bridge are now in the Editor's LocalAssets (the released state).
+- **Astra, still open (B1's DEV_LOG entries):**
+  - NativeLook carries `body` (Female only; male is the default and never written).
+  - The `bob` and `high-ponytail` hair ids.
+  - The account load keeps the body.
+  - The Worker / service allowlist.
+  - Until then a peer sees the Male body and the pick lives in this PC's prefs.
+- **Not run or failing:**
+  - Three Python tool tests fail the same way on unmodified shared: `test_effects_audio` (1), `test_import_sound_requests` (5) and `test_intro_music` (1).
+  - `test_local_cloth`, `test_private_addons` and `test_visual_body_assets` hit a 300 s timeout here.
+  - No Windows match with two clients, and no account round trip.
+
+## 2026-11-25 — Claude (B1): the female body, the owner's review round (levels, stance, face)
+Owner: "I think the body needs to look more feminine for the female body; Take your time to analyze this one." Release 28 on hold. Branch `claude/pilot-body-hair` (code `41daa60e`, `2d3ab48f`, `bccf8583`; docs after), pushed, not merged, not released. Presentation only: hit volumes, shot origins, reach, movement, timing and the wire unchanged; no clip, motion bank or bake change (the candidate zip is unchanged).
+- **Analysis (the integrator's, verified):** today's pilot is the pack's neutral middle (every shape 0, no bone modifiers). The pack's males push BodyType +26..+67, Weight +15, NeckThickness +19..+100, Sharpness +65..+85, the clavicles 1.07 and the root 1.03; its females BodyType 0..-15, Weight to -24, Curvy 100-115, Chest 42-60, the root .92-.98 and Hana's upper arm (1, .92, .73). So Default_Girl on the neutral base moved little.
+- **Blend shape clamp:** the project clamps weights to 0..100 (`legacyClampBlendShapeWeights: 1` in the Editor's ProjectSettings; the tracked minimal file lacks the key, so Unity's default applies to builds too). Negative weights and Curvy over 100 drew nothing, and the zombie female variants' negative BodyType has been clamped all along. The presentation now bakes the out-of-range part into a copy of each worn mesh, once per mesh and level (`FemaleMesh`, Unity's own frame interpolation and extrapolation), and sets the in-range part as a weight. The alternative, for Astra and the owner: `legacyClampBlendShapeWeights: 0` project-wide (it would also change the zombie variants).
+- **Levels** (`NativeBodyKind.Levels`; table in `docs/PILOT-BODY-HAIR.md`): Subtle, Medium (the integrator's starting point: BodyType -20, Weight -20, Curvy 115, Chest 70; WaistSize +45, which narrows, measured; ButtSize +35; NeckThickness -30; the shoulders .93 as the upper arms' span along the collarbones, so the arms keep their length; the upper arm's girth .92/.80; hands .93; root .96), Strong (BodyType -32, Weight -28, Chest 85, Curvy 130, WaistSize 65, ButtSize 55, NeckThickness -45, Chest Size .96, span .90, upper arm Hana's .90/.73, hands .90, root .95).
+- **What reads best:** Strong. It is the only level that reads female in silhouette in every outfit and from behind: the bust, the waist taken in, the hips, narrower shoulders, slimmer arms and smaller hands. Medium reads female in the tee and the hoodie up close but blurs in the robot armour and at distance; Subtle stays close to today's pilot. The biggest male cue left is the match idles' wide stance, which the owner keeps (the stance option below). Recommendation: Strong with Fringe tail; `DefaultLevel` stays Medium until the owner picks (one constant).
+- **Fit and clipping** (robot armour bare-headed at each level, Strong in the tee): the chest core sits on its surface; the wrist device sits on the forearm; the pistol grip is unchanged; the armour plates follow the body with no clipping seen front, side, back or close; at Strong the pauldrons look a little wide over the narrower shoulders. Not checked at each level: other outfits, crouch and slide, first person, the Tactical clips and T1 grips, stairs.
+- **Stance:** the pack's female idle (`BMAC_F_Idle`) against its male one (thighs closer, knees in, upper chest up, hips rolled) is laid over the Locker stage, lobby and portrait poses as bone rotations; the motion bank is not needed. A real `BMAC_F_Idle` clip would need motionextra and walkmerge appended to `21eab500`, and any full rebake must re-append T1's 14 and L1's 4 records. The match idles stay the pack's (owner); a lighter match stance, standing still only, is the owner's option `ArenaPresentation.FemaleMatchStance`, off. The clip shows the option bringing the feet and knees in at idle and aim; with it on, the rifle also sits higher in the aim (the chest lift under the aim pose), so if the owner wants the option it should keep the legs and drop the chest term while aiming (not done: off, not planned to ship).
+- **Face:** Roundness 15/30/45 (a softer jaw), EyeRoundness 57/62/68, NeckThickness down, the chin's width .95/.90/.86, Sharpness 0 (every pack female has 0, its males 65-85; below 0 it barely moves the face, measured). The face changes little between levels; the hair does most of the work. Bare-headed, Fringe tail reads as hers and Tied back much less, so picking Female in the default Spiky now wears Fringe tail (Locker writer only, no NativeLook edit).
+- **Fixed on the way:** a level change on an unchanged look did not remake the body (VisualRetone's same-look shortcut ran first; `2d3ab48f`).
+- **Captures** (`F:/Chip Arena Development/scratch/b1-ship/fem2/`): `levels-armour`, `levels-tee`, `levels-hoodie` (today's pilot and the three levels, helmeted, front, side and back, the same camera and scale), `silhouettes` (black on white) and `silhouettes-overlay` (tee and hoodie), `faces`, `levels-bare`, `fit-close`, `locker-stage` (first round against now) and `locker-full`, `clip-medium-stance-off-on.mp4` and `stance-aim.jpg` (idle, run, stop and aim twice at Medium, the option off then on; a studio view: the robot armour and helmet are drawn outside the body's renderers, so the studio layer leaves them out and the hair stays hidden as under the helmet; the in-world take had walls in the way). Tool options (local, git-ignored): `patch_fem2.py` in `scratch/b1-ship/tools` (`femlevel`, `femlevelat`, `femstance`, `femstanceat`, `tclock=arena`, `sil` views).
+- **Checks:** CoreTests the relgen5 way at `bccf8583` (and `2d3ab48f`): 1,108 groups, exit 0, with `ExpeditionDeploymentChecks` bypassed in the scratch run only (shared's Belvedere identity pin, the integrator's); the `--body-kind` group; `tools/check_unity_compile.py` (Assembly-CSharp and -Editor); `git diff --check`. PrototypeBuild.Validate was not rerun (no bake or build change since the first round's pass).
+- **Not done:** the owner's level pick; the match stance option on other weapons and in motion through a real match; the fit at each level beyond the checked views; a Development build; peers and accounts (Astra's contract, unchanged from the first entry).
+- **Ship steps:** the owner picks the level (and whether the match stance option ships); then as the first entry: Astra's contract, merge, the candidate zip with that code.
+
+## 2026-11-25 — Claude (B1): female pilot body and the first hair sample (Astra's brief sections 1 and 2)
+Owner: "lets get work started" on Astra's 2026-11-24 brief. Branch `claude/pilot-body-hair`, base shared `b6e24973`. Pushed, not merged, not released. Presentation only: both bodies and every hairstyle keep the same hit volumes, reach, shot origins, movement, timing and network messages; no animation clip or timing changed (`docs/PILOT-BODY-HAIR.md`).
+- **Today's pilot, measured:** the bake draws the pack's base body with every shape at 0 and no bone modifiers (it never applied Default_Boy's BodyType 45). That stays the Male body exactly.
+- **Female preset** (`Core/NativeBodyKind.cs`, `Runtime/NativeBodyKindPresentation.cs`): the pack's authored `Default_Girl` on the same rig: Chest 60 and Curvy 100 on every worn mesh (the clothes follow), EyeRoundness 57, its Chest Size modifier (`spine_04` x.971, the head counter-scaled), its long lashes and thin brows. The chest core and the robot armour's plates ride out with the cloth under them (their meshes' own shape deltas). The pack's stance (.95) drives only its own Animator; the motion bank poses both bodies.
+- **Locker:** Appearance opens with BODY (Male / Female cards); a hover tries it on; a pick turns the stage once round. Save Pilot keeps it in this PC's prefs (the profile and the seat still send the normalised look).
+- **Hair sample:** `bob` (MinorFringe + RoundBob) and `high-ponytail` (SweaptBack + LongPonyTail) baked with their chains; the local cloth bridge gives the bob restrained tips and the ponytail a long recovery; the hair cloth is held under the robot's full helmet (optional `NativeVisualCloth.EnableHair`). The brief's twelve concepts against the pack: ready to combine: chin-length bob, high ponytail, layered shag (Flare), asymmetrical lob (AsymmetricalFringe + CasualFlow); refit: swept undercut (SweaptBack + ShotaCut, an undercut texture), twin braids (TwinLongTails are tails), loose waves (LongStreight is straight), cropped curls (ShinryuCut, rigid); new mesh and weights: tapered coils, low braid, shoulder-length locs (SweaptDreads is short), half-up curls.
+- **Contract needs for Astra (nothing on the wire changed):**
+  1. `NativeLook`: keep `body` (`male` default, never written; `female`), last valid wins, after the five slots and before `costume`; `Normalize`, `Join`, `With`, `WithSkin`, `WithCostume` and `Gate` carry it; not DEV gated; `SameOutfit` false when the body differs (the presentation already remakes a body on it).
+  2. Hair: append `bob`, `high-ponytail` (Bob, High ponytail) to the hair `NativeLook.Ids`/`Labels`. The bake carries them; the Locker lists a hairstyle once the bake has it; a look naming one the bake lacks draws the default hair.
+  3. Account load (`NativeProfileUI`, the `KeepSkin` path): keep this PC's body while the service drops the key (as the costume), then bump `ServiceKeepsLook`. Today a signed-in load brings back today's pilot.
+  4. Worker / service allowlist: the `body` key and the two hair ids (`src/relay/accounts.ts` `LOOK_SLOTS` lists hair).
+  5. Peers already pass the look string through `NativeLook.Normalize`; nothing else once (1) lands (`MaxLength` 512 unchanged; the key adds 12 characters). Old clients drop it and draw today's pilot. Once (1) lands, `NativeBodyKind.Keep` and `LocalBodyOwn` do nothing and can go.
+- **Bake (B1 is the only rebaker this round):** wardrobe bake plus `face|female-lashes`, `face|female-brows`, `hair|bob`, `hair|high-ponytail`; motion bank `21eab500` restored after it; the released bake, motion bank and bridge put back after every hold. This Editor's pack shader graphs fail to import, so its bake writes white materials and no Sheldon colour maps: the kept bake's materials, colour maps and stride controller were made the released bake's (`scratch/b1-ship/tools/fixmats.py`).
+- **Bytes:** visual body 472.16 to 474.66 MB (+2.50 MB unpacked: face pieces 1.05, hair 1.15, prefab and look data 0.29), inside the installer's 480 MB body budget; the whole zip +2.51 MB unpacked. Candidate (not swapped): `F:/Chip Arena Development/scratch/b1-ship/LocalAssets-pilot-body-hair.zip` (release 25's zip plus this body and the patched bridge; `install_local_assets --check --require-cloth` passes).
+- **Cloth profile (the Editor, not a Development build; every model body in the high ponytail; 10-12 s windows):** one pilot on/off: frame p95 15.96/11.06 ms, CPU main p95 13.16/8.96, GPU p95 2.98/3.02, means 11.12/9.92 ms, 2/0 active cloths (the on run followed a recompile: worst frame 135 ms). Seven bots on/off: frame p95 21.55/21.76, CPU 19.30/19.10, GPU 7.95/7.65; only 4 bodies were in view and 2 cloths active (the rest past 30 m or unseen), so eight simulated pilots were not exercised.
+- **Checks:** CoreTests the relgen5 way at `88416d30`: 1,108 groups, exit 0, with `ExpeditionDeploymentChecks` bypassed in the scratch run only (it fails on shared `b6e24973` too: the Belvedere world identity pin, the integrator's); the `--body-kind` group; `tools/check_unity_compile.py` (all four assemblies); `git diff --check`; PrototypeBuild.Validate in the Editor on the new bake: ok (its two "Destroy may not be called from edit mode" errors are in earlier validates too).
+- **Captures (scratchpad `b1/cap`):** today's pilot and the female preset in robot armour, tee and open hoodie (helmet and bare head), the female aiming (core and device close-ups), first person, the Locker's BODY row, the bob and the ponytail through bare head, visor, beanie and full helmet, and the motion test (idle, sprint, hard turn, stop, jump, dodge, aim) for both styles on the female body (`b1/clips`).
+- **Not done:** the motion test on today's body; the reticle through the game camera; boots on the Hundred Steps (legs and feet are the same bones and meshes on both bodies); the wrist install's plant pose (the device and its seat were checked); the turntable's once-round after a click; a real eight-pilot profile; a Development build; two clients and an account on a second PC (they need Astra's part).
+- **Ship steps:** Astra's contract (1-4) first; merge this branch; swap the candidate zip together with that code on the builder branch (old code ignores the new pieces; new code without the zip draws the default hair and today's lashes); the tool's B1 wardrobe entries and play options are in `scratch/b1-ship/tools`.
+
+## 2026-11-25 — Claude: release 29: the Checkout Frenzy storefront; the zip limit is the file count (integrator)
+- **Published:** shared and the builder at `a7172650`. Test channel revision `639312613457759576` (build `3eafd797`, 397.2 MiB).
+- **Merged:** `claude/meridian-storefront` (M1, `3dbd3c0d`, synced to `abcd73f8`). The suite at `abcd73f8` passed (1,110 groups, exit 0), and so did the Unity compile.
+- **What shipped:** Meridian Stores, at the turn toward City Hall, becomes Checkout Frenzy's convenience store (#450's first trial). It has a lit white fascia, an OPEN card, and fridges, shelves and a counter in a lit room inside the lot's collider. It is still one renderer on the route's two shared materials, with no collision change.
+- **Drive zip:** `ChipArenaCityRoute.bytes` changes (`4a2bba87`, +159,018 bytes); no members are added. The previous zip is kept as `LocalAssets-2026-11-25-before-storefront.zip`.
+- **Correction to the two room entries below (2026-11-25): the binding limit is the member count, not bytes.**
+  - `install_local_assets.py` says "zip is too large" for more than `MAX_ZIP_FILES` = 5000 members OR more than `MAX_ZIP_BYTES` = 512 MiB.
+  - Release 29's final zip (the sound queue's last `assets-*.zip`) has **4,987 members** and 503.55 MB. The queue's layered jobs add 1,574 members and about 10.4 MB.
+  - Release 28's first build failed at 3,427 + 1,574 = 5,001 members. The 14-member orphan prune fixed it.
+  - So there is about 33 MB of byte room, but only **13 members**.
+- **Astra (blocking):**
+  - B1's female pilot (owner's pick: Strong) adds 45 members, so it cannot ship under 5,000. G1's muzzle flipbooks add 20.
+  - Please raise `MAX_ZIP_FILES`, or tell us what it protects. It guards the PC builder's install step only.
+  - The sound queue also caches about 190 MB per job each time the Drive zip changes. `AppData/Local/ChipArena/SoundQueue` is 83 GB on C:.
+
+## 2026-11-25 — Claude (M1): the storefront trial (#450): Meridian Stores from Checkout Frenzy, against the Modern Supermarket front
+Integrator brief from Astra's asset handoff (`docs/CLAUDE-UNITY-ASSETS.md`, issue #450). **Branch:** `claude/meridian-storefront` from shared
+`2433743f`. Pushed; not merged, not released. Doc: `docs/expedition/MERIDIAN-ROUTE.md` ("The storefront trial"). Presentation only.
+- **What:** the corner shop on the left turn toward City Hall has three storefronts (`NativeMeridianRoute.Storefront`):
+  - `""`: release 27's grocer front (Modern Supermarket);
+  - `cf`, now in force: Checkout Frenzy's convenience store. Its window and entrance modules, a lit white lightbox fascia with a red stripe, and a lit room behind;
+  - `mix`: the grocer front opening onto the same room.
+  - The room sits inside the lot's collider box. It has four of the pack's double drinks fridges, lit and filled with its cans and cartons; the kit's shelving with the pack's boxed goods; the counter, the ice-cream freezer, a plant and the air curtain.
+  - Pack meshes are read as data, with palette and label colours baked into vertex colours. Glass is left out.
+  - No pack material, texture, script or plugin ships. Only the mesh and texture files the fittings use were extracted, to a git-ignored scratch folder.
+  - A bank without the storefront in force keeps release 27's front (`NativeMeridianRouteDraw.StorefrontInBank`), so the code can merge before the Drive zip changes.
+- **Reads as a landmark?** Yes where the route turns: the game camera swings west at the junction and the shop's north face passes on the left.
+  - `cf`'s lit fascia and open shop read as a corner shop there and from across Clock Street.
+  - From the steps' head (about 33 m), release 27's big warm window is the brighter patch, and `cf` shows as a white sign band. A brighter room is the next step if it should carry that far.
+  - `mix` keeps the Edwardian front but its room reads only from across the street.
+- **Materials and draw calls:** the shop stays one renderer with the route's two shared materials: 2 draw calls plus shadows, as in release 27.
+  - Placed as the pack's own prefabs, the same fittings would be about 195 renderers, 205 draw calls and 13 materials before batching. Checkout Frenzy's front would add 9 renderers and 18 draw calls.
+  - Editor frame stats were logged per front, but totals varied by hundreds of batches between runs, so they are not a clean A/B.
+- **Pavement:** every front has the same lot faces, keep-outs and covers (pinned in CoreTests). The art-rule check finds no point standing free below 3.1 m. Nothing stands on the pavement and no collision changes, so there are no Astra items.
+- **Bytes** (`ChipArenaCityRoute.bytes`; release 27's is 2,220,863):
+  - `cf`: 2,379,881, which is **+159,018**;
+  - `mix`: 2,951,645 (+730,782);
+  - the trial bank with all three: 4,676,823 (captures only).
+  - A `--storefronts ms` build is byte-identical to release 27's bank (`8bda8a82`).
+  - The Drive zip unpacks to 493,013,003 bytes today. `cf` adds its 159,018 (computed; no zip was packed). It waits for Astra's `MAX_ZIP_BYTES` raise, as the integrator asked.
+- **Checks:**
+  - Full CoreTests run the relgen5 way, in a throwaway worktree with `ExpeditionEndingChecks`' meta-path comparison normalised and nothing committed:
+    - `f7ad1a90` with the trial bank: exit 0, 1,109 PASS lines;
+    - `186dce5f` with the `cf` bank: exit 0, 1,109 PASS lines.
+  - `--meridian-route`: 15,543 checks with the trial bank and 15,537 with the `cf` bank.
+  - The Unity compile check: 0 errors. `git diff --check`: clean.
+  - Three live Expedition starts in the Editor on Crown Hill (seed 2027808463), all `STAGE_LOADING reason=ready`.
+- **Proof** (`F:/Chip Arena Development/scratch/meridian-storefront/proof/`), on seed 2027808463 with the same camera path:
+  - `walk-before-after-cf-2x.mp4` (release 27's front against `cf`);
+  - `walk-three-fronts-2x.mp4`;
+  - `stills-1-approach.jpg`, `stills-2-close.jpg`, `stills-3-game-camera.jpg` (each view a row, with the three fronts side by side).
+- **Not done:**
+  - PrototypeBuild.Validate: no time was left in a 20-minute hold. Domain reloads now take 3.5 to 4.4 minutes each.
+  - No Low-tier capture, Windows build or two-client run, and no first-time walker.
+  - Hold C ran 21 minutes, 1 minute over the cap. Hold B's walk was unusable (the capture tool's step and arena clocks drift), so I recaptured it in hold C.
+- **Ship:** for the integrator, once the zip has room.
+  1. Merge the branch.
+  2. Under the lock, copy `F:/Chip Arena Development/scratch/meridian-storefront/bank-cf/ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` over release 27's in the Editor's Resources (same meta).
+  3. Run `pack_visual_body` and `install_local_assets --check`, keep the old zip, then swap the zip and push the builder.
+
+## 2026-11-25 — Claude: F: filled up; #451's build re-run (integrator)
+- **What happened:** around 20:00-20:40 local, F: dropped to 351 MB.
+  - Unity's "Low disk space" dialog stalled the shared Editor for about 20 minutes (G1 closed it).
+  - The builder's build of `34ea6eb8` (Astra's PR #451, Deathmatch bot frame pacing) failed while packaging, with "There is not enough space on the disk" (`Builds/Chip-Arena-Windows.zip`). Every check before packaging passed. The test channel stayed on release 28.
+- **Cause:** `F:/Chip Arena Builder/Builder/Work` held 51 GB of per-build work folders back to 2026-11-20, about 0.8 GB per old build and 7.3 GB for each of the newest.
+- **Fix (owner: "Yes, clear them"):** removed 41 work folders, freeing 44 GB. Kept the newest successful build's folder (`729b5890`) and the 2026-11-01 `.rar`. F: now has 44 GB free.
+- **This commit** re-runs the builder on `34ea6eb8` plus this note.
+- **Astra:** each build leaves its work folder behind, so F: will fill again. Consider pruning old `Work/` folders after a successful publish. The sound queue's cache on C: (`AppData/Local/ChipArena/SoundQueue`) is 83 GB of `assets-*.zip` versions.
+
+## 2026-11-25 — Astra: Deathmatch bot frame pacing (PR #451)
+`codex/deathmatch-bot-frame-pacing`, shared base `729b5890`, implementation `e943c27b`. Bot focus queries keep the closest eligible candidate in roster order. A* computes straight-line heuristics only for discovered nodes. Killcam/network frames share immutable stat rows until a value changes. Target priority, AI cadence, snapshots, scoring and respawn timing retain the same rules.
+
+- Unity 6000.3.24f1 headless Linux Mono/PhysX, Brickfall, seed 1739, local pistol plus Normal bots (MG, sword, rifle, then fire, bow, daggers and lightning). Local pilot strafed and fired. Fixed ticks at 60 Hz, physics before/after hooks, one retained network frame every third tick, 120-frame ring. Five runs per build per roster, alternating order, 420 warm-up ticks then 1,800 measured. Median run p95/p99 includes input, simulation, physics and snapshots.
+- Three bots: 0.965/2.511 ms before, 0.984/2.465 ms after. Seven bots: 1.543/3.758 ms before, 1.231/3.031 ms after. Each roster had the same scores and snapshot pilot/event-count checksum on both builds. Render, GPU, HUD, audio and Windows player frame times are outside this measurement.
+- Eight stable pilot stat tables, 600 captures in .NET 8: 15,552,000 bytes before, zero after warm-up, equal checksum. Managed Release build, Deathmatch, bot difficulty, killcam, techniques, blades, runtime performance and navigation checks passed. Native test Update publication is tracked separately from the performance measurements.
+
 ## 2026-11-25 — Claude: release 28: the blood spray (X1), a zip-size build failure, and orphans pruned (integrator)
 - **Merged:** `claude/fx-blasts-blood` (X1, `448b9b65`, synced to `456920db`) into shared and the builder as `3dc364cd`. The suite at `456920db` passed (1,110 groups, exit 0), and so did the Unity compile.
 - **First build failed:** at "Install optional local assets", with "zip is too large" (install_local_assets' `MAX_ZIP_BYTES`, once the sound queue layered its generated originals). The test channel stayed on release 27.

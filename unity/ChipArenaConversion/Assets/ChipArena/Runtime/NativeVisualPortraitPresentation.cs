@@ -146,6 +146,8 @@ namespace ChipArena.UnityConversion
                     if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=s.Player.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++)s.Player.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand].position+=shift;}
                 }
                 if(pose==NativeLobbyPoses.Sleep)ModelPortraitLaidDown(body,s.Player);
+                // (A female body stands in the female stance: NativeBodyKindPresentation.cs.)
+                else if(pose!=NativeLobbyPoses.Chair)VisualFemaleLobbyStance(body);
                 VisualHandFit(body,s.Player,held);
                 // The held weapons where the lobby pose holds them (on the hands, now on the model's wrists): the model's own, the bake's
                 // or the pack's (the daggers' second blade on the off hand, the shield, the staffs, the bow: PackHolder); what it has none of

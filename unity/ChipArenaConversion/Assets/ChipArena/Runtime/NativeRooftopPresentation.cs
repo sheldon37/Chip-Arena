@@ -451,6 +451,8 @@ namespace ChipArena.UnityConversion
                 int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
                 if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++)rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand].position+=shift;}
             }
+            // (A female watcher stands in the female stance: NativeBodyKindPresentation.cs.)
+            if(look.Script==NativeRooftopActors.Watcher)VisualFemaleLobbyStance(body);
             VisualHandFit(body,rig,held);
             body.Moved=true;body.Seen=true;
             VisualHatHair(body,look.Hat);

@@ -10,17 +10,48 @@ namespace ChipArena.UnityConversion
         private InputFrame Bot(NativePilot p,bool force=false)
         {
             if(NativeCombatMarks.Has(p.TechniqueMarks,"flash-confused",Time))return new InputFrame{Yaw=p.Yaw};
-            var mirror=Minions.Where(m=>m.Hp>0&&(m.Kind=="mirror-double"||m.Kind=="wild-afterimage")&&Enemy(p,m)&&MeleeVisible(p.Body.position,m.Body.position,p,m.Collider)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(mirror!=null)return BotFocus(p,mirror.Body.position,MinionVelocity(mirror),mirror.Collider,null,force);
+            var pos=p.Body.position;
+            NativeMinion mirror=null;
+            float mirrorDistance=float.PositiveInfinity;
+            foreach(var m in Minions)
+            {
+                if(m.Hp<=0||(m.Kind!="mirror-double"&&m.Kind!="wild-afterimage")||!Enemy(p,m))continue;
+                var at=m.Body.position;
+                float distance=(at-pos).sqrMagnitude;
+                if(distance<mirrorDistance&&MeleeVisible(pos,at,p,m.Collider)){mirror=m;mirrorDistance=distance;}
+            }
+            if(mirror!=null)return BotFocus(p,mirror.Body.position,MinionVelocity(mirror),mirror.Collider,null,force);
             var taunt=PriorityTaunt(p.TechniqueMarks);if(taunt!=null&&Enemy(p,taunt))return BotFocus(p,taunt.Body.position,PilotVelocity(taunt),taunt.Collider,taunt,force);
             // Select one brain before observing a target. Running the PvP brain first
             // consumes the reaction window on Siren, then PvE reuses that aim for an add.
             if(!StationaryBots&&p.Seat.difficulty!="dummy"&&BotSentry(p,out var sentryInput))return sentryInput;
             if(Pve!=null)return PveBot(p,new InputFrame{Yaw=p.Yaw});
-            var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&!TechniqueSmokeHidden(p.Body.position,q.Body.position)&&!BladeUnseen(q)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
-            if(target==null||(StationaryBots||p.Seat.difficulty=="dummy")&&!force)return new InputFrame{Yaw=p.Yaw};
-            var summon=Minions.Where(m=>m.Pve==null&&m.Hp>0&&Enemy(p,m)&&Vector3.Distance(m.Body.position,p.Body.position)<Math.Min(6,Vector3.Distance(target.Body.position,p.Body.position)-1.5f)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
-            var decoy=Pilots.Where(q=>q.Hp>0&&Enemy(p,q)&&Time<q.MeleeKit.AfterimageUntil&&Vector3.Distance(q.MeleeKit.Afterimage.Length>0?Vec(q.MeleeKit.Afterimage):q.Body.position,p.Body.position)<30).OrderBy(q=>(Vec(q.MeleeKit.Afterimage)-p.Body.position).sqrMagnitude).FirstOrDefault();
+            if((StationaryBots||p.Seat.difficulty=="dummy")&&!force)return new InputFrame{Yaw=p.Yaw};
+            NativePilot target=null,decoy=null;
+            float targetDistance=float.PositiveInfinity,decoyDistance=float.PositiveInfinity;
+            foreach(var q in Pilots)
+            {
+                if(q.Hp<=0||!Enemy(p,q))continue;
+                var at=q.Body.position;
+                float distance=(at-pos).sqrMagnitude;
+                if(distance<targetDistance&&!BladeUnseen(q)&&!TechniqueSmokeHidden(pos,at)){target=q;targetDistance=distance;}
+                if(Time>=q.MeleeKit.AfterimageUntil)continue;
+                var image=Vec(q.MeleeKit.Afterimage);
+                if(Vector3.Distance(q.MeleeKit.Afterimage.Length>0?image:at,pos)>=30)continue;
+                float imageDistance=(image-pos).sqrMagnitude;
+                if(imageDistance<decoyDistance){decoy=q;decoyDistance=imageDistance;}
+            }
+            if(target==null)return new InputFrame{Yaw=p.Yaw};
             if(decoy!=null)return BotFocus(p,Vec(decoy.MeleeKit.Afterimage),Vector3.zero,decoy.Collider,decoy,force);
+            NativeMinion summon=null;
+            float summonRange=Math.Min(6,Mathf.Sqrt(targetDistance)-1.5f);
+            float summonDistance=float.PositiveInfinity;
+            foreach(var m in Minions)
+            {
+                if(m.Pve!=null||m.Hp<=0||!Enemy(p,m))continue;
+                float distance=(m.Body.position-pos).sqrMagnitude;
+                if(distance<summonDistance&&Mathf.Sqrt(distance)<summonRange){summon=m;summonDistance=distance;}
+            }
             return BotFocus(p,summon?.Body.position??target.Body.position,summon!=null?MinionVelocity(summon):PilotVelocity(target),summon?.Collider??target.Collider,target,force);
         }
         private static Vector3 PilotVelocity(NativePilot p)=>p.Body.isKinematic?Vector3.zero:p.Body.linearVelocity;
