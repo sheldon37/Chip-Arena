@@ -47,6 +47,42 @@ toon steps). No pack texture ships.
 
 The Developer walk (Settings > Developer > Walk Meridian greybox) does not draw the route yet.
 
+## The storefront trial (issue #450, 2026-11-25)
+
+Astra's asset handoff ([docs/CLAUDE-UNITY-ASSETS.md](../CLAUDE-UNITY-ASSETS.md)): give the commercial district a recognisable
+corner shop from Checkout Frenzy – Convenience Store Simulator (Crying Snow 2.1.0), seen from the City Hall approach, against the
+owned Modern Supermarket front. Meridian Stores (the left turn's corner lot) has three storefronts, `NativeMeridianRoute.Storefront`:
+
+| Storefront | Key | What it is | Fine / Low triangles | Bank |
+| --- | --- | --- | --- | --- |
+| `""` (ms) | `route/647/corner` | Release 27's grocer: green Edwardian shopfront, Modern Supermarket produce and sale cards in lit windows a window's depth deep. | 6,262 / 1,020 | release 27's, 2,220,863 bytes |
+| `cf` (in force) | `route/647/corner-cf` | Checkout Frenzy's convenience store: its window and entrance modules (glazing left out), a lit white lightbox fascia with a red stripe and the name in red, an OPEN card in the door, and the lit room behind. | 8,441 / 900 | 2,379,881 bytes (+159,018) |
+| `mix` | `route/647/corner-mix` | The grocer's front opening onto the same lit room. | 12,855 / 1,154 | 2,951,645 bytes (+730,782) |
+
+The room (both `cf` and `mix`) fills the lot's ground storey inside its collider box, where no pilot reaches: a lit floor, ceiling
+strips, back walls with a red band, four of the pack's double drinks fridges lit inside and filled with its cans and cartons (a kind
+a shelf), the kit's shelving on the south wall and a gondola carrying the pack's boxed goods, the pack's checkout counter, ice-cream
+freezer, a plant and the air curtain over the door. Pack meshes are read as data and their palette and label textures baked into the
+corners (a face's mean over its label for the goods); the glass is left out, so the room reads through open windows. No pack
+material, texture, script or plugin ships.
+
+- **Materials and draw calls:** the shop stays one renderer of the route's two shared materials (solid and glow): 2 draw calls plus
+  its shadow casters, as release 27's. Dropped in as the pack's prefabs, the room's fittings would be about 195 renderers, 205 draw
+  calls and 13 materials (the goods' label textures, the palette, the glass) before batching, and Checkout Frenzy's front 9 renderers
+  and 18 more draw calls with its wall material.
+- **The pavement stays clear:** every storefront has the same lot faces, keep-outs (1.6 m aprons) and covers (CoreTests pins it);
+  the bank script's art rule finds no point standing free of a collider below 3.1 m on any of them. The fronts stand at most 0.14 m
+  proud below 3.1 m; the fascia (3.12 m to 3.93 m) and the blade sign are over head height, as release 27's. No collision change.
+- **The pick:** `cf`. Where the walk turns left toward City Hall, the game camera swings west up the switchback and the shop's north
+  face passes on the left: `cf`'s lit white fascia and open, lit shop (fridges, goods, counter) read as a corner shop there and from
+  across Clock Street. `mix` keeps the grocer's front, its room reading from across the street. Release 27's front reads as a lit sign
+  over cream glass. From the steps' head (about 33 m) release 27's large warm window is the brighter patch and `cf` reads as a white
+  sign band over a dimmer window, so a brighter room (its walls' glow) is the next step if the shop should carry that far. `cf` is
+  also the cheaper of the two new ones.
+- **Fallback:** a bank without the storefront in force keeps release 27's front (`NativeMeridianRouteDraw.StorefrontInBank`), so code
+  that ships ahead of the Drive zip changes nothing. Build the bank with `--storefronts cf` (Core's pick is the script's default);
+  `--storefronts ms,cf,mix` builds the trial bank the captures used.
+
 ## Collision (Astra's)
 
 Nothing here adds or moves a collider. Art that stands where no collider is (the DEV_LOG entry of 2026-11-25 has the list with

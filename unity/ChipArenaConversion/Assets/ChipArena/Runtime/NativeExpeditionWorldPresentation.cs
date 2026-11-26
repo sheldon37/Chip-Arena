@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
             // Meridian's described route (docs/expedition/MERIDIAN-ROUTE.md): placed with the landmarks it replaces two wing bays of;
             // its shop's faces, keep-outs and replaced pieces apply only while its bank is there to draw them.
             var landmarks=NativeMeridianLandmarks.Place(plan.Seed,city.Map,city.Routes.Select(route=>route.Destination).ToArray(),world.HallSlots,1);
-            liveRoutePlan=NativeMeridianRouteDraw.HasBank?NativeMeridianRoute.Place(plan.Seed,city.Map,landmarks):null;
+            liveRoutePlan=NativeMeridianRouteDraw.HasBank?NativeMeridianRoute.Place(plan.Seed,city.Map,landmarks,NativeMeridianRouteDraw.StorefrontInBank()):null;
             try
             {
                 if(liveBleed!=null){
@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
                     NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(dress,p,14);
                     NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(dress,p,n);
                 }
-                if(liveRoutePlan!=null&&liveRoutePlan.Facades.Count>0){var route=liveRoutePlan;NativeMeridianDress.FacadeReplaced=(p,n)=>route.Covers(p,n);}
+                if(liveRoutePlan!=null&&liveRoutePlan.Facades.Count>0&&NativeMeridianRouteDraw.Has(liveRoutePlan.CornerKey)){var route=liveRoutePlan;NativeMeridianDress.FacadeReplaced=(p,n)=>route.Covers(p,n);}
                 liveStreets=new GameObject("Expedition streets").AddComponent<NativeMeridianDressDraw>();
                 liveStreets.Prepare(new NativeMeridianDress.Input{Map=city.Map,Layout=plan.Seed,Run=seed,
                     Slots=world.HallSlots,Hatches=city.RoofHatches.ToArray(),KeepOut=NativeCityBleedDress.CacheKeepOuts(city.Caches,city.Map),

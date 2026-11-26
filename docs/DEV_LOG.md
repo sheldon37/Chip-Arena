@@ -1,3 +1,48 @@
+## 2026-11-25 — Claude (M1): the storefront trial (#450): Meridian Stores from Checkout Frenzy, against the Modern Supermarket front
+Integrator brief from Astra's asset handoff (`docs/CLAUDE-UNITY-ASSETS.md`, issue #450). **Branch:** `claude/meridian-storefront` from shared
+`2433743f`. Pushed; not merged, not released. Doc: `docs/expedition/MERIDIAN-ROUTE.md` ("The storefront trial"). Presentation only.
+- **What:** the corner shop on the left turn toward City Hall has three storefronts (`NativeMeridianRoute.Storefront`):
+  - `""`: release 27's grocer front (Modern Supermarket);
+  - `cf`, now in force: Checkout Frenzy's convenience store. Its window and entrance modules, a lit white lightbox fascia with a red stripe, and a lit room behind;
+  - `mix`: the grocer front opening onto the same room.
+  - The room sits inside the lot's collider box. It has four of the pack's double drinks fridges, lit and filled with its cans and cartons; the kit's shelving with the pack's boxed goods; the counter, the ice-cream freezer, a plant and the air curtain.
+  - Pack meshes are read as data, with palette and label colours baked into vertex colours. Glass is left out.
+  - No pack material, texture, script or plugin ships. Only the mesh and texture files the fittings use were extracted, to a git-ignored scratch folder.
+  - A bank without the storefront in force keeps release 27's front (`NativeMeridianRouteDraw.StorefrontInBank`), so the code can merge before the Drive zip changes.
+- **Reads as a landmark?** Yes where the route turns: the game camera swings west at the junction and the shop's north face passes on the left.
+  - `cf`'s lit fascia and open shop read as a corner shop there and from across Clock Street.
+  - From the steps' head (about 33 m), release 27's big warm window is the brighter patch, and `cf` shows as a white sign band. A brighter room is the next step if it should carry that far.
+  - `mix` keeps the Edwardian front but its room reads only from across the street.
+- **Materials and draw calls:** the shop stays one renderer with the route's two shared materials: 2 draw calls plus shadows, as in release 27.
+  - Placed as the pack's own prefabs, the same fittings would be about 195 renderers, 205 draw calls and 13 materials before batching. Checkout Frenzy's front would add 9 renderers and 18 draw calls.
+  - Editor frame stats were logged per front, but totals varied by hundreds of batches between runs, so they are not a clean A/B.
+- **Pavement:** every front has the same lot faces, keep-outs and covers (pinned in CoreTests). The art-rule check finds no point standing free below 3.1 m. Nothing stands on the pavement and no collision changes, so there are no Astra items.
+- **Bytes** (`ChipArenaCityRoute.bytes`; release 27's is 2,220,863):
+  - `cf`: 2,379,881, which is **+159,018**;
+  - `mix`: 2,951,645 (+730,782);
+  - the trial bank with all three: 4,676,823 (captures only).
+  - A `--storefronts ms` build is byte-identical to release 27's bank (`8bda8a82`).
+  - The Drive zip unpacks to 493,013,003 bytes today. `cf` adds its 159,018 (computed; no zip was packed). It waits for Astra's `MAX_ZIP_BYTES` raise, as the integrator asked.
+- **Checks:**
+  - Full CoreTests run the relgen5 way, in a throwaway worktree with `ExpeditionEndingChecks`' meta-path comparison normalised and nothing committed:
+    - `f7ad1a90` with the trial bank: exit 0, 1,109 PASS lines;
+    - `186dce5f` with the `cf` bank: exit 0, 1,109 PASS lines.
+  - `--meridian-route`: 15,543 checks with the trial bank and 15,537 with the `cf` bank.
+  - The Unity compile check: 0 errors. `git diff --check`: clean.
+  - Three live Expedition starts in the Editor on Crown Hill (seed 2027808463), all `STAGE_LOADING reason=ready`.
+- **Proof** (`F:/Chip Arena Development/scratch/meridian-storefront/proof/`), on seed 2027808463 with the same camera path:
+  - `walk-before-after-cf-2x.mp4` (release 27's front against `cf`);
+  - `walk-three-fronts-2x.mp4`;
+  - `stills-1-approach.jpg`, `stills-2-close.jpg`, `stills-3-game-camera.jpg` (each view a row, with the three fronts side by side).
+- **Not done:**
+  - PrototypeBuild.Validate: no time was left in a 20-minute hold. Domain reloads now take 3.5 to 4.4 minutes each.
+  - No Low-tier capture, Windows build or two-client run, and no first-time walker.
+  - Hold C ran 21 minutes, 1 minute over the cap. Hold B's walk was unusable (the capture tool's step and arena clocks drift), so I recaptured it in hold C.
+- **Ship:** for the integrator, once the zip has room.
+  1. Merge the branch.
+  2. Under the lock, copy `F:/Chip Arena Development/scratch/meridian-storefront/bank-cf/ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` over release 27's in the Editor's Resources (same meta).
+  3. Run `pack_visual_body` and `install_local_assets --check`, keep the old zip, then swap the zip and push the builder.
+
 ## 2026-11-25 — Claude: F: filled up; #451's build re-run (integrator)
 - **What happened:** around 20:00-20:40 local, F: dropped to 351 MB.
   - Unity's "Low disk space" dialog stalled the shared Editor for about 20 minutes (G1 closed it).
