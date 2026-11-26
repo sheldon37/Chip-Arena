@@ -1,3 +1,40 @@
+## 2026-11-26 — Claude: release 31: Astra's effects bank, and the realistic effects it ships (integrator)
+- **Published:** shared and the builder at `4b34d6fc`. Test channel revision `639313172190700790` (build `63a5e98e`); publication succeeded at 19:17 UTC.
+- **Merged** as one integration branch, `claude/fx-bank-release`, so that one full suite covers it all (1,113 groups, exit 0; the Unity compile passed):
+  - Astra's `codex/fx-bank-builder-retention` (`b8482d82`): the effects bank, sound-queue and builder retention, Meridian route collision, and the tool tests isolated from LOCALAPPDATA.
+  - G1's `claude/fx-guns` (`074afa93`), MG1's `claude/fx-magic` (`ddab63b7`) and C2's `claude/cache-glaive-fx` (`073c23fe`).
+  - `c114f834`: `PackBankChecks` re-pinned. Astra's branch alone stopped the suite at 828 groups, because the check still asked for the old `if(Off||...)` line. Astra's change keeps the off switch for drawing; only `CollisionBank()` bypasses it, and the check now says so.
+- **Owner picks (2026-11-26):**
+  - The fire staff draws MG1's realistic fireball. The bank leaves out C2's `ChipArenaMissileFx` and `Missiles/`, so C2's trial returns early. They are kept in `F:/Chip Arena Development/scratch/fx-hold/c2-magic-missiles`.
+  - Install the builder hook.
+- **Effects bank:** 94 files, 10,918,239 bytes.
+  - It holds X1's explosions and fire, MG1's magic, G1's impacts, C2's cache tiers, and G1's 20 muzzle and hole textures under `Resources/PackBank` (with a new folder meta).
+  - G1's impact prefab pointed its second rock mesh (`m_Mesh1`) at the Editor-only `KriptoFX/.../Rocks.FBX`. It is now none, so the builder and the Editor draw the same.
+  - A scan of every material, prefab and asset found no reference outside the bank, git, packages or the Drive zip, and no duplicate GUIDs in the project.
+- **Drive zip:**
+  - `pack_effects_bank.py`: 3,458 to 3,553 members. All 95 new members are in the bank; nothing else changed. Checked by the packer and again by `install_local_assets.py --check --require-cloth`.
+  - The previous zip is kept as `LocalAssets-2026-11-26-before-effects-bank.zip`.
+  - The builder's layered zip has 5,127 members of 6,000, and 506,063,771 bytes outside the bank of 536,870,912 (about 30.8 MB of room). The generated audio is about 10.4 MB, not the 40.5 MB in this morning's ask.
+- **Checks:**
+  - PrototypeBuild.Validate passed on `4b34d6fc`.
+  - Three live Black Siren starts (seed 2027808463 on Meridian, and two fresh seeds) all reached `reason=ready` and started, with no `FormatException`. Stills show the route drawn as released.
+  - On Astra's branch, these Python tool tests pass on this PC: effects_bank, effects_audio, intro_music, intro_sound_manifests, local_cloth, private_addons, visual_body_assets, native_updater and cloud_build. The three 300 s timeouts are gone.
+  - Still failing here:
+    - `test_builder_retention`: git 2.39 has no `worktree add --orphan` (2.42 or later).
+    - `test_sound_queue`'s lock test: a Windows `PermissionError`, present since 2026-11-05.
+    - `test_import_sound_requests`: 5 failures, as before.
+- **Builder:**
+  - The sound queue pruned itself on its first pass: `SoundQueue` went from 91 GB to 240 MB, and C: from 16 to 107 GB free.
+  - The retention hook is installed; the old script is backed up as `builder.before-worktree-retention.py`. This publish removed no work folder: F: has 29 GB free and 6 old folders are still there.
+  - Why: every build worktree carries Unity's changes. `ProjectSettings/ProjectSettings.asset` is modified, and 22 files are untracked:
+    - Unity-generated `ProjectSettings/*.asset`;
+    - `Packages/packages-lock.json`;
+    - `.meta` files the repository lacks for `Core/NativeViewArms.cs`, `Runtime/NativeViewArmsPresentation.cs` and `Resources/DeployCards`.
+  - So the hook's clean-worktree test never passes.
+  - **Astra:** treat these as build output (or commit or ignore them), and prune the 40-odd `prunable` registrations.
+- **Not checked:** walking the route against the new collision (M1's step format needs M1's tool patch); the effects on the Low tier; two clients.
+- **Open, owner report:** with magic, the head turns about 180 degrees once a stride while running. The owner's clip shows it, and it reproduces in the Editor on `4b34d6fc`. The previous test build already had it; the fix is in progress.
+
 ## 2026-11-26 — Astra: effects bank, builder retention, pilot verification and Meridian collision
 
 Task branch `codex/fx-bank-builder-retention` from shared `e0f06639`. Integrator handoff; Claude owns merges, candidate zip and publication.
