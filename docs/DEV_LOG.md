@@ -1,3 +1,78 @@
+## 2026-11-25 — Claude (G1): guns: kripto289 muzzle flipbooks and impact holes (zip); brick, glass and dirt impacts (effects bank)
+Owner, 2026-11-25, after V1's effects gallery: "go with recommended" (effects plan phase 2). The integrator then cut G1's zip
+allowance to about 1.1 MB, since B1's female pilot measured +2.51 MB. The impacts therefore moved to the separate effects bank.
+**Branch:** `claude/fx-guns` from shared `4a2b5c4f`. Pushed; not merged, not released. The Drive zip was not swapped.
+Doc: `docs/PACK-EFFECTS.md`, section "Guns: the muzzle flipbooks installed, brick, glass and dirt from the effects bank".
+- **Code:**
+  - `Core/NativeSurfaceImpacts.FxResource` names the effects bank's prefab, `ChipArenaFx/Resources/ChipArenaImpactFx`.
+  - `Runtime/NativeSurfaceImpactPresentation` plays that prefab's `Effect` for any kind the visual body's bake lacks. The stone
+    quad stays, with the kind's bank hole.
+  - Without the prefab, the stone effect plays as today.
+  - `PackFxHitsChecks` pins this. The muzzle flashes and the holes need no code change.
+- **Bytes:**
+  - **Drive zip, ships now:** 20 files (the muzzle textures are 916,746 bytes, the holes 202,787). Unpacked size grows by
+    1,122,185 bytes (1.122 MB, 1.070 MiB), from 473.108 to 474.178 MiB.
+    - Measured with `pack_visual_body.py` on a copy of today's Drive zip, with the files in the Editor's Resources. Adding the
+      files alone gives the same members.
+    - `install_local_assets.py --check` passes.
+  - **Effects bank, waits for Astra's packer:** 32 files, 1,913,306 bytes.
+    - The prefab is 693,234 bytes and holds 6 particle systems.
+    - The textures are 1,181,025 bytes; the two dust sheets copied at 1024 make up 1.10 MB of that.
+    - Meshes are 14,896 bytes, materials 8,548, metas 15,603.
+- **Counts:**
+  - **Muzzle**, peak world quads per shot (pistol / rifle / machine gun): 9 / 15 / 12 today, 8 / 14 / 11 with the flipbook flame
+    replacing the plume.
+  - **Impacts**, peak per hit (the code star and sparks plus live particles): 39 today, where these kinds play the stone stand-in.
+    - With the bank: brick 32, dirt 40, glass 44.
+    - The pack's prefabs as authored: 35, 38 and 36.
+    - The caps are unchanged: 6 live per kind, 3 with Reduced, none on the low tier, and the machine gun's debris on 1 hit in 3.
+- **Guardrails kept:** the code muzzle core, star, halo and light; the round's impact star and sparks; the hit flash,
+  hitmarkers and tracers.
+- **Finding, a bake bug:** the impacts bake halved the dust tints in sRGB. In this linear-space project that draws about 0.44 of
+  the pack's colour at half its opacity, so the first brick and dirt bake read as dark grey smoke.
+  - The effects bank's kinds now halve the tint in linear terms and keep the alpha.
+  - The released stone, metal and wood dust still use the old rule. Fixing them is a possible follow-up for the owner.
+- **Finding, no triggers yet:** dirt and glass have no trigger on a map players can pick.
+  - Dirt is the ground of the legacy snow and gravel maps, and a saved selection of those maps migrates to Brickfall.
+  - No map has a glass prop.
+  - Brick shows on Brickfall and the Expedition's brick districts.
+- **Animation and rules impacts:** none. This is presentation only: hit timing, hitboxes, damage, cooldowns, movement and the
+  wire are unchanged.
+- **Checks:**
+  - full CoreTests the relgen5 way at `309d8b3f` (1,109 groups, exit 0);
+  - `--pack-fx-hits` at the head (2,174 checks);
+  - `tools/check_unity_compile.py` (all four assemblies pass);
+  - `git diff --check`;
+  - the pin scan (0 broken);
+  - PrototypeBuild.Validate: see the line below.
+- **Proof** (`F:/Chip Arena Development/scratch/fx-guns`):
+  - `sheets/`: the lab's before/after on V1's rig, dark and bright stages. The impact sheets also show the zip-only step and the
+    pack as authored.
+  - `clips/`: Brickfall game captures, 2x slow, in first and third person, full screen and a 2.5x close-up.
+    - Dusk: the machine gun at a brick wall 8 m away.
+    - The dim hotel interior: the pistol at the stone stairs.
+  - `clips/lab-*`: the lab's slow-motion brick, dirt and muzzle clips.
+- **Ship steps (integrator):**
+  1. **Zip, now:**
+     - Copy the files in `F:/Chip Arena Development/scratch/fx-guns/ship/zip/ChipArenaLocal/Resources/PackBank/` into the
+       Editor checkout's `Assets/LocalAssets/ChipArenaLocal/Resources/PackBank/`. These are 10 PNGs and their metas:
+       `muzzle-flame-{pistol,rifle,machinegun,turret}`, `muzzle-burst-{star,fire,smoke}` and `impact-hole-{brick,glass,dirt}`.
+       Copy the files only, not the folder metas.
+     - Then run `tools/pack_visual_body.py <Drive zip> <new zip> --project <Editor project>`, then
+       `install_local_assets.py <new> --check`.
+     - Shared code already loads these, so they do not need this branch merged.
+     - The tool rebuilds them from the pack with `tools/pack_bank/build_pack_bank.py` with `fx-muzzle.json` and `fx-impacts.json`.
+  2. **Effects bank, when Astra's packer lands:**
+     - `Assets/LocalAssets/ChipArenaFx/Impacts/**` and `ChipArenaFx/Resources/ChipArenaImpactFx.prefab` are already in the
+       Editor checkout. A copy is in `F:/Chip Arena Development/scratch/fx-guns/ship/fx/ChipArenaFx`.
+     - Merge this branch for the loader.
+     - To rebuild: apply `F:/Chip Arena Development/scratch/fx-guns/tools/patch_tool.py` to the BoZo tool, send
+       `bozo-impacts.request` with the lines `<outDir>` and `fx=1`, then apply the patch again with `--revert`.
+- **Not done:**
+  - dirt and glass seen in a match (no trigger, above);
+  - the dark-stage game clips are an indoor Brickfall scene, because `map=moonlit` migrates to Brickfall;
+  - Hivemind shell casings and the reload, bolt and slide sounds (phase 2's optional parts).
+
 ## 2026-11-25 — Claude: release 27: Meridian's described route (integrator)
 - **Published:** shared and the builder at `91bed26c`. Test channel revision `639312330273820441` (build `f5ebe749`, 396.9 MiB).
 - **Merged:** `claude/meridian-route` (M1, `3ea8e2eb`, synced to `72f3bc0f`). The integrator reviewed the before/after stills and the walk on seed 2027808463.
