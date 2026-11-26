@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
         {
             string key=v.pickSession+"/"+v.chip;if(openingStageSeat!=null&&openingStageSeatKey==key)return openingStageSeat;openingStageSeatKey=key;
             NativeSeat s;try{s=SanitizedSeat(server==null?1:networkId,Profile(),account?.Token);}
-            catch(Exception e)when(e is ArgumentException||e is InvalidOperationException||e is KeyNotFoundException){s=new NativeSeat{id=server==null?1:networkId,name=prefs.name,bodyColor=prefs.bodyColor,accentColor=prefs.accentColor,hat=prefs.hat};}
+            catch(Exception e)when(e is ArgumentException||e is InvalidOperationException||e is KeyNotFoundException){s=new NativeSeat{id=server==null?1:networkId,name=prefs.name,bodyColor=prefs.bodyColor,accentColor=prefs.accentColor,hat=prefs.hat,hatColor=prefs.hatColor,weaponSkins=GatedSkins(),look=GatedLook()};}
             if(OpeningWeapon(v.chip)!=null)s.spec=v.chip;s.team=prefs.team;return openingStageSeat=s;
         }
         // Whether my follow-through on that screen still plays (the key, the attack and the snapshot end it in the GUI).
@@ -108,7 +108,14 @@ namespace ChipArena.UnityConversion
             // The stage lights take my colour; the install blends them to the chip's from the clack.
             Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default,tint=SeatColor(seat);
             presentation.DraftHeadLine=draftHeadLine;presentation.DraftWard=false;presentation.DraftPrism=false;presentation.DraftBandTeam=-1;
-            draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint,chosenChip?.rarity,chosenChip?.id,true)/scale;draftPalm.y=height-draftPalm.y;
+            Vector2 catchAt;
+            presentation.OpeningPreviewSeat=kind==PickStageKind.Opening?seat:null;
+            try
+            {
+                draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out catchAt,chipTint,chosenChip?.rarity,chosenChip?.id,true)/scale;
+            }
+            finally { presentation.OpeningPreviewSeat=null; }
+            draftPalm.y=height-draftPalm.y;
             draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;draftDevice2d=presentation.DraftDeviceScreen/scale;draftDevice2d.y=height-draftDevice2d.y;
             if(chosenChip!=null&&nativeAudio!=null){nativeAudio.StageChip=chosenChip.id;nativeAudio.StageTier=chosenChip.rarity;nativeAudio.StageAge=presentation.DraftAge;nativeAudio.StageBody=presentation.DraftDog?2:1;nativeAudio.StageBreaks=Math.Max(0,n-1);nativeAudio.StageShort=true;nativeAudio.StageReduced=prefs.reducedEffects;nativeAudio.StageKey=pickFollowAt;}
             return true;

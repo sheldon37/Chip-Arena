@@ -11,8 +11,11 @@ namespace ChipArena.UnityConversion
         public string ViewerWeaponSkins;
         /// <summary>The pilot's skin map: the seat of the arena the pilots come from (live, guest replica or killcam replay).</summary>
         private const string RooftopCrowdSkins="face:none";
+        // The opening picker renders a profile seat before the match roster exists.
+        internal NativeSeat OpeningPreviewSeat;
         private string SeatWeaponSkins(int id)
         {
+            if(OpeningPreviewSeat!=null&&OpeningPreviewSeat.id==id)return OpeningPreviewSeat.weaponSkins;
             // A model portrait's body wears the card's map (Runtime/NativeVisualPortraitPresentation.cs).
             if(ModelPortraitOf(id,out var portrait))return portrait.Skins;
             // The rooftop's seated pilot is yours (Runtime/NativeRooftopPresentation.cs RooftopModel); its crowd the Standard, in

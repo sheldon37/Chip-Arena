@@ -1,3 +1,7 @@
+## 2026-11-26 — Astra: starter-chip preview face gear
+
+`codex/starter-chip-visor` from `4b34d6fc`. The pre-match chip picker now resolves face gear and outfit from its displayed profile seat during the draft draw. The roster can be absent at this point, which previously selected the default full helmet. The fallback seat also carries the gated profile appearance. Source paths checked. Pending a Windows visual check with Visor equipped. No account, combat, or asset change.
+
 ## 2026-11-26 — Astra: effects bank, builder retention, pilot verification and Meridian collision
 
 Task branch `codex/fx-bank-builder-retention` from shared `e0f06639`. Integrator handoff; Claude owns merges, candidate zip and publication.

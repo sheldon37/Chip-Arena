@@ -109,6 +109,7 @@ namespace ChipArena.UnityConversion
         {
             // The Top Dog always wears the Hot Dog (owner 2026-11-08; NativeTopDogPresentation.cs TopDogSeat).
             if(!dogLookBusy&&TopDogSeat(id)){dogLookBusy=true;try{return TopDogLook(VisualOutfitOf(id));}finally{dogLookBusy=false;}}
+            if(OpeningPreviewSeat!=null&&OpeningPreviewSeat.id==id)return OpeningPreviewSeat.look??"";
             if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
             // The rooftop's crowd keeps the concept's clothes (Runtime/NativeRooftopPresentation.cs).
             if(id<RooftopIdTop&&id>RooftopIdTop-8)return NativeLook.Concept;
