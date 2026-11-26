@@ -115,6 +115,8 @@ namespace ChipArena.UnityConversion
             }
             // The fireball: a hot core, flame rolling out and up, going to smoke.
             float life=.42f+.1f*R0,u=Clamp01(age/life);int n=Count(linked?20:14,q,low);float lift=b.Kind==NativeBombs.Mine?2.6f:.6f;
+            // The effects bank's fireball when the runtime has it (Core NativeFxPack; Claude X1, 2026-11-25): then no fire puffs or smoke here.
+            bool pack=s is INativeFxPackSink packSink&&packSink.PackBlast(at,R0*(linked?1.15f:1),age,seed,q,low);if(pack)n=0;
             if(age<life)for(int i=0;i<n;i++){var d=RandomDir(seed,i+30);if(b.Kind!=NativeBombs.Lob)d.Y=Math.Abs(d.Y)*.7f;var p=at+d*(R0*.62f*OutCubic(u)*(.5f+.5f*R(seed,i+31)))+Vector3.UnitY*(lift*u*R(seed,i+32));s.Fire(p,BombFire(u),(1-u*u)*(.8f+.2f*R(seed,i+33)),R0*(.42f+.5f*u)*(.8f+.4f*R(seed,i+34)),.04f+.34f*u,seed+i,at.Y-1.2f);}
             Flash(s,at+Vector3.UnitY*.2f,age,.2f,BombFlame,R0*1.5f,seed+2);
             if(age<.16f)s.Glow(at+Vector3.UnitY*.2f,Vector3.One*(3*(1-age/.16f)),0,R0*.8f,Core,age/.16f,seed+3);
@@ -125,7 +127,7 @@ namespace ChipArena.UnityConversion
             if(grounded&&age<.32f){float w=age/.32f;Ring(s,at+Vector3.UnitY*.04f,R0*1.25f*OutCubic(w),.22f*(1-w)+.05f,(linked?BombHot:BombFlame)*(1.5f*(1-w)),low?14:30);if(linked)Ring(s,at+Vector3.UnitY*.05f,R0*1.7f*OutCubic(w),.08f,Vector3.One*(1.1f*(1-w)),low?14:30);}
             if(grounded)Dust(s,at,age,.75f,Count(9,q,low),R0*1.15f,BombDirt,.55f,seed+6);
             // What is left: smoke going up, dark and slow.
-            int m=Count(8,q,low);float o0=(1-Smooth((age-.5f)/1))*Smooth((age-.12f)/.2f);if(o0>0)for(int i=0;i<m;i++){var d=RandomDir(seed,i+80);d.Y=Math.Abs(d.Y);s.Smoke(at+d*(R0*.4f)+Vector3.UnitY*(.4f+1.1f*age*(.6f+.5f*R(seed,i+81))),BombSmoke,.6f*o0,R0*(.4f+.55f*age),.15f+.5f*age,seed+i,at.Y-.3f);}
+            int m=pack?0:Count(8,q,low);float o0=(1-Smooth((age-.5f)/1))*Smooth((age-.12f)/.2f);if(o0>0)for(int i=0;i<m;i++){var d=RandomDir(seed,i+80);d.Y=Math.Abs(d.Y);s.Smoke(at+d*(R0*.4f)+Vector3.UnitY*(.4f+1.1f*age*(.6f+.5f*R(seed,i+81))),BombSmoke,.6f*o0,R0*(.4f+.55f*age),.15f+.5f*age,seed+i,at.Y-.3f);}
             // Mines: the jet that throws you, straight up.
             if(b.Kind==NativeBombs.Mine&&age<.3f){float w=age/.3f;int tg=low?3:7;for(int i=0;i<tg;i++){var side=new Vector3((R(seed,i+90)-.5f)*.5f,0,(R(seed,i+91)-.5f)*.5f);s.Tongue(false,at+side,at+side*1.6f+Vector3.UnitY*(1.6f+3.2f*OutCubic(w))*(.7f+.5f*R(seed,i+92)),BombHot*(2*(1-w)),.16f);}}
             // A link: a star over the blast, bigger each link, so a chain reads from across the map.

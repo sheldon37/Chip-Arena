@@ -33,6 +33,13 @@
 // magic sheet, _VfxPackGrid columns x rows, row 0 at its top; TEXCOORD1.w the tile) at its roll, its shape the sheet's
 // brightest channel and its white-hot share the sheet's own (times TEXCOORD2.w), tinted by its colour (VfxPackSprite).
 // Without the sheet nothing draws in mode 12.
+// Effects bank (Claude X1, 2026-11-25; Core NativeFxPack, Runtime NativeVfxDraw.Queue): the licensed flipbooks, grey + alpha
+// (_FxSheet0-7: burst, aftermath smoke, smoke-and-dust, campfire, large flame, campfire smoke, the blood splatters (2 x 2 tiles,
+// grey is the shape) and the blood mist), each an 8 x 8 flipbook from its image's top row, two frames blended. 13 fire: the heat
+// (grey ^ 1.4 x TEXCOORD1.w) through a fire ramp, its cool part a smoke in TEXCOORD2.w's tint, lit; 14 smoke and dust: the grey in
+// its tint, lit by the ambient, the main light and the blast flashes, never darker than its self light; 15 blood: the same lit tint
+// on a splatter tile or the mist, along TEXCOORD2.xyz when it has a segment (a stretched drop). TEXCOORD1.y = sheet x 64 + frame;
+// COLOR = gain, self light, occlusion (1 a normal layer, less adds), opacity. Without the sheets the runtime queues none of these.
 Shader "ChipArena/NativeVfx"
 {
     Properties
@@ -44,6 +51,14 @@ Shader "ChipArena/NativeVfx"
         _VfxSoft("Soft particles (depth texture)",Float)=0
         _VfxPack("Magic sheet (premultiplied colour, coverage)",2D)="black"{}
         _VfxPackGrid("Magic sheet grid (columns, rows)",Vector)=(8,4,0,0)
+        _FxSheet0("Effects bank: burst",2D)="black"{}
+        _FxSheet1("Effects bank: smoke",2D)="black"{}
+        _FxSheet2("Effects bank: dust",2D)="black"{}
+        _FxSheet3("Effects bank: campfire",2D)="black"{}
+        _FxSheet4("Effects bank: large flame",2D)="black"{}
+        _FxSheet5("Effects bank: campfire smoke",2D)="black"{}
+        _FxSheet6("Blood spray: splatters",2D)="black"{}
+        _FxSheet7("Blood spray: mist",2D)="black"{}
     }
     SubShader
     {
@@ -64,6 +79,7 @@ Shader "ChipArena/NativeVfx"
             #include "UnityLightingCommon.cginc"
             sampler2D _VfxAtlas,_VfxToon,_VfxPack;float4 _VfxPackGrid;
             float _VfxAtlasReady,_VfxFlashGain,_VfxSoft;
+            sampler2D _FxSheet0,_FxSheet1,_FxSheet2,_FxSheet3,_FxSheet4,_FxSheet5,_FxSheet6,_FxSheet7;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // The three blast flashes (NativeArenaDressing.Flashes): position and range, colour times intensity as Unity applies it.
             float4 _ArenaFlashPos[3];
@@ -286,6 +302,47 @@ Shader "ChipArena/NativeVfx"
                 return float4(col * shape, tex.a * color.a);
             }
             // ---- VFX SHARED END ----
+            // ---- the effects bank (modes 13-15) ----
+            // One sheet by index, with the quad's own gradients (the index is one value over a quad, so the branch is uniform there).
+            float4 FxSample(float sheet,float2 uv,float2 dx,float2 dy)
+            {
+                if(sheet<0.5)return tex2Dgrad(_FxSheet0,uv,dx,dy);
+                if(sheet<1.5)return tex2Dgrad(_FxSheet1,uv,dx,dy);
+                if(sheet<2.5)return tex2Dgrad(_FxSheet2,uv,dx,dy);
+                if(sheet<3.5)return tex2Dgrad(_FxSheet3,uv,dx,dy);
+                if(sheet<4.5)return tex2Dgrad(_FxSheet4,uv,dx,dy);
+                if(sheet<5.5)return tex2Dgrad(_FxSheet5,uv,dx,dy);
+                if(sheet<6.5)return tex2Dgrad(_FxSheet6,uv,dx,dy);
+                return tex2Dgrad(_FxSheet7,uv,dx,dy);
+            }
+            // A tile's uv: frame f of a grid x grid sheet (row 0 at the image's top), t in 0..1 inside it.
+            float2 FxTile(float f,float grid,float2 t)
+            {
+                float row=floor(f/grid),col=f-row*grid;
+                return float2((col+t.x)/grid,1.0-(row+1.0-t.y)/grid);
+            }
+            // V1's fire ramp (its lab shader): black, deep red, orange, yellow, near white.
+            float3 FxRamp(float h)
+            {
+                float3 a=float3(0.45,0.03,0.005),b=float3(1.0,0.28,0.03),c=float3(1.0,0.62,0.18),d=float3(1.0,0.93,0.78);
+                return h<0.35?lerp(float3(0,0,0),a,h/0.35):h<0.6?lerp(a,b,(h-0.35)/0.25):h<0.85?lerp(b,c,(h-0.6)/0.25):lerp(c,d,saturate((h-0.85)/0.15));
+            }
+            // The flipbook sprite, premultiplied: t the two frames blended (r grey, a coverage), color = gain, self light, occlusion,
+            // opacity; tint the smoke or blood colour (linear); light the scene's light at it; heat the fire's heat gain.
+            float4 FxPack(float mode,float sheet,float4 t,float4 color,float3 tint,float3 light,float heat)
+            {
+                float grey=t.r,shape=(sheet>5.5&&sheet<6.5?t.r:t.a)*color.a;
+                float3 lit=max(light,color.ggg);
+                float3 rgb;
+                if(mode<13.5)
+                {
+                    float h=saturate(pow(grey,1.4)*heat);
+                    rgb=FxRamp(h)*(color.r*h)+tint*grey*lit*(1.0-saturate(h*2.0));
+                }
+                else if(mode<14.5)rgb=tint*grey*lit*color.r;
+                else rgb=tint*lit*color.r*lerp(0.55,1.15,sheet>5.5&&sheet<6.5?saturate(grey*1.6-0.4):grey);
+                return float4(rgb*shape,shape*color.b);
+            }
             struct appdata
             {
                 float3 vertex:POSITION;
@@ -331,6 +388,9 @@ Shader "ChipArena/NativeVfx"
                 }
                 // A pack sprite faces the camera at its roll, as the glows do (the oriented branch above takes every mode past 10.5).
                 if(mode>11.5){float2 local=v.shape.xy*hw;float s=sin(v.shape.w),c=cos(v.shape.w);offset=float2(local.x*c-local.y*s,local.x*s+local.y*c);coords=float3(v.shape.xy,0.0);}
+                // The effects bank: a blood sprite with a segment lies along it (the streak's offset above), the rest face the camera.
+                bool fx=mode>12.5,fxAlong=mode>14.5&&dot(v.axis.xyz,v.axis.xyz)>1e-8;
+                if(fx&&fxAlong){offset=VfxStreakOffset(screenAxis,v.shape.xy,hw,coords);}
                 float3 world=v.vertex+right*offset.x+up*offset.y;
                 o.pos=mul(UNITY_MATRIX_VP,float4(world,1.0));
                 o.color=v.color;
@@ -350,6 +410,14 @@ Shader "ChipArena/NativeVfx"
                 // The magic sheet's tile (zw): column t mod columns, rows from the top of the sheet (its image's order).
                 if(mode>11.5){float pt=v.life.w,pc=pt-_VfxPackGrid.x*floor(pt/_VfxPackGrid.x),pr=_VfxPackGrid.y-1.0-floor(pt/_VfxPackGrid.x);o.toon.zw=(float2(pc,pr)+v.shape.xy*0.48+0.5)/_VfxPackGrid.xy;}
                 o.alt=float4(VfxHexLinear(mode>8.5?v.axis.w:v.axis.y),0);
+                if(fx)
+                {
+                    // Two frames: the one now (uv.zw) and the next (toon.zw), blended by the fraction (toon.y); the sheet in toon.x.
+                    float sheet=floor(v.life.y/64.0),frame=v.life.y-sheet*64.0,grid=sheet>5.5&&sheet<6.5?2.0:8.0;
+                    float fa=min(floor(frame),grid*grid-1.0),fb=grid<2.5?fa:min(fa+1.0,grid*grid-1.0);
+                    float2 q=fxAlong?float2(coords.x/(coords.z+1.0),coords.y):v.shape.xy;float2 inTile=q*0.49+0.5;
+                    o.uv.zw=FxTile(fa,grid,inTile);o.toon=float4(sheet,grid<2.5?0.0:frame-fa,FxTile(fb,grid,inTile));
+                }
                 float depth=dot(v.vertex-_WorldSpaceCameraPos,-back);
                 float nearFade=saturate((depth-0.2)/max(0.35,size*0.6));
                 bool puff=mode>4.5&&mode<9.5,streak=mode>3.5&&mode<4.5,toonPuff=mode>6.5&&mode<9.5;
@@ -360,7 +428,7 @@ Shader "ChipArena/NativeVfx"
                 o.data=float4(v.life.x,mode,streak?coords.z:fadeLength,puff?(world.y-v.life.w)/fadeLength:1.0);
                 o.screen=ComputeScreenPos(o.pos);o.screen.z=dot(world-_WorldSpaceCameraPos,-back);
                 o.amb0=0;o.amb1=float4(0,0,0,nearFade);o.sun=float4(0,0,0,v.axis.w);o.flash=0;
-                if(puff)
+                if(puff||fx)
                 {
                     float3 toLight=_WorldSpaceLightPos0.xyz;
                     o.amb0=float4(ShadeSH9(float4(0,1,0,1)),pow(saturate(dot(normalize(v.vertex-_WorldSpaceCameraPos),toLight)),6.0));
@@ -369,6 +437,7 @@ Shader "ChipArena/NativeVfx"
                     float3 flash=0;
                     for(int k=0;k<3;k++)flash+=_ArenaFlashColor[k].rgb*VfxFlashFalloff(v.vertex,_ArenaFlashPos[k]);
                     o.flash=float4(flash*_VfxFlashGain,v.axis.x);
+                    if(fx)o.flash.w=v.life.w;
                 }
                 UNITY_TRANSFER_FOG(o,o.pos);
                 return o;
@@ -380,6 +449,7 @@ Shader "ChipArena/NativeVfx"
                 float4 tex=lerp(VfxPuffStandIn(i.uv.xy),tex2D(_VfxAtlas,i.uv.zw),_VfxAtlasReady);
                 float4 toon=lerp(VfxToonStandIn(i.uv.xy),tex2D(_VfxToon,i.toon.xy),_VfxAtlasReady);float4 aa=fwidth(toon);
                 float4 pack=tex2D(_VfxPack,i.toon.zw);
+                float2 fxDx=ddx(i.uv.zw),fxDy=ddy(i.uv.zw);
                 float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
                 float4 c;
                 if(mode<3.5)c=i.color*VfxGlow(i.uv.xy,mode);
@@ -402,6 +472,12 @@ Shader "ChipArena/NativeVfx"
                         else c=VfxToonWater(mask,toon,aa,i.color.a,i.color.rgb,i.alt.rgb,light);
                     }
                     c*=saturate(i.data.w);
+                }
+                else if(mode>12.5)
+                {
+                    float4 t=lerp(FxSample(i.toon.x,i.uv.zw,fxDx,fxDy),FxSample(i.toon.x,i.toon.zw,fxDx,fxDy),i.toon.y);
+                    float3 light=lerp(i.amb1.rgb,i.amb0.rgb,0.6)+i.sun.rgb*0.6+i.flash.rgb;
+                    c=FxPack(mode,i.toon.x,t,i.color,i.alt.rgb,light,i.flash.w);
                 }
                 else if(mode>11.5)c=VfxPackSprite(pack,i.color,i.sun.w);
                 else c=VfxToonSprite(toon,aa,i.color);

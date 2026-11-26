@@ -95,6 +95,10 @@ internal static class Program
             if(args.Length==1&&args[0]=="--dress-seams-probe"){DressSeamChecks.Probe(ProjectRoot());return 0;}
             if((args.Length==3||args.Length==4)&&args[0]=="--meridian-zfight"){MeridianDressChecks.ZFightExport(int.Parse(args[1]),args[2],args.Length==4&&args[3]=="parts");return 0;}
             // Meridian's flights (owner 2026-11-20, "a lot of unnatural staircasing"): no stepped side, walls down to the sloped streets, iron caged fire escapes.
+            // Meridian's described route (owner 2026-11-25, Astra's brief section 3): Crown Hill's walk dressed, the Ironworks recognisable.
+            if(args.Length==0||args.Length==1&&args[0]=="--meridian-route")MeridianRouteChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--meridian-route")return 0;
+            if(args.Length==2&&args[0]=="--meridian-route-dump"){MeridianRouteChecks.Dump(args[1]);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--meridian-stairs")MeridianStairsChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--meridian-stairs")return 0;
             if(args.Length==2&&args[0]=="--meridian-stairs-zfight"){MeridianStairsChecks.ZFight(ProjectRoot(),int.Parse(args[1]));return 0;}
@@ -273,6 +277,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--pack-fx-hits"){PackFxHitsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--blood-pack"){BloodPackChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--fx-blasts-blood"){FxBlastsBloodChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--polar"){PolarChecks.Run(ProjectRoot());return 0;}
@@ -506,6 +511,7 @@ internal static class Program
             PackFxHitsChecks.Run(root);
             BloodPackChecks.Run(root);
             PackFxBlastsChecks.Run(root);
+            FxBlastsBloodChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);
             EmporiumChecks.Run(root);

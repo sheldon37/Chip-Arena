@@ -173,7 +173,10 @@ namespace ChipArena.UnityConversion
         private void DrawTownFx(float time,Camera camera)
         {
             if(camera==null)return;ReadCyberLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
+            townFx.PackFlames=vfx!=null&&vfx.PackBlasts&&blasts!=null;
             townFx.Beams=AdvancedBeams;townFx.Build(townScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics);
+            // The fires' flames as the effects bank's flipbooks (Core NativeFxPack; drawn with the blasts' layer).
+            if(townFx.PackFlames){var pf=townFx.PackFires;for(int i=0;i<pf.Count;i++)blasts.StageFires.Add(pf.Items[i]);}
             var q=townFx.Quads;townDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

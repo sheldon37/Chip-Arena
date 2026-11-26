@@ -22,7 +22,18 @@ namespace ChipArena.UnityConversion
         private bool TechniqueBusy(NativePilot p)=>NativeTechniqueRules.Busy(p.Technique,Time);
         private bool TechniqueAway(NativePilot p)=>NativeTechniques.WeaponAway(p.Technique,Time);
         private bool TechniqueBlocked(NativePilot p)=>p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Frozen(p)||Time<p.RollEnd||Time<p.BlockEnd||p.HeldBy!=null||p.Controlling!=null||p.ControlledBy!=null||KernelBusy(p);
-        public bool TechniqueSmokeHidden(Vector3 observer,Vector3 target)=>Pilots.Any(p=>NativeTechniqueRules.Hidden(Vec(observer),Vec(target),p.Technique,Time)||p.Technique?.Kind=="mirror-double"&&Time>=p.Technique.Release&&Time<p.Technique.Arm&&Vector3.Distance(target,p.Body.position)<.6f||p.Technique?.Kind=="ghillie"&&NativeTechniqueRules.Live(p.Technique,Time)&&Vector3.Distance(target,p.Body.position)<.6f&&Vector3.Distance(observer,target)>6);
+        public bool TechniqueSmokeHidden(Vector3 observer,Vector3 target)
+        {
+            foreach(var p in Pilots)
+            {
+                var k=p.Technique;
+                if(k?.Kind==null)continue;
+                if(NativeTechniqueRules.Hidden(Vec(observer),Vec(target),k,Time))return true;
+                if(k.Kind=="mirror-double"&&Time>=k.Release&&Time<k.Arm&&Vector3.Distance(target,p.Body.position)<.6f)return true;
+                if(k.Kind=="ghillie"&&NativeTechniqueRules.Live(k,Time)&&Vector3.Distance(target,p.Body.position)<.6f&&Vector3.Distance(observer,target)>6)return true;
+            }
+            return false;
+        }
         private void EndTechnique(NativePilot p)
         {var k=p.Technique;if(k==null)return;if(k.Kind=="grapple-line"&&NativeTechniqueRules.Live(k,Time)&&AbilityChip(p,"ab-hook-shot"))p.ExpansionHookUntil=Time+2;if(p.Ready<=k.RecoverUntil+.001f)p.Ready=Math.Min(p.Ready,Time);NativeTechniqueRules.End(k,Time);}
         private void StepTechniqueInput(NativePilot p)

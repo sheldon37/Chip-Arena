@@ -21,6 +21,13 @@ namespace ChipArena.UnityConversion
             foreach(float u in new[]{-.42f,0,.42f})foreach(float v in new[]{.12f,.5f,.88f})if(!c(at+along*(u*w)+new V3(0,v*h,0),n))return false;
             return true;
         }
+        // A bay wholly in another drawer's own face (FacadeReplaced: the route's corner shop): nothing of the street dress there.
+        private static bool BayReplaced(V3 at,V3 along,V3 n,float w,float h)
+        {
+            var c=FacadeReplaced;if(c==null)return false;
+            foreach(float u in new[]{-.42f,0,.42f})foreach(float v in new[]{.12f,.5f,.88f})if(!c(at+along*(u*w)+new V3(0,v*h,0),n))return false;
+            return true;
+        }
         // A bay wholly under the bleed's skins is theirs: no module of the street dress, only the lot's own plain wall, which the skins
         // hang on. Ward Zero's warp growth has no wall of its own and its quarantine sheeting hangs off one; the Ironworks' plates leave
         // seams. An empty bay was a hole through the lot to the next street, the growth floating in it (owner 2026-11-20: "Weird
@@ -100,6 +107,7 @@ namespace ChipArena.UnityConversion
                                 case 'm':key=Unit(Mix(baySeed,3))<.15f?"g.shutter":"g.shop."+MarketTrades[Mix(lotSeed,(uint)(i/3))%(uint)MarketTrades.Length];break;
                                 default:key=door==1?V("g.door."+wallVar,3,baySeed):V("g.window."+wallVar,3,baySeed);break;
                             }
+                            if(BayReplaced(at,uh,N,w,fh))continue;
                             if(BayCovered(at,uh,N,w,fh))BleedBay(b,bi,fo,uh,ua,w,fy,fh,wallFin,floorFront);
                             else b.Add(key,at,uh,N,w/Bay,fh/GroundStorey,bi,f,ua,ub,fy,fy+fh,floorFront,true,false,false,0);
                             continue;

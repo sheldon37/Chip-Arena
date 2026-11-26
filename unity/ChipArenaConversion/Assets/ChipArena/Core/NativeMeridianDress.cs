@@ -36,6 +36,10 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether the bleed's facade skins stand at a point of a face with that outward normal (D3's
         /// NativeCityBleedDress.Covers): a bay wholly under them is left out (the bleed substitutes; it does not add). Null by default.</summary>
         public static Func<V3,V3,bool> FacadeCovered;
+        /// <summary>Whether another drawer draws its own face at a point of a face with that outward normal (Meridian's route: the corner
+        /// shop's recessed shopfront, NativeMeridianRoute): a bay wholly in it is left out altogether, module and plain wall, so the
+        /// recesses show. Null by default.</summary>
+        public static Func<V3,V3,bool> FacadeReplaced;
         public static readonly string[] Themes={"level0","poolrooms","wardzero","station","ironworks","final"};
         /// <summary>The presentation look table (plan W1, R4): a map id (or an id prefix ending in '-') and the look it draws in.
         /// Its one row: the Developer walk's five Meridian layouts draw in `expedition-night` (MapLooks.json, written by

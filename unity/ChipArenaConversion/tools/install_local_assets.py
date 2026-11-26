@@ -48,7 +48,9 @@ TOP_FIELDS = {'schema', 'events', 'generated', 'note'}
 SPACES = {'P': '3d', 'F': '2d', 'O': 'loop'}
 CLIP_NAME = re.compile(r'^[a-z0-9_-]{1,40}$')
 GUID = re.compile(r'^guid: ([0-9a-f]{32})$', re.M)
-MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 5000, 512 * 1024 * 1024, 24 * 1024 * 1024
+# MAX_ZIP_FILES was 5000 until 2026-11-25 (owner: "Yes, raise it"): the sound queue layers about 1,574 members of generated
+# audio on top of the Drive zip at build time, so the 5000 members bound first (release 28's first build failed at 5,001).
+MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 6000, 512 * 1024 * 1024, 24 * 1024 * 1024
 # The visual body's budget (raised from 40 MB on 2026-10-25: the animation pack's motion bank grew it to 38.7 MB; to 72 MB on
 # 2026-10-26: the wardrobe's pieces and the prefab that carries them grew it to 58.2 MB; to 160 MB on 2026-10-28: the pack
 # banks beside it, docs/PACK-BANK.md, the stage kit alone 12.7 MB; to 240 MB on 2026-11-10: the four new stages' art banks,
@@ -316,8 +318,9 @@ def safe_extract(archive, destination):
     """Extracts a zip member by member, refusing absolute or parent paths, links and oversized content."""
     with zipfile.ZipFile(archive) as z:
         members = [m for m in z.infolist() if not m.is_dir()]
-        if len(members) > MAX_ZIP_FILES or sum(m.file_size for m in members) > MAX_ZIP_BYTES:
-            raise Problem('zip is too large')
+        total = sum(m.file_size for m in members)
+        if len(members) > MAX_ZIP_FILES or total > MAX_ZIP_BYTES:
+            raise Problem(f'zip is too large ({len(members)} members of {MAX_ZIP_FILES}, {total} bytes of {MAX_ZIP_BYTES} unpacked)')
         for m in members:
             name = m.filename
             parts = PurePosixPath(name).parts

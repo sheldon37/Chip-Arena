@@ -33,6 +33,298 @@ Owner: "lets get work started" on Astra's 2026-11-24 brief. Branch `claude/pilot
 - **Not done:** the motion test on today's body; the reticle through the game camera; boots on the Hundred Steps (legs and feet are the same bones and meshes on both bodies); the wrist install's plant pose (the device and its seat were checked); the turntable's once-round after a click; a real eight-pilot profile; a Development build; two clients and an account on a second PC (they need Astra's part).
 - **Ship steps:** Astra's contract (1-4) first; merge this branch; swap the candidate zip together with that code on the builder branch (old code ignores the new pieces; new code without the zip draws the default hair and today's lashes); the tool's B1 wardrobe entries and play options are in `scratch/b1-ship/tools`.
 
+## 2026-11-25 — Claude: release 29: the Checkout Frenzy storefront; the zip limit is the file count (integrator)
+- **Published:** shared and the builder at `a7172650`. Test channel revision `639312613457759576` (build `3eafd797`, 397.2 MiB).
+- **Merged:** `claude/meridian-storefront` (M1, `3dbd3c0d`, synced to `abcd73f8`). The suite at `abcd73f8` passed (1,110 groups, exit 0), and so did the Unity compile.
+- **What shipped:** Meridian Stores, at the turn toward City Hall, becomes Checkout Frenzy's convenience store (#450's first trial). It has a lit white fascia, an OPEN card, and fridges, shelves and a counter in a lit room inside the lot's collider. It is still one renderer on the route's two shared materials, with no collision change.
+- **Drive zip:** `ChipArenaCityRoute.bytes` changes (`4a2bba87`, +159,018 bytes); no members are added. The previous zip is kept as `LocalAssets-2026-11-25-before-storefront.zip`.
+- **Correction to the two room entries below (2026-11-25): the binding limit is the member count, not bytes.**
+  - `install_local_assets.py` says "zip is too large" for more than `MAX_ZIP_FILES` = 5000 members OR more than `MAX_ZIP_BYTES` = 512 MiB.
+  - Release 29's final zip (the sound queue's last `assets-*.zip`) has **4,987 members** and 503.55 MB. The queue's layered jobs add 1,574 members and about 10.4 MB.
+  - Release 28's first build failed at 3,427 + 1,574 = 5,001 members. The 14-member orphan prune fixed it.
+  - So there is about 33 MB of byte room, but only **13 members**.
+- **Astra (blocking):**
+  - B1's female pilot (owner's pick: Strong) adds 45 members, so it cannot ship under 5,000. G1's muzzle flipbooks add 20.
+  - Please raise `MAX_ZIP_FILES`, or tell us what it protects. It guards the PC builder's install step only.
+  - The sound queue also caches about 190 MB per job each time the Drive zip changes. `AppData/Local/ChipArena/SoundQueue` is 83 GB on C:.
+
+## 2026-11-25 — Claude (M1): the storefront trial (#450): Meridian Stores from Checkout Frenzy, against the Modern Supermarket front
+Integrator brief from Astra's asset handoff (`docs/CLAUDE-UNITY-ASSETS.md`, issue #450). **Branch:** `claude/meridian-storefront` from shared
+`2433743f`. Pushed; not merged, not released. Doc: `docs/expedition/MERIDIAN-ROUTE.md` ("The storefront trial"). Presentation only.
+- **What:** the corner shop on the left turn toward City Hall has three storefronts (`NativeMeridianRoute.Storefront`):
+  - `""`: release 27's grocer front (Modern Supermarket);
+  - `cf`, now in force: Checkout Frenzy's convenience store. Its window and entrance modules, a lit white lightbox fascia with a red stripe, and a lit room behind;
+  - `mix`: the grocer front opening onto the same room.
+  - The room sits inside the lot's collider box. It has four of the pack's double drinks fridges, lit and filled with its cans and cartons; the kit's shelving with the pack's boxed goods; the counter, the ice-cream freezer, a plant and the air curtain.
+  - Pack meshes are read as data, with palette and label colours baked into vertex colours. Glass is left out.
+  - No pack material, texture, script or plugin ships. Only the mesh and texture files the fittings use were extracted, to a git-ignored scratch folder.
+  - A bank without the storefront in force keeps release 27's front (`NativeMeridianRouteDraw.StorefrontInBank`), so the code can merge before the Drive zip changes.
+- **Reads as a landmark?** Yes where the route turns: the game camera swings west at the junction and the shop's north face passes on the left.
+  - `cf`'s lit fascia and open shop read as a corner shop there and from across Clock Street.
+  - From the steps' head (about 33 m), release 27's big warm window is the brighter patch, and `cf` shows as a white sign band. A brighter room is the next step if it should carry that far.
+  - `mix` keeps the Edwardian front but its room reads only from across the street.
+- **Materials and draw calls:** the shop stays one renderer with the route's two shared materials: 2 draw calls plus shadows, as in release 27.
+  - Placed as the pack's own prefabs, the same fittings would be about 195 renderers, 205 draw calls and 13 materials before batching. Checkout Frenzy's front would add 9 renderers and 18 draw calls.
+  - Editor frame stats were logged per front, but totals varied by hundreds of batches between runs, so they are not a clean A/B.
+- **Pavement:** every front has the same lot faces, keep-outs and covers (pinned in CoreTests). The art-rule check finds no point standing free below 3.1 m. Nothing stands on the pavement and no collision changes, so there are no Astra items.
+- **Bytes** (`ChipArenaCityRoute.bytes`; release 27's is 2,220,863):
+  - `cf`: 2,379,881, which is **+159,018**;
+  - `mix`: 2,951,645 (+730,782);
+  - the trial bank with all three: 4,676,823 (captures only).
+  - A `--storefronts ms` build is byte-identical to release 27's bank (`8bda8a82`).
+  - The Drive zip unpacks to 493,013,003 bytes today. `cf` adds its 159,018 (computed; no zip was packed). It waits for Astra's `MAX_ZIP_BYTES` raise, as the integrator asked.
+- **Checks:**
+  - Full CoreTests run the relgen5 way, in a throwaway worktree with `ExpeditionEndingChecks`' meta-path comparison normalised and nothing committed:
+    - `f7ad1a90` with the trial bank: exit 0, 1,109 PASS lines;
+    - `186dce5f` with the `cf` bank: exit 0, 1,109 PASS lines.
+  - `--meridian-route`: 15,543 checks with the trial bank and 15,537 with the `cf` bank.
+  - The Unity compile check: 0 errors. `git diff --check`: clean.
+  - Three live Expedition starts in the Editor on Crown Hill (seed 2027808463), all `STAGE_LOADING reason=ready`.
+- **Proof** (`F:/Chip Arena Development/scratch/meridian-storefront/proof/`), on seed 2027808463 with the same camera path:
+  - `walk-before-after-cf-2x.mp4` (release 27's front against `cf`);
+  - `walk-three-fronts-2x.mp4`;
+  - `stills-1-approach.jpg`, `stills-2-close.jpg`, `stills-3-game-camera.jpg` (each view a row, with the three fronts side by side).
+- **Not done:**
+  - PrototypeBuild.Validate: no time was left in a 20-minute hold. Domain reloads now take 3.5 to 4.4 minutes each.
+  - No Low-tier capture, Windows build or two-client run, and no first-time walker.
+  - Hold C ran 21 minutes, 1 minute over the cap. Hold B's walk was unusable (the capture tool's step and arena clocks drift), so I recaptured it in hold C.
+- **Ship:** for the integrator, once the zip has room.
+  1. Merge the branch.
+  2. Under the lock, copy `F:/Chip Arena Development/scratch/meridian-storefront/bank-cf/ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` over release 27's in the Editor's Resources (same meta).
+  3. Run `pack_visual_body` and `install_local_assets --check`, keep the old zip, then swap the zip and push the builder.
+
+## 2026-11-25 — Claude: F: filled up; #451's build re-run (integrator)
+- **What happened:** around 20:00-20:40 local, F: dropped to 351 MB.
+  - Unity's "Low disk space" dialog stalled the shared Editor for about 20 minutes (G1 closed it).
+  - The builder's build of `34ea6eb8` (Astra's PR #451, Deathmatch bot frame pacing) failed while packaging, with "There is not enough space on the disk" (`Builds/Chip-Arena-Windows.zip`). Every check before packaging passed. The test channel stayed on release 28.
+- **Cause:** `F:/Chip Arena Builder/Builder/Work` held 51 GB of per-build work folders back to 2026-11-20, about 0.8 GB per old build and 7.3 GB for each of the newest.
+- **Fix (owner: "Yes, clear them"):** removed 41 work folders, freeing 44 GB. Kept the newest successful build's folder (`729b5890`) and the 2026-11-01 `.rar`. F: now has 44 GB free.
+- **This commit** re-runs the builder on `34ea6eb8` plus this note.
+- **Astra:** each build leaves its work folder behind, so F: will fill again. Consider pruning old `Work/` folders after a successful publish. The sound queue's cache on C: (`AppData/Local/ChipArena/SoundQueue`) is 83 GB of `assets-*.zip` versions.
+
+## 2026-11-25 — Astra: Deathmatch bot frame pacing (PR #451)
+`codex/deathmatch-bot-frame-pacing`, shared base `729b5890`, implementation `e943c27b`. Bot focus queries keep the closest eligible candidate in roster order. A* computes straight-line heuristics only for discovered nodes. Killcam/network frames share immutable stat rows until a value changes. Target priority, AI cadence, snapshots, scoring and respawn timing retain the same rules.
+
+- Unity 6000.3.24f1 headless Linux Mono/PhysX, Brickfall, seed 1739, local pistol plus Normal bots (MG, sword, rifle, then fire, bow, daggers and lightning). Local pilot strafed and fired. Fixed ticks at 60 Hz, physics before/after hooks, one retained network frame every third tick, 120-frame ring. Five runs per build per roster, alternating order, 420 warm-up ticks then 1,800 measured. Median run p95/p99 includes input, simulation, physics and snapshots.
+- Three bots: 0.965/2.511 ms before, 0.984/2.465 ms after. Seven bots: 1.543/3.758 ms before, 1.231/3.031 ms after. Each roster had the same scores and snapshot pilot/event-count checksum on both builds. Render, GPU, HUD, audio and Windows player frame times are outside this measurement.
+- Eight stable pilot stat tables, 600 captures in .NET 8: 15,552,000 bytes before, zero after warm-up, equal checksum. Managed Release build, Deathmatch, bot difficulty, killcam, techniques, blades, runtime performance and navigation checks passed. Native test Update publication is tracked separately from the performance measurements.
+
+## 2026-11-25 — Claude: release 28: the blood spray (X1), a zip-size build failure, and orphans pruned (integrator)
+- **Merged:** `claude/fx-blasts-blood` (X1, `448b9b65`, synced to `456920db`) into shared and the builder as `3dc364cd`. The suite at `456920db` passed (1,110 groups, exit 0), and so did the Unity compile.
+- **First build failed:** at "Install optional local assets", with "zip is too large" (install_local_assets' `MAX_ZIP_BYTES`, once the sound queue layered its generated originals). The test channel stayed on release 27.
+- **Room correction:** builds only pass with about 40.4-40.8 MB of generated originals added on top. `SoundQueue/originals` is 43.2 MB, and part of it replaces existing members. So after release 27 only about 0.4 MB was free, not the 3.9 MiB in the 2026-11-25 request below. The 0.39 MB blood spray tipped it over.
+- **Fix:** pruned 14 orphaned members (3.47 MB), with no reference in code, git scenes or prefabs, or zip text members:
+  - `ChipArenaLocal/VisualBody/Weapons/machinegun_Model_held.asset` (the held MG from before the TR15, 3.0 MB);
+  - `Polygon-Mega Weapone Kit/Models/SM_Light_Machine_Gun.fbx` and `SM_Assault_Rifle_5,56.fbx`;
+  - four unlisted `Feet_OfficeLoafer` / `Top_FullSuit` materials;
+  - and the metas of all of these.
+  The zip now unpacks to 493.01 MB, leaving about 3.1 MB of room in the worst case. `install_local_assets --check --require-cloth` passes. The zips are kept as `LocalAssets-2026-11-25-before-blood-spray.zip` and `-before-orphan-prune.zip`. This receipt's builder push rebuilds.
+- **Shipping:**
+  - X1's blood spray (`ChipArenaLocal/Resources/ChipArenaBloodSpray`, 0.39 MB) layers over the RVFX splashes on gun hits and kills.
+  - X1's explosion and fire flipbooks (3.4 MB) stay in the Editor's git-ignored `ChipArenaFx`, so builds keep today's explosions and fire until **Astra's** effects bank or a `MAX_ZIP_BYTES` raise.
+- **Astra:** the room request below stands. With about 3.1 MB left, the female pilot (2.5 MB) fits next, and little else does.
+
+## 2026-11-25 — Claude (X1): realistic explosions, fire and the blood spray from the flipbooks (effects plan phase 4)
+Owner, 2026-11-25, on V1's effects gallery: "go with recommended". Integrator brief `agents-fx-2026-11-25.md`.
+**Branch:** `claude/fx-blasts-blood` from shared `4a2b5c4f`. Pushed; not merged, not released, the Drive zip not swapped.
+Doc: `docs/PACK-EFFECTS.md` "Explosions, fire and the blood spray from the flipbooks". Presentation only.
+- **What changed** (Core `NativeFxPack`: V1's lab recipes as pure functions of an effect's age and seed; `NativeVfxDraw` draws them in its
+  one sorted batch as `NativeVfx.shader` modes 13 fire, 14 smoke and dust, 15 blood):
+  - Fire, Mine and Meteor blasts (untinted: rockets, barrels, mines, meteors, the fire staff's hit) and the Bombadier's charges: the fireball
+    (flash glow, ignition burst, four burst flipbooks, five aftermath smokes, 30 embers).
+    - **V1's fault 1 fixed:** the ignition burst is at full size and opaque from the first frame, and the flash glow is wider than today's.
+  - Kinetic (the frag's own tint, and the untinted dash blast, kinetic and bubble mine), Quake and melee slam landings: smoke and dust.
+    - **V1's fault 2 fixed:** a light dust cloud opens the burst, the smoke is a lighter grey, and nothing goes darker than a self-light floor.
+  - Kept code-drawn: the shock front (it still ends exactly on the gameplay radius), the three blast lights, halo and core glows, sparks,
+    rubble and slabs, the slam wave, every telegraph. Dropped for restyled blasts only: their toon puffs, toon flashes and crescent licks.
+  - Fire fields burn with one to seven large-flame flipbooks. Burning bodies (third person), the camp's drums and brazier, and the town's
+    brazier, bus and burning windows burn with the campfire or the large flame. Halos, light, the camp's and the town's smoke stay.
+  - Gun hits (punctures) and every kill throw the blood pack's spray (mist, two splatters, 24 stretched drops) **over** the RVFX splashes,
+    which stay the hit cue.
+  - `NativeBlastSim` records each restyled blast after its spawns, with no random draw, and lists live fire fields. The pools, the pinned
+    frames and the shock fronts are unchanged; the record's seed ranges let the drawer leave out exactly that blast's toon puffs.
+  - **Fallback:** without a sheet its layer is off and everything keeps today's look (`NativeFxPack.On` is the DEV and capture switch).
+- **Gameplay, networking, animation:** none. Radius, timing, damage, hit timing, the wire and every rule are untouched. No animation change.
+- **Loading** (C2's convention, `Core/NativeCachePackFx.cs`): `Resources.Load` by name, read once.
+  - The explosion and fire sheets load from the effects bank, `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaBlastFx/<name>`.
+  - The blood sheets load from the zip's `ChipArenaLocal/Resources/ChipArenaBloodSpray/<name>`.
+- **Bytes** (flipbooks at 1024, grey + alpha):
+  - **Drive zip (blood only):** +395,165 bytes unpacked (0.395 MB, 0.377 MiB): `splatters.png` 255,386 and `mist.png` 134,389, their two
+    metas, the folder meta, and `visual-body.json` +651. Measured by repacking a copy of release 27's zip with `pack_visual_body.py` from a
+    hard-linked mirror of the Editor's LocalAssets; `install_local_assets.py --check --require-cloth` passed; it unpacks to 473.48 MiB.
+  - **Effects folder:** 3,433,792 bytes (3.43 MB) for six sheets and their metas.
+    - Explosions: `burst` 521,173, `smoke` 489,248, `dust` 419,384.
+    - Fire: `flame` 700,969, `large` 687,094, `flamesmoke` 601,876.
+- **Counts** (drawn quads; lab `n`; today -> after):
+  - Fire r3: 65 -> 65 at .05 s, 65 -> 56 at .25 s, 31 -> 21 at .5 s, 5 -> 14 at .9 s; 5 smokes linger to 2.6 s.
+  - Frag r3: 46 -> 56 at .05 s, 27 -> 36 at .25 s, 15 -> 24 at .5 s, 2 -> 20 at .9 s; 6 left at 2.6 s.
+  - Quake r2.5: 55 -> 46 peak.
+  - Slam landing: 40 -> 13.
+  - Fire field r1.2: 85 -> 72 peak.
+  - A campfire: about 30.
+  - Spray: +30 sprites a hit or kill (today's 2-3 RVFX splashes stay).
+  - CoreTests prints the same per age (`--fx-blasts-blood`).
+- **Proof** (V1's rig, same cameras; blasts at 10 m; through the game's own `NativeVfxDraw` with `NativeFxPack.On` off and on; Editor
+  hold 16:02-16:17):
+  - Sheets: `F:/Chip Arena Development/scratch/x1/sheets3/explosion.jpg` (final), `sheets2/slam.jpg`, `sheets2/fire.jpg`,
+    `sheets/blood.jpg` and `sheets/firefield.jpg` (before the fire tuning).
+  - Clips, dark and bright: `F:/Chip Arena Development/scratch/x1/clips/rocket-fireball-{dark,bright}-realtime.mp4`,
+    `frag-dust-{dark,bright}-realtime.mp4`, `blood-spray-{bright,dark}-2x-slow.mp4` (6 m), `fire-dark-realtime.mp4` and
+    `slam-dark-realtime.mp4`.
+  - Read: the fireball outsizes today's flash from the first frame. The frag reads as strongly or more from .25 s on, and lasts longer on
+    the dark stage. **At .12 s the frag's fire core and dust are still smaller than today's crisp white poof.**
+- **Checks:**
+  - Full CoreTests the relgen5 way (LF worktree, `expedition_path.patch`, the 14 stage banks): `712f55e3`, 1,110 PASS lines, exit 0.
+  - New group `FxBlastsBloodChecks` (`--fx-blasts-blood`, 13,781 checks): sim records and seed ranges, unchanged spawns and fronts, recipes
+    deterministic and in their sheets, both faults in numbers, the spray, the fires, the fallback pins, no publisher name in code.
+  - `VfxRuntimeChecks`' `Blasts` pin is updated to the new structure.
+  - `tools/check_unity_compile.py` passed; `git diff --check` clean; the Editor compiled `398c75a9`, `a4060be6` and `d942e821`.
+  - `PrototypeBuild.Validate` in the Editor at `d942e821` (the last code commit) with the sheets installed: ok (16:40-16:51 hold).
+- **Ship steps:**
+  - **Zip (now):** under the Editor lock:
+    - Copy `F:/Chip Arena Development/scratch/x1/out/ChipArenaLocal/Resources/ChipArenaBloodSpray/` and `ChipArenaBloodSpray.meta` into the
+      Editor's `Assets/LocalAssets/ChipArenaLocal/Resources/`.
+    - Repack with `tools/pack_visual_body.py <Drive zip> <new> --project <Editor project> --addons-allowlist <allowlist>`, holding out
+      unshipped banks as `pack-b1.sh` does.
+    - Check with `install_local_assets.py <new> --check --require-cloth`. Expect 5 added members (394,514 bytes) and `visual-body.json`
+      +651 bytes.
+    - Keep the old zip beside it, then replace it.
+  - **Effects folder (with Astra's effects-bank packer, DEV_LOG `87076cc7`):**
+    - The six sheets and metas are already installed in the Editor at `Assets/LocalAssets/ChipArenaFx/Resources/ChipArenaBlastFx/`.
+      Source copy: `F:/Chip Arena Development/scratch/x1/out/ChipArenaFx/`.
+    - The packer takes the `ChipArenaFx` folder whole; the installer puts it at the same path on the builder.
+    - Until then builds keep today's explosions and fires.
+  - **Rebuild:** `python -I tools/fx_bank/flipbooks.py <Editor>/Assets/LocalAssets/V1FxLab <out>` is deterministic and keeps existing metas.
+- **Not done:** Meridian's half-drum fires (their own drawer), Ward Zero's vent flames, the intros' scripted fires, first-person burning (it keeps the status flames),
+  a BoZo match capture, frame cost in a build, and a Windows build.
+- **Risks:**
+  - Until Astra's packer exists, a merged branch with the zip blood alone gives the spray but no explosions or fire changes.
+  - The Editor keeps the six effects sheets installed in `ChipArenaFx`. The temporary blood copy was removed.
+- **Next:** the integrator reviews the clips, ships the blood with the next zip and the effects sheets with the effects bank.
+
+## 2026-11-25 — Claude: request for Astra: room in the Drive zip's total (MAX_ZIP_BYTES) for the next asset batches (integrator; nothing implemented)
+Follows the 2026-11-23 effects bank request. Asset handoff read: `docs/CLAUDE-UNITY-ASSETS.md` (`ef642e6f`) and issue #450.
+- **Why:** after release 27 the zip unpacks to 473.11 MiB. With the sound queue's generated originals (about 35 MiB) added at build time, about 3.9 MiB is left under `install_local_assets.py`'s `MAX_ZIP_BYTES` (512 MiB). A separate effects section inside the same zip still counts toward that total.
+- **Queued against that room:**
+  - the female pilot bake: +2.5 MB (B1; on hold for a more feminine pass);
+  - the kripto289 muzzle flipbooks: 0.85 MB (G1);
+  - the blood spray: 0.44 MB (X1).
+- **Waiting outside it:**
+  - X1's explosion and fire flipbooks: about 2-4 MB, in `Assets/LocalAssets/ChipArenaFx/`;
+  - G1's brick, dirt and glass impacts: about 1 MB;
+  - #450's storefront trial (Checkout Frenzy) and the Hovl shield cue.
+- **Ask (build tooling, Astra):** raise `MAX_ZIP_BYTES` (and whatever the installer and updater assume about it), or move effects into their own zip with its own cap, plus the effects section from the 23rd. The owner sets the number. Until then the integrator batches releases to fit.
+- **Not run:** nothing to run; docs only.
+
+## 2026-11-25 — Claude: release 27: Meridian's described route (integrator)
+- **Published:** shared and the builder at `91bed26c`. Test channel revision `639312330273820441` (build `f5ebe749`, 396.9 MiB).
+- **Merged:** `claude/meridian-route` (M1, `3ea8e2eb`, synced to `72f3bc0f`). The integrator reviewed the before/after stills and the walk on seed 2027808463.
+- **Drive zip:** adds `ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` (`8bda8a82`, 2.2 MB) and its meta. Nothing else changed apart from `visual-body.json` listing the two files. It unpacks to 473.11 MiB (+2.22 MB), the visual body to 474.38 of 480 MB, and `install_local_assets --check` passes. The previous zip is kept as `LocalAssets-2026-11-25-before-meridian-route.zip`. The route bank stays in the Editor's Resources.
+- **Room left:** about 3.9 MiB under `MAX_ZIP_BYTES` once the generated audio is added. B1's female pilot needs about 1 MB and the effects muzzle flipbooks 0.85 MB; anything beyond that waits for **Astra's** separate effects bank or a cap raise.
+- **Astra:** the collision handoffs (roofs, balustrade bars, Belisha beacons, Ironworks loading-bay canopy) are in M1's entry below.
+- **Checks:** the full suite at `72f3bc0f` (1,109 groups, exit 0), the Unity compile, `install_local_assets --check`, the build.
+
+## 2026-11-25 — Claude (M1): Meridian's described route: Crown Hill camp, the Hundred Steps, left toward City Hall; the Ironworks recognisable
+Owner, 2026-11-25: "lets get work started" on Astra's brief, section 3 ("Give Meridian a route players can describe").
+**Branch:** `claude/meridian-route` from shared `b6e24973`, which includes Astra's #447 stairs and rails. Pushed; not merged, not released.
+Doc: `docs/expedition/MERIDIAN-ROUTE.md`. Presentation only.
+- **Walked first** on shared: the live Crown Hill deal, xseed 2027808463, from the game camera.
+  - The camp's north gate opens on the plaza, with the steps 13 m ahead.
+  - Astra's guards were thin iron boxes, and their landing joins were square.
+  - The clock tower stood centred, but over a bare retaining wall.
+  - Clock Street was an open asphalt plateau with nothing turning the eye left.
+- **Dressed.** `Core/NativeMeridianRoute.cs` places the pieces, `tools/stages/meridian_route.py` builds the bank `ChipArenaCityRoute`, and `Runtime/NativeMeridianRoute.cs` draws it.
+  - Leaving camp:
+    - the camp's apron road;
+    - a zebra crossing at the north gate, with studs, zigzags, a dropped granite kerb and a tactile band;
+    - Belisha beacons on the fence ends, above 3.1 m;
+    - a York-flag footway, edged in the same granite, to the first tread.
+  - The steps: cast-iron balustrades on Astra's guards.
+    - They slope with each flight, run level on the landings and bend round the joins, with bars and with newels seated on the treads.
+    - The guards' boxes are hidden while the balustrades draw. Their colliders are untouched.
+  - The tower: hipped slate roofs with chimney stacks on Clock Street's four `pitched` rows frame it.
+  - The left turn:
+    - the same kerb and footway up Clock Street, the west one turning left along the switchback;
+    - Meridian Stores on the corner lot's ground storey: Modern Supermarket's produce, sale cards and doors in lit windows, a lit fascia, an awning and a blade sign;
+    - the CITY HALL sign with its arrow, high on the wall that closes the street.
+  - The Ironworks, wherever it is dealt:
+    - an Old Industry loading bay (door, window bay, canopy, gutter, lamp) in the door front's two bays right of the door;
+    - smoke over the far stacks: low-poly puffs in Polygon Arsenal's look, animated by the drawer.
+  - The street dress leaves the shop's ground storey to the route through the new `NativeMeridianDress.FacadeReplaced`, which is null elsewhere.
+  - The street life keeps off the route's pieces, and the landmarks drop the two replaced Ironworks bays.
+  - All of this applies only while the bank is present.
+  - `tools/pack_bank/fbx.py` now reads ASCII FBX arrays (`Name: *N { a: ... }`) and ASCII names in binary order. Before this, Old Industry's Houdini exports read as one node named "Model".
+- **Packs:** all owned and named in the brief.
+  - **Used:**
+    - Old Industry and Modern Supermarket: downloaded today and parked in `F:/Chip Arena Development/AssetStoreCache`.
+    - Polygon Arsenal: bought today and downloaded for reference. Its SmokestackDark is the smoke's model; nothing from it ships.
+  - **Not used:**
+    - EasyRoads3D Pro: it builds Editor road meshes on terrain, and Meridian is generated at runtime.
+    - City & Terrace: a modern skyline backdrop of textured towers with no terrace rooflines, against the art bible.
+    - The Horror Hospital (owned since 11-24): not used at the corner. It suits Ward Zero's front. Not downloaded.
+  - Pack meshes are read as data and their albedo is baked into vertex colours. No pack texture or file ships except the bank.
+- **Bytes:** `ChipArenaCityRoute.bytes` is 2,220,863 bytes (sha 8bda8a82; v2), plus a 158-byte meta. Measured with the v1 bank (2,227,631) on a repack of today's Drive zip; the zip itself was not swapped. The zip's members grew from 493,868,549 to 496,096,589 bytes (+2,228,040: the bank, its meta, `visual-body.json`); v2 makes that about +2,221,272. That leaves about 38.9 MiB under `MAX_ZIP_BYTES` before the sound queue's generated audio (about 35 MiB), so **about 3.9 MiB** with it. The visual body is 474.38 MB of 480 MB. `install_local_assets --check` passes (258 keys, 683 clips, 14.18 MB of effects audio). This bank fits; the next city or effects bank needs Astra's cap raise or the separate effects bank.
+- **Collision handoff for Astra.** Nothing here adds or moves a collider. Art stands where no collider is:
+  - **Roofs** (`route/647/roofs`, world frame, Crown Hill only). The rows are `pitched` in the plans but flat boxes today, so the roofs stand up to 4.5 m over the boxes' tops:
+    - lots 71 and 72 as one roof: x -60.3..-24.7, z 89.7..100.3, eaves at y 21.38, ridge at 25.52 along x -55..-30;
+    - lot 73: x 19.7..35.3, z 99.7..110.3, eaves 24.38, ridge 28.52;
+    - lot 74: x 44.7..60.3, z 99.7..110.3, eaves 21.38, ridge 25.52;
+    - the chimney stacks reach the ridge plus 1.5 m.
+    - Not reached on foot (the nearest walkable surface is 5 m off). A pilot launched onto one by a chip would stand inside the slates until the roof wedges exist (D1's standing ask).
+    - Screenshots: after `t12_tower_sight`, `t16_corner_eye`.
+  - **Balustrade bars** (`route/647/rails`): the bars between Astra's posts at x ±5.75, z 38..75, from the tread up to 0.85 m under each grip. A standing pilot is stopped by the grip; anything passing under 0.85 m would pass through the bars. Screenshots: after `t6_rail_base_1`, `t7_rail_join_2`.
+  - **Belisha beacons** (`route/647/crossing`): on the north gate's fence ends at x ±5.45, z 24.9, y 3.22..4.51. Screenshots: after `t2_gate_out`, `t3_gate_edge_w`.
+  - **Loading-bay canopy** (`route/front/ironworks/loading`, the door front's frame; seed 2027808463 puts it on hall-a's E door at (259, 14, 63)):
+    - the canopy is about x 256.7..259, z 51.55..55.55, y 18.75..19.2, with brackets from y 17.6;
+    - it projects 2.3 m, 3.6 m to 5.2 m over the apron.
+    - Screenshot: after `t21_front_a`.
+  - The screenshots are in `F:/Chip Arena Development/scratch/meridian-route/cap/after_stills3/`.
+- **Checks:**
+  - **Full CoreTests on `86d3d442`**, run the relgen5 way (stage banks plus `CHIPARENA_ROUTE_BANK`): exit 0, 1,109 PASS lines; `--meridian-route` 15,514 checks with the bank.
+    - It ran in a throwaway worktree, which held two local changes that are not committed:
+      - shared `b6e24973`'s failing Belvedere seed-123 pin, set to the values shared's own re-pin `372ed569` now has (this branch does not move it);
+      - `ExpeditionEndingChecks`' meta-path comparison, normalised.
+  - **Unity compile check** on the branch content (Assembly-CSharp, Editor, Player defines, InputSystem; Unity's Roslyn): 0 errors.
+  - `git diff --check b6e24973..HEAD`: clean. `tools/pack_bank` tests: 17 of 17.
+  - **PrototypeBuild.Validate** in the Editor: ok on `029a4e37`. Since then only the smoke constants, the smoke tints and the bank script changed; it was not re-run on `86d3d442`, to keep hold 4 under 25 minutes.
+  - **Live Expedition starts** in the Editor, all `STAGE_LOADING reason=ready`:
+    - on `029a4e37` with v1: three on Crown Hill (`Meridian route Crown Hill: 7 pieces, 102 blocks replaced, 2 landmark pieces replaced, 3 plumes`) and one on a clock seed (The Stride: nothing drawn, countdown reached);
+    - on `86d3d442` with v2: two more on Crown Hill, the same line.
+- **Proof:** in `F:/Chip Arena Development/scratch/meridian-route/proof/`, all from the game camera on seed 2027808463:
+  - `walk-before-after-2x.mp4`: shared against the branch, the same path;
+  - `walk-after-1x.mp4`;
+  - `stills-1-leaving-camp.jpg`, `stills-2-the-steps.jpg`, `stills-3-the-left-turn.jpg`, `stills-4-ironworks.jpg` (before and after);
+  - `stills-5-smoke-street-level-v1.jpg`.
+  - Raw captures are in `cap/`.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. No animation change.
+- **Not done:**
+  - The Developer walk (Settings > Developer > Walk Meridian greybox) does not draw the route.
+  - Only Crown Hill has the walk's pieces. The other four layouts have only the Ironworks bay and smoke.
+  - Not captured on the Low graphics tier.
+  - No Windows build and no two-client run. The change is presentation only, and nothing is networked.
+  - Smoke against enemies is reasoned, not filmed: the fight capture stayed in the sanctuary phase with no zombies. The plumes are 80–150 m up and more than 300 m out; enemies are at street level.
+  - No first-time walker has described the route yet.
+  - Ward Zero's Horror Hospital front is left as a suggestion.
+  - My hold 3 overran the 25-minute cap (37 minutes: importing the new assets and refreshing the tool took time). Hold 4 took 22 minutes.
+- **Ship:** for the integrator; never done here.
+  1. Merge `claude/meridian-route`. It merges cleanly onto `a2d2d771`.
+  2. Under the lock, copy `F:/Chip Arena Development/scratch/meridian-route/bank2/ChipArenaLocal/Resources/ChipArenaCityRoute.bytes` and its `.meta` into the Editor's `Assets/LocalAssets/ChipArenaLocal/Resources`.
+  3. Run `tools/pack_visual_body.py <Drive zip> <new zip> --project <Editor project>`, then `tools/install_local_assets.py <new zip> --check`.
+  4. Keep the old zip as `LocalAssets-2026-11-25-before-meridian-route.zip`, then swap the zip and push the builder.
+  5. Leave the bank in Resources.
+  - Without the bank, the game draws exactly as shared does.
+
+## 2026-11-25 — Claude: release 26: Glaive throw, bounce and catch sounds; Belvedere identity re-pinned (integrator)
+- **Published:** shared and the builder at `3be56bfb`. Test channel revision `639312236955247619` (build `b67ff8bf`, 396.5 MiB).
+- **Merged:** `claude/pin-belvedere-identity` `372ed569`.
+  - Shared `b6e24973`'s own suite stopped at ExpeditionDeploymentChecks' "Belvedere world and layout identity for seed 123". The pin still held the hashes from before #446/#447.
+  - Re-pinned to `8c6aea30…` / `ade9c5f0…`.
+  - **Astra:** if the world change was not meant to move seed 123's identity, say so and this re-pin is reverted.
+- **Drive zip:** C2's Battle Sound Library takes fill the existing `topdog.ring-throw/-ping/-catch` keys (13 clips, +123 KB; effects audio 14.18 of 26 MB). It unpacks to 470.99 MB. The previous zip is kept as `LocalAssets-2026-11-25-before-glaive-cues.zip`.
+- **Not merged:** `claude/cache-glaive-fx` `073c23fe` (C2). Its cache tier effects (Action RPG FX) and the fire-bolt trial (Magic Missiles) live in git-ignored `Assets/LocalAssets/ChipArenaFx` (2.44 MB). They wait for the separate effects bank (the 2026-11-23 request). Its in-game clips are not filmed.
+- **BoZo tool:** `generated=` captures fail on current shared, because the `ExpeditionDeploymentRoom` constructor gained an optional `previousPlan`. The local fix is the scratchpad's `c2/toolfix.py` (idempotent).
+- **Checks:** the full suite at `372ed569` (1,108 groups, exit 0), the Unity compile, `install_local_assets --check`, the build.
+
 ## 2026-11-24 — Astra: Deathmatch replay timing
 Branch `codex/deathmatch-replay`, base `9be1dbf8`. Cap ordinary Deathmatch replay lead-in against the authoritative respawn countdown, reserving 0.75 s after impact when available. Hosts and guests use the same deadline. Core built, 161 Deathmatch/blind-pick and 114 final-killcam checks passed. Windows multiplayer playback outstanding.
 

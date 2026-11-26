@@ -32,6 +32,12 @@ namespace ChipArena.UnityConversion
     ///    floor, bright at its foot and fading to its top (never a flat ring).
     ///  - The modelled chip bomb gets a fuse effect (spike sparks, tiny falling sparks, a flickering tip glow and rising puffs,
     ///    a pure function of its age, faster in its last second).
+    ///  - Effects bank (Claude X1, 2026-11-25; effects plan phase 4, Core NativeFxPack): when the licensed flipbooks are present
+    ///    (the effects bank's Resources/ChipArenaBlastFx, the zip's Resources/ChipArenaBloodSpray), the Fire family's and the frag's
+    ///    blasts draw V1's fireball and smoke-and-dust recipes instead of their toon puffs, flashes and licks (their halo, core
+    ///    glows, sparks, rubble, lights and shock front stay), the fire fields burn with the large flame instead of toon tongues,
+    ///    and callers can ask for a slam's dust (PackSlam), a looping fire (PackFire) and a wound's spray (PackSpray): modes 13
+    ///    fire, 14 smoke and dust, 15 blood, each a pure function of its effect's age. Without the sheets nothing changes.
     ///  - Pack pass (owner 2026-10-28, the licensed packs as in-place upgrades; docs/PACK-EFFECTS.md): when the licensed-assets
     ///    zip carries them (NativePackBanks), the toon sheet is the effect pack's cartoon masks in the same layout and
     ///    channels (Core NativeVfxTextures.PackToonId), so every puff, flash, lick and spark keeps its colours, lighting,
@@ -61,6 +67,10 @@ namespace ChipArena.UnityConversion
         public const float ToonSmokeMode=7,ToonFireMode=8,ToonWaterMode=9,FlashMode=10,SpriteMode=11;
         /// <summary>Pack pass: a camera-facing sprite of the magic sheet at its roll (TEXCOORD1.w its tile).</summary>
         public const float PackMode=12;
+        /// <summary>Effects bank (Core NativeFxPack): a flipbook fire sprite (heat ramp, its cool smoke lit), a lit smoke or dust
+        /// flipbook sprite, a lit blood sprite (along its segment when it has one). TEXCOORD1.y sheet x 64 + frame, .w heat;
+        /// TEXCOORD2.w the smoke or blood tint as a packed sRGB hex; COLOR gain, self light, occlusion, opacity.</summary>
+        public const float FxFireMode=13,FxSmokeMode=14,FxBloodMode=15;
         /// <summary>The floor of a puff that has none (no floor fade).</summary>
         public const float NoFloor=-1e9f;
         // ---- the look: sprite size per voxel edge and HDR gain per role (stylized, punchy; the bloom takes what passes 1) ----
@@ -191,6 +201,19 @@ namespace ChipArena.UnityConversion
         // The pack pass's sheets (NativePackBanks: Resources textures of the licensed-assets zip, owned there, never released
         // here); null without them.
         private readonly Texture2D packSheet,packToon;
+        // The effects bank's sheets (Core NativeFxPack.Path; Resources textures, never released here), read once a process.
+        private static Texture2D[] fxSheets;private static bool fxRead,fxBlasts,fxBlood;
+        private static readonly int[] FxSheetIds={Shader.PropertyToID("_FxSheet0"),Shader.PropertyToID("_FxSheet1"),Shader.PropertyToID("_FxSheet2"),Shader.PropertyToID("_FxSheet3"),
+            Shader.PropertyToID("_FxSheet4"),Shader.PropertyToID("_FxSheet5"),Shader.PropertyToID("_FxSheet6"),Shader.PropertyToID("_FxSheet7")};
+        private readonly NativeFxList fxList=new NativeFxList();
+        // While Blasts draws a sim whose restyled blasts the pack draws: that sim (its toon puffs are left out), else null.
+        private NativeBlastSim fxCover;
+        /// <summary>The explosion and fire sheets are loaded and the layer is on (otherwise blasts, fields and callers keep today's look).</summary>
+        public bool PackBlasts=>fxBlasts&&NativeFxPack.On;
+        /// <summary>The blood spray's sheets are loaded and the layer is on.</summary>
+        public bool PackBlood=>fxBlood&&NativeFxPack.On;
+        /// <summary>The pack sprites queued this frame (checks, captures).</summary>
+        public int FxSprites{get;private set;}
         /// <summary>The magic sheet is loaded: <see cref="Pack"/> draws (otherwise callers keep their own look).</summary>
         public bool PackSprites=>packSheet!=null;
         /// <summary>The toon sheet is the effect pack's (checks, the DEV panel).</summary>
@@ -227,10 +250,11 @@ namespace ChipArena.UnityConversion
             // textures are uploaded (it replaces the procedural one there, so the stand-in switch stays one switch).
             packSheet=NativePackBanks.Texture(NativeMagicPackFx.SheetId);packToon=NativePackBanks.Texture(NativeVfxTextures.PackToonId);
             if(packSheet!=null){packSheet.wrapMode=TextureWrapMode.Clamp;billboardMaterial.SetTexture(PackId,packSheet);billboardMaterial.SetVector(PackGridId,new Vector4(NativeMagicPackFx.Columns,NativeMagicPackFx.Rows,0,0));}
+            FxSheets();for(int k=0;k<NativeFxPack.Sheets;k++)if(fxSheets[k]!=null)billboardMaterial.SetTexture(FxSheetIds[k],fxSheets[k]);
             StartBuild();
         }
         /// <summary>Starts a frame: nothing queued.</summary>
-        public void Begin(){puffCount=0;links=0;lit.Clear();shocks.Clear();billboards.Clear();}
+        public void Begin(){puffCount=0;links=0;lit.Clear();shocks.Clear();billboards.Clear();FxSprites=0;}
         /// <summary>Drops everything queued (rewinds, resets).</summary>
         public void Clear()=>Begin();
 
@@ -323,7 +347,12 @@ namespace ChipArena.UnityConversion
         }
 
         /// <summary>A blast sim's frame: both pools' draw lists and its shock fronts.</summary>
-        public void Blasts(NativeBlastSim sim){if(sim==null)return;Pool(sim.Solid);Pool(sim.Glow);Shocks(sim);}
+        public void Blasts(NativeBlastSim sim)
+        {
+            if(sim==null)return;fxCover=PackBlasts&&(sim.Bursts.Count>0||sim.Fires.Count>0)?sim:null;
+            try{Pool(sim.Solid);Pool(sim.Glow);}finally{fxCover=null;}
+            Shocks(sim);if(PackBlasts)PackLayer(sim);
+        }
         /// <summary>One pool's draw list (NativeBlastPool.Output after Update), each particle as its role's primitive.</summary>
         public void Pool(NativeBlastPool pool)
         {
@@ -334,6 +363,8 @@ namespace ChipArena.UnityConversion
                 var at=new Vector3(o[w],o[w+1],o[w+2]);var color=new Color(o[w+10],o[w+11],o[w+12],0);
                 float edge=o[w+3],u=o[w+NativeBlastPool.AgeAt],seed=o[w+NativeBlastPool.SeedAt],floor=o[w+NativeBlastPool.FloorAt],start=o[w+NativeBlastPool.StartSizeAt];
                 int v=w+NativeBlastPool.VelocityAt;var velocity=new Vector3(o[v],o[v+1],o[v+2]);
+                // The effects bank draws a restyled blast's toon puffs, flashes and licks, and the fire fields' flame tongues, itself.
+                if(fxCover!=null&&Covered(fxCover,pool.Glow,role,(int)seed,at))continue;
                 switch(role)
                 {
                     // Not drawn voxel by voxel: NativeBlastSim.Shocks draws each front as one shell.
@@ -636,6 +667,69 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<indexCount;k++)tris[ti+k]=first+indices[k];
         }
 
+        // ---- the effects bank (Core NativeFxPack; Claude X1, 2026-11-25) ----
+        // A pool particle the pack draws instead: one of a restyled blast's replaced roles, or a flame tongue inside a fire field.
+        private static bool Covered(NativeBlastSim sim,bool glow,NativeFxRole role,int seed,Vector3 at)
+        {
+            if(NativeFxPack.Replaced(role)){var b=sim.Bursts;for(int i=0;i<b.Count;i++)if(b[i].Owns(glow,seed))return true;return false;}
+            if(role!=NativeFxRole.Flame)return false;var f=sim.Fires;
+            for(int i=0;i<f.Count;i++){double dx=at.x-f[i].X,dz=at.z-f[i].Z,r=f[i].Radius+.6;if(dx*dx+dz*dz<r*r&&at.y<f[i].Ground+5)return true;}
+            return false;
+        }
+        // A sim's pack layer: each restyled blast's recipe at its age, each live fire field's large flames on the sim's clock.
+        private void PackLayer(NativeBlastSim sim)
+        {
+            fxList.Clear();var b=sim.Bursts;for(int i=0;i<b.Count;i++)NativeFxPack.Blast(fxList,b[i],(float)(sim.Time-b[i].Born),Low);
+            var f=sim.Fires;
+            for(int i=0;i<f.Count;i++)
+            {
+                var v=f[i];int n=NativeFxPack.FieldFlames(v.Radius);float size=NativeFxPack.FieldFlameSize(v.Radius);
+                for(int j=0;j<n;j++)NativeFxPack.Fire(fxList,NativeFxPack.FieldFlameAt(v.X,v.Ground,v.Z,v.Radius,v.Id,j,n),size,(float)sim.Time,(uint)(v.Id*31+j),true,1,Low,j==0,j%2==0);
+            }
+            Queue(fxList);
+        }
+        /// <summary>A fireball not made by the blast sim (the Bombadier's charges) from the effects bank; false without it.</summary>
+        public bool PackFireball(Vector3 at,float radius,float age,long seed,float quality)
+        {
+            if(!PackBlasts||!(age>=0)||age>=NativeFxPack.BurstLife)return false;fxList.Clear();NativeFxPack.Fireball(fxList,new System.Numerics.Vector3(at.x,at.y,at.z),radius,age,seed,quality,Low);Queue(fxList);return true;
+        }
+        /// <summary>A melee slam's landing dust from the effects bank (Core NativeFxPack.Slam) at `age`; false without the bank (the caller
+        /// draws today's toon dust).</summary>
+        public bool PackSlam(Vector3 at,float age,uint seed,float quality)
+        {
+            if(!PackBlasts)return false;fxList.Clear();NativeFxPack.Slam(fxList,new System.Numerics.Vector3(at.x,at.y,at.z),age,seed,quality,Low);Queue(fxList);return true;
+        }
+        /// <summary>A looping fire from the effects bank (Core NativeFxPack.Fire): the campfire (drums, braziers, burning bodies) or the
+        /// large flame (fields, buildings), `size` m wide on its base `at`, at `time` on a steady clock; false without the bank.</summary>
+        public bool PackFire(Vector3 at,float size,float time,uint seed,bool large,float quality,bool embers=true,bool smoke=true)
+        {
+            if(!PackBlasts)return false;fxList.Clear();NativeFxPack.Fire(fxList,new System.Numerics.Vector3(at.x,at.y,at.z),size,time,seed,large,quality,Low,embers,smoke);Queue(fxList);return true;
+        }
+        /// <summary>A wound's blood spray from the zip's sheets (Core NativeFxPack.Spray), over the RVFX splash; false without them.</summary>
+        public bool PackSpray(Vector3 origin,Vector3 along,float age,uint seed,bool kill,float quality)
+        {
+            if(!PackBlood)return false;fxList.Clear();NativeFxPack.Spray(fxList,new System.Numerics.Vector3(origin.x,origin.y,origin.z),new System.Numerics.Vector3(along.x,along.y,along.z),age,seed,kill,quality,Low);Queue(fxList);return true;
+        }
+        // The recipes' sprites into this frame's batch: the flipbooks as modes 13-15, the flash and embers as the code's glows and streaks.
+        private void Queue(NativeFxList list)
+        {
+            for(int k=0;k<list.Count;k++)
+            {
+                ref var s=ref list.Items[k];var at=new Vector3(s.At.X,s.At.Y,s.At.Z);if(!(s.Size>1e-4f)||!float.IsFinite(at.x+at.y+at.z))continue;
+                switch(s.Look)
+                {
+                    case NativeFxLook.Glow:Glow(at,new Color(s.Tint.X,s.Tint.Y,s.Tint.Z,0)*(s.Gain*s.Opacity),s.Size,CoreGlow,s.U,s.Seed);break;
+                    case NativeFxLook.Streak:Streak(at,new Vector3(s.Velocity.X,s.Velocity.Y,s.Velocity.Z),new Color(s.Tint.X,s.Tint.Y,s.Tint.Z,0)*(s.Gain*s.Opacity),s.Size,s.Size*2.5f,s.Stretch,.9f,s.U,s.Seed);break;
+                    default:
+                    {
+                        float mode=s.Look==NativeFxLook.Fire?FxFireMode:s.Look==NativeFxLook.Smoke?FxSmokeMode:FxBloodMode;
+                        Add(at,new Color(s.Gain,s.Self,s.Occlusion,Mathf.Clamp01(s.Opacity)),s.Size,s.Roll,s.U,s.Sheet*64+Mathf.Clamp(s.Frame,0,63.99f),mode,s.Heat,new Vector4(s.Segment.X,s.Segment.Y,s.Segment.Z,s.Hex));break;
+                    }
+                }
+                FxSprites++;
+            }
+        }
+
         // ---- submission ----
         private void Upload()
         {
@@ -674,7 +768,7 @@ namespace ChipArena.UnityConversion
             {
                 ref var p=ref puffs[i];keys[i]=-Vector3.Dot(p.Centre-eye,forward)+(p.Mode==CoreGlow&&!p.Behind?CoreLead*p.Size:0);order[i]=i;
                 // A billboard reaches half its size from its centre; a streak also half its segment.
-                float reach=p.Size*.5f+(p.Mode==StreakMode||p.Mode==ToonWaterMode||p.Mode==SpriteMode?new Vector3(p.Axis.x,p.Axis.y,p.Axis.z).magnitude*.5f:0);
+                float reach=p.Size*.5f+(p.Mode==StreakMode||p.Mode==ToonWaterMode||p.Mode==SpriteMode||p.Mode==FxBloodMode?new Vector3(p.Axis.x,p.Axis.y,p.Axis.z).magnitude*.5f:0);
                 lo=Vector3.Min(lo,p.Centre-Vector3.one*reach);hi=Vector3.Max(hi,p.Centre+Vector3.one*reach);
             }
             if(puffCount>1)Array.Sort(keys,order,0,puffCount);
@@ -701,6 +795,13 @@ namespace ChipArena.UnityConversion
             CapturedAnimation.Release(billboards.Mesh);CapturedAnimation.Release(lit.Mesh);CapturedAnimation.Release(shocks.Mesh);
             CapturedAnimation.Release(billboardMaterial);CapturedAnimation.Release(litMaterial);CapturedAnimation.Release(shockMaterial);
             if(atlas!=null)CapturedAnimation.Release(atlas);if(noise!=null)CapturedAnimation.Release(noise);if(toon!=null)CapturedAnimation.Release(toon);atlas=null;noise=null;toon=null;
+        }
+        // The effects bank's sheets, read once a process (Core NativeFxPack.Path; outside the per-frame queueing).
+        private static void FxSheets()
+        {
+            if(fxRead)return;fxRead=true;fxSheets=new Texture2D[NativeFxPack.Sheets];
+            for(int k=0;k<NativeFxPack.Sheets;k++){var t=Resources.Load<Texture2D>(NativeFxPack.Path(k));if(t!=null)t.wrapMode=TextureWrapMode.Clamp;fxSheets[k]=t;}
+            fxBlasts=true;fxBlood=true;for(int k=0;k<NativeFxPack.Sheets;k++)if(fxSheets[k]==null){if(NativeFxPack.Blood(k))fxBlood=false;else fxBlasts=false;}
         }
         /// <summary>The unit box Block draws: six faces of four corners each (their own normals), wound as the other lit meshes.</summary>
         private static NativeVfxMesh BoxMesh()

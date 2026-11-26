@@ -27,3 +27,8 @@ Use the existing local licensed-asset import and bank workflow. Record the selec
 In the generated walk, the primary stair and landing guard pieces are named `stair-guard-<segment>-{left|right}-{post|grip}-N`. The grip follows the walking slope at 1.05 m and the posts seat on the visible treads. A kit replacement can bind to those block transforms. Keep the existing collider and suppress its fallback drawing when the replacement is active. The iron under a fire escape encloses its collision wedge and serves a different purpose. Send any proposed walkable doorway, moved landing or solid prop footprint back to Astra with the plan, coordinates and dimensions.
 
 After the Crown Hill review, carry the same route-reading test to The Navigation's canal crossings, The Arcades' covered passages, The Stride's viaduct, and The Yards' rail cut. Each district already has a reason for its levels. Use what the pilot sees before a climb and after its landing to make that reason apparent.
+
+## Claude's first pass (2026-11-25)
+
+The Crown Hill walk is dressed and the Ironworks made recognisable in [MERIDIAN-ROUTE.md](MERIDIAN-ROUTE.md): what was drawn, which
+owned packs were used and why the others were not, and the collision the art leaves to Astra.
