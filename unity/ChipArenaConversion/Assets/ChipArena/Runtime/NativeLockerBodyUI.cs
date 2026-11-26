@@ -7,8 +7,8 @@ namespace ChipArena.UnityConversion
     // its figure, first in Appearance. Hovering a card tries that body on the stage; a pick writes prefs.look's body key
     // (NativeBodyKind.With: Revert and the unsaved-changes baseline cover it with the rest of the look) and turns the stage's
     // pilot once round on its turntable (LkSpin, in LockerYawShown) so the new body shows from every side. Every hairstyle and
-    // outfit fits both; picking Female in the default Spiky hair wears Tied back (owner 2026-11-25: "more feminine"). Under the voxel
-    // costume the row is dimmed and says so. Until NativeLook carries the key (Astra's part of
+    // outfit fits both; picking Female in the default Spiky hair wears Fringe tail (owner 2026-11-25: "more feminine"; bare-headed
+    // its fringe and high tail read as hers, Tied back much less). Under the voxel costume the row is dimmed and says so. Until NativeLook carries the key (Astra's part of
     // the contract, docs/DEV_LOG.md 2026-11-25), Save Pilot keeps the pick on this PC only: the account and a room take the look
     // without it, so other players see today's pilot until then.
     public sealed partial class ConversionGame
@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         // The body hovered in the row this repaint (-1 none: reset with the other try-ons), and when the last pick was made.
         private int lockerBodyKindTry=-1;private float lockerSpinAt=-9;
         // The hair a Female pick wears when the pilot is still in the default (Spiky): an existing style.
-        private const string LkFemaleHair="tied-back";
+        private const string LkFemaleHair="fringe-tail";
         private static readonly string[] LkBodyKindTexts={"The original pilot body","The female pilot body"};
         private static readonly string[] LkBodyKindKeys={"locker-body-male","locker-body-female"};
         private const string LkFigure=" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"";
@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
                 if(click&&!on)
                 {
                     prefs.look=NativeBodyKind.With(prefs.look,k);lockerSpinAt=Time.unscaledTime;
-                    // (Picking Female in the default Spiky hair wears Tied back, which reads as hers; any other pick is kept.)
+                    // (Picking Female in the default Spiky hair wears Fringe tail, which reads as hers; any other pick is kept.)
                     if(k==NativeBodyKind.Female&&NativeLook.Index(prefs.look,NativeLook.Hair)==0){var was=prefs.look;prefs.look=NativeBodyKind.Keep(NativeLook.With(prefs.look,NativeLook.Hair,LkFemaleHair),was);}
                 }
             }
