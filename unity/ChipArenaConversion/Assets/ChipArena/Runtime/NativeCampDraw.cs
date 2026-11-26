@@ -332,7 +332,10 @@ namespace ChipArena.UnityConversion
 #endif
             // the survivors on the model first: the camp's figures skip the posts they take (NativeCampSurvivorsDraw.cs)
             if(show)CampSurvivorsFrame(arena,now,rescued,cleared);else CampSurvivorsHide();
+            bool packFlames=vfx!=null&&vfx.PackBlasts&&blasts!=null;if(camp.Fx!=null)camp.Fx.PackFlames=packFlames;
             camp.Frame(WorldEye,now,pilot,LowGraphics,EffectsQuality<.5f,EffectsQuality,show,dt,rescued,cleared,arena.MapId);
+            // The drums' and the brazier's flames as the effects bank's campfire (Core NativeFxPack; drawn with the blasts' layer).
+            if(packFlames&&show&&camp.Fx!=null){var pf=camp.Fx.PackFires;for(int i=0;i<pf.Count;i++)blasts.StageFires.Add(pf.Items[i]);}
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if(show&&walk){CampPreviewMachines(arena,now);CampPreviewRevive(now);}
 #endif
