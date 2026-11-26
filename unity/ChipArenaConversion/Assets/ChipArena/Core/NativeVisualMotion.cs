@@ -305,6 +305,19 @@ namespace ChipArena.UnityConversion
         /// to the stride (owner 2026-11-26: the head "doing 360s" with magic; the staff carry's own neck and head turn nearly a whole
         /// turn in the bank).</summary>
         public static bool HeadMuscle(string muscle)=>muscle!=null&&(muscle.StartsWith("Neck ",StringComparison.Ordinal)||muscle.StartsWith("Head ",StringComparison.Ordinal)||muscle.StartsWith("Left Eye ",StringComparison.Ordinal)||muscle.StartsWith("Right Eye ",StringComparison.Ordinal)||muscle.StartsWith("Jaw ",StringComparison.Ordinal));
+        /// <summary>The neck's and head's turning muscles (Unity's names): under the run carry they take back the torso's twist
+        /// (owner 2026-11-26: "it doesn't look like they're looking where they are aiming anymore").</summary>
+        public const string NeckTurn="Neck Turn Left-Right",HeadTurn="Head Turn Left-Right";
+        /// <summary>A twisting muscle of the torso (spine, chest, upper chest), by Unity's muscle name.</summary>
+        public static bool TorsoTwist(string muscle)=>muscle=="Spine Twist Left-Right"||muscle=="Chest Twist Left-Right"||muscle=="UpperChest Twist Left-Right";
+        /// <summary>The degrees a muscle value stands for, by its range (`min` degrees at -1, `max` at +1).</summary>
+        public static float MuscleDegrees(float value,float min,float max)=>value>=0?value*max:-value*min;
+        /// <summary>The muscle value for `degrees` by its range, held within -1..1 (the muscle's own limits).</summary>
+        public static float MuscleUnits(float degrees,float min,float max)
+        {
+            float u=degrees>=0?(max>0?degrees/max:0):(min<0?-degrees/min:0);
+            return u<-1?-1:u>1?1:u;
+        }
         private static string M(string clip)=>clip+Mirror;
         private static string[] Names(string prefix,params string[] parts)=>Array.ConvertAll(parts,p=>prefix+p);
         private static Set Build(Set s,string run,string walk,string sprint,bool mirrored=false)
