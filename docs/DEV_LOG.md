@@ -1,6 +1,6 @@
 ## 2026-11-25 — Claude (MG1): realistic magic: every school's bolt, trail and hit from the effects pack's flipbooks (effects plan phase 3)
 Owner, 2026-11-25: "go with recommended", and "Yes, download it" for kripto289's Realistic Effects Pack 4. Integrator brief `agents-fx-2026-11-25.md`.
-**Branch:** `claude/fx-magic` from X1's `claude/fx-blasts-blood` `448b9b65` (shared `2433743f` merged in). Pushed; not merged, not released.
+**Branch:** `claude/fx-magic` from X1's `claude/fx-blasts-blood` `448b9b65` (shared merged in up to `729b5890`, which carries X1's merge). Pushed; not merged, not released.
 Doc: `docs/PACK-EFFECTS.md` "Realistic magic from the flipbooks". Presentation only.
 - **What changed** (Core `NativeMagicFxPack`: recipes as pure functions of a bolt's recorded path (`NativeMagicTrails`), the clock, the shot key
   and the event id; `NativeVfxDraw.Magic` draws them in the one sorted batch as `NativeVfx.shader` modes 16 glow, 17 fire, 18 smoke on two atlases):
@@ -66,19 +66,21 @@ Doc: `docs/PACK-EFFECTS.md` "Realistic magic from the flipbooks". Presentation o
   onto this branch re-imports for ~3 min (the shader and the atlases).
 - **Next:** the integrator reviews the sheets and clips; the owner picks fire (this or C2's trial); the atlases ship with the effects bank.
 
-## 2026-11-25 — Claude: request for Astra: room in the Drive zip's total (MAX_ZIP_BYTES) for the next asset batches (integrator; nothing implemented)
-Follows the 2026-11-23 effects bank request. Asset handoff read: `docs/CLAUDE-UNITY-ASSETS.md` (`ef642e6f`) and issue #450.
-- **Why:** after release 27 the zip unpacks to 473.11 MiB. With the sound queue's generated originals (about 35 MiB) added at build time, about 3.9 MiB is left under `install_local_assets.py`'s `MAX_ZIP_BYTES` (512 MiB). A separate effects section inside the same zip still counts toward that total.
-- **Queued against that room:**
-  - the female pilot bake: +2.5 MB (B1; on hold for a more feminine pass);
-  - the kripto289 muzzle flipbooks: 0.85 MB (G1);
-  - the blood spray: 0.44 MB (X1).
-- **Waiting outside it:**
-  - X1's explosion and fire flipbooks: about 2-4 MB, in `Assets/LocalAssets/ChipArenaFx/`;
-  - G1's brick, dirt and glass impacts: about 1 MB;
-  - #450's storefront trial (Checkout Frenzy) and the Hovl shield cue.
-- **Ask (build tooling, Astra):** raise `MAX_ZIP_BYTES` (and whatever the installer and updater assume about it), or move effects into their own zip with its own cap, plus the effects section from the 23rd. The owner sets the number. Until then the integrator batches releases to fit.
-- **Not run:** nothing to run; docs only.
+## 2026-11-25 — Claude: release 28: the blood spray (X1), a zip-size build failure, and orphans pruned (integrator)
+- **Merged:** `claude/fx-blasts-blood` (X1, `448b9b65`, synced to `456920db`) into shared and the builder as `3dc364cd`. The suite at `456920db` passed (1,110 groups, exit 0), and so did the Unity compile.
+- **First build failed:** at "Install optional local assets", with "zip is too large" (install_local_assets' `MAX_ZIP_BYTES`, once the sound queue layered its generated originals). The test channel stayed on release 27.
+- **Room correction:** builds only pass with about 40.4-40.8 MB of generated originals added on top. `SoundQueue/originals` is 43.2 MB, and part of it replaces existing members. So after release 27 only about 0.4 MB was free, not the 3.9 MiB in the 2026-11-25 request below. The 0.39 MB blood spray tipped it over.
+- **Fix:** pruned 14 orphaned members (3.47 MB), with no reference in code, git scenes or prefabs, or zip text members:
+  - `ChipArenaLocal/VisualBody/Weapons/machinegun_Model_held.asset` (the held MG from before the TR15, 3.0 MB);
+  - `Polygon-Mega Weapone Kit/Models/SM_Light_Machine_Gun.fbx` and `SM_Assault_Rifle_5,56.fbx`;
+  - four unlisted `Feet_OfficeLoafer` / `Top_FullSuit` materials;
+  - and the metas of all of these.
+  The zip now unpacks to 493.01 MB, leaving about 3.1 MB of room in the worst case. `install_local_assets --check --require-cloth` passes. The zips are kept as `LocalAssets-2026-11-25-before-blood-spray.zip` and `-before-orphan-prune.zip`. This receipt's builder push rebuilds.
+- **Shipping:**
+  - X1's blood spray (`ChipArenaLocal/Resources/ChipArenaBloodSpray`, 0.39 MB) layers over the RVFX splashes on gun hits and kills.
+  - X1's explosion and fire flipbooks (3.4 MB) stay in the Editor's git-ignored `ChipArenaFx`, so builds keep today's explosions and fire until **Astra's** effects bank or a `MAX_ZIP_BYTES` raise.
+- **Astra:** the room request below stands. With about 3.1 MB left, the female pilot (2.5 MB) fits next, and little else does.
+
 ## 2026-11-25 — Claude (X1): realistic explosions, fire and the blood spray from the flipbooks (effects plan phase 4)
 Owner, 2026-11-25, on V1's effects gallery: "go with recommended". Integrator brief `agents-fx-2026-11-25.md`.
 **Branch:** `claude/fx-blasts-blood` from shared `4a2b5c4f`. Pushed; not merged, not released, the Drive zip not swapped.
@@ -156,6 +158,20 @@ Doc: `docs/PACK-EFFECTS.md` "Explosions, fire and the blood spray from the flipb
   - Until Astra's packer exists, a merged branch with the zip blood alone gives the spray but no explosions or fire changes.
   - The Editor keeps the six effects sheets installed in `ChipArenaFx`. The temporary blood copy was removed.
 - **Next:** the integrator reviews the clips, ships the blood with the next zip and the effects sheets with the effects bank.
+
+## 2026-11-25 — Claude: request for Astra: room in the Drive zip's total (MAX_ZIP_BYTES) for the next asset batches (integrator; nothing implemented)
+Follows the 2026-11-23 effects bank request. Asset handoff read: `docs/CLAUDE-UNITY-ASSETS.md` (`ef642e6f`) and issue #450.
+- **Why:** after release 27 the zip unpacks to 473.11 MiB. With the sound queue's generated originals (about 35 MiB) added at build time, about 3.9 MiB is left under `install_local_assets.py`'s `MAX_ZIP_BYTES` (512 MiB). A separate effects section inside the same zip still counts toward that total.
+- **Queued against that room:**
+  - the female pilot bake: +2.5 MB (B1; on hold for a more feminine pass);
+  - the kripto289 muzzle flipbooks: 0.85 MB (G1);
+  - the blood spray: 0.44 MB (X1).
+- **Waiting outside it:**
+  - X1's explosion and fire flipbooks: about 2-4 MB, in `Assets/LocalAssets/ChipArenaFx/`;
+  - G1's brick, dirt and glass impacts: about 1 MB;
+  - #450's storefront trial (Checkout Frenzy) and the Hovl shield cue.
+- **Ask (build tooling, Astra):** raise `MAX_ZIP_BYTES` (and whatever the installer and updater assume about it), or move effects into their own zip with its own cap, plus the effects section from the 23rd. The owner sets the number. Until then the integrator batches releases to fit.
+- **Not run:** nothing to run; docs only.
 
 ## 2026-11-25 — Claude: release 27: Meridian's described route (integrator)
 - **Published:** shared and the builder at `91bed26c`. Test channel revision `639312330273820441` (build `f5ebe749`, 396.9 MiB).
