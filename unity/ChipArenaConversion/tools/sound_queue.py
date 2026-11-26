@@ -156,7 +156,21 @@ def command(args):
         raise ValueError('Audio import/asset check failed; originals retained' + detail + '. Inspect the mirrored import report for details.')
 
 
-def process(source, root=None, queue=QUEUE, repo=gen.REPO):
+def prune_import_cache(root, keep):
+    """Called under the queue lock after every import in the current chain succeeded."""
+    for archive in root.glob('assets-*.zip'):
+        if archive in keep or not re.fullmatch(r'assets-[0-9a-f]{64}\.zip', archive.name):
+            continue
+        proof = archive.with_suffix('.receipt.json')
+        try:
+            # Remove the proof first so a crash never leaves a valid-looking orphan proof.
+            proof.unlink(missing_ok=True)
+            archive.unlink()
+        except OSError as error:
+            print(f'Sound cache cleanup deferred for {archive.name}: {error}', flush=True)
+
+
+def process(source, root=None, queue=QUEUE, repo=gen.REPO, snapshot_dir=None):
     root = root if root is not None else home()
     if root is None or not (root / 'config.json').is_file():
         return source
@@ -226,12 +240,26 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
             # can block later jobs. Receipts still prevent paid regeneration on retry.
             report('importing', jobs=[r[0]['id'] for r in batches], generatedRequests=pending_count,
                    message='All approved originals ready; validating game imports.')
+            importer_hash = sha(Path(__file__).with_name('import_sound_requests.py'))
+            inputs = [sha(source), importer_hash]
+            inputs.extend([row['id'], digest, sha(folder / 'receipt.json')] for row, _, digest, _, folder, _, _ in batches)
+            final_receipt = root / 'latest-import.json'
+            saved = json.loads(final_receipt.read_text()) if final_receipt.is_file() else {}
+            remaining = batches
             current = source
-            for row, path, digest, jobs, folder, identity, receipt in batches:
+            if saved.get('inputs') == inputs:
+                name = saved.get('output', '')
+                if not re.fullmatch(r'assets-[0-9a-f]{64}\.zip', name):
+                    raise ValueError('Invalid final import receipt.')
+                current = root / name
+                if not current.is_file() or sha(current) != saved['sha256']:
+                    raise ValueError('Cached imported assets changed; retained for inspection.')
+                remaining = []
+            for row, path, digest, jobs, folder, identity, receipt in remaining:
                 # Base hash avoids dropping newer licensed assets or another job's imported sounds.
                 stage = 'fingerprint import inputs'
                 fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + digest +
-                    sha(Path(__file__).with_name('import_sound_requests.py'))).encode()).hexdigest()
+                    importer_hash).encode()).hexdigest()
                 output = root / ('assets-' + fingerprint + '.zip')
                 proof = output.with_suffix('.receipt.json')
                 if proof.exists():
@@ -260,9 +288,21 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                         raise ValueError('Importer rejected some sounds; inspect the local import report. No regeneration attempted.')
                     write(proof, dict(sha256=sha(output)))
                 current = output
+            if remaining:
+                output_hash = json.loads(current.with_suffix('.receipt.json').read_text())['sha256']
+                write(final_receipt, dict(inputs=inputs, output=current.name, sha256=output_hash))
+            snapshot = current
+            if snapshot_dir is not None:
+                # Keep this install's input alive after the queue lock is released.
+                snapshot = snapshot_dir / 'sound-input.zip'
+                try:
+                    os.link(current, snapshot)
+                except OSError:
+                    shutil.copyfile(current, snapshot)
+            prune_import_cache(root, {source, current})
             report('complete', jobs=[r[0]['id'] for r in batches], generatedRequests=pending_count,
                    output=str(current), message='Imported assets ready; build/publication is a separate gate.')
-            return current
+            return snapshot
         except Exception as e:
             # Never include arbitrary network exception text/headers or the secret.
             reason = str(e) if isinstance(e, ValueError) else type(e).__name__

@@ -2,17 +2,17 @@
 import json
 import unittest
 import zipfile
-from test_local_cloth import ClothTests
+import test_local_cloth as cloth_fixture
 from test_visual_body_assets import meta
 import private_addons as addons
 import pack_visual_body as packer
 import install_local_assets as installer
 
 class AddonTests(unittest.TestCase):
-    setUp = ClothTests.setUp
-    tearDown = ClothTests.tearDown
-    install = ClothTests.install
-    quiet = ClothTests.quiet
+    setUp = cloth_fixture.ClothTests.setUp
+    tearDown = cloth_fixture.ClothTests.tearDown
+    install = cloth_fixture.ClothTests.install
+    quiet = cloth_fixture.ClothTests.quiet
 
     def fixture(self):
         paths=[]

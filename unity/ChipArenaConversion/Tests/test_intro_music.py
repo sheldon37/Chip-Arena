@@ -4,6 +4,8 @@ import re
 import shutil
 import sys
 import tempfile
+import os
+from unittest.mock import patch
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +44,9 @@ class IntroMusicTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
+        queue_env = patch.dict(os.environ, {'LOCALAPPDATA': str(self.tmp / 'appdata')})
+        queue_env.start()
+        self.addCleanup(queue_env.stop)
         self.project = self.tmp / 'project'
         (self.project / 'Assets').mkdir(parents=True)
 

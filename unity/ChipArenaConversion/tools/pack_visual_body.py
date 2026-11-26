@@ -160,6 +160,7 @@ def pack(base, output, project, with_cloth=False, addons_allowlist=None):
         content = installer.content_root(Path(scratch))
         installer.verify(content)
         body = installer.verify_visual_body(content)
+        installer.effects_bank.verify(content)
         local_cloth.verify(content)
         private_addons.verify(content)
     os.replace(staged, output)

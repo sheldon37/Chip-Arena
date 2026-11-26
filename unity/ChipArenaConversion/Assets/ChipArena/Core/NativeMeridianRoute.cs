@@ -107,6 +107,27 @@ namespace ChipArena.UnityConversion
             return plan;
         }
 
+        // The arena builds collision once in its own physics scene, independently of the camera and render tier.
+        public sealed class PieceCollisionInput
+        {
+            public uint Layout;
+            public V3[] Doors;
+            public string[] Slots;
+        }
+
+        public static bool HasCollision(string key) => key == Roofs || key == Rails || key == Crossing || key == Loading;
+
+        public static bool CollisionTriangle(string key, System.Numerics.Vector3 a, System.Numerics.Vector3 b, System.Numerics.Vector3 c)
+        {
+            if (key == Roofs || key == Rails) return true;
+            // The crossing also contains road paint and kerbs. Only the two raised beacons need new collision.
+            if (key == Crossing) return Math.Min(a.Y, Math.Min(b.Y, c.Y)) > 3.1f;
+            // In the loading bay's local frame the canopy, lamp and brackets project out from the facade at z=0.
+            if (key != Loading) return false;
+            float bottom = Math.Min(a.Y, Math.Min(b.Y, c.Y)), top = Math.Max(a.Y, Math.Max(b.Y, c.Y));
+            return bottom >= 3.5f && top <= 5.3f && Math.Min(a.Z, Math.Min(b.Z, c.Z)) < -.1f;
+        }
+
         private static void CrownHillWalk(Plan plan, ContentMap map, Dictionary<string, ContentBlock> byId)
         {
             // the Hundred Steps' balustrades, in place of the guards' boxes

@@ -43,6 +43,15 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count = 0;
+            var lamp = new System.Numerics.Vector3(5.45f, 4.32f, 24.9f);
+            var bracket = new System.Numerics.Vector3(1.95f, 3.6f, -2.1f);
+            var road = new System.Numerics.Vector3(0, .01f, 25);
+            Check(NativeMeridianRoute.CollisionTriangle(NativeMeridianRoute.Crossing,lamp,lamp,lamp) &&
+                !NativeMeridianRoute.CollisionTriangle(NativeMeridianRoute.Crossing,road,road,road), "beacons without road paint");
+            Check(NativeMeridianRoute.CollisionTriangle(NativeMeridianRoute.Loading,bracket,bracket,bracket) &&
+                !NativeMeridianRoute.CollisionTriangle(NativeMeridianRoute.Loading,lamp,lamp,lamp), "canopy and brackets without the hall facade");
+            Check(NativeMeridianRoute.HasCollision(NativeMeridianRoute.Roofs) && NativeMeridianRoute.HasCollision(NativeMeridianRoute.Rails)
+                && !NativeMeridianRoute.HasCollision(NativeMeridianRoute.Puff), "roof and balustrade geometry without smoke");
             var worlds = HubZFightChecks.Worlds(root);
             int crown = 0, iron = 0;
             foreach (var live in worlds)
@@ -237,6 +246,24 @@ namespace ChipArena.UnityConversion
             {
                 var fine = bank.Find(key + "/0");
                 Check(fine != null && fine.Parts.Length == 1, "the bank has " + key);
+                if (NativeMeridianRoute.HasCollision(key))
+                {
+                    var mesh = bank.Meshes[fine.Parts[0].Mesh];
+                    int included = 0, skipped = 0;
+                    float minY = float.MaxValue, maxY = float.MinValue;
+                    foreach (var sub in mesh.Submeshes)
+                        for (int i = 0; i < sub.Indices.Length; i += 3)
+                        {
+                            var a = mesh.Positions[sub.Indices[i]]; var b = mesh.Positions[sub.Indices[i+1]]; var c = mesh.Positions[sub.Indices[i+2]];
+                            if (!NativeMeridianRoute.CollisionTriangle(key,a,b,c)) { skipped++; continue; }
+                            included++; minY = Math.Min(minY,Math.Min(a.Y,Math.Min(b.Y,c.Y))); maxY = Math.Max(maxY,Math.Max(a.Y,Math.Max(b.Y,c.Y)));
+                        }
+                    Check(included > 0, key + " contributes solid triangles");
+                    if (key == NativeMeridianRoute.Crossing) Check(skipped > 0 && minY > 3.1f && maxY > 4.45f, "both beacon height and road exclusion");
+                    if (key == NativeMeridianRoute.Loading) Check(skipped > 0 && minY < 3.7f && maxY >= 5f, "brackets and canopy without the hall facade");
+                    if (key == NativeMeridianRoute.Roofs) Check(skipped == 0 && maxY > 29f, "all roof slopes and chimney stacks");
+                    if (key == NativeMeridianRoute.Rails) Check(skipped == 0 && maxY > 15f, "all balustrade bars through the final landing");
+                }
                 foreach (var tier in new[] { 0, 2 })
                 {
                     var prop = bank.Find(key + "/" + tier);

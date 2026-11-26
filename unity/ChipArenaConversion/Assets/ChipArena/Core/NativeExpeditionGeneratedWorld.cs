@@ -107,6 +107,9 @@ namespace ChipArena.UnityConversion
                 sanctuary=new[]{Volume(0,0,49.6f,49.6f)}};
             var result=new ExpeditionGeneratedWorld{Area=area,Blueprint=state,Hub=new ExpeditionHubLayout{Area=area.id,Fence=fences.ToArray(),Gates=gates.ToArray()}};
             PopulateMeridian(result,city);
+            result.Map.routeCollision = new NativeMeridianRoute.PieceCollisionInput {
+                Layout = plan.Seed, Doors = city.Routes.Select(route => route.Destination).ToArray(), Slots = result.HallSlots
+            };
             NativeMapRules.Validate(result.Map);
             result.Compatibility=Digest(room.Ticket,result);
             return result;
