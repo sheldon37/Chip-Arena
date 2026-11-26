@@ -15,7 +15,7 @@ both bodies and every hairstyle keep the same hit volumes, reach, shot origins, 
   today's pilot is the pack's neutral middle, not its male (the male presets push BodyType +26..+67, NeckThickness +19..+100,
   Sharpness +65..+85, the clavicles 1.07, the root 1.03), and the project clamps blend shape weights to 0..100
   (`legacyClampBlendShapeWeights`, Unity's default, also in builds), so a negative BodyType does nothing. It now comes in three
-  levels (`NativeBodyKind.Levels`; the owner picks, Medium until then):
+  levels (`NativeBodyKind.Levels`; the default is Strong, the owner's pick on 2026-11-25):
 
   | Level | BodyType | Weight | Chest | Curvy | WaistSize | ButtSize | NeckThickness | EyeRoundness | Roundness | Chest Size | shoulder span | upper arm (y, z) | hands | height (root) | chin (x, z) |
   |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|

@@ -43,8 +43,8 @@ namespace ChipArena.UnityConversion
             public string Name;public string[] Shapes;public float[] Weights;public float Chest,Span,ArmY,ArmZ,Hand,Root,Chin;
         }
         public const int Subtle=0,Medium=1,Strong=2;
-        /// <summary>The level the female body wears (the owner picks; Medium until then).</summary>
-        public const int DefaultLevel=Medium;
+        /// <summary>The level the female body wears (owner 2026-11-25: "Strong").</summary>
+        public const int DefaultLevel=Strong;
         public const string ChestBone="spine_04",HeadBone="head";
         private static readonly string[] Shape={"BodyType","Weight","Chest","Curvy","WaistSize","ButtSize","NeckThickness","EyeRoundness","Roundness"};
         public static readonly Level[] Levels=

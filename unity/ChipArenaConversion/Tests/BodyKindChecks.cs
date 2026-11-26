@@ -32,7 +32,7 @@ internal static class BodyKindChecks
         Check(NativeBodyKind.Of(NativeBodyKind.Keep(NativeRobotSuit.Dress("body:female"),"body:female"))==NativeBodyKind.Female,"dressed robot pieces keep the body");
         // The female levels (owner 2026-11-25: "more feminine"): the pack's female directions past Default_Girl, every level further than
         // the last on each lever; the whole body never under .95; the shape names the pack's (matched by name on every worn mesh).
-        var L=NativeBodyKind.Levels;Check(L.Length==3&&NativeBodyKind.DefaultLevel==NativeBodyKind.Medium&&NativeBodyKind.LevelOf(-1)==L[NativeBodyKind.DefaultLevel]&&NativeBodyKind.LevelOf(9)==L[NativeBodyKind.DefaultLevel],"three levels, Medium by default");
+        var L=NativeBodyKind.Levels;Check(L.Length==3&&NativeBodyKind.DefaultLevel==NativeBodyKind.Strong&&NativeBodyKind.LevelOf(-1)==L[NativeBodyKind.DefaultLevel]&&NativeBodyKind.LevelOf(9)==L[NativeBodyKind.DefaultLevel],"three levels, Strong by default (the owner's pick)");
         string[] names={"BodyType","Weight","Chest","Curvy","WaistSize","ButtSize","NeckThickness","EyeRoundness","Roundness"};
         foreach(var level in L)Check(level.Shapes.Length==names.Length&&level.Weights.Length==names.Length&&level.Root>=.95f&&level.Root<1&&level.Span<1&&level.Hand<1&&level.Chest<1&&level.ArmY<=1&&level.ArmZ<=1&&level.Chin<=1,"level "+level.Name+": every lever toward the pack's female");
         for(int k=0;k<names.Length;k++)Check(L[0].Shapes[k]==names[k],"the pack's shape names");
