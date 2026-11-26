@@ -1,3 +1,21 @@
+## 2026-11-26 — Claude (MG1): realistic magic, round 2 (the integrator's review: fire, darkness, game clips)
+**Branch:** `claude/fx-magic`, shared `f7c1e996` merged in. Pushed; not merged, not released.
+- **Fire:** the bolt is a rolling fireball (a glowing flame body in the school's orange, real flames rolling over it, three flame tongues licking
+  back, about 2 m across at a .2 m bolt); the trail is the pack's flame tongues (its Effect23 look) then smoke; the hit has its own burst (a
+  roaring column of tongues, flames thrown out along the surface, two flame bursts, 18 embers, smoke) over the staff's blast. The tongues
+  flipbook joins `magic1.png`, now 2048 x 2048.
+- **Darkness:** the black flames carry a violet flame a little larger than themselves (rim and glow read on dark stages), set further back so
+  the void orb's core stays clear.
+- **Bytes:** `ChipArenaMagicFx` 3,340,478 bytes with metas (`magic0.png` 1,835,459; `magic1.png` 1,500,280). Drive zip: +0.
+- **Counts** (`--fx-magic`): fire head 9 sprites, trail 79 (today about 53), hit peak 33; the other schools as round 1.
+- **Game clips:** the captures now fire (B1's arena-clock `akeep`, a dummy `keep=999` so its windows close, and a new arena-clock weapon switch
+  `aweapon=T:spec` added to the local BoZo tool, the original kept in `scratch/mg1/tool/`): one capture holds all five schools in turn.
+  Third person, before | after, 2x slow, bolts into a wall about 15 m away: `scratch/mg1/clips/game-{fire,water,lightning,darkness,leet}-tp-2x-slow.mp4`.
+  First person: queued in hold B (`scratch/mg1/capclips2.sh fp` builds them). Raw frames deleted after each clip.
+- **Sheets:** `scratch/mg1/sheets/r7-fire.jpg`, `r7-darkness.jpg` (darkness before its last tone-down; `r8` follows in hold B).
+- **Checks:** full CoreTests the relgen5 way at `eb6d0ad0`: 1,112 PASS, exit 0; `--fx-magic` (11,245 checks) at `c5bafad1`; Unity compile check;
+  `git diff --check`. PrototypeBuild.Validate: queued last in hold B (it runs only with ten minutes left in the hold).
+
 ## 2026-11-25 — Claude (MG1): realistic magic: every school's bolt, trail and hit from the effects pack's flipbooks (effects plan phase 3)
 Owner, 2026-11-25: "go with recommended", and "Yes, download it" for kripto289's Realistic Effects Pack 4. Integrator brief `agents-fx-2026-11-25.md`.
 **Branch:** `claude/fx-magic` from X1's `claude/fx-blasts-blood` `448b9b65` (shared merged in up to `729b5890`, which carries X1's merge). Pushed; not merged, not released.
