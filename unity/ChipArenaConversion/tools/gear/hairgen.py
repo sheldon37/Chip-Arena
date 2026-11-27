@@ -24,7 +24,7 @@ def gradient_png(w=32, h=128):
     img = np.zeros((h, w, 4), np.uint8)
     for y in range(h):
         v = 1 - y / (h - 1)          # image top = v 1 (the tip)
-        g = .18 + .42 * max(0., (v - .5) / .5) ** 1.5
+        g = .34 + .4 * max(0., (v - .45) / .55) ** 1.4
         for x in range(w):
             u = x / (w - 1)
             band = math.exp(-((v - .24) / .05) ** 2) * max(0., 1 - abs(u - .5) * 2.4)
@@ -98,6 +98,8 @@ def lock_mesh(lock, rings=10):
     uvs.append((.5, 0.))
     for k in range(6):
         tris.append((k, (k + 1) % 6, centre))
+    # (wound as the pack's meshes are: a face's front, by the right-hand rule on its corners, is its outside)
+    tris = [(a, c_, b) for a, b, c_ in tris]
     return np.array(verts), np.array(uvs), np.array(tris, np.int64), c, ts / L
 
 
@@ -146,7 +148,7 @@ def raven_back(head, cap_v):
     up = np.array([0, 1., 0])
 
     def spike(az, el, length, width, rise, bend, joints, kind='S', thick=.45, curl=0., taper=1.15):
-        root, radial = scalp_point(cap_v, head, az, el, inset=.006)
+        root, radial = scalp_point(cap_v, head, az, el, inset=.014)
         a = math.radians(az)
         # its heading: back (away from the face) turned out a little by its side of the head, raised by `rise` (radians)
         out = np.array([math.sin(a), 0, -math.cos(a)])
@@ -230,7 +232,7 @@ def hero_back(head, cap_v):
     up = np.array([0, 1., 0])
 
     def spike(az, el, length, width, rise, bend, joints, thick=.48, curl=0., taper=1.3, lean_back=.25):
-        root, radial = scalp_point(cap_v, head, az, el, inset=.006)
+        root, radial = scalp_point(cap_v, head, az, el, inset=.014)
         a = math.radians(az)
         out = np.array([math.sin(a), 0, -math.cos(a)])
         hd = unit(out * (1 - lean_back) + np.array([0, 0, -1.]) * lean_back)

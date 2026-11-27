@@ -46,14 +46,14 @@ SPIKE, LOCK, FALL, CURTAIN, TAIL, RIGID = 'S', 'L', 'F', 'C', 'T', 'R'
 # The styles (Core/NativeLook.cs ids): each a front and a back piece (a piece's cloth kind, its lateral spacing in degrees).
 STYLES = [
     # generated (hairgen.py): the anime spikes, on the pack's short cap
-    ('raven-spikes', [('HairBack_ShotaCut', RIGID), ('GEN_RavenBack', SPIKE), ('GEN_RavenFront', LOCK)]),
+    ('raven-spikes', [('HairBack_ShotaCut', RIGID), ('HairFront_ShotaFringe', LOCK), ('GEN_RavenBack', SPIKE), ('GEN_RavenFront', LOCK)]),
     ('hero-spikes', [('HairBack_ShotaCut', RIGID), ('GEN_HeroBack', SPIKE), ('GEN_HeroFront', LOCK)]),
     ('wolf', [('HairFront_LynxFringe', LOCK), ('HairBack_WildLocks', SPIKE)]),
     ('mane', [('HairFront_Messy', LOCK), ('HairBack_YokaiMane', SPIKE)]),
     ('messy', [('HairFront_Messy', LOCK), ('HairBack_MessyHair', SPIKE)]),
     ('emo', [('HairFront_EmoBangs', LOCK), ('HairBack_ShotaCut', RIGID)]),
     ('shag', [('HairFront_MinorFringe', LOCK), ('HairBack_Flare', LOCK)]),
-    ('dreads', [('HairFront_SweaptBack', LOCK), ('HairBack_SweaptDreads', LOCK)]),
+    ('dreads', [('HairFront_SweaptBack', LOCK), ('HairBack_ShotaCut', RIGID), ('HairBack_SweaptDreads', LOCK)]),
     ('short-pony', [('HairFront_SideSwept', LOCK), ('HairBack_ShortPonyTail', TAIL)]),
     ('twin-tails', [('HairFront_MinorFringe', LOCK), ('HairBack_TwinLongTails', TAIL)]),
     ('pigtails', [('HairFront_ShotaFringe', LOCK), ('HairBack_TwinShortTails', TAIL)]),
