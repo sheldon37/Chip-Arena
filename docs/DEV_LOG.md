@@ -1,3 +1,7 @@
+## 2026-11-27 — Astra — Account profile schema 5 for releases 34–36
+
+On `codex/profile-schema-5-wardrobe` from shared `352e0858`, the Worker accepts the 17 hair IDs, 19 clothes IDs and both pilot-suit pieces in native order and advertises schema 5. Release 36 already uses `NativeLook.ServiceKeepsNewPieces=5`. No client rebuild or D1 migration is needed. All five equipment lists matched Unity in order, and all 20 account tests passed, including a fresh login with the suit, lob and flip-flops. Worker deployment awaits Sheldon’s approval.
+
 ## 2026-11-27 — Claude: the sleek pilot suit replaces the standard robot suit's look (integrator)
 - **Owner:** "I think I want an improved design on the standard robot suit as well"; picked "Sleek pilot suit" (a fitted bodysuit with glowing seams under slimmer sculpted plates); on the first in-game pass (stills and a running clip): "Ship it". Branch `claude/sleek-suit`, base shared `7627dba5` (release 35's clothes). Presentation only: the robot pieces keep their slots, ids, hit volumes and rules; no animation changed.
 - **What:** a bodysuit (top and legs, made on the pilot body's skin from its bind dump: 4 mm off it, lined, skinned, the nine body shapes carried; glowing raised seams) under new sculpted plates (chest pair, abdomen, shoulder blades and the reactor spine plate with its cross, belt, collar, shoulder caps, vambraces, thighs, knees, shins); the ear modules, gauntlets and boots stay today's (`docs/PILOT-BODY-HAIR.md` section 5). The bodysuit is also a public pick of its own (Pilot suit, Pilot suit legs).
