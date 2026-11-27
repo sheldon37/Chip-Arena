@@ -14,8 +14,8 @@ meshes, so kept local like the bake; Runtime/NativeHairBankPresentation.cs build
 - chains across each loose mass (one every ~20 degrees round the head, a mass's own when it is narrow: a twin tail, a side bang),
   each a row of joints down its sector of the hair at even flow, placed in the middle of the hair's thickness there; adjacent
   chains of one mass are one cloth group (Magica connects them as a sheet: a curtain stays a curtain);
-- skin weights: the fixed part on its chain's root (which rides the head), the loose part shared between the two nearest chains and
-  the two joints either side of its flow (four bones at most).
+- skin weights: the fixed part on the head, the loose part shared between the two nearest chains and the two joints either side of
+  its flow (four bones at most; never the fixed part on a chain's root: the cloth turns a root toward its next joint).
 
 Bespoke anime pieces (generated locks: the spiked back and long side bangs the owner asked for) are made the same way from their own
 lock curves (hairgen.py).
@@ -391,8 +391,9 @@ def weigh(piece, chains, th, g, loose):
             for jj, w in ((j, 1 - u), (j + 1, u)):
                 if w > 0 and jj < len(lv):
                     infl[base[c] + jj] = infl.get(base[c] + jj, 0) + f * s * w
-        # the fixed part rides the nearest chain's root (which rides the head)
-        infl[base[a]] = infl.get(base[a], 0) + (1 - f)
+        # the fixed part rides the head itself (a chain's root stays put but the cloth turns it toward its next joint: hair
+        # weighted to a root far from it would swing round with it, the crown lifting off the scalp)
+        infl[0] = infl.get(0, 0) + (1 - f)
         top = sorted(infl.items(), key=lambda kv: -kv[1])[:4]
         tot = sum(w for _, w in top)
         for k, (bone, w) in enumerate(top):

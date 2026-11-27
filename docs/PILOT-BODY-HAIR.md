@@ -105,8 +105,9 @@ reach, shot origins, movement, timing and network messages; no rule reads it.
 - **Chains:** a vertex's looseness is how far it stands off the head (2 to 5 cm) or the pack's own chain weights, whichever is
   more; its flow is the distance over the hair's own surface from where it leaves the scalp. A chain sits in each 20 degree slot
   round the head that holds enough loose hair, its joints every ~3.5 cm of flow in the middle of the hair's thickness; slots
-  next to each other are one mass, their chains ordered round the head. Weights: the fixed part on the nearest chain's root, the
-  loose part between the two nearest chains and the two joints either side of its flow. Generated locks are each their own chain.
+  next to each other are one mass, their chains ordered round the head. Weights: the fixed part on the head (never on a chain's
+  root: the cloth turns a root toward its next joint, which swung the crown off the scalp in the first test), the loose part
+  between the two nearest chains and the two joints either side of its flow. Generated locks are each their own chain.
 - **Cloth (the local bridge):** a bank chain root is named `Hair_B<kind><group>_...`; the bridge makes one BoneCloth per piece
   and group, tuned by kind: `S` spikes hold their shape (gravity 1.2, restoration .65, a 22 degree limit), `L` locks and bangs
   sway and settle, `F` a free fall, `C` a curtain whose chains are one sheet (sequential non-loop mesh), `T` a tied tail with the
