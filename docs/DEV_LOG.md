@@ -8,6 +8,7 @@
 - **Masks held:** after the captures the owner asked for a rework ("The new helmet designs aren't great, please rework these and make them look a lot better").
   This release ships the male levels and the slimmer bodysuit only: the Drive zip's hair bank stays version 3 (the slim bodysuit, no face gear), so the
   game keeps today's masks; the face gear code ships inert (it needs a version 4 bank). A version 4 bank must go out with or after this code (an older build refuses it).
+- **Released (release 38, 2026-11-27):** shared and builder `f7343a3a`, test channel revision `639314011823954389`. The Drive zip was swapped (sha `dbacbfb9`, 196,830,419 bytes; backup `LocalAssets-2026-11-27-before-male-slim.zip`): only the hair bank (version 3 with the slimmer bodysuit, 3.62 MB, sha `db9c98a9`) and visual-body.json changed; visual body 481.06 of 490 MB. Checks: full CoreTests the relgen5 way (1,116 groups, exit 0), the Unity compile, PrototypeBuild.Validate with the bank. The slim masks' redesign continues on `claude/sleek-masks`.
 
 ## 2026-11-27 — Claude: the Hot Dog top works again (integrator)
 - **Owner:** "Also, Hot Dog Top isn't working now?" Branch `claude/hotdog-top-fix`, base shared `a751b58e`. Presentation only.
