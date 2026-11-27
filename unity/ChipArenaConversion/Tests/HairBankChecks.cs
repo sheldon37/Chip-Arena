@@ -21,10 +21,16 @@ internal static class HairBankChecks
         Check(p.Bones.Length==2&&p.Bones[1].Parent==0&&Math.Abs(at[0]-.1f)<1e-6&&Math.Abs(at[1]-.3f)<1e-6&&Math.Abs(at[2]+.2f)<1e-6,"a bone's head point sums its chain's offsets");
         Check(p.Shapes.Length==1&&p.Shapes[0].Name=="Tag_Hat"&&p.Shapes[0].Vertices.Length==1&&p.Shapes[0].Vertices[0]==2,"its tag shape (sparse)");
         Check(bank.Has("test-style")&&!bank.Has("spiky")&&!bank.Has(null)&&bank.StyleOrder.Count==1&&bank.Styles["test-style"][0]==0,"its style");
+        // version 2: the same body deflated reads the same; a corrupt body, or one with bytes after it, is refused
+        var packed=Deflated(good);var bank2=NativeHairBank.Read(packed);
+        Check(bank2!=null&&bank2.Pieces.Length==1&&bank2.Pieces[0].VertexCount==3&&bank2.Has("test-style"),"a deflated bank reads as its plain body");
+        var torn=(byte[])packed.Clone();for(int i=12;i<torn.Length;i++)torn[i]^=0x5a;Check(NativeHairBank.Read(torn)==null,"a corrupt deflated body is refused");
+        Check(NativeHairBank.Read(Deflated(good,new byte[3]))==null,"a deflated body with trailing bytes is refused");
         // malformed: refused whole
         Check(NativeHairBank.Read(null)==null&&NativeHairBank.Read(new byte[3])==null,"too short");
         var bad=(byte[])good.Clone();bad[0]=(byte)'X';Check(NativeHairBank.Read(bad)==null,"a wrong magic");
-        bad=(byte[])good.Clone();bad[4]=2;Check(NativeHairBank.Read(bad)==null,"another version");
+        bad=(byte[])good.Clone();bad[4]=2;Check(NativeHairBank.Read(bad)==null,"a plain body marked deflated");
+        bad=(byte[])good.Clone();bad[4]=3;Check(NativeHairBank.Read(bad)==null,"a version this reader does not know");
         Check(NativeHairBank.Read(good.AsSpan(0,good.Length-1).ToArray())==null,"truncated");
         var longer=new byte[good.Length+1];good.CopyTo(longer,0);Check(NativeHairBank.Read(longer)==null,"trailing bytes");
         Check(NativeHairBank.Read(Bank(parent:1))==null,"a bone whose parent comes after it");
@@ -65,7 +71,7 @@ internal static class HairBankChecks
         Check(pres.Contains("skin.rootBone=head;"),"bounds on the head");
         // ---- the tool writes what the reader reads ----
         var tool=Src("tools/gear/hair.py");
-        Check(tool.Contains("out.write(b'HAIR')")&&tool.Contains("out.write(struct.pack('<i', 1))")&&NativeHairBank.Version==1,"the tool's magic and version");
+        Check(tool.Contains("data = b'HAIR' + struct.pack('<i', 2) + z.compress(out.getvalue()) + z.flush()")&&tool.Contains("zlib.compressobj(9, zlib.DEFLATED, -15)")&&NativeHairBank.Version==2,"the tool's magic and version (2: the body raw-deflated)");
         Check(tool.Contains("'Hair_B%s%02d_%s_%02d_%d'"),"the tool's chain names (kind, group)");
         foreach(var line in tool.Split('\n'))
         {
@@ -83,6 +89,13 @@ internal static class HairBankChecks
         foreach(var p in bank.Pieces)Console.WriteLine("  "+p.Renderer+": "+p.VertexCount+" vertices, "+p.Triangles.Length/3+" triangles, "+p.Bones.Length+" bones, "+p.Shapes.Length+" shapes, texture "+p.Texture);
         foreach(var id in bank.StyleOrder)Console.WriteLine("  style "+id+": "+string.Join(" + ",Array.ConvertAll(bank.Styles[id],i=>bank.Pieces[i].Renderer)));
         Console.WriteLine("PASS hair bank file: "+bank.Pieces.Length+" pieces, "+bank.StyleOrder.Count+" styles, "+bank.Textures.Length+" textures");return 0;
+    }
+
+    // A plain (version 1) bank's body deflated into a version 2 bank (optionally with bytes after its body).
+    private static byte[] Deflated(byte[] plain,byte[] trailing=null)
+    {
+        var body=new MemoryStream();using(var z=new System.IO.Compression.DeflateStream(body,System.IO.Compression.CompressionLevel.Optimal,true)){z.Write(plain,8,plain.Length-8);if(trailing!=null)z.Write(trailing,0,trailing.Length);}
+        var o=new byte[8+body.Length];Buffer.BlockCopy(plain,0,o,0,4);o[4]=2;Buffer.BlockCopy(body.ToArray(),0,o,8,(int)body.Length);return o;
     }
 
     // A small bank: one texture, one piece (two chain bones, three vertices, one triangle, a tag shape), one style; each fault
