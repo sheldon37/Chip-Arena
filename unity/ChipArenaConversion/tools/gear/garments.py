@@ -213,9 +213,11 @@ def region(body, keep):
     return V.copy(), F
 
 
-def drape(body, V, F, ease, rounds=24, open_ease=None):
+def drape(body, V, F, ease, rounds=24, open_ease=None, near=3):
     """Relaxed over the skin: smoothed (Taubin) and pushed back out to `ease` (a function of the point: metres) from it, the
-    openings' edges relaxed along themselves only, so they hem cleanly."""
+    openings' edges relaxed along themselves only, so they hem cleanly. Each point is pushed out from the planes of its `near`
+    nearest skin points (3, the zombies' garments: round a limb the farther planes push it out further, a loose fit; 1, the
+    pilot's bodysuit: the nearest alone, close to the skin)."""
     nb = neighbours(len(V), F)
     edge = set(v for e in boundary_edges(F) for v in e)
     lp = loops(F)
@@ -235,7 +237,7 @@ def drape(body, V, F, ease, rounds=24, open_ease=None):
         # Out to the ease from the skin's nearest points (their normals).
         for i in range(len(V)):
             want = ease(V[i])
-            for (q, j, d) in body.near(V[i], 3):
+            for (q, j, d) in body.near(V[i], near):
                 n = body.N[j]
                 d = float(np.dot(V[i] - np.array(q), n))
                 if d < want:
