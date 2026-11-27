@@ -98,7 +98,7 @@ reach, shot origins, movement, timing and network messages; no rule reads it.
   `lob` (pieces: `tools/gear/hair.py` STYLES). The generated styles are original designs in the requested spirit, not a copy of
   any character.
 - **The bank** (`Resources/ChipArenaHair.bytes`, local: made from the licensed pack's meshes; shipped in the licensed-assets zip
-  like the bake): textures (each piece's used 512 px block of its pack texture at 256 px, or the generated locks' colour-weight
+  like the bake, inside the visual body's budget, raised to 490 MB for it; version 2: its body raw-deflated, 2.35 MB): textures (each piece's used 512 px block of its pack texture at 256 px, or the generated locks' colour-weight
   gradient), pieces (renderer name, mesh in the head bone's frame, chain bones, four weights a vertex, tag shapes) and styles.
   `Core/NativeHairBank.cs` reads it and refuses a malformed one whole; `tools/gear/hair.py` writes it from the local hair lab's
   dump of the pack pieces (Unity's import, so the game's frame and vertex order).

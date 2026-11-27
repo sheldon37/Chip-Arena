@@ -59,8 +59,10 @@ MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 6000, 512 * 1024 * 1024, 24 * 102
 # and four art passes, about 6-22 MB each, beside the 232 MB already there); the zip's own MAX_ZIP_BYTES (its members' total,
 # raised from 64 MiB on 2026-10-26 to hold the wardrobe beside the effects audio, to 224 MiB on 2026-10-28 for the pack banks,
 # to 320 MiB on 2026-11-10 and to 512 MiB on 2026-11-11 for the stage art banks) still bounds the download, and MAX_FILE_BYTES
-# (16 MiB until 2026-11-10, now 24 MiB: a stage bank's budget is about 20 MB) one member.
-VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 480 * 1000 * 1000
+# (16 MiB until 2026-11-10, now 24 MiB: a stage bank's budget is about 20 MB) one member. To 490 MB on 2026-11-26: the hair
+# bank (Resources/ChipArenaHair.bytes, about 2.3 MB deflated, docs/PILOT-BODY-HAIR.md section 3) took the body past 480 MB
+# (477.4 MB before it); MAX_ZIP_BYTES is unchanged.
+VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 490 * 1000 * 1000
 VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.controller', '.bytes', '.meta'}
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
 

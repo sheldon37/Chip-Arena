@@ -30,6 +30,7 @@ import math
 import os
 import struct
 import sys
+import zlib
 
 import numpy as np
 
@@ -464,8 +465,6 @@ def bone_names(piece_name, kind, chains):
 
 def write_bank(path, pieces, styles, textures):
     out = io.BytesIO()
-    out.write(b'HAIR')
-    out.write(struct.pack('<i', 1))
     out.write(struct.pack('<i', len(textures)))
     for name, data in textures:
         s_str(out, name)
@@ -503,7 +502,9 @@ def write_bank(path, pieces, styles, textures):
         out.write(struct.pack('<i', len(idxs)))
         for i in idxs:
             out.write(struct.pack('<i', i))
-    data = out.getvalue()
+    # version 2: the body deflated (raw deflate, as System.IO.Compression.DeflateStream reads it)
+    z = zlib.compressobj(9, zlib.DEFLATED, -15)
+    data = b'HAIR' + struct.pack('<i', 2) + z.compress(out.getvalue()) + z.flush()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as fh:
         fh.write(data)

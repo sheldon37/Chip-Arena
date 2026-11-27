@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 
 namespace ChipArena.UnityConversion
@@ -17,7 +18,9 @@ namespace ChipArena.UnityConversion
     public static class NativeHairBank
     {
         public const string Resource="ChipArenaHair";
-        public const int Version=1;
+        /// <summary>The bank's version: 2, its body (everything after the version) deflated (raw deflate; a bank's meshes are about
+        /// half their size so); 1, the same body as it is (still read).</summary>
+        public const int Version=2,Plain=1,MaxBody=64<<20;
         /// <summary>Limits the reader holds a bank to (a malformed or hostile file is refused whole).</summary>
         public const int MaxTextures=64,MaxPieces=128,MaxBones=255,MaxVertices=65535,MaxIndices=600000,MaxShapes=16,MaxStyles=128,MaxString=128,MaxTextureBytes=4<<20;
         /// <summary>The cloth kinds a chain's root name carries (its seventh character): stiff spikes that spring back, medium
@@ -59,7 +62,18 @@ namespace ChipArena.UnityConversion
             {
                 using var r=new BinaryReader(new MemoryStream(data,false),Encoding.UTF8);
                 if(r.ReadByte()!='H'||r.ReadByte()!='A'||r.ReadByte()!='I'||r.ReadByte()!='R')return null;
-                if(r.ReadInt32()!=Version)return null;
+                int version=r.ReadInt32();if(version!=Version&&version!=Plain)return null;
+                if(version==Version)
+                {
+                    // the body inflated (no larger than MaxBody), then read as a plain bank's
+                    var body=new MemoryStream();
+                    using(var z=new DeflateStream(new MemoryStream(data,8,data.Length-8,false),CompressionMode.Decompress))
+                    {
+                        var buf=new byte[81920];int n;while((n=z.Read(buf,0,buf.Length))>0){body.Write(buf,0,n);if(body.Length>MaxBody)return null;}
+                    }
+                    var plain=new byte[8+body.Length];Buffer.BlockCopy(data,0,plain,0,4);plain[4]=Plain;body.Position=0;body.Read(plain,8,(int)body.Length);
+                    return Read(plain);
+                }
                 var bank=new Bank();
                 int nt=Count(r,MaxTextures);bank.Textures=new Texture[nt];
                 for(int i=0;i<nt;i++){var name=Str(r);int len=Count(r,MaxTextureBytes);bank.Textures[i]=new Texture{Name=name,Png=Bytes(r,len)};}
@@ -76,6 +90,7 @@ namespace ChipArena.UnityConversion
             }
             catch(EndOfStreamException){return null;}
             catch(InvalidDataException){return null;}
+            catch(IOException){return null;}
         }
         private static Piece ReadPiece(BinaryReader r,int textures)
         {
