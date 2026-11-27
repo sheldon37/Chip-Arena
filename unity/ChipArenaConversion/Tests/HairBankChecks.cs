@@ -75,6 +75,16 @@ internal static class HairBankChecks
         Console.WriteLine("PASS hair bank");
     }
 
+    // A bank file the tool wrote (tools/gear/hair.py), read by the game's reader: each piece and style, or why not.
+    public static int ReadFile(string path)
+    {
+        var bank=NativeHairBank.Read(File.ReadAllBytes(path));
+        if(bank==null){Console.WriteLine("FAIL hair bank file: not a version "+NativeHairBank.Version+" bank: "+path);return 1;}
+        foreach(var p in bank.Pieces)Console.WriteLine("  "+p.Renderer+": "+p.VertexCount+" vertices, "+p.Triangles.Length/3+" triangles, "+p.Bones.Length+" bones, "+p.Shapes.Length+" shapes, texture "+p.Texture);
+        foreach(var id in bank.StyleOrder)Console.WriteLine("  style "+id+": "+string.Join(" + ",Array.ConvertAll(bank.Styles[id],i=>bank.Pieces[i].Renderer)));
+        Console.WriteLine("PASS hair bank file: "+bank.Pieces.Length+" pieces, "+bank.StyleOrder.Count+" styles, "+bank.Textures.Length+" textures");return 0;
+    }
+
     // A small bank: one texture, one piece (two chain bones, three vertices, one triangle, a tag shape), one style; each fault
     // switchable.
     private static byte[] Bank(int parent=-1,int tri=2,float weight=1,int boneIndex=1,string renderer="HairBack.Bank_Test",string bone="Hair_BC01_Test_00_",bool nan=false,int style=0)

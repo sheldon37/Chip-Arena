@@ -474,7 +474,7 @@ def write_bank(path, pieces, styles, textures):
     for p in pieces:
         s_str(out, p['renderer'])
         out.write(struct.pack('<ifB', p['texture'], p['cutoff'], p['cull']))
-        out.write(struct.pack('<i', len(p['bones'])))
+        out.write(struct.pack('<i', len(p['bones'][0])))   # (bones: names, parents, offsets)
         for name, parent, loc in zip(*p['bones']):
             s_str(out, name)
             out.write(struct.pack('<i3f', parent, *map(float, loc)))
