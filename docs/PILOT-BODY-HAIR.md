@@ -118,5 +118,5 @@ reach, shot origins, movement, timing and network messages; no rule reads it.
   textures and materials are made once and shared; the material is the bake's hair material (the pilot's hair colour) on the
   piece's own texture.
 - **Account:** the service lists the first seven hair ids (schema 4). Until it lists the bank's (Astra: `src/relay/accounts.ts`
-  `LOOK_SLOTS`, then `NativeLook.ServiceKeepsHairStyles`), a login keeps this PC's pick while the account's look has the default
+  `LOOK_SLOTS`, then `NativeLook.ServiceKeepsNewPieces`), a login keeps this PC's pick while the account's look has the default
   hair. Peers on this client draw the style; older clients draw the default hair.

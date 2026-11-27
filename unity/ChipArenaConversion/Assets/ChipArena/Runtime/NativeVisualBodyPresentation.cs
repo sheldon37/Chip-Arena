@@ -99,8 +99,8 @@ namespace ChipArena.UnityConversion
             if(!robotDressed.TryGetValue(look,out var dressed))
             {
                 if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);
-                // (A hairstyle this bake does not carry: the default's, never a bare head.)
-                if(!VisualLookHas(NativeLook.Hair,NativeLook.Of(dressed,NativeLook.Hair)))robotDressed[look]=dressed=NativeLook.With(dressed,NativeLook.Hair,NativeLook.Ids[0][0]);
+                // (A hairstyle or another piece this bake does not carry: its slot's default, never a bare head or body.)
+                for(int s=0;s<NativeLook.Slots.Length;s++)if(!VisualLookHas(NativeLook.Slots[s],NativeLook.Of(dressed,NativeLook.Slots[s])))robotDressed[look]=dressed=NativeLook.With(dressed,NativeLook.Slots[s],s==0?NativeLook.Ids[0][0]:NativeRobotSuit.Under[s]);
             }
             // The voxel costume in its variant (the skin map's body entry: NativeVoxelCostumePresentation.cs).
             if(!NativeVoxelCostume.Worn(dressed))return dressed;int skin=CostumeSkinOf(id);return CostumeLook(dressed,skin,CostumeTierOf(id,skin));
@@ -837,7 +837,7 @@ namespace ChipArena.UnityConversion
                 var text=Resources.Load<TextAsset>(VisualLookResource);
                 try{lookData=text!=null?JsonUtility.FromJson<LookData>(text.text):null;}catch(ArgumentException){lookData=null;}
                 lookState=lookData?.pieces!=null&&lookData.pieces.Length>0?1:-1;
-                if(lookState>0)VisualLookAddHair(lookData); // (the hair bank's styles: NativeHairBankPresentation.cs)
+                if(lookState>0)VisualLookAddPieces(lookData); // (the zombies' clothes as the pilot's and the hair bank's styles: NativeHairBankPresentation.cs)
             }
             return lookState>0?lookData:null;
         }
