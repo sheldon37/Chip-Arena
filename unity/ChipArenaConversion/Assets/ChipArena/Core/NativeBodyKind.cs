@@ -41,19 +41,40 @@ namespace ChipArena.UnityConversion
         public sealed class Level
         {
             public string Name;public string[] Shapes;public float[] Weights;public float Chest,Span,ArmY,ArmZ,Hand,Root,Chin;
+            /// <summary>How much of the head's second colour (the lips' and the hairline's shade: the head's colour weights' green)
+            /// stays over its skin (1: as the bake has it).</summary>
+            public float Lips=1;
         }
         public const int Subtle=0,Medium=1,Strong=2;
         /// <summary>The level the female body wears (owner 2026-11-25: "Strong").</summary>
         public const int DefaultLevel=Strong;
         public const string ChestBone="spine_04",HeadBone="head";
-        private static readonly string[] Shape={"BodyType","Weight","Chest","Curvy","WaistSize","ButtSize","NeckThickness","EyeRoundness","Roundness"};
+        private static readonly string[] Shape={"BodyType","Weight","Chest","Curvy","WaistSize","ButtSize","NeckThickness","EyeRoundness","Roundness","Sharpness","Muscle"};
         public static readonly Level[] Levels=
         {
-            new Level{Name="Subtle",Shapes=Shape,Weights=new float[]{-10,-10,60,100,25,20,-15,57,15},Chest=.971f,Span=.96f,ArmY=.96f,ArmZ=.88f,Hand=.96f,Root=.98f,Chin=.95f},
-            new Level{Name="Medium",Shapes=Shape,Weights=new float[]{-20,-20,70,115,45,35,-30,62,30},Chest=.971f,Span=.93f,ArmY=.92f,ArmZ=.8f,Hand=.93f,Root=.96f,Chin=.9f},
-            new Level{Name="Strong",Shapes=Shape,Weights=new float[]{-32,-28,85,130,65,55,-45,68,45},Chest=.96f,Span=.9f,ArmY=.9f,ArmZ=.73f,Hand=.9f,Root=.95f,Chin=.86f},
+            new Level{Name="Subtle",Shapes=Shape,Weights=new float[]{-10,-10,60,100,25,20,-15,57,15,0,0},Chest=.971f,Span=.96f,ArmY=.96f,ArmZ=.88f,Hand=.96f,Root=.98f,Chin=.95f},
+            new Level{Name="Medium",Shapes=Shape,Weights=new float[]{-20,-20,70,115,45,35,-30,62,30,0,0},Chest=.971f,Span=.93f,ArmY=.92f,ArmZ=.8f,Hand=.93f,Root=.96f,Chin=.9f},
+            new Level{Name="Strong",Shapes=Shape,Weights=new float[]{-32,-28,85,130,65,55,-45,68,45,0,0},Chest=.96f,Span=.9f,ArmY=.9f,ArmZ=.73f,Hand=.9f,Root=.95f,Chin=.86f},
         };
-        public static Level LevelOf(int level)=>Levels[level<0||level>=Levels.Length?DefaultLevel:level];
+        /// <summary>The male body's levels (owner 2026-11-27: "male pilot seems to look a bit feminine (Lips look kind of like
+        /// lipstick?) And it looks like they have "small" breasts, can we fix this?"): today's pilot, the pack's neutral middle,
+        /// carried toward the pack's male presets (Default_Boy: BodyType 45, Weight 15, NeckThickness 27, Sharpness 85; the
+        /// clavicles 1.07, the upper arms' girth 1.1, the chest 1.02, the chin squarer), its chest flattened (Chest under 0, baked as
+        /// the female's out-of-range weights are) and its lips toned toward the skin (Lips). Its height (root) and every hit volume
+        /// stay as they are. Worn as level MaleBase + i on the same machinery as the female's (the plates, the bodysuit and the chest
+        /// core follow it).</summary>
+        public static readonly Level[] MaleLevels=
+        {
+            new Level{Name="Subtle",Shapes=Shape,Weights=new float[]{30,8,-15,0,0,0,15,0,0,45,10},Chest=1,Span=1.03f,ArmY=1.04f,ArmZ=1.04f,Hand=1.02f,Root=1,Chin=1.03f,Lips=.55f},
+            new Level{Name="Medium",Shapes=Shape,Weights=new float[]{45,15,-30,0,0,0,27,0,0,85,20},Chest=1.018f,Span=1.05f,ArmY=1.08f,ArmZ=1.08f,Hand=1.04f,Root=1,Chin=1.06f,Lips=.4f},
+            new Level{Name="Strong",Shapes=Shape,Weights=new float[]{65,20,-45,0,0,0,45,0,0,100,35},Chest=1.03f,Span=1.07f,ArmY=1.1f,ArmZ=1.1f,Hand=1.06f,Root=1,Chin=1.1f,Lips=.3f},
+        };
+        /// <summary>The male levels' numbers (MaleBase + Subtle..Strong) beside the female's (0..2).</summary>
+        public const int MaleBase=16;
+        /// <summary>The level the male body wears (Medium until the owner picks).</summary>
+        public const int MaleDefault=MaleBase+Medium;
+        public static bool IsMaleLevel(int level)=>level>=MaleBase;
+        public static Level LevelOf(int level)=>IsMaleLevel(level)?MaleLevels[Math.Min(level-MaleBase,MaleLevels.Length-1)]:Levels[level<0||level>=Levels.Length?DefaultLevel:level];
         /// <summary>The female stance on the lobby, Locker and portrait poses (degrees): the thighs in toward each other, the knees turned
         /// in, the chest up and back, the hips rolled toward the weight leg with the chest against them (the pack's BMAC_F_Idle against
         /// BMAC_M_Idle: Upper Leg In-Out -.14..-.17, Twist In-Out -.36..-.52, UpperChest Front-Back +.1 and Left-Right +.23).</summary>

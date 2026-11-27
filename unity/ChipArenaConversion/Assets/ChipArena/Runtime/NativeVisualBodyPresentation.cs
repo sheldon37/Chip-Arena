@@ -631,7 +631,7 @@ namespace ChipArena.UnityConversion
             // Under it the hair, the head and the face are hidden (VisualUnderHood: the void covers the opening).
             if(hoodRenderer!=null)VisualUnderHood(root);
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
-            if(femaleRoots.TryGetValue(root.GetInstanceID(),out int femaleAt)){body.FemaleMade=true;body.FemaleLevel=femaleAt;}
+            if(femaleRoots.TryGetValue(root.GetInstanceID(),out int femaleAt)){body.FemaleMade=!NativeBodyKind.IsMaleLevel(femaleAt);body.FemaleLevel=femaleAt;}
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];VisualCutWarm(body.All);
             // Its skeleton, off until a wound opens into it (an arena pilot's body; not the view body, busts, ghosts or portraits).
             if(simulate&&id!=ViewBodyId){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
@@ -875,6 +875,8 @@ namespace ChipArena.UnityConversion
             if(NativeVoxelCostume.Worn(look))CostumeWear(root,look);
             // The female body (Core NativeBodyKind; NativeBodyKindPresentation.cs), under any outfit but the Hot Dog and the costume.
             else if(NativeBodyKind.IsFemale(look)&&!NativeHotDog.Worn(look))VisualFemale(root,FemaleLevel);
+            // The male body at its level (the same machinery: NativeBodyKind.MaleLevels), under any outfit but those two.
+            else if(!NativeHotDog.Worn(look)&&MaleLevel>=0)VisualFemale(root,MaleLevel);
         }
         // The pilot's skin tone (Core NativeLook's skin entry; owner 2026-10-28: "Give skin color customization"): written on the
         // skin parts when a body is dressed, and again in place when only the tone changes (VisualRetone), never per frame. A
@@ -921,6 +923,7 @@ namespace ChipArena.UnityConversion
         private static bool VisualRetone(VisualBody body,string look)
         {
             if(body.FemaleMade&&body.FemaleLevel!=FemaleLevel)return false; // (another female level: made again)
+            if(!body.FemaleMade&&body.FemaleLevel!=(NativeHotDog.Worn(look)||NativeVoxelCostume.Worn(look)||NativeBodyKind.IsFemale(look)?-1:MaleLevel))return false; // (another male level: made again)
             if(string.Equals(body.Look,look,StringComparison.Ordinal))return true;
             if(!NativeLook.SameOutfit(body.Look,look)||NativeBodyKind.Of(body.Look)!=NativeBodyKind.Of(look))return false; // (another body: made again)
             if(NativeVoxelCostume.Worn(look)&&(CostumeSkinIn(body.Look)!=CostumeSkinIn(look)||CostumeTierIn(body.Look)!=CostumeTierIn(look)))return false; // (another costume variant or tier)
