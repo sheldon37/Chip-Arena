@@ -1,3 +1,9 @@
+## 2026-11-26 — Astra: Windows builder worktree retention follow-up
+
+Task branch `codex/retention-unity-output` from shared `1c8f1ee7`, following the release 31 and 33 disk reports. The installed publication hook loads the helper from the published project. The helper now tolerates the reported Unity settings, package lock and generated metadata only in verified inactive detached build checkouts. It archives the build log and uses ordinary Git removal. Missing, unlocked build registrations are removed individually, including during normal post-publication cleanup.
+
+For immediate registration-only cleanup from the updated Unity project on the builder PC, run `py -3 tools/builder_retention.py --prune-registrations "F:/Chip Arena Builder/Builder"`. This takes the builder lock and leaves existing folders alone. The next successful publication containing this helper also handles old folders. Two regression tests passed against disposable real Git worktrees on Linux with Git 2.47.3 and 2.56.1, including ignored card payloads, Unity and Git locks, staged edits, unfamiliar files, and scoped repeat pruning. The fixture no longer needs worktree add --orphan. Real PC cleanup count and free space await a builder run.
+
 ## 2026-11-26 — Claude: releases 32 and 33: the staff's head no longer spins, and looks where it aims while running (integrator)
 - **Owner reports:** "With magic, the head seems to be doing 360s when moving" (with a screen recording). Then, on the first fix's clip: "it doesn't look like they're looking where they are aiming anymore".
 - **Cause (measured in play):** the staff's run carry (`Set.RunUpper`, `Frank_RPG_Mage_8Way_Run_F~mirror`) holds Neck Turn about -4.4 and Head Turn about -3.6 in the motion bank `21eab500`; a muscle's range is -1..1.

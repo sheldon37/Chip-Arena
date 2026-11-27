@@ -10,6 +10,13 @@ import sys
 import tempfile
 
 WORK_NAME = re.compile(r'[0-9a-f]{12}-[0-9a-f]{8}')
+PROJECT = 'unity/ChipArenaConversion/'
+SETTINGS = PROJECT + 'ProjectSettings/ProjectSettings.asset'
+GENERATED = re.compile(
+    re.escape(PROJECT) + r'(?:ProjectSettings/[^/]+\.asset|Packages/packages-lock\.json'
+    r'|Assets/ChipArena/(?:Core/NativeViewArms|Runtime/NativeViewArmsPresentation)\.cs\.meta'
+    r'|Assets/ChipArena/Resources/DeployCards(?:/[^/]+)*\.meta)'
+)
 REPO = 'https://github.com/sheldon37/Chip-Arena.git'
 ANCHOR = "    save(root / 'last-publication.json', dict(result, selectedSourceCommit=record['sourceCommit']))"
 HOOK = """
@@ -27,47 +34,101 @@ HOOK = """
 
 
 def after_publish(root, project, git, plain_path, diagnostic_file):
-    work, repo = root / 'Work', root / 'Cache/repository.git'
+    work = root / 'Work'
     current = project.parent.parent
     if current.parent != work or not WORK_NAME.fullmatch(current.name):
         raise ValueError('Unexpected published worktree')
+    sweep_worktrees(root, current, git, plain_path, diagnostic_file)
+
+
+def sweep_worktrees(root, current, git, plain_path, diagnostic_file=None):
+    work, repo = root / 'Work', root / 'Cache/repository.git'
     plain_path(work)
     plain_path(repo)
     if git(repo, 'remote', 'get-url', 'origin') != REPO:
         raise ValueError('Unexpected worktree repository')
-    for line in git(repo, 'worktree', 'list', '--porcelain').splitlines():
-        if not line.startswith('worktree '):
+    listing = git(repo, 'worktree', 'list', '--porcelain', '-z')
+    for record in listing.split('\0\0'):
+        fields = record.rstrip('\0').split('\0')
+        if not fields[0].startswith('worktree '):
             continue
-        folder = Path(line[9:])
+        folder = Path(fields[0][9:])
         if folder == current or folder.parent != work or not WORK_NAME.fullmatch(folder.name):
             continue
-        plain_path(folder)
-        build = folder / 'unity/ChipArenaConversion'
-        if (build / 'Temp/UnityLockfile').exists():
+        if 'detached' not in fields or any(f.partition(' ')[0] == 'locked' for f in fields):
             continue
-        # A registration can be an operator checkout; require its original detached commit.
-        if not git(folder, 'rev-parse', 'HEAD').startswith(folder.name[:12]):
+        if not any(f.startswith('HEAD ' + folder.name[:12]) for f in fields):
             continue
-        if git(folder, 'rev-parse', '--abbrev-ref', 'HEAD') != 'HEAD' or git(folder, 'status', '--porcelain', '--untracked-files=normal'):
-            continue
-        log = build / 'Builds/build.log'
-        if log.is_file():
-            history = root / 'Build-History'
-            plain_path(log)
-            plain_path(history)
-            history.mkdir(exist_ok=True)
-            diagnostic_file(history / (folder.name + '.log'), source=log)
-        # Git refuses locked worktrees. No --force: preserve tracked edits and unfamiliar files.
-        git(repo, 'worktree', 'remove', str(folder))
-        print('Removed inactive builder worktree ' + folder.name, flush=True)
+        try:
+            if any(f.partition(' ')[0] == 'prunable' for f in fields):
+                if not os.path.lexists(folder):
+                    git(repo, 'worktree', 'remove', str(folder))
+                    print('Pruned missing builder worktree ' + folder.name, flush=True)
+                continue
+            if current is not None:
+                remove_inactive(root, repo, folder, git, plain_path, diagnostic_file)
+        except (OSError, ValueError, subprocess.CalledProcessError) as error:
+            print(f'Kept builder worktree {folder.name}: {error}', file=sys.stderr)
 
 
-def install_hook(root):
+def remove_inactive(root, repo, folder, git, plain_path, diagnostic_file):
+    plain_path(folder)
+    build = folder / PROJECT
+    if (build / 'Temp/UnityLockfile').exists():
+        return
+    if Path(git(folder, 'rev-parse', '--show-toplevel')) != folder:
+        return
+    if git(folder, 'rev-parse', '--abbrev-ref', 'HEAD') != 'HEAD':
+        return
+    if not git(folder, 'rev-parse', 'HEAD').startswith(folder.name[:12]):
+        return
+    if git(folder, 'diff', '--cached', '--name-only', '-z'):
+        return
+    changes = git(folder, 'diff', '--name-status', '-z', '--')
+    if changes and changes != 'M\0' + SETTINGS + '\0':
+        return
+    untracked = git(folder, 'ls-files', '--others', '--exclude-standard', '-z')
+    outputs = []
+    for name in untracked.split('\0')[:-1]:
+        if not GENERATED.fullmatch(name):
+            return
+        # Deploy card payloads can be ignored build inputs. Any unfamiliar
+        # non-ignored payload is independently rejected by the full file list.
+        if name.endswith('.meta') and not (folder / name[:-5]).exists():
+            return
+        output = folder / name
+        plain_path(output)
+        if not output.is_file() or output.is_symlink():
+            return
+        outputs.append(output)
+    log = build / 'Builds/build.log'
+    if log.is_file():
+        history = root / 'Build-History'
+        plain_path(log)
+        plain_path(history)
+        history.mkdir(exist_ok=True)
+        diagnostic_file(history / (folder.name + '.log'), source=log)
+    if changes:
+        git(folder, 'restore', '--worktree', '--', SETTINGS)
+    for output in outputs:
+        output.unlink()
+    # Recheck cleanliness and locks through Git, including any newly arrived files.
+    git(repo, 'worktree', 'remove', str(folder))
+    print('Removed inactive builder worktree ' + folder.name, flush=True)
+
+
+def load_builder(root):
     path = root / 'builder.py'
     spec = importlib.util.spec_from_file_location('local_chip_builder', path)
     builder = importlib.util.module_from_spec(spec)
     sys.path.insert(0, str(root))
     spec.loader.exec_module(builder)
+    return builder
+
+
+def install_hook(root):
+    path = root / 'builder.py'
+    builder = load_builder(root)
     with builder.locked(root):
         source = path.read_bytes()
         newline = '\r\n' if b'\r\n' in source else '\n'
@@ -88,5 +149,15 @@ def install_hook(root):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--install-hook', type=Path, required=True, metavar='BUILDER_ROOT')
-    install_hook(parser.parse_args().install_hook.resolve())
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument('--install-hook', type=Path, metavar='BUILDER_ROOT')
+    actions.add_argument('--prune-registrations', type=Path, metavar='BUILDER_ROOT',
+                         help='remove missing detached build registrations under the builder lock')
+    args = parser.parse_args()
+    if args.install_hook:
+        install_hook(args.install_hook.resolve())
+    else:
+        root = args.prune_registrations.resolve()
+        builder = load_builder(root)
+        with builder.locked(root):
+            sweep_worktrees(root, None, builder.git, builder.plain_path)
