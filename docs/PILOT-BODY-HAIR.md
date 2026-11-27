@@ -163,3 +163,32 @@ Claude, branch `claude/sleek-suit`. Presentation only: the robot armour keeps it
 - **The bank's version 3** (`Core/NativeHairBank.cs`, deflated): pieces may ride the body's bones (by name, with their bind poses)
   and name the bake renderer whose material they take; the suit's plates (bone, positions, normals, a paint a vertex); styles of
   any slot with the body parts they cover and the top whose gear anchors they take. Versions 1 and 2 are still read.
+
+## 6. The sleek face gear (owner 2026-11-27: "think we need to update the "masks" section now, they look out of place now with the latest robot armor", then "They look to bulky / wide")
+
+Claude, branch `claude/sleek-masks`. Presentation only: the MASKS row keeps its picks (`face:helm`, `half`, `both`, `visor`, `mask`, `none`), and no rule, hit volume or message reads the gear.
+
+- **The gear** (`tools/gear/facegear.py`, in the head bone's frame, built with suitplates' plates and paints):
+  - **The helmet:** a dark inner shell on the old helmet's superellipsoid refitted to the head (`Core/NativeSleekFace.cs` shell constants: the slimmest of its family 6 mm or more off the head, its front leaning back up the forehead), 1.6 cm in at the sides. White panels sit 2 mm over it, 4.5 mm thick: crown with a glowing crest, brow, sides, back, cheeks, and a chin guard with vents. A wraparound visor of glowing glass, and a cup over each ear (the ears stand 4 mm out of the shell).
+  - **The half mask:** an angular muzzle with glowing vents and slim cheek guards, close to the face's own line (its height-by-height fit, the ears left out), a small pod on each ear.
+  - **The visor:** a thin wraparound band of glowing glass with a slim arm back over each ear.
+  - **The mask:** a thin dark plate fitted 4 mm off the face over the nose, mouth, chin and cheeks, its seams glowing.
+  - **The suit's ear pods:** a small pod with a light ring on each ear, in place of the robot suit's ear modules. The helmet and half mask hide them as before (they bring their own).
+- **The bank's version 4:** `hair.py --suit DUMP --face` writes the gear as plates named by gear (`Helmet: `, `Half mask: `, `Visor: `, `Mask: `, `Ears: `). The gear stays in the head's frame. The ear pods move into the body's bind space, as the suit's plates are. A bank carrying them is version 4, so a build from before it refuses the bank rather than wearing the gear as suit plates.
+- **Wearing it:** `NativeSleekFace.On` is set when the bank carries every gear.
+  - The helmet and half mask models and the mask and visor models are the bank's: one part each on the head.
+  - The mask and visor shells take the body colour, as the helmet's do.
+  - The suit's `Build(plates)` skips the gear and wears the bank's ear pods.
+  - A hat on the sleek helmet takes `NativeSleekFace.HatFit`: each model hat sized to the helmet's girth where it sits and lowered until it is 2 mm off the panels (checked in `Tests/SleekFaceChecks.cs`).
+  - Without the bank, everything is as before.
+
+## 7. The male body's levels (owner 2026-11-27: "male pilot seems to look a bit feminine (Lips look kind of like lipstick?) And it looks like they have "small" breasts, can we fix this?")
+
+Claude, on `claude/sleek-masks`. Presentation only: the height (`root`) and every hit volume stay as they are.
+
+- **Why:** today's pilot is the pack's neutral middle (every shape at 0). Its head's second colour (the colour weights' green: the lips and the hairline's shade) is the bake's salmon (.92, .47, .30) on a pale skin, which reads as lipstick.
+- **The levels** (`NativeBodyKind.MaleLevels`, numbered `MaleBase` + Subtle/Medium/Strong, worn through the female body's machinery so the bodysuit, the plates' fit and the chest core follow them) carry the body toward the pack's male presets (`Default_Boy`). They push BodyType, Weight, NeckThickness, Sharpness and Muscle up and Chest below 0 (baked as the female's out-of-range weights are). The bone changes are a wider span, thicker upper arms, a slightly larger chest and hands, and a squarer chin. `Lips` tones the head's second colour toward its skin on the instance.
+- `ArenaPresentation.MaleLevel` is `MaleDefault`: the owner picked Medium (2026-11-27, from captures of all three). Under 0 it is today's pilot.
+- **The bodysuit's fit:** `garments.drape` pushed each vertex out from the planes of its three nearest skin points, which stood the
+  sleek bodysuit 1.2-1.4 cm off the limbs and chest (wide hips and thighs, a fuller chest on both bodies). `pilotsuit.py` now drapes
+  it from the nearest point alone (`near=1`): 3-5 mm off, as section 5 meant. The zombies' garments keep the default (`near=3`).
