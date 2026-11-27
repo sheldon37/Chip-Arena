@@ -33,6 +33,8 @@ import sys
 
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # (hairgen.py beside it, under python -I)
+
 BANK = 'ChipArenaHair'
 RESOURCES = 'ChipArenaLocal/Resources'
 PACK = 'BoZo_StylizedModularCharacters/Outfits/Anime'
@@ -43,6 +45,9 @@ SPIKE, LOCK, FALL, CURTAIN, TAIL, RIGID = 'S', 'L', 'F', 'C', 'T', 'R'
 
 # The styles (Core/NativeLook.cs ids): each a front and a back piece (a piece's cloth kind, its lateral spacing in degrees).
 STYLES = [
+    # generated (hairgen.py): the anime spikes, on the pack's short cap
+    ('raven-spikes', [('HairBack_ShotaCut', RIGID), ('GEN_RavenBack', SPIKE), ('GEN_RavenFront', LOCK)]),
+    ('hero-spikes', [('HairBack_ShotaCut', RIGID), ('GEN_HeroBack', SPIKE), ('GEN_HeroFront', LOCK)]),
     ('wolf', [('HairFront_LynxFringe', LOCK), ('HairBack_WildLocks', SPIKE)]),
     ('mane', [('HairFront_Messy', LOCK), ('HairBack_YokaiMane', SPIKE)]),
     ('messy', [('HairFront_Messy', LOCK), ('HairBack_MessyHair', SPIKE)]),
@@ -504,6 +509,62 @@ def write_bank(path, pieces, styles, textures):
     return len(data)
 
 
+# ---------------------------------------------------------------------------------------------------------------------------
+# Generated pieces (hairgen.py)
+# ---------------------------------------------------------------------------------------------------------------------------
+class GenChain:
+    def __init__(self, joints, group):
+        self.joints = joints
+        self.group = group
+        self.theta = 0.
+
+
+GENERATED = {'GEN_RavenBack': ('HairBack.Bank_RavenSpikes', 'raven_back'), 'GEN_RavenFront': ('HairFront.Bank_RavenBangs', 'raven_front'),
+             'GEN_HeroBack': ('HairBack.Bank_HeroSpikes', 'hero_back'), 'GEN_HeroFront': ('HairFront.Bank_HeroBangs', 'hero_front')}
+
+
+def generated_piece(name, head, cap):
+    import hairgen
+    renderer, maker = GENERATED[name]
+    locks = getattr(hairgen, maker)(head, cap.v)
+    V, U, T, chains, bi3, bw2 = hairgen.build(locks, name)
+    n = len(V)
+    # bones: each chain its own group (its own cloth), kinds from the locks
+    names, parents, local, base = [], [], [], [0]
+    short = renderer.split('Bank_', 1)[1]
+    for k, (kind, joints) in enumerate(chains):
+        base.append(len(names) + 1)
+        for j, q in enumerate(joints):
+            names.append('Hair_B%s%02d_%s_%02d_%d' % (kind, k + 1, short, k, j))
+            parents.append(-1 if j == 0 else len(names) - 2)
+            local.append(q if j == 0 else q - joints[j - 1])
+    bi = np.zeros((n, 4), np.int64)
+    bw = np.zeros((n, 4))
+    roots = np.zeros((n, 3))
+    lock_of = np.zeros(n, np.int64)
+    off = 0
+    for li, lk in enumerate(locks):
+        m = len(hairgen.lock_mesh(lk)[0])
+        roots[off:off + m] = lk.points[0]
+        lock_of[off:off + m] = li
+        off += m
+    for i in range(n):
+        c, j0, j1 = bi3[i]
+        if c == 0:
+            bi[i, 0], bw[i, 0] = 0, 1
+        else:
+            bi[i, 0], bw[i, 0] = base[c] + j0, bw2[i][0]
+            bi[i, 1], bw[i, 1] = base[c] + j1, bw2[i][1]
+    # tag shapes: under a beanie the spikes fold in toward their roots (the bangs stay), under a helmet or a hood every lock does
+    fold = roots + (V - roots) * .18 - V
+    is_front = renderer.startswith('HairFront.')
+    shapes = [('Tag_Hat', np.zeros_like(V) if is_front else fold), ('Tag_Helm', fold), ('Tag_Hood', fold)]
+    p = Piece.__new__(Piece)
+    p.name, p.v, p.n, p.uv, p.c, p.tris, p.shapes, p.front = name, V, hairgen.normals(V, T), U, np.tile([1., 0, 0, 1], (n, 1)), T, shapes, is_front
+    gchains = [GenChain(j, k + 1) for k, (_, j) in enumerate(chains)]
+    return renderer, p, gchains, (bi, bw), (names, parents, local)
+
+
 def renderer_name(piece_name):
     side, short = piece_name.split('_', 1)
     return '%s.Bank_%s' % (side, short)
@@ -528,16 +589,27 @@ def main():
             key = (name, kind)
             if key in index:
                 continue
-            p = load_piece(a.dump, name)
-            chains, (bi, bw), info = rig(p, head, kind)
-            tname, png, uv = texture_block(pack_root, p)
-            if tname not in tex_index:
-                tex_index[tname] = len(textures)
-                textures.append((tname, png))
-            names = bone_names(name, kind, chains)
-            rec = dict(renderer=renderer_name(name) + ('' if kind == LOCK or name not in [k[0] for k in index] else '_' + kind),
-                       texture=tex_index[tname], cutoff=.5, cull=2, bones=names, v=p.v, n=p.n, uv=uv, c=p.c, bi=bi, bw=bw,
-                       tris=p.tris, shapes=p.shapes)
+            if name in GENERATED:
+                cap = load_piece(a.dump, 'HairBack_ShotaCut')
+                rname, p, chains, (bi, bw), names = generated_piece(name, head, cap)
+                tname = 'generated-gradient'
+                if tname not in tex_index:
+                    import hairgen
+                    tex_index[tname] = len(textures)
+                    textures.append((tname, hairgen.gradient_png()))
+                uv = p.uv
+                info = dict(loose=np.ones(len(p.v)))
+            else:
+                p = load_piece(a.dump, name)
+                chains, (bi, bw), info = rig(p, head, kind)
+                tname, png, uv = texture_block(pack_root, p)
+                if tname not in tex_index:
+                    tex_index[tname] = len(textures)
+                    textures.append((tname, png))
+                names = bone_names(name, kind, chains)
+                rname = renderer_name(name) + ('' if kind in (LOCK, RIGID) or name not in [k[0] for k in index] else '_' + kind)
+            rec = dict(renderer=rname, texture=tex_index[tname], cutoff=.5, cull=2, bones=names, v=p.v, n=p.n, uv=uv, c=p.c,
+                       bi=bi, bw=bw, tris=p.tris, shapes=p.shapes)
             index[key] = len(pieces)
             pieces.append(rec)
             report.append('%-30s %s chains %2d joints %3d groups %d loose %4d/%4d' % (name, kind, len(chains), len(names[0]),
@@ -598,7 +670,7 @@ def preview(out, name, p, chains, bi, bw):
                 fh.write('f %d %d %d\n' % (t[0] + 1, t[1] + 1, t[2] + 1))
     with open(os.path.join(out, '%s_chains.txt' % name), 'w') as fh:
         for ch in chains:
-            fh.write('chain %d %.3f %s\n' % (ch.group, ch.theta, ' '.join('%.4f,%.4f,%.4f' % tuple(q) for q in ch.joints)))
+            fh.write('chain %d %.3f %s\n' % (ch.group, getattr(ch, 'theta', 0.), ' '.join('%.4f,%.4f,%.4f' % tuple(q) for q in ch.joints)))
 
 
 def hsv(h, s, v):

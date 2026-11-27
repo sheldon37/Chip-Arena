@@ -34,14 +34,14 @@ namespace ChipArena.UnityConversion
             new[]{"spiky","wild","side-swept","tied-back","fringe-tail","bob","high-ponytail",
                 // The hair bank's (Core/NativeHairBank.cs; owner 2026-11-26: "a lot more hairstyles, some anime ones as well ... For
                 // both male and female"): listed once the bank carries them (ArenaPresentation.VisualLookHas), every one on either body.
-                "raven-spikes","wolf","mane","messy","emo","shag","dreads","short-pony","twin-tails","pigtails","twin-buns","bun","hime","long-straight","shoujo","lob"},
+                "raven-spikes","hero-spikes","wolf","mane","messy","emo","shag","dreads","short-pony","twin-tails","pigtails","twin-buns","bun","hime","long-straight","shoujo","lob"},
             new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeHotDog.Id,NativeSheldonWear.Robe},
             new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
             new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
             new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
         public static readonly string[][] Labels={
             new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail","Bob","High ponytail",
-                "Raven spikes","Wolf cut","Wild mane","Messy crop","Emo fringe","Layered shag","Swept dreads","Short ponytail","Twin tails","Pigtails","Twin buns","Low bun","Hime cut","Long and straight","Long layers","Asymmetric lob"},
+                "Raven spikes","Hero spikes","Wolf cut","Wild mane","Messy crop","Emo fringe","Layered shag","Swept dreads","Short ponytail","Twin tails","Pigtails","Twin buns","Low bun","Hime cut","Long and straight","Long layers","Asymmetric lob"},
             new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater",NativeHotDog.Label,"Sheldon robe"},
             new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
             new[]{"Robot gauntlets","Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
