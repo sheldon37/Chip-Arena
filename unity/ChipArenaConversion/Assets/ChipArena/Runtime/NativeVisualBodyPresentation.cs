@@ -837,6 +837,7 @@ namespace ChipArena.UnityConversion
                 var text=Resources.Load<TextAsset>(VisualLookResource);
                 try{lookData=text!=null?JsonUtility.FromJson<LookData>(text.text):null;}catch(ArgumentException){lookData=null;}
                 lookState=lookData?.pieces!=null&&lookData.pieces.Length>0?1:-1;
+                if(lookState>0)VisualLookAddHair(lookData); // (the hair bank's styles: NativeHairBankPresentation.cs)
             }
             return lookState>0?lookData:null;
         }
@@ -855,6 +856,7 @@ namespace ChipArena.UnityConversion
         private static void VisualDress(GameObject root,string look,List<Renderer> sheldon=null)
         {
             var d=VisualLookData();if(d==null||root==null)return;
+            VisualHairBankDress(root,look); // (a hair bank style's pieces built on the instance first: NativeHairBankPresentation.cs)
             lookNamed.Clear();foreach(var r in root.GetComponentsInChildren<Renderer>(true))lookNamed[r.name]=r;
             lookCovers.Clear();lookTags.Clear();if(d.always!=null)lookTags.UnionWith(d.always);
             foreach(var p in d.pieces)if(p!=null&&VisualWears(look,p)){if(p.covers!=null)lookCovers.UnionWith(p.covers);if(p.tags!=null)lookTags.UnionWith(p.tags);}
