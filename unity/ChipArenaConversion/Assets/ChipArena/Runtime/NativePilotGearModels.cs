@@ -25,7 +25,10 @@ namespace ChipArena.UnityConversion
                 var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null){gearFailed=true;return false;}
                 gearMaterial=new Material(shader){name="Native pilot gear",enableInstancing=true};gearMaterial.SetInt("_Cull",2);gearMaterial.SetFloat("_Ink",0);materials.Add(gearMaterial);
                 GearModel(GearCore,NativePilotGear.Core(),CapturedRig.Chest);GearModel(GearLid,NativePilotGear.Lid(),CapturedRig.RHand);GearModel(GearChip,NativePilotGear.Chip(),CapturedRig.RHand);
-                GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);
+                // (The sleek mask and visor when the local hair bank carries them: Core/NativeSleekFace.cs.)
+                var plates=ArenaPresentation.HairBank()?.Plates;
+                if(NativeSleekFace.On){models[GearMask]=HelmParts(NativeSleekFace.Sections(plates,NativeSleekFace.Mask,"mask"),gearMaterial,"Pilot mask");models[GearVisor]=HelmParts(NativeSleekFace.Sections(plates,NativeSleekFace.Visor,"visor"),gearMaterial,"Pilot visor");}
+                else{GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);}
                 GearModel(GearEmblem,NativePilotGear.Emblem(),CapturedRig.Chest);
             }
             string device=GearDevice+"-"+mm,bay=GearBay+"-"+mm;

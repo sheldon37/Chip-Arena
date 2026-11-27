@@ -67,7 +67,7 @@ internal static class ClothesChecks
         }
         finally{NativeRobotSuit.SleekSuit=was;}
         var suitSrc=Src("Assets/ChipArena/Core/NativeRobotSuit.cs");var hb=Src("Assets/ChipArena/Runtime/NativeHairBankPresentation.cs");
-        Check(suitSrc.Contains("var k=new Kit();Ears(k);Gauntlets(k);Boots(k);"),"the sleek plates beside today's ear modules, gauntlets and boots");
+        Check(suitSrc.Contains("if(NativeSleekFace.Has(plates,NativeSleekFace.Ears))NativeSleekFace.Add(k,k.Part(\"ears\",Head),plates,NativeSleekFace.Ears);else Ears(k);")&&suitSrc.Contains("Gauntlets(k);Boots(k);")&&suitSrc.Contains("if(NativeSleekFace.IsFace(pl.Name))continue;"),"the sleek plates beside the bank's ear pods (else today's ear modules), today's gauntlets and boots; never the face gear's");
         Check(hb.Contains("NativeRobotSuit.SleekSuit=hairBank!=null&&hairBank.Has(NativeLook.Upper,NativeRobotSuit.SleekUnder[1])&&hairBank.Has(NativeLook.Lower,NativeRobotSuit.SleekUnder[2])&&hairBank.Plates.Length>0;"),"the sleek suit only when the bank carries it whole");
         Check(Src("Assets/ChipArena/Runtime/NativeBodyKindPresentation.cs").Contains("p.id!=NativeRobotSuit.UnderOf(slot)"),"the plates' female fit follows the garment really worn under them");
         Console.WriteLine("PASS clothes ("+NativeWardrobeAliases.Pairs.Length+" new pieces, the sleek suit's garments)");

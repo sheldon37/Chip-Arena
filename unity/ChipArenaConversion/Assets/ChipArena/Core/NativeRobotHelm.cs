@@ -104,6 +104,7 @@ namespace ChipArena.UnityConversion
         /// the model takes the closed hats' fit).</summary>
         public static void HatFit(string hat,out float scale,out Vector3 move)
         {
+            if(NativeSleekFace.On){NativeSleekFace.HatFit(hat,out scale,out move);return;} // (the sleek helmet's own: Core/NativeSleekFace.cs)
             int i=Math.Max(0,Array.IndexOf(FitHats,hat));scale=FitScale[i];move=HatPivot*(1-scale)+new Vector3(0,FitLift[i],FitAhead[i]);
         }
         public static Vector3 HatOn(string hat,Vector3 p){HatFit(hat,out float k,out var move);return p*k+move;}

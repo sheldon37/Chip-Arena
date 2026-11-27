@@ -18,10 +18,12 @@ namespace ChipArena.UnityConversion
     public static class NativeHairBank
     {
         public const string Resource="ChipArenaHair";
-        /// <summary>The bank's version: 3, its body (everything after the version) deflated, with pieces that ride the body's own
-        /// bones (the sleek pilot suit's bodysuit, 2026-11-27), the suit's plates and styles of any slot; 2, a hair-only body
-        /// deflated (release 34's); 1, that body as it is. All three are read.</summary>
-        public const int Version=3,HairDeflated=2,Plain=1,MaxBody=64<<20,MaxPlates=64,MaxCovers=16;
+        /// <summary>The bank's version: 4, version 3's whose plates may include the sleek face gear's (named by their gear,
+        /// Core/NativeSleekFace.cs: a number of its own, so a build before them refuses the bank rather than wearing them as suit
+        /// plates); 3, its body (everything after the version) deflated, with pieces that ride the body's own bones (the sleek pilot
+        /// suit's bodysuit, 2026-11-27), the suit's plates and styles of any slot; 2, a hair-only body deflated (release 34's); 1,
+        /// that body as it is. All four are read.</summary>
+        public const int Version=4,Suit=3,HairDeflated=2,Plain=1,MaxBody=64<<20,MaxPlates=64,MaxCovers=16;
         /// <summary>The robot suit's paints a plate's vertex takes (Core/NativeRobotSuit.cs PlatePaint): the shell (the pilot's
         /// body colour), metal, dark metal, the accent's light, its softer light.</summary>
         public const byte PaintShell=0,PaintMetal=1,PaintDark=2,PaintLight=3,PaintSoft=4;
@@ -82,7 +84,7 @@ namespace ChipArena.UnityConversion
             {
                 using var r=new BinaryReader(new MemoryStream(data,false),Encoding.UTF8);
                 if(r.ReadByte()!='H'||r.ReadByte()!='A'||r.ReadByte()!='I'||r.ReadByte()!='R')return null;
-                int version=r.ReadInt32();if(version!=Version&&version!=HairDeflated&&version!=Plain)return null;
+                int version=r.ReadInt32();if(version!=Version&&version!=Suit&&version!=HairDeflated&&version!=Plain)return null;
                 if(version!=Plain)
                 {
                     // the body inflated (no larger than MaxBody), then read
@@ -91,7 +93,7 @@ namespace ChipArena.UnityConversion
                     {
                         var buf=new byte[81920];int n;while((n=z.Read(buf,0,buf.Length))>0){body.Write(buf,0,n);if(body.Length>MaxBody)return null;}
                     }
-                    body.Position=0;using var br=new BinaryReader(body,Encoding.UTF8);return Body(br,version==Version);
+                    body.Position=0;using var br=new BinaryReader(body,Encoding.UTF8);return Body(br,version>=Suit);
                 }
                 return Body(r,false);
             }
@@ -99,7 +101,8 @@ namespace ChipArena.UnityConversion
             catch(InvalidDataException){return null;}
             catch(IOException){return null;}
         }
-        // A bank's body (after its version): version 3's (`full`: pieces on the skeleton, plates, styles of any slot) or the hair's.
+        // A bank's body (after its version): version 3's or 4's (`full`: pieces on the skeleton, plates, styles of any slot) or the
+        // hair's.
         private static Bank Body(BinaryReader r,bool full)
         {
             {

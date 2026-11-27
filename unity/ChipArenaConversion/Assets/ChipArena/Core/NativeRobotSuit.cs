@@ -140,14 +140,19 @@ namespace ChipArena.UnityConversion
             F(4,az,-X-Y+Z,X-Y+Z,X+Y+Z,-X+Y+Z);F(5,-az,-X-Y-Z,-X+Y-Z,X+Y-Z,X-Y-Z);
         }
 
-        /// <summary>The sleek suit's parts: its plates (the bank's, each on its bone, in its paints) beside today's ear modules,
-        /// gauntlets and boots (the hands' and feet's pieces keep theirs).</summary>
+        /// <summary>The sleek suit's parts: its plates (the bank's, each on its bone, in its paints) beside its ear pods (the bank's;
+        /// today's ear modules with an older bank), gauntlets and boots (the hands' and feet's pieces keep theirs).</summary>
         public static SheldonSection[] Build(NativeHairBank.Plate[] plates)
         {
             if(plates==null||plates.Length==0)return Build();
-            var k=new Kit();Ears(k);Gauntlets(k);Boots(k);
+            var k=new Kit();
+            // (The bank's ear pods in place of the ear modules when it carries them; the face gear's plates are its own models:
+            // Core/NativeSleekFace.cs.)
+            if(NativeSleekFace.Has(plates,NativeSleekFace.Ears))NativeSleekFace.Add(k,k.Part("ears",Head),plates,NativeSleekFace.Ears);else Ears(k);
+            Gauntlets(k);Boots(k);
             foreach(var pl in plates)
             {
+                if(NativeSleekFace.IsFace(pl.Name))continue;
                 var s=k.Part(pl.Name,pl.Bone);int n=pl.Paint.Length;
                 for(int i=0;i<n;i++)k.Vertex(s,new Vector3(pl.Positions[i*3],pl.Positions[i*3+1],pl.Positions[i*3+2]),new Vector3(pl.Normals[i*3],pl.Normals[i*3+1],pl.Normals[i*3+2]),PlatePaint(pl.Paint[i]));
                 for(int i=0;i+2<pl.Triangles.Length;i+=3)s.Tri(pl.Triangles[i],pl.Triangles[i+1],pl.Triangles[i+2]);

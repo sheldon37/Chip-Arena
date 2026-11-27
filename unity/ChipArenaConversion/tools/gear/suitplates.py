@@ -67,6 +67,49 @@ def inset(P, d):
     return np.array(out)
 
 
+def folded(R, O):
+    """Whether inset ring R of outline O has crossed over itself somewhere (a segment reversed against the outline's)."""
+    return bool((((np.roll(R, -1, 0) - R) * (np.roll(O, -1, 0) - O)).sum(1) < 0).any())
+
+
+def inside(L, p):
+    """Whether 2D point p is inside polygon L (even-odd)."""
+    x, y = p
+    c = False
+    for i in range(len(L)):
+        (x0, y0), (x1, y1) = L[i - 1], L[i]
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            c = not c
+    return c
+
+
+def grid_fill(L, step=.008):
+    """Points on a grid inside polygon L (half a step or more off its edge) and triangles over L's points and them (indices:
+    L's first, then the grid's), counter-clockwise: the plate's middle laid on its frame point by point, so it follows a curved
+    surface as far as the plate reaches."""
+    from scipy.spatial import Delaunay
+    lo, hi = L.min(0), L.max(0)
+    G = []
+    for x in np.arange(lo[0] + step * .5, hi[0], step):
+        for y in np.arange(lo[1] + step * .5, hi[1], step):
+            if not inside(L, (x, y)):
+                continue
+            e = np.roll(L, -1, 0) - L
+            t = np.clip((((x, y) - L) * e).sum(1) / np.maximum((e * e).sum(1), 1e-12), 0, 1)
+            if np.min(np.linalg.norm(L + e * t[:, None] - (x, y), axis=1)) > step * .5:
+                G.append((x, y))
+    P2 = np.vstack([L, np.array(G).reshape(-1, 2)])
+    T = []
+    for t in Delaunay(P2).simplices:
+        a, b, c = P2[t]
+        if not inside(L, (a + b + c) / 3):
+            continue
+        if (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) < 0:
+            t = t[[0, 2, 1]]
+        T.append(tuple(int(i) for i in t))
+    return np.array(G).reshape(-1, 2), T
+
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # Surfaces to lay outlines on
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -131,10 +174,12 @@ class Part:
 
 
 def plate(part, frame, outline, gap=.003, thick=.007, bevel=.006, rings=5, paint=SHELL, accent=None, accent_inset=.007,
-          accent_w=.004, mirror=False, grooves=()):
+          accent_w=.004, mirror=False, grooves=(), clean=False):
     """A plate on `frame` inside `outline` (2D, metres): its top a stack of rings inset from the outline (the bevel), its wall down
     to the suit, a glowing accent strip along the outline where `accent(point)` holds (inset `accent_inset`), dark grooves
-    (pairs of 2D points) across it. `mirror` flips x (the other side's)."""
+    (pairs of 2D points) across it. `mirror` flips x (the other side's). `clean` stops the inner rings before one folds and fills
+    the middle with a grid (grid_fill: the face gear's, round the head's tighter curves; the suit's plates are as released
+    without it)."""
     O = np.asarray(outline, float)
     if mirror:
         O = O[::-1].copy()
@@ -151,7 +196,7 @@ def plate(part, frame, outline, gap=.003, thick=.007, bevel=.006, rings=5, paint
         d = bevel + k * .012
         R = inset(O, d)
         # stop when the ring folds over itself (its area shrinks to nothing or flips)
-        if signed_area(R) < signed_area(O) * .04 or d > size * .48:
+        if signed_area(R) < signed_area(O) * .04 or d > size * .48 or (clean and folded(R, O)):
             break
         rings2d.append(R)
         heights.append(thick)
@@ -162,19 +207,28 @@ def plate(part, frame, outline, gap=.003, thick=.007, bevel=.006, rings=5, paint
             q, n = frame.place(p[0], p[1], gap + h)
             V.append(q)
             N.append(n)
-    # the top: quads between rings, a fan to the middle
+    # the top: quads between rings, a fan to the middle (clean: a grid over it)
     for i in range(len(rings2d) - 1):
         a, b = i * nr, (i + 1) * nr
         for j in range(nr):
             j2 = (j + 1) % nr
             T += [(a + j, a + j2, b + j), (b + j, a + j2, b + j2)]
-    cq, cn = frame.place(*rings2d[-1].mean(0), gap + thick)
-    V.append(cq)
-    N.append(cn)
-    ci = len(V) - 1
     last = (len(rings2d) - 1) * nr
-    for j in range(nr):
-        T.append((last + j, last + (j + 1) % nr, ci))
+    if clean:
+        G, GT = grid_fill(rings2d[-1])
+        g0 = len(V)
+        for p in G:
+            q, n = frame.place(p[0], p[1], gap + heights[-1])
+            V.append(q)
+            N.append(n)
+        T += [tuple(last + i if i < nr else g0 + i - nr for i in t) for t in GT]
+    else:
+        cq, cn = frame.place(*rings2d[-1].mean(0), gap + thick)
+        V.append(cq)
+        N.append(cn)
+        ci = len(V) - 1
+        for j in range(nr):
+            T.append((last + j, last + (j + 1) % nr, ci))
     top_paint = [paint] * len(V)
     # the outer ring is the rim: dark metal
     for j in range(nr):

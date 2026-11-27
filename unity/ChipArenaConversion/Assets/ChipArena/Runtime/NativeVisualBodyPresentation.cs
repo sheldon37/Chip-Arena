@@ -990,8 +990,9 @@ namespace ChipArena.UnityConversion
                 if(sourceModels.Has(model))sourceModels.Queue(model,gearMatrix,gearBone,null,layer,camera,BodyTint(bodyColor),accent,1,reveal,tint,lit,null,flash);
                 return;
             }
-            if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
-            if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
+            var shell=NativeSleekFace.On?BodyTint(bodyColor):Color.white; // (the sleek mask's and visor's shells in the body colour, as the helmet's)
+            if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,shell,accent,1,reveal,tint,lit,null,flash);
+            if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,shell,accent,1,reveal,tint,lit,null,flash);
         }
 
         // Each renderer's materials with the hologram's after them (extra slots draw the mesh again).
