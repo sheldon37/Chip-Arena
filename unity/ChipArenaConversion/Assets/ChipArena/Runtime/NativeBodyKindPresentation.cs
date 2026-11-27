@@ -263,7 +263,7 @@ namespace ChipArena.UnityConversion
             for(int slot=1;slot<NativeLook.Slots.Length;slot++)
                 foreach(var p in d.pieces)
                 {
-                    if(p?.renderers==null||p.slot!=NativeLook.Slots[slot]||p.id!=NativeRobotSuit.Under[slot])continue;
+                    if(p?.renderers==null||p.slot!=NativeLook.Slots[slot]||p.id!=NativeRobotSuit.UnderOf(slot))continue;
                     foreach(var n in p.renderers)if(grids[slot]==null&&skins.TryGetValue(n,out var skin)&&skin.sharedMesh!=null&&FemaleDeltas(skin.sharedMesh,level,out var at,out var delta))
                         grids[slot]=new FemaleGrid(at,delta,skin.sharedMesh.bindposes,skin.bones);
                 }

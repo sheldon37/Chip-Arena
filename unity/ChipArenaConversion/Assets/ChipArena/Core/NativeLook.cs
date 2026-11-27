@@ -38,9 +38,10 @@ namespace ChipArena.UnityConversion
             // (Below the hair, the pieces after each slot's sixth are drawn by the bake's zombie pieces, Core/NativeWardrobeAliases.cs;
             // owner 2026-11-27: "Lets add more clothes options now". The DEV pieces stay last.)
             new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",
-                "school-jacket","cardigan","henley","dress-shirt","short-shirt","sleeveless-shirt","sweater-vest","suit-jacket","kimono-top",NativeHotDog.Id,NativeSheldonWear.Robe},
+                "school-jacket","cardigan","henley","dress-shirt","short-shirt","sleeveless-shirt","sweater-vest","suit-jacket","kimono-top",
+                "pilot-suit",NativeHotDog.Id,NativeSheldonWear.Robe},
             new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",
-                "capris","dress-pants","long-skirt","shorts","dolphin-shorts",NativeSheldonWear.Pants},
+                "capris","dress-pants","long-skirt","shorts","dolphin-shorts","pilot-suit-legs",NativeSheldonWear.Pants},
             new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
             new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",
                 "flats","socked-flats","heels","loafers","flip-flops",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
@@ -48,9 +49,10 @@ namespace ChipArena.UnityConversion
             new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail","Bob","High ponytail",
                 "Raven spikes","Hero spikes","Wolf cut","Wild mane","Messy crop","Emo fringe","Layered shag","Swept dreads","Short ponytail","Twin tails","Pigtails","Twin buns","Low bun","Hime cut","Long and straight","Long layers","Asymmetric lob"},
             new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater",
-                "School jacket","Cardigan","Henley","Dress shirt","Short-sleeved shirt","Sleeveless shirt","Sweater vest","Suit jacket","Kimono top",NativeHotDog.Label,"Sheldon robe"},
+                "School jacket","Cardigan","Henley","Dress shirt","Short-sleeved shirt","Sleeveless shirt","Sweater vest","Suit jacket","Kimono top",
+                "Pilot suit",NativeHotDog.Label,"Sheldon robe"},
             new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis",
-                "Ripped capris","Dress pants","Long skirt","Shorts","Dolphin shorts","Sheldon pants"},
+                "Ripped capris","Dress pants","Long skirt","Shorts","Dolphin shorts","Pilot suit legs","Sheldon pants"},
             new[]{"Robot gauntlets","Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
             new[]{"Robot boots","Mid-tops","Work boots","Sneakers","Lace-ups",
                 "Ballet flats","Flats and socks","Heels","Loafers","Flip-flops","Sheldon boots","Barefoot"}};

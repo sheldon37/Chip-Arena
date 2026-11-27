@@ -137,3 +137,29 @@ Claude, branch `claude/more-clothes`. Presentation only.
 - **Account:** `NativeLook.ServiceIds` mirrors the service's lists (schema 4, `src/relay/accounts.ts` `LOOK_SLOTS`); below
   `ServiceKeepsNewPieces` (5) a login keeps this PC's pick in any slot whose saved piece is the default. Astra adds the new ids
   to `LOOK_SLOTS` (hair and clothes) and advertises schema 5.
+
+## 5. The sleek pilot suit (owner 2026-11-27: "I think I want an improved design on the standard robot suit as well", then "Sleek pilot suit"; "Ship it")
+
+Claude, branch `claude/sleek-suit`. Presentation only: the robot armour keeps its slots, ids, hit volumes and rules.
+
+- **The bodysuit:** two garments made on the pilot body's own skin (`tools/gear/pilotsuit.py`, from the local tool's bind dump with
+  `bindall=1`): the top (the torso from below the waist, a mock-neck collar, the arms to the wrists) and the legs (the waist to
+  the ankles), held 4 mm off the skin, lined round their openings, skinned with the nearest skin's four weights, carrying the
+  body's nine shapes (so they follow the female body). Raised seams take the pilot's accent colour and its glow: down each
+  side, along each arm and leg, round the collar, cuffs and hems, a chevron across the chest. They are the hair bank's pieces
+  on the body's own bones (`Top.Bank_PilotSuit`, `Bottom.Bank_PilotSuitLegs`, on the bake's sweater's and skinny jeans' materials)
+  and public picks of their own (`pilot-suit` "Pilot suit", `pilot-suit-legs` "Pilot suit legs").
+- **The plates** (`tools/gear/suitplates.py`): designed outlines laid on the bodysuit a few millimetres off it, built as rings
+  inset from the outline (a bevelled edge, a full-thickness middle), their rims dark metal, glowing accent strips inset along
+  chosen edges, dark grooves: two angular chest plates (the suit's chevron glows between them, the chest core in that channel),
+  two tapered abdomen segments, two shoulder-blade plates beside a tapered spine plate with the reactor and its glowing cross,
+  the belt and its buckle, a split collar, two-layer shoulder caps, vambraces with a glowing line, slim thigh plates, knee caps
+  with a light, shin guards with a line. Each rides one of the suit's bones in the body's bind space, as today's plates do; the
+  ear modules, gauntlets and boots stay today's (`NativeRobotSuit.Build(plates)`).
+- **Wearing it:** when the local bank carries the bodysuit and the plates (`NativeRobotSuit.SleekSuit`, set as the bank is read,
+  before any body is dressed), the robot armour and legs are worn over the bodysuit (`NativeRobotSuit.UnderOf`) and draw the new
+  plates; the plates' female fit follows the bodysuit's own shapes (`SuitFemaleEnsure`). The zombies' fallen pilots keep today's
+  garments (`NativeRobotSuit.Under`). The chest core and the wrist device sit as on the sweater (the bodysuit takes its anchors).
+- **The bank's version 3** (`Core/NativeHairBank.cs`, deflated): pieces may ride the body's bones (by name, with their bind poses)
+  and name the bake renderer whose material they take; the suit's plates (bone, positions, normals, a paint a vertex); styles of
+  any slot with the body parts they cover and the top whose gear anchors they take. Versions 1 and 2 are still read.

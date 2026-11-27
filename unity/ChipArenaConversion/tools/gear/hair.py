@@ -463,7 +463,11 @@ def bone_names(piece_name, kind, chains):
     return names, parents, local
 
 
-def write_bank(path, pieces, styles, textures):
+def write_bank(path, pieces, styles, textures, plates=()):
+    """Version 3 (Core/NativeHairBank.cs): textures; pieces (each with the bake renderer whose material it takes, '' for the hair
+    bank's own choice; the body's bones it rides by name with their bind poses, none for a piece on the head alone; its chain
+    bones; its mesh and shapes); the suit's plates (each on a robot suit bone, its paint per vertex); styles (slot, id, pieces,
+    the body parts they cover, the top whose gear anchors they take). The body after the version raw-deflated."""
     out = io.BytesIO()
     out.write(struct.pack('<i', len(textures)))
     for name, data in textures:
@@ -474,6 +478,12 @@ def write_bank(path, pieces, styles, textures):
     for p in pieces:
         s_str(out, p['renderer'])
         out.write(struct.pack('<ifB', p['texture'], p['cutoff'], p['cull']))
+        s_str(out, p.get('material', ''))
+        skel = p.get('skel', [])
+        out.write(struct.pack('<i', len(skel)))
+        for name, m in skel:
+            s_str(out, name)
+            out.write(np.asarray(m, '<f4').reshape(16).tobytes())
         out.write(struct.pack('<i', len(p['bones'][0])))   # (bones: names, parents, offsets)
         for name, parent, loc in zip(*p['bones']):
             s_str(out, name)
@@ -496,15 +506,33 @@ def write_bank(path, pieces, styles, textures):
             out.write(struct.pack('<i', len(nz)))
             out.write(nz.astype('<i4').tobytes())
             out.write(np.asarray(dv[nz], '<f4').tobytes())
+    out.write(struct.pack('<i', len(plates)))
+    for pl in plates:
+        s_str(out, pl['name'])
+        out.write(struct.pack('<i', pl['bone']))
+        out.write(struct.pack('<i', len(pl['V'])))
+        out.write(np.asarray(pl['V'], '<f4').tobytes())
+        out.write(np.asarray(pl['N'], '<f4').tobytes())
+        out.write(np.asarray(pl['P'], np.uint8).tobytes())
+        tris = np.asarray(pl['T'], '<i4').reshape(-1)
+        out.write(struct.pack('<i', len(tris)))
+        out.write(tris.tobytes())
     out.write(struct.pack('<i', len(styles)))
-    for sid, idxs in styles:
+    for st in styles:
+        slot, sid, idxs = st[0], st[1], st[2]
+        covers, anchors = (st[3], st[4]) if len(st) > 3 else ([], '')
+        s_str(out, slot)
         s_str(out, sid)
         out.write(struct.pack('<i', len(idxs)))
         for i in idxs:
             out.write(struct.pack('<i', i))
-    # version 2: the body deflated (raw deflate, as System.IO.Compression.DeflateStream reads it)
+        out.write(struct.pack('<i', len(covers)))
+        for c in covers:
+            s_str(out, c)
+        s_str(out, anchors)
+    # version 3: the body deflated (raw deflate, as System.IO.Compression.DeflateStream reads it)
     z = zlib.compressobj(9, zlib.DEFLATED, -15)
-    data = b'HAIR' + struct.pack('<i', 2) + z.compress(out.getvalue()) + z.flush()
+    data = b'HAIR' + struct.pack('<i', 3) + z.compress(out.getvalue()) + z.flush()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as fh:
         fh.write(data)
@@ -567,6 +595,39 @@ def generated_piece(name, head, cap):
     return renderer, p, gchains, (bi, bw), (names, parents, local)
 
 
+# The sleek pilot suit (pilotsuit.py, suitplates.py): its two bodysuit pieces as styles of the top and bottoms slots (Core/NativeLook
+# pilot-suit, pilot-suit-legs: the robot armour's garments since 2026-11-27, NativeRobotSuit.UnderOf), and its plates.
+SUIT_STYLES = [('upper', 'pilot-suit', 'Top.Bank_PilotSuit', 'Top.Top_SimpleSweater', ['chest', 'back', 'shoulders', 'upperarms', 'lowerarms', 'waist'], 'sweater'),
+               ('lower', 'pilot-suit-legs', 'Bottom.Bank_PilotSuitLegs', 'Bottom.Bottom_SkinnyJeans', ['hips', 'upperlegs', 'lowerlegs'], '')]
+
+
+def suit(dump, textures):
+    import pilotsuit
+    import suitplates
+    body, made = pilotsuit.build(dump)
+    plates = suitplates.build(body, *pilotsuit.build.surfaces)
+    textures.append(('pilot-suit', pilotsuit.fabric_png()))
+    tex = len(textures) - 1
+    out = []
+    for slot, sid, renderer, material, covers, anchors in SUIT_STYLES:
+        g = next(m for m in made if m['renderer'] == renderer)
+        V = g['V']
+        bones = sorted({b for row in g['W'] for b, _ in row})
+        bi = np.zeros((len(V), 4), np.int64)
+        bw = np.zeros((len(V), 4))
+        for i, row in enumerate(g['W']):
+            for k, (b, w) in enumerate(row[:4]):
+                bi[i, k] = bones.index(b)
+                bw[i, k] = w
+        bw /= bw.sum(1, keepdims=True)
+        N = pilotsuit.G.normals(V, g['F'])
+        shapes = [('Shape_' + k, g['S'][k]) for k in pilotsuit.SHAPES if np.abs(g['S'][k]).max() > 1e-6]
+        rec = dict(renderer=renderer, texture=tex, cutoff=.5, cull=2, material=material, skel=[(b, body.bindposes[b]) for b in bones],
+                   bones=([], [], []), v=V, n=N, uv=g['uv'], c=np.tile([1., 0, 0, 1], (len(V), 1)), bi=bi, bw=bw, tris=g['F'], shapes=shapes)
+        out.append((slot, sid, rec, covers, anchors))
+    return out, plates
+
+
 def renderer_name(piece_name):
     side, short = piece_name.split('_', 1)
     return '%s.Bank_%s' % (side, short)
@@ -579,6 +640,7 @@ def main():
     ap.add_argument('--preview', help='writes each piece rest and swung as OBJ with its chains, for preview renders')
     ap.add_argument('--only', help='style ids')
     ap.add_argument('--pack', help='the LocalAssets folder with the pack (default: --out)')
+    ap.add_argument('--suit', help='the pilot body\'s bind dump: adds the sleek pilot suit (its bodysuit and plates)')
     a = ap.parse_args()
     head = Head(a.dump)
     only = set(a.only.split(',')) if a.only else None
@@ -618,9 +680,17 @@ def main():
                           len(set(c.group for c in chains)), int((info['loose'] > .5).sum()), len(p.v)))
             if a.preview:
                 preview(a.preview, name, p, chains, bi, bw)
-    style_rows = [(sid, [index[(n, k)] for n, k in parts]) for sid, parts in styles]
+    style_rows = [('hair', sid, [index[(n, k)] for n, k in parts]) for sid, parts in styles]
+    plates = []
+    if a.suit:
+        suit_pieces, plates = suit(a.suit, textures)
+        for slot, sid, rec, covers, anchors in suit_pieces:
+            style_rows.append((slot, sid, [len(pieces)], covers, anchors))
+            pieces.append(rec)
+            report.append('%-30s suit %s %d vertices, %d bones' % (rec['renderer'], sid, len(rec['v']), len(rec['skel'])))
+        report.append('suit plates: %d parts, %d vertices' % (len(plates), sum(len(p['V']) for p in plates)))
     path = os.path.join(a.out, RESOURCES, BANK + '.bytes')
-    size = write_bank(path, pieces, style_rows, textures)
+    size = write_bank(path, pieces, style_rows, textures, plates)
     print('\n'.join(report))
     print('bank %s: %d styles, %d pieces, %d textures, %d bytes' % (path, len(style_rows), len(pieces), len(textures), size))
 

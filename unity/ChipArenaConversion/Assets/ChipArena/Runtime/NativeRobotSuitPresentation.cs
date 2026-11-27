@@ -24,7 +24,8 @@ namespace ChipArena.UnityConversion
         // The suit's parts, each vertex moved by `carry` (its suit bone, its position: where it goes) when given.
         private static Part[] SuitParts(Material material,Func<int,Vector3,Vector3> carry)
         {
-            var sections=NativeRobotSuit.Build();var parts=new Part[sections.Length];
+            // (The sleek suit's plates when the local hair bank carries them: Core/NativeRobotSuit.cs Build(plates).)
+            var plates=ArenaPresentation.HairBank()?.Plates;var sections=NativeRobotSuit.SleekSuit?NativeRobotSuit.Build(plates):NativeRobotSuit.Build();var parts=new Part[sections.Length];
             for(int p=0;p<sections.Length;p++)
             {
                 var s=sections[p];int n=s.Positions.Count;var vertices=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var emission=new List<Vector4>(n);
