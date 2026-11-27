@@ -41,9 +41,9 @@ namespace ChipArena.UnityConversion
             var pieces=new List<LookPiece>(d.pieces);
             foreach(var pair in NativeWardrobeAliases.Pairs)
             {
-                LookPiece from=null;bool known=false;
-                foreach(var p in d.pieces)if(p!=null&&p.slot==pair[0]){if(p.id==pair[2])from=p;if(p.id==pair[1])known=true;}
-                if(from==null||known)continue;
+                LookPiece from=null;bool listed=false;
+                foreach(var p in d.pieces)if(p!=null&&p.slot==pair[0]){if(p.id==pair[2])from=p;if(p.id==pair[1])listed=true;}
+                if(from==null||listed)continue;
                 pieces.Add(new LookPiece{slot=pair[0],id=pair[1],renderers=from.renderers,covers=from.covers,tags=from.tags,lift=from.lift});
                 if(pair[0]==NativeLook.Upper&&d.anchors!=null)
                 {
