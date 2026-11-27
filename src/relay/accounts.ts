@@ -40,11 +40,15 @@ function weaponSkinMap(raw:unknown,developer=false){
 }
 // Mirrors NativeLook's canonical order and defaults. Outfit selections never affect gameplay.
 const LOOK_SLOTS:Record<string,string[]>={
- hair:['spiky','wild','side-swept','tied-back','fringe-tail','bob','high-ponytail'],
- upper:['robot-armour','open-hoodie','hard-jacket','hoodie','tee','tank','sweater','hot-dog','sheldon-robe'],
- lower:['robot-legs','belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis','sheldon-pants'],
+ hair:['spiky','wild','side-swept','tied-back','fringe-tail','bob','high-ponytail',
+  'raven-spikes','hero-spikes','wolf','mane','messy','emo','shag','dreads','short-pony','twin-tails','pigtails','twin-buns','bun','hime','long-straight','shoujo','lob'],
+ upper:['robot-armour','open-hoodie','hard-jacket','hoodie','tee','tank','sweater',
+  'school-jacket','cardigan','henley','dress-shirt','short-shirt','sleeveless-shirt','sweater-vest','suit-jacket','kimono-top','pilot-suit','hot-dog','sheldon-robe'],
+ lower:['robot-legs','belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis',
+  'capris','dress-pants','long-skirt','shorts','dolphin-shorts','pilot-suit-legs','sheldon-pants'],
  hands:['robot-gauntlets','fingerless','gloves','arm-bands','sweat-bands','bare'],
- feet:['robot-boots','mid-tops','work-boots','sneakers','lace-ups','sheldon-boots','barefoot'],
+ feet:['robot-boots','mid-tops','work-boots','sneakers','lace-ups',
+  'flats','socked-flats','heels','loafers','flip-flops','sheldon-boots','barefoot'],
  body:['male','female'],
  costume:['none','voxel']};
 const DEV_LOOK=new Set(['hot-dog','sheldon-robe','sheldon-pants','sheldon-boots','barefoot']);
@@ -75,7 +79,7 @@ function accountCosmetics(raw:any,a:Access){
  return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&canUse(a,'weapon:cyberlord')?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponTechniques:weaponTechniqueMap(raw?.weaponTechniques),weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),pod:podLook(raw?.pod),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
 }
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
-function view(row:any){return {id:row.id,username:row.username,profileSchema:4,bossClears:row.boss_clears??0,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
+function view(row:any){return {id:row.id,username:row.username,profileSchema:5,bossClears:row.boss_clears??0,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
 async function sign(row:any,env:AuthEnv,now:number){const payload=base64url(encoder.encode(JSON.stringify({kind:'chip-arena-player',user:row.username,...access(row),iat:now,exp:now+GAME_CLAIM_MS}))),key=await crypto.subtle.importKey('jwk',JSON.parse(env.DEV_SIGNING_KEY!),{name:'ECDSA',namedCurve:'P-256'},false,['sign']);return payload+'.'+base64url(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,encoder.encode(payload)));}
 async function rate(request:Request,env:AuthEnv,now:number,username:string,action:string){const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');const sensitive=['login','register','recover'].includes(action);const identity=sensitive?username:await digest(request.headers.get('authorization')||ip);for(const [label,limit,window] of [[`account-ip:${sensitive?'auth':'api'}:${ip}`,sensitive?12:180,60000],[`account-user:${identity}:${action}`,sensitive?15:100,300000]] as const){const key=label+':'+Math.floor(now/window);const r=await env.DB.batch([env.DB.prepare('INSERT INTO dev_login_rates(id,hits,expires) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET hits=hits+1').bind(key,now+window*2),env.DB.prepare('SELECT hits FROM dev_login_rates WHERE id=?').bind(key)]);if(r[1].results[0].hits>limit)throw fail('Too many requests. Try again in a few minutes.',429);}}
 async function readBody(request:Request){if(request.method==='GET')return {};if(!request.headers.get('content-type')?.includes('application/json'))throw fail('Expected JSON.',415);const reader=request.body?.getReader();if(!reader)throw fail('Missing request.');let size=0,text='';const decoder=new TextDecoder();while(true){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>8192){await reader.cancel();throw fail('Request too large.',413);}text+=decoder.decode(r.value,{stream:true});}try{const value=JSON.parse(text+decoder.decode());if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw fail('Invalid request.');}}
