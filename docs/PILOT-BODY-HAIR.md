@@ -120,3 +120,20 @@ reach, shot origins, movement, timing and network messages; no rule reads it.
 - **Account:** the service lists the first seven hair ids (schema 4). Until it lists the bank's (Astra: `src/relay/accounts.ts`
   `LOOK_SLOTS`, then `NativeLook.ServiceKeepsNewPieces`), a login keeps this PC's pick while the account's look has the default
   hair. Peers on this client draw the style; older clients draw the default hair.
+
+## 4. More clothes (owner 2026-11-27: "Lets add more clothes options now")
+
+Claude, branch `claude/more-clothes`. Presentation only.
+
+- **Nineteen pieces the bake already carries** (for the zombies, `Core/NativeZombieLooks.cs`) are now the pilot's too
+  (`Core/NativeWardrobeAliases.cs`): tops School jacket, Cardigan, Henley, Dress shirt, Short-sleeved shirt, Sleeveless shirt,
+  Sweater vest, Suit jacket, Kimono top; bottoms Ripped capris, Dress pants, Long skirt, Shorts, Dolphin shorts; shoes Ballet
+  flats, Flats and socks, Heels, Loafers, Flip-flops. Each pilot id joins the look data as a copy of its zombie piece (renderers,
+  covers, tags, the shoes' lift, and a top's gear anchors with every hands), so dressing, the Locker, the female body's shapes and
+  the gear placement treat it as the bake's own. Left out: the tube top (no mesh in the bake) and the bib overalls (they cover the
+  legs and would clash with every pair of trousers).
+- **Order:** the new ids come after each slot's first seven and before its DEV pieces (the Locker trims DEV pieces from the end).
+- **A piece the bake lacks** draws its slot's default (the hair's) or the robot piece's garment, never a bare body.
+- **Account:** `NativeLook.ServiceIds` mirrors the service's lists (schema 4, `src/relay/accounts.ts` `LOOK_SLOTS`); below
+  `ServiceKeepsNewPieces` (5) a login keeps this PC's pick in any slot whose saved piece is the default. Astra adds the new ids
+  to `LOOK_SLOTS` (hair and clothes) and advertises schema 5.
