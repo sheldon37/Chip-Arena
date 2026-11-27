@@ -47,21 +47,21 @@ internal static class HairBankChecks
 
         // ---- the hair ids ----
         var hair=NativeLook.Ids[0];var labels=NativeLook.Labels[0];
-        Check(hair.Length==labels.Length&&hair.Length>=NativeLook.ServiceKnownHair+16,"the new styles listed with labels");
-        Check(string.Join(",",hair,0,NativeLook.ServiceKnownHair)=="spiky,wild,side-swept,tied-back,fringe-tail,bob,high-ponytail","the service's seven first, unchanged");
+        Check(hair.Length==labels.Length&&hair.Length>=NativeLook.ServiceIds[0].Length+16,"the new styles listed with labels");
+        Check(string.Join(",",hair,0,NativeLook.ServiceIds[0].Length)=="spiky,wild,side-swept,tied-back,fringe-tail,bob,high-ponytail","the service's seven first, unchanged");
         Check(new HashSet<string>(hair).Count==hair.Length,"no id twice");
-        foreach(var id in new[]{"raven-spikes","wolf","mane","twin-tails","hime","long-straight","lob"})Check(Array.IndexOf(hair,id)>=NativeLook.ServiceKnownHair,"listed: "+id);
+        foreach(var id in new[]{"raven-spikes","wolf","mane","twin-tails","hime","long-straight","lob"})Check(Array.IndexOf(hair,id)>=NativeLook.ServiceIds[0].Length,"listed: "+id);
         Check(NativeLook.Normalize("hair:raven-spikes,body:female")=="hair:raven-spikes,body:female"&&NativeLook.Gate("hair:twin-tails",false)=="hair:twin-tails","a new style is a public pick");
         // the account service drops an id it does not list: this PC's pick stays while the account's look has the default hair
         Check(NativeLook.KeepSkin("","hair:raven-spikes,skin:c48a62",4)=="hair:raven-spikes,skin:c48a62","schema 4 keeps this PC's new style");
         Check(NativeLook.KeepSkin("hair:bob","hair:raven-spikes",4)=="hair:bob","the account's own pick wins");
-        Check(NativeLook.KeepSkin("","hair:raven-spikes",NativeLook.ServiceKeepsHairStyles)=="","a service that keeps them is the truth");
+        Check(NativeLook.KeepSkin("","hair:raven-spikes",NativeLook.ServiceKeepsNewPieces)=="","a service that keeps them is the truth");
         Check(NativeLook.KeepSkin("","hair:bob",4)=="","the service's seven are its own from schema 4");
 
         // ---- the presentation (source) ----
         string Src(string rel)=>File.ReadAllText(Path.Combine(root,rel));
         var pres=Src("Assets/ChipArena/Runtime/NativeHairBankPresentation.cs");var body=Src("Assets/ChipArena/Runtime/NativeVisualBodyPresentation.cs");
-        Check(body.Contains("if(lookState>0)VisualLookAddHair(lookData);"),"the bank's styles join the look data when it is read");
+        Check(body.Contains("if(lookState>0)VisualLookAddPieces(lookData);"),"the bank's styles join the look data when it is read");
         int dress=body.IndexOf("private static void VisualDress(",StringComparison.Ordinal),built=body.IndexOf("VisualHairBankDress(root,look);",dress,StringComparison.Ordinal),named=body.IndexOf("lookNamed.Clear();foreach(var r in root.GetComponentsInChildren<Renderer>(true))lookNamed[r.name]=r;",dress,StringComparison.Ordinal);
         Check(dress>0&&built>dress&&named>built,"the worn style is built before the dressing reads the instance");
         Check(pres.Contains("Resources.Load<TextAsset>(NativeHairBank.Resource)")&&pres.Contains("NativeHairBank.Read(text.bytes)"),"the bank is the local resource, read by the Core reader");
@@ -76,7 +76,7 @@ internal static class HairBankChecks
         foreach(var line in tool.Split('\n'))
         {
             var t=line.Trim();if(!t.StartsWith("('",StringComparison.Ordinal)||!t.Contains(", [('"))continue;
-            var id=t.Substring(2,t.IndexOf('\'',2)-2);Check(Array.IndexOf(hair,id)>=NativeLook.ServiceKnownHair,"the tool's style is a listed id: "+id);
+            var id=t.Substring(2,t.IndexOf('\'',2)-2);Check(Array.IndexOf(hair,id)>=NativeLook.ServiceIds[0].Length,"the tool's style is a listed id: "+id);
         }
         Console.WriteLine("PASS hair bank");
     }

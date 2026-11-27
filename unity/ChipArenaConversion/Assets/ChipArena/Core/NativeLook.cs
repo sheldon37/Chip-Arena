@@ -35,17 +35,25 @@ namespace ChipArena.UnityConversion
                 // The hair bank's (Core/NativeHairBank.cs; owner 2026-11-26: "a lot more hairstyles, some anime ones as well ... For
                 // both male and female"): listed once the bank carries them (ArenaPresentation.VisualLookHas), every one on either body.
                 "raven-spikes","hero-spikes","wolf","mane","messy","emo","shag","dreads","short-pony","twin-tails","pigtails","twin-buns","bun","hime","long-straight","shoujo","lob"},
-            new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeHotDog.Id,NativeSheldonWear.Robe},
-            new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
+            // (Below the hair, the pieces after each slot's sixth are drawn by the bake's zombie pieces, Core/NativeWardrobeAliases.cs;
+            // owner 2026-11-27: "Lets add more clothes options now". The DEV pieces stay last.)
+            new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",
+                "school-jacket","cardigan","henley","dress-shirt","short-shirt","sleeveless-shirt","sweater-vest","suit-jacket","kimono-top",NativeHotDog.Id,NativeSheldonWear.Robe},
+            new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",
+                "capris","dress-pants","long-skirt","shorts","dolphin-shorts",NativeSheldonWear.Pants},
             new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
-            new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
+            new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",
+                "flats","socked-flats","heels","loafers","flip-flops",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
         public static readonly string[][] Labels={
             new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail","Bob","High ponytail",
                 "Raven spikes","Hero spikes","Wolf cut","Wild mane","Messy crop","Emo fringe","Layered shag","Swept dreads","Short ponytail","Twin tails","Pigtails","Twin buns","Low bun","Hime cut","Long and straight","Long layers","Asymmetric lob"},
-            new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater",NativeHotDog.Label,"Sheldon robe"},
-            new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
+            new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater",
+                "School jacket","Cardigan","Henley","Dress shirt","Short-sleeved shirt","Sleeveless shirt","Sweater vest","Suit jacket","Kimono top",NativeHotDog.Label,"Sheldon robe"},
+            new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis",
+                "Ripped capris","Dress pants","Long skirt","Shorts","Dolphin shorts","Sheldon pants"},
             new[]{"Robot gauntlets","Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
-            new[]{"Robot boots","Mid-tops","Work boots","Sneakers","Lace-ups","Sheldon boots","Barefoot"}};
+            new[]{"Robot boots","Mid-tops","Work boots","Sneakers","Lace-ups",
+                "Ballet flats","Flats and socks","Heels","Loafers","Flip-flops","Sheldon boots","Barefoot"}};
         /// <summary>The concept's outfit (the open hoodie, belted pants, fingerless gloves and mid-tops; the bake's rest pieces),
         /// for the bodies that keep their own clothes (the menu rooftop's crowd).</summary>
         public const string Concept="upper:open-hoodie,lower:belted-pants,hands:fingerless,feet:mid-tops";
@@ -183,12 +191,18 @@ namespace ChipArena.UnityConversion
         /// PC sticks).</summary>
         public const int ServiceKeepsCostume=3;
         public const int ServiceKeepsLook=4;
-        /// <summary>The account service's profile schema from which it keeps the hair bank's styles (the hair ids from
-        /// ServiceKnownHair on; Astra's part: src/relay/accounts.ts LOOK_SLOTS lists them). Below it the Worker drops them, so a
-        /// login keeps this PC's pick while the account's saved look has the default hair.</summary>
-        public const int ServiceKeepsHairStyles=5;
-        /// <summary>The hair ids the account service already lists (schema 4): Spiky to High ponytail.</summary>
-        public const int ServiceKnownHair=7;
+        /// <summary>The account service's profile schema from which it keeps every id in Ids (the hair bank's styles of
+        /// 2026-11-26 and the clothes of 2026-11-27; Astra's part: src/relay/accounts.ts LOOK_SLOTS lists them). Below it the
+        /// Worker drops an id it does not list (ServiceIds), so a login keeps this PC's pick while the account's saved look has
+        /// that slot's default.</summary>
+        public const int ServiceKeepsNewPieces=5;
+        /// <summary>The ids the account service lists at schema 4 (src/relay/accounts.ts LOOK_SLOTS), Slots order.</summary>
+        public static readonly string[][] ServiceIds={
+            new[]{"spiky","wild","side-swept","tied-back","fringe-tail","bob","high-ponytail"},
+            new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater","hot-dog","sheldon-robe"},
+            new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis","sheldon-pants"},
+            new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
+            new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups","sheldon-boots","barefoot"}};
         /// <summary>An account's map `saved` with this PC's skin tone when it carries none. Until the account Worker keeps the
         /// skin entry (Astra's part: src/relay/accounts.ts drops keys it does not know) a signed-in pilot would otherwise lose
         /// the tone on every load. Once it does, a saved map without one means DEFAULT and this can go.</summary>
@@ -207,7 +221,8 @@ namespace ChipArena.UnityConversion
                 string hair=Of(local,Hair);
                 if((hair=="bob"||hair=="high-ponytail")&&Index(saved,Hair)==0)saved=With(saved,Hair,hair);
             }
-            if(profileSchema<ServiceKeepsHairStyles&&Index(local,Hair)>=ServiceKnownHair&&Index(saved,Hair)==0)saved=With(saved,Hair,Of(local,Hair));
+            if(profileSchema<ServiceKeepsNewPieces)
+                for(int s=0;s<Slots.Length;s++){string mine=Of(local,Slots[s]);if(Array.IndexOf(ServiceIds[s],mine)<0&&Index(saved,Slots[s])==0)saved=With(saved,Slots[s],mine);}
             if(profileSchema<ServiceKeepsCostume)
             {
                 // (The Hot Dog likewise: the Worker drops an id it does not list, until it lists this one. The slot's pick, not

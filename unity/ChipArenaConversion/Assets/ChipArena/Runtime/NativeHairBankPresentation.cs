@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     // The hair bank's styles on the model (Core/NativeHairBank.cs; owner 2026-11-26: "Lets add a lot more hairstyles, some anime
     // ones as well ... Add magica cloth into these to simulate hair movement realistically"; docs/PILOT-BODY-HAIR.md section 3).
-    // The bank's styles join the bake's look data as hair pieces (VisualLookAddHair: so the Locker lists them, VisualDress turns
+    // The bank's styles join the bake's look data as hair pieces (VisualLookAddPieces: so the Locker lists them, VisualDress turns
     // them on and off by name, and their tag shapes tuck under headgear as the bake's own hair does). When a body is dressed in
     // one (VisualHairBankDress, before VisualDress reads the instance), each of its pieces is built on the body: a skinned
     // renderer named as the bank names it ("HairBack.Bank_..."), on the head and on its chains, new bones under the head at
@@ -31,12 +31,30 @@ namespace ChipArena.UnityConversion
             }
             return hairBankState>0?hairBank:null;
         }
-        // The bank's styles as hair pieces of the look data (`d`, just read), after the bake's own (a style the bake already has
-        // keeps the bake's), and each bank piece's tag shapes.
-        private static void VisualLookAddHair(LookData d)
+        // The look data (`d`, just read) with the pilot's pieces the bake draws under another id (Core/NativeWardrobeAliases.cs:
+        // the zombies' clothes, each its piece's renderers, covers, tags and shoes' lift, and its gear anchors with every hands),
+        // then the bank's styles as hair pieces after the bake's own (a style the bake already has keeps the bake's), and each
+        // bank piece's tag shapes.
+        private static void VisualLookAddPieces(LookData d)
         {
-            var bank=HairBank();if(bank==null||d?.pieces==null)return;
-            var pieces=new List<LookPiece>(d.pieces);var shapes=new List<LookShape>(d.shapes??Array.Empty<LookShape>());
+            if(d?.pieces==null)return;
+            var pieces=new List<LookPiece>(d.pieces);
+            foreach(var pair in NativeWardrobeAliases.Pairs)
+            {
+                LookPiece from=null;bool listed=false;
+                foreach(var p in d.pieces)if(p!=null&&p.slot==pair[0]){if(p.id==pair[2])from=p;if(p.id==pair[1])listed=true;}
+                if(from==null||listed)continue;
+                pieces.Add(new LookPiece{slot=pair[0],id=pair[1],renderers=from.renderers,covers=from.covers,tags=from.tags,lift=from.lift});
+                if(pair[0]==NativeLook.Upper&&d.anchors!=null)
+                {
+                    var anchors=new List<LookAnchor>(d.anchors);
+                    foreach(var a in d.anchors)if(a!=null&&a.upper==pair[2])anchors.Add(new LookAnchor{upper=pair[1],hands=a.hands,core=a.core,device=a.device,emblem=a.emblem,radius=a.radius});
+                    d.anchors=anchors.ToArray();
+                }
+            }
+            d.pieces=pieces.ToArray();
+            var bank=HairBank();if(bank==null)return;
+            var shapes=new List<LookShape>(d.shapes??Array.Empty<LookShape>());
             var known=new HashSet<string>(StringComparer.Ordinal);foreach(var p in d.pieces)if(p!=null&&p.slot==NativeLook.Hair)known.Add(p.id);
             foreach(var id in bank.StyleOrder)
             {
