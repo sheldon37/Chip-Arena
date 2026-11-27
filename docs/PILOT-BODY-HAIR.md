@@ -81,3 +81,42 @@ account load on another PC brings back today's pilot. Astra's needs are in DEV_L
 - **Until the ids land:** a look naming a hairstyle the bake lacks draws the default hair, and the Locker lists a hairstyle
   only once the bake carries it. `ArenaPresentation.HairPreview` (set only by the local capture tool) dresses every model body
   in a baked hair piece for filming.
+
+## 3. The hair bank (owner 2026-11-26: "a lot more hairstyles, some anime ones as well ... Add magica cloth into these")
+
+Claude, branch `claude/hair-styles`. Presentation only, like sections 1 and 2: every hairstyle keeps the same hit volumes,
+reach, shot origins, movement, timing and network messages; no rule reads it.
+
+- **Why a bank:** the pack's hair pieces carry one short bone chain for the whole mass (or none: MessyHair, PineappleCut, ShotaCut,
+  TiedBun, TwinBuns, ShinryuCut), so cloth on them swings the back of the hair as one block. The bank rebuilds each piece with
+  many chains, one per lock or per sector of a curtain, for motion that reads as hair.
+- **Styles** (`Core/NativeLook.cs` hair ids after the service's seven, every one on either body): two generated anime styles,
+  `raven-spikes` (broad spikes leaving the scalp along it and flaring up and back in layers, short ones over the ears and nape,
+  two long bangs framing the face to the jaw, three over the brow) and `hero-spikes` (spikes standing up and out all round the
+  crown, three broad bangs over the brow), both on the pack's ShotaCut cap; and fifteen from the pack's pieces: `wolf`, `mane`,
+  `messy`, `emo`, `shag`, `dreads`, `short-pony`, `twin-tails`, `pigtails`, `twin-buns`, `bun`, `hime`, `long-straight`, `shoujo`,
+  `lob` (pieces: `tools/gear/hair.py` STYLES). The generated styles are original designs in the requested spirit, not a copy of
+  any character.
+- **The bank** (`Resources/ChipArenaHair.bytes`, local: made from the licensed pack's meshes; shipped in the licensed-assets zip
+  like the bake): textures (each piece's used 512 px block of its pack texture at 256 px, or the generated locks' colour-weight
+  gradient), pieces (renderer name, mesh in the head bone's frame, chain bones, four weights a vertex, tag shapes) and styles.
+  `Core/NativeHairBank.cs` reads it and refuses a malformed one whole; `tools/gear/hair.py` writes it from the local hair lab's
+  dump of the pack pieces (Unity's import, so the game's frame and vertex order).
+- **Chains:** a vertex's looseness is how far it stands off the head (2 to 5 cm) or the pack's own chain weights, whichever is
+  more; its flow is the distance over the hair's own surface from where it leaves the scalp. A chain sits in each 20 degree slot
+  round the head that holds enough loose hair, its joints every ~3.5 cm of flow in the middle of the hair's thickness; slots
+  next to each other are one mass, their chains ordered round the head. Weights: the fixed part on the head (never on a chain's
+  root: the cloth turns a root toward its next joint, which swung the crown off the scalp in the first test), the loose part
+  between the two nearest chains and the two joints either side of its flow. Generated locks are each their own chain.
+- **Cloth (the local bridge):** a bank chain root is named `Hair_B<kind><group>_...`; the bridge makes one BoneCloth per piece
+  and group, tuned by kind: `S` spikes hold their shape (gravity 1.2, restoration .65, a 22 degree limit), `L` locks and bangs
+  sway and settle, `F` a free fall, `C` a curtain whose chains are one sheet (sequential non-loop mesh), `T` a tied tail with the
+  ponytail's long recovery. Buns and the short cap ride the head whole.
+- **On the body:** the bank's styles join the bake's look data (so the Locker lists them, `VisualDress` turns them on by name and
+  their tag shapes tuck under headgear); a body dressed in one gets its pieces built on the head before dressing
+  (`Runtime/NativeHairBankPresentation.cs`), and the cloth bridge attaches after dressing as for the bake's hair. Meshes,
+  textures and materials are made once and shared; the material is the bake's hair material (the pilot's hair colour) on the
+  piece's own texture.
+- **Account:** the service lists the first seven hair ids (schema 4). Until it lists the bank's (Astra: `src/relay/accounts.ts`
+  `LOOK_SLOTS`, then `NativeLook.ServiceKeepsHairStyles`), a login keeps this PC's pick while the account's look has the default
+  hair. Peers on this client draw the style; older clients draw the default hair.
