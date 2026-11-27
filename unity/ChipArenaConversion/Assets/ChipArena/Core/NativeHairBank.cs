@@ -18,9 +18,13 @@ namespace ChipArena.UnityConversion
     public static class NativeHairBank
     {
         public const string Resource="ChipArenaHair";
-        /// <summary>The bank's version: 2, its body (everything after the version) deflated (raw deflate; a bank's meshes are about
-        /// half their size so); 1, the same body as it is (still read).</summary>
-        public const int Version=2,Plain=1,MaxBody=64<<20;
+        /// <summary>The bank's version: 3, its body (everything after the version) deflated, with pieces that ride the body's own
+        /// bones (the sleek pilot suit's bodysuit, 2026-11-27), the suit's plates and styles of any slot; 2, a hair-only body
+        /// deflated (release 34's); 1, that body as it is. All three are read.</summary>
+        public const int Version=3,HairDeflated=2,Plain=1,MaxBody=64<<20,MaxPlates=64,MaxCovers=16;
+        /// <summary>The robot suit's paints a plate's vertex takes (Core/NativeRobotSuit.cs PlatePaint): the shell (the pilot's
+        /// body colour), metal, dark metal, the accent's light, its softer light.</summary>
+        public const byte PaintShell=0,PaintMetal=1,PaintDark=2,PaintLight=3,PaintSoft=4;
         /// <summary>Limits the reader holds a bank to (a malformed or hostile file is refused whole).</summary>
         public const int MaxTextures=64,MaxPieces=128,MaxBones=255,MaxVertices=65535,MaxIndices=600000,MaxShapes=16,MaxStyles=128,MaxString=128,MaxTextureBytes=4<<20;
         /// <summary>The cloth kinds a chain's root name carries (its seventh character): stiff spikes that spring back, medium
@@ -34,8 +38,17 @@ namespace ChipArena.UnityConversion
         public sealed class Piece
         {
             public string Renderer;public int Texture;public float Cutoff;public byte Cull;public Bone[] Bones;
+            /// <summary>The bake's renderer whose material it takes (its palette), or "" (the hair's own choice: Runtime
+            /// NativeHairBankPresentation.cs).</summary>
+            public string MaterialFrom="";
+            /// <summary>The body's own bones it rides, by name, each with its bind pose (16 floats a bone, row by row); none for a
+            /// piece on the head alone (its bone 0 the head, its bind pose the identity).</summary>
+            public string[] Skeleton=Array.Empty<string>();public float[] SkeletonBind=Array.Empty<float>();
+            /// <summary>Whether its bone indices start with Skeleton (else bone 0 is the head).</summary>
+            public bool OnSkeleton=>Skeleton.Length>0;
             public int VertexCount;public float[] Positions,Normals,Uvs;public byte[] Colors;
-            /// <summary>Four per vertex: bone 0 the head, k the bank bone k-1; weights summing to one.</summary>
+            /// <summary>Four per vertex: on the skeleton, its bones in order then its bank bones; else bone 0 the head, k the bank
+            /// bone k-1; weights summing to one.</summary>
             public byte[] BoneIndex;public float[] BoneWeight;
             public int[] Triangles;public Shape[] Shapes;
             /// <summary>Each bank bone's point in the head's frame (the sum of its own and its parents' offsets).</summary>
@@ -45,12 +58,19 @@ namespace ChipArena.UnityConversion
                 return new[]{x,y,z};
             }
         }
+        /// <summary>One of the sleek suit's plates: it rides robot suit bone Bone (Core/NativeRobotSuit.cs Bones), authored in the
+        /// body's bind space; a paint (PaintShell...) a vertex.</summary>
+        public sealed class Plate{public string Name;public int Bone;public float[] Positions,Normals;public byte[] Paint;public int[] Triangles;}
         public sealed class Bank
         {
-            public Texture[] Textures;public Piece[] Pieces;
+            public Texture[] Textures;public Piece[] Pieces;public Plate[] Plates=Array.Empty<Plate>();
             public readonly Dictionary<string,int[]> Styles=new Dictionary<string,int[]>(StringComparer.Ordinal);
+            /// <summary>Each style's slot (Core/NativeLook.Slots), the body parts it covers, the top whose gear anchors it takes ("": its own).</summary>
+            public readonly Dictionary<string,string> Slot=new Dictionary<string,string>(StringComparer.Ordinal),AnchorsFrom=new Dictionary<string,string>(StringComparer.Ordinal);
+            public readonly Dictionary<string,string[]> Covers=new Dictionary<string,string[]>(StringComparer.Ordinal);
             public readonly List<string> StyleOrder=new List<string>();
             public bool Has(string style)=>style!=null&&Styles.ContainsKey(style);
+            public bool Has(string slot,string style)=>Has(style)&&Slot[style]==slot;
         }
 
         /// <summary>The bank in `data`, or null when it is not one (a wrong magic or version, a count or index out of range, a
@@ -62,41 +82,71 @@ namespace ChipArena.UnityConversion
             {
                 using var r=new BinaryReader(new MemoryStream(data,false),Encoding.UTF8);
                 if(r.ReadByte()!='H'||r.ReadByte()!='A'||r.ReadByte()!='I'||r.ReadByte()!='R')return null;
-                int version=r.ReadInt32();if(version!=Version&&version!=Plain)return null;
-                if(version==Version)
+                int version=r.ReadInt32();if(version!=Version&&version!=HairDeflated&&version!=Plain)return null;
+                if(version!=Plain)
                 {
-                    // the body inflated (no larger than MaxBody), then read as a plain bank's
+                    // the body inflated (no larger than MaxBody), then read
                     var body=new MemoryStream();
                     using(var z=new DeflateStream(new MemoryStream(data,8,data.Length-8,false),CompressionMode.Decompress))
                     {
                         var buf=new byte[81920];int n;while((n=z.Read(buf,0,buf.Length))>0){body.Write(buf,0,n);if(body.Length>MaxBody)return null;}
                     }
-                    var plain=new byte[8+body.Length];Buffer.BlockCopy(data,0,plain,0,4);plain[4]=Plain;body.Position=0;body.Read(plain,8,(int)body.Length);
-                    return Read(plain);
+                    body.Position=0;using var br=new BinaryReader(body,Encoding.UTF8);return Body(br,version==Version);
                 }
-                var bank=new Bank();
-                int nt=Count(r,MaxTextures);bank.Textures=new Texture[nt];
-                for(int i=0;i<nt;i++){var name=Str(r);int len=Count(r,MaxTextureBytes);bank.Textures[i]=new Texture{Name=name,Png=Bytes(r,len)};}
-                int np=Count(r,MaxPieces);bank.Pieces=new Piece[np];
-                for(int i=0;i<np;i++)bank.Pieces[i]=ReadPiece(r,nt);
-                int ns=Count(r,MaxStyles);
-                for(int i=0;i<ns;i++)
-                {
-                    var id=Str(r);int n=Count(r,8);var pieces=new int[n];
-                    for(int k=0;k<n;k++){pieces[k]=r.ReadInt32();if(pieces[k]<0||pieces[k]>=np)return null;}
-                    if(id.Length==0||bank.Styles.ContainsKey(id))return null;bank.Styles[id]=pieces;bank.StyleOrder.Add(id);
-                }
-                return r.BaseStream.Position==r.BaseStream.Length?bank:null;
+                return Body(r,false);
             }
             catch(EndOfStreamException){return null;}
             catch(InvalidDataException){return null;}
             catch(IOException){return null;}
         }
-        private static Piece ReadPiece(BinaryReader r,int textures)
+        // A bank's body (after its version): version 3's (`full`: pieces on the skeleton, plates, styles of any slot) or the hair's.
+        private static Bank Body(BinaryReader r,bool full)
+        {
+            {
+                var bank=new Bank();
+                int nt=Count(r,MaxTextures);bank.Textures=new Texture[nt];
+                for(int i=0;i<nt;i++){var name=Str(r);int len=Count(r,MaxTextureBytes);bank.Textures[i]=new Texture{Name=name,Png=Bytes(r,len)};}
+                int np=Count(r,MaxPieces);bank.Pieces=new Piece[np];
+                for(int i=0;i<np;i++)bank.Pieces[i]=ReadPiece(r,nt,full);
+                if(full)
+                {
+                    int nplates=Count(r,MaxPlates);bank.Plates=new Plate[nplates];
+                    for(int i=0;i<nplates;i++)
+                    {
+                        var pl=new Plate{Name=Str(r),Bone=r.ReadInt32()};if(pl.Bone<0||pl.Bone>=NativeRobotSuit.Bones.Length)return null;
+                        int nv=Count(r,MaxVertices);pl.Positions=Floats(r,nv*3);pl.Normals=Floats(r,nv*3);pl.Paint=Bytes(r,nv);
+                        foreach(var c in pl.Paint)if(c>PaintSoft)return null;
+                        int ni=Count(r,MaxIndices);if(ni%3!=0)return null;pl.Triangles=new int[ni];
+                        for(int k=0;k<ni;k++){int t=r.ReadInt32();if(t<0||t>=nv)return null;pl.Triangles[k]=t;}
+                        bank.Plates[i]=pl;
+                    }
+                }
+                int ns=Count(r,MaxStyles);
+                for(int i=0;i<ns;i++)
+                {
+                    string slot=full?Str(r):NativeLook.Hair;var id=Str(r);int n=Count(r,8);var pieces=new int[n];
+                    for(int k=0;k<n;k++){pieces[k]=r.ReadInt32();if(pieces[k]<0||pieces[k]>=np)return null;}
+                    var covers=Array.Empty<string>();string anchors="";
+                    if(full){covers=new string[Count(r,MaxCovers)];for(int k=0;k<covers.Length;k++)covers[k]=Str(r);anchors=Str(r);}
+                    if(id.Length==0||bank.Styles.ContainsKey(id)||NativeLook.SlotIndex(slot)<0)return null;
+                    bank.Styles[id]=pieces;bank.Slot[id]=slot;bank.Covers[id]=covers;bank.AnchorsFrom[id]=anchors;bank.StyleOrder.Add(id);
+                }
+                return r.BaseStream.Position==r.BaseStream.Length?bank:null;
+            }
+        }
+        private static Piece ReadPiece(BinaryReader r,int textures,bool full)
         {
             var p=new Piece{Renderer=Str(r),Texture=r.ReadInt32(),Cutoff=r.ReadSingle(),Cull=r.ReadByte()};
-            if(!(p.Renderer.StartsWith("HairFront.",StringComparison.Ordinal)||p.Renderer.StartsWith("HairBack.",StringComparison.Ordinal)))throw new InvalidDataException();
+            bool hair=p.Renderer.StartsWith("HairFront.",StringComparison.Ordinal)||p.Renderer.StartsWith("HairBack.",StringComparison.Ordinal);
+            bool worn=full&&(p.Renderer.StartsWith("Top.Bank_",StringComparison.Ordinal)||p.Renderer.StartsWith("Bottom.Bank_",StringComparison.Ordinal));
+            if(!hair&&!worn)throw new InvalidDataException();
             if(p.Texture<-1||p.Texture>=textures||!Finite(p.Cutoff))throw new InvalidDataException();
+            if(full)
+            {
+                p.MaterialFrom=Str(r);int nk=Count(r,MaxBones);p.Skeleton=new string[nk];var bind=new float[nk*16];
+                for(int k=0;k<nk;k++){p.Skeleton[k]=Str(r);if(p.Skeleton[k].Length==0)throw new InvalidDataException();var m=Floats(r,16);Array.Copy(m,0,bind,k*16,16);}
+                p.SkeletonBind=bind;
+            }
             int nb=Count(r,MaxBones);p.Bones=new Bone[nb];
             for(int b=0;b<nb;b++)
             {
@@ -107,7 +157,8 @@ namespace ChipArena.UnityConversion
             int nv=Count(r,MaxVertices);p.VertexCount=nv;
             p.Positions=Floats(r,nv*3);p.Normals=Floats(r,nv*3);p.Uvs=Floats(r,nv*2);p.Colors=Bytes(r,nv*4);
             p.BoneIndex=Bytes(r,nv*4);p.BoneWeight=Floats(r,nv*4);
-            for(int i=0;i<nv*4;i++)if(p.BoneIndex[i]>nb||p.BoneWeight[i]<0||p.BoneWeight[i]>1.0001f)throw new InvalidDataException();
+            int bones=p.OnSkeleton?p.Skeleton.Length+nb:nb+1;if(bones>256)throw new InvalidDataException();
+            for(int i=0;i<nv*4;i++)if(p.BoneIndex[i]>=bones||p.BoneWeight[i]<0||p.BoneWeight[i]>1.0001f)throw new InvalidDataException();
             int ni=Count(r,MaxIndices);if(ni%3!=0)throw new InvalidDataException();p.Triangles=new int[ni];
             for(int i=0;i<ni;i++){int t=r.ReadInt32();if(t<0||t>=nv)throw new InvalidDataException();p.Triangles[i]=t;}
             int nsh=Count(r,MaxShapes);p.Shapes=new Shape[nsh];

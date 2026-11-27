@@ -26,11 +26,14 @@ internal static class ClothesChecks
         }
         Check(NativeWardrobeAliases.Of(NativeLook.Upper,"tee")==null&&NativeWardrobeAliases.Of(NativeLook.Lower,"cardigan")==null,"the bake's own pieces are not aliases");
         // every id the service does not list is drawn by an alias or the hair bank, and the DEV pieces stay last
-        var bankStyles=Regex.Matches(Src("tools/gear/hair.py"),@"^\s*\('([a-z-]+)', \[\('",RegexOptions.Multiline).Select(m=>m.Groups[1].Value).ToHashSet();
+        var tool=Src("tools/gear/hair.py");
+        var bankStyles=Regex.Matches(tool,@"^\s*\('([a-z-]+)', \[\('",RegexOptions.Multiline).Select(m=>m.Groups[1].Value).ToHashSet();
+        var suitStyles=Regex.Matches(tool,@"\('(upper|lower)', '([a-z-]+)', '(Top|Bottom)\.Bank_",RegexOptions.Multiline).Select(m=>m.Groups[1].Value+":"+m.Groups[2].Value).ToHashSet();
+        Check(suitStyles.SetEquals(new[]{"upper:"+NativeRobotSuit.SleekUnder[1],"lower:"+NativeRobotSuit.SleekUnder[2]}),"the tool makes the sleek suit's garments");
         for(int s=0;s<NativeLook.Slots.Length;s++)
         {
             var ids=NativeLook.Ids[s];
-            foreach(var id in ids)if(Array.IndexOf(NativeLook.ServiceIds[s],id)<0)Check(s==0?bankStyles.Contains(id):NativeWardrobeAliases.Of(NativeLook.Slots[s],id)!=null,"drawn by something: "+NativeLook.Slots[s]+" "+id);
+            foreach(var id in ids)if(Array.IndexOf(NativeLook.ServiceIds[s],id)<0)Check(s==0?bankStyles.Contains(id):NativeWardrobeAliases.Of(NativeLook.Slots[s],id)!=null||suitStyles.Contains(NativeLook.Slots[s]+":"+id),"drawn by something: "+NativeLook.Slots[s]+" "+id);
             int firstDev=Array.FindIndex(ids,NativeLook.DevOnly);
             if(firstDev>=0)for(int k=firstDev;k<ids.Length;k++)Check(NativeLook.DevOnly(ids[k]),"the DEV pieces last: "+NativeLook.Slots[s]);
         }
@@ -52,6 +55,21 @@ internal static class ClothesChecks
         Check(pres.Contains("pieces.Add(new LookPiece{slot=pair[0],id=pair[1],renderers=from.renderers,covers=from.covers,tags=from.tags,lift=from.lift});"),"an alias draws its piece's renderers, covers, tags and lift");
         Check(pres.Contains("anchors.Add(new LookAnchor{upper=pair[1],hands=a.hands,core=a.core,device=a.device,emblem=a.emblem,radius=a.radius});"),"an alias top takes its piece's gear anchors");
         Check(body.Contains("for(int s=0;s<NativeLook.Slots.Length;s++)if(!VisualLookHas(NativeLook.Slots[s],NativeLook.Of(dressed,NativeLook.Slots[s])))"),"a piece the bake lacks draws its slot's default");
-        Console.WriteLine("PASS clothes ("+NativeWardrobeAliases.Pairs.Length+" new pieces)");
+        // the sleek pilot suit: the armour worn over its bodysuit while the bank carries it, today's garments otherwise (and the
+        // zombies' fallen pilots always)
+        bool was=NativeRobotSuit.SleekSuit;
+        try
+        {
+            NativeRobotSuit.SleekSuit=false;Check(NativeRobotSuit.Dress("")=="upper:sweater,lower:skinny-jeans,hands:gloves,feet:work-boots","without the bank: today's garments");
+            NativeRobotSuit.SleekSuit=true;Check(NativeRobotSuit.Dress("")=="upper:pilot-suit,lower:pilot-suit-legs,hands:gloves,feet:work-boots","with it: the bodysuit under the armour");
+            Check(NativeRobotSuit.Dress("upper:tee")=="upper:tee,lower:pilot-suit-legs,hands:gloves,feet:work-boots"&&NativeRobotSuit.UnderOf(1)=="pilot-suit"&&NativeRobotSuit.Under[1]=="sweater","each robot piece over its own garment; the fallback kept");
+            Check(Array.IndexOf(NativeLook.Ids[1],"pilot-suit")>0&&Array.IndexOf(NativeLook.Ids[2],"pilot-suit-legs")>0&&!NativeLook.DevOnly("pilot-suit"),"the bodysuit is a public pick of its own");
+        }
+        finally{NativeRobotSuit.SleekSuit=was;}
+        var suitSrc=Src("Assets/ChipArena/Core/NativeRobotSuit.cs");var hb=Src("Assets/ChipArena/Runtime/NativeHairBankPresentation.cs");
+        Check(suitSrc.Contains("var k=new Kit();Ears(k);Gauntlets(k);Boots(k);"),"the sleek plates beside today's ear modules, gauntlets and boots");
+        Check(hb.Contains("NativeRobotSuit.SleekSuit=hairBank!=null&&hairBank.Has(NativeLook.Upper,NativeRobotSuit.SleekUnder[1])&&hairBank.Has(NativeLook.Lower,NativeRobotSuit.SleekUnder[2])&&hairBank.Plates.Length>0;"),"the sleek suit only when the bank carries it whole");
+        Check(Src("Assets/ChipArena/Runtime/NativeBodyKindPresentation.cs").Contains("p.id!=NativeRobotSuit.UnderOf(slot)"),"the plates' female fit follows the garment really worn under them");
+        Console.WriteLine("PASS clothes ("+NativeWardrobeAliases.Pairs.Length+" new pieces, the sleek suit's garments)");
     }
 }

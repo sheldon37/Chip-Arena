@@ -95,6 +95,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,string> robotDressed=new Dictionary<string,string>(StringComparer.Ordinal);
         private string VisualLookOf(int id)
         {
+            HairBank(); // (read before dressing: the sleek suit's garments, NativeRobotSuit.SleekSuit, come with it)
             var look=HotDogOrTop(VisualOutfitOf(id)??"");costumeBank=sourceModels;
             if(!robotDressed.TryGetValue(look,out var dressed))
             {

@@ -33,8 +33,17 @@ namespace ChipArena.UnityConversion
         /// <summary>The slot (Core/NativeLook.Slots) of the piece each bone's plates belong to: the armour (top), the legs
         /// (bottoms), the gauntlets (hands) or the boots (shoes).</summary>
         public static readonly int[] BoneSlot={1,2,1,1,1,1,1,1,2,2,2,2,3,3,4,4};
-        /// <summary>The garment each slot's robot piece is worn over (NativeLook.Slots order; the hair has none).</summary>
+        /// <summary>The garment each slot's robot piece is worn over (NativeLook.Slots order; the hair has none): today's, and the
+        /// zombies' fallen pilots' (Core/NativeZombieLooks.cs).</summary>
         public static readonly string[] Under={null,"sweater","skinny-jeans","gloves","work-boots"};
+        /// <summary>The sleek pilot suit (owner 2026-11-27: "I think I want an improved design on the standard robot suit as well",
+        /// then "Sleek pilot suit"; docs/PILOT-BODY-HAIR.md section 5): its bodysuit, the top's and the legs' garments (the hair
+        /// bank's pieces, Core/NativeHairBank.cs), under its own plates (Build(plates)). Set by the presentation when the local bank
+        /// carries them all; the pilots' armour is then worn over these (UnderOf).</summary>
+        public static readonly string[] SleekUnder={null,"pilot-suit","pilot-suit-legs","gloves","work-boots"};
+        public static bool SleekSuit;
+        /// <summary>The garment a pilot's robot piece in slot `s` is worn over.</summary>
+        public static string UnderOf(int s)=>SleekSuit&&SleekUnder[s]!=null?SleekUnder[s]:Under[s];
         private const string ArmBands="arm-bands";
         /// <summary>Whether `look` wears the robot's piece in slot `s` (NativeLook.Slots): the slot's default. Allocation free.</summary>
         public static bool Worn(string look,int s)=>s>0&&s<NativeLook.Slots.Length&&NativeLook.Index(look,NativeLook.Slots[s])==0;
@@ -43,7 +52,7 @@ namespace ChipArena.UnityConversion
         public static string Dress(string look)
         {
             string map=NativeLook.Normalize(look);
-            for(int s=1;s<NativeLook.Slots.Length;s++)if(Worn(map,s))map=NativeLook.With(map,NativeLook.Slots[s],Under[s]);
+            for(int s=1;s<NativeLook.Slots.Length;s++)if(Worn(map,s))map=NativeLook.With(map,NativeLook.Slots[s],UnderOf(s));
             return map;
         }
         /// <summary>The bones (a bit each, Bones order) whose plates `look` wears: its robot pieces' (BoneSlot), less the ear
@@ -131,6 +140,22 @@ namespace ChipArena.UnityConversion
             F(4,az,-X-Y+Z,X-Y+Z,X+Y+Z,-X+Y+Z);F(5,-az,-X-Y-Z,-X+Y-Z,X+Y-Z,X-Y-Z);
         }
 
+        /// <summary>The sleek suit's parts: its plates (the bank's, each on its bone, in its paints) beside today's ear modules,
+        /// gauntlets and boots (the hands' and feet's pieces keep theirs).</summary>
+        public static SheldonSection[] Build(NativeHairBank.Plate[] plates)
+        {
+            if(plates==null||plates.Length==0)return Build();
+            var k=new Kit();Ears(k);Gauntlets(k);Boots(k);
+            foreach(var pl in plates)
+            {
+                var s=k.Part(pl.Name,pl.Bone);int n=pl.Paint.Length;
+                for(int i=0;i<n;i++)k.Vertex(s,new Vector3(pl.Positions[i*3],pl.Positions[i*3+1],pl.Positions[i*3+2]),new Vector3(pl.Normals[i*3],pl.Normals[i*3+1],pl.Normals[i*3+2]),PlatePaint(pl.Paint[i]));
+                for(int i=0;i+2<pl.Triangles.Length;i+=3)s.Tri(pl.Triangles[i],pl.Triangles[i+1],pl.Triangles[i+2]);
+            }
+            return k.Parts.ToArray();
+        }
+        /// <summary>A bank plate's paint (NativeHairBank.PaintShell...) as the suit's own.</summary>
+        internal static Paint PlatePaint(byte p)=>p==NativeHairBank.PaintMetal?Metal():p==NativeHairBank.PaintDark?new Paint(Darker):p==NativeHairBank.PaintLight?Light:p==NativeHairBank.PaintSoft?Soft:Plate();
         /// <summary>The suit's parts (rest pose, one per piece and side), each on its bone's index (Bones).</summary>
         public static SheldonSection[] Build()
         {

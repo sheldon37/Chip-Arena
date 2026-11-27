@@ -28,6 +28,8 @@ namespace ChipArena.UnityConversion
                 if(text!=null&&hairBank==null)Debug.LogWarning("Hair bank: "+NativeHairBank.Resource+" is not a version "+NativeHairBank.Version+" bank; only the bake's hairstyles are offered.");
                 hairBankState=hairBank!=null?1:-1;
                 if(hairBank!=null){hairBankMeshes=new Mesh[hairBank.Pieces.Length];hairBankTextures=new Texture2D[hairBank.Textures.Length];}
+                // (The sleek pilot suit when the bank carries its garments and plates: Core/NativeRobotSuit.cs.)
+                NativeRobotSuit.SleekSuit=hairBank!=null&&hairBank.Has(NativeLook.Upper,NativeRobotSuit.SleekUnder[1])&&hairBank.Has(NativeLook.Lower,NativeRobotSuit.SleekUnder[2])&&hairBank.Plates.Length>0;
             }
             return hairBankState>0?hairBank:null;
         }
@@ -58,9 +60,19 @@ namespace ChipArena.UnityConversion
             var known=new HashSet<string>(StringComparer.Ordinal);foreach(var p in d.pieces)if(p!=null&&p.slot==NativeLook.Hair)known.Add(p.id);
             foreach(var id in bank.StyleOrder)
             {
-                if(known.Contains(id))continue;var idx=bank.Styles[id];var names=new string[idx.Length];
+                string slot=bank.Slot[id];if(slot==NativeLook.Hair&&known.Contains(id))continue;
+                bool listed=false;foreach(var p in d.pieces)if(p!=null&&p.slot==slot&&p.id==id)listed=true;if(listed)continue;
+                var idx=bank.Styles[id];var names=new string[idx.Length];
                 for(int k=0;k<idx.Length;k++)names[k]=bank.Pieces[idx[k]].Renderer;
-                pieces.Add(new LookPiece{slot=NativeLook.Hair,id=id,renderers=names,covers=Array.Empty<string>(),tags=Array.Empty<string>()});
+                pieces.Add(new LookPiece{slot=slot,id=id,renderers=names,covers=bank.Covers[id],tags=Array.Empty<string>()});
+                // (a top takes another's gear anchors with every hands: the chest core and the wrist device sit as on it)
+                string from=bank.AnchorsFrom[id];
+                if(slot==NativeLook.Upper&&from.Length>0&&d.anchors!=null)
+                {
+                    var anchors=new List<LookAnchor>(d.anchors);
+                    foreach(var a in d.anchors)if(a!=null&&a.upper==from)anchors.Add(new LookAnchor{upper=id,hands=a.hands,core=a.core,device=a.device,emblem=a.emblem,radius=a.radius});
+                    d.anchors=anchors.ToArray();
+                }
             }
             foreach(var p in bank.Pieces)for(int s=0;s<p.Shapes.Length;s++)
             {
@@ -74,7 +86,17 @@ namespace ChipArena.UnityConversion
         private static void VisualHairBankDress(GameObject root,string look)
         {
             var bank=HairBank();if(bank==null||root==null)return;
-            string hair=HairPreview??NativeLook.Of(look,NativeLook.Hair);if(hair==null||!bank.Styles.TryGetValue(hair,out var idx))return;
+            // the worn pieces of the body's other slots first (the sleek suit's bodysuit: on the body's own bones)
+            for(int s=1;s<NativeLook.Slots.Length;s++)
+            {
+                string id=NativeLook.Of(look,NativeLook.Slots[s]);if(!bank.Has(NativeLook.Slots[s],id))continue;
+                foreach(int i in bank.Styles[id])
+                {
+                    var p=bank.Pieces[i];bool made=false;foreach(Transform c in root.transform)if(c.name==p.Renderer){made=true;break;}
+                    if(!made&&p.OnSkeleton)HairBankWorn(root,i,p);
+                }
+            }
+            string hair=HairPreview??NativeLook.Of(look,NativeLook.Hair);if(hair==null||!bank.Has(NativeLook.Hair,hair))return;var idx=bank.Styles[hair];
             Transform head=null;Material template=null;
             foreach(var t in root.GetComponentsInChildren<Transform>(true))if(t.name=="head"&&t.parent!=null&&t.parent.name=="neck_02"){head=t;break;}
             foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
@@ -89,6 +111,28 @@ namespace ChipArena.UnityConversion
                 foreach(Transform c in root.transform)if(c.name==p.Renderer){made=true;break;}
                 if(!made)HairBankPiece(root.transform,head,template,i,p);
             }
+        }
+        // A bank piece that rides the body's own bones (by name, with its bind poses), on the material of the bake's renderer it
+        // names (its palette), its body shapes beside it (the female body sets them by name: NativeBodyKindPresentation.cs).
+        private static readonly Dictionary<string,Transform> hairBankBones=new Dictionary<string,Transform>(StringComparer.Ordinal);
+        private static void HairBankWorn(GameObject root,int index,NativeHairBank.Piece p)
+        {
+            hairBankBones.Clear();Material template=null;
+            foreach(var t in root.GetComponentsInChildren<Transform>(true))if(!hairBankBones.ContainsKey(t.name))hairBankBones[t.name]=t;
+            foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(r.name==p.MaterialFrom&&r.sharedMaterial!=null){template=r.sharedMaterial;break;}
+            if(template==null)foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(r.sharedMaterial!=null&&(r.name.StartsWith("Top.",StringComparison.Ordinal)||r.name.StartsWith("Bottom.",StringComparison.Ordinal))){template=r.sharedMaterial;break;}
+            var bones=new Transform[p.Skeleton.Length];
+            for(int b=0;b<bones.Length;b++)if(!hairBankBones.TryGetValue(p.Skeleton[b],out bones[b])){hairBankBones.Clear();return;} // (a body without one of its bones: left off)
+            hairBankBones.Clear();var mesh=HairBankMesh(index,p);if(mesh==null||template==null)return;
+            var go=new GameObject(p.Renderer);go.transform.SetParent(root.transform,false);go.layer=root.layer;
+            var skin=go.AddComponent<SkinnedMeshRenderer>();skin.sharedMesh=mesh;skin.bones=bones;
+            int rootBone=Math.Max(0,Array.IndexOf(p.Skeleton,"pelvis"));skin.rootBone=bones[rootBone];
+            // (its bounds in the root bone's frame, as the bind pose puts the mesh there, with room for the limbs' swing)
+            var bind=mesh.bindposes[rootBone];var b0=mesh.bounds;var lo=Vector3.positiveInfinity;var hi=Vector3.negativeInfinity;
+            for(int c=0;c<8;c++){var q=bind.MultiplyPoint3x4(new Vector3((c&1)==0?b0.min.x:b0.max.x,(c&2)==0?b0.min.y:b0.max.y,(c&4)==0?b0.min.z:b0.max.z));lo=Vector3.Min(lo,q);hi=Vector3.Max(hi,q);}
+            var bounds=new Bounds((lo+hi)*.5f,hi-lo);bounds.Expand(.6f);skin.localBounds=bounds;
+            skin.sharedMaterial=HairBankMaterial(template,p);
+            for(int s=0;s<mesh.blendShapeCount;s++)skin.SetBlendShapeWeight(s,0);
         }
         private static void HairBankPiece(Transform root,Transform head,Material template,int index,NativeHairBank.Piece p)
         {
@@ -116,8 +160,18 @@ namespace ChipArena.UnityConversion
                 bw[v]=new BoneWeight{boneIndex0=p.BoneIndex[v*4],weight0=p.BoneWeight[v*4],boneIndex1=p.BoneIndex[v*4+1],weight1=p.BoneWeight[v*4+1],
                     boneIndex2=p.BoneIndex[v*4+2],weight2=p.BoneWeight[v*4+2],boneIndex3=p.BoneIndex[v*4+3],weight3=p.BoneWeight[v*4+3]};
             }
-            var bind=new Matrix4x4[p.Bones.Length+1];bind[0]=Matrix4x4.identity;
-            for(int b=0;b<p.Bones.Length;b++){var at=p.HeadPoint(b);bind[b+1]=Matrix4x4.Translate(new Vector3(-at[0],-at[1],-at[2]));}
+            Matrix4x4[] bind;
+            if(p.OnSkeleton)
+            {
+                // (the body's bones' bind poses, row by row as the dump wrote them)
+                bind=new Matrix4x4[p.Skeleton.Length];
+                for(int b=0;b<bind.Length;b++){var m=new Matrix4x4();for(int k=0;k<16;k++)m[k/4,k%4]=p.SkeletonBind[b*16+k];bind[b]=m;}
+            }
+            else
+            {
+                bind=new Matrix4x4[p.Bones.Length+1];bind[0]=Matrix4x4.identity;
+                for(int b=0;b<p.Bones.Length;b++){var at=p.HeadPoint(b);bind[b+1]=Matrix4x4.Translate(new Vector3(-at[0],-at[1],-at[2]));}
+            }
             var mesh=new Mesh{name="Hair bank "+p.Renderer,hideFlags=HideFlags.DontSave};
             mesh.vertices=pos;mesh.normals=nor;mesh.uv=uv;mesh.colors32=col;mesh.triangles=p.Triangles;mesh.boneWeights=bw;mesh.bindposes=bind;
             foreach(var shape in p.Shapes)
@@ -131,6 +185,7 @@ namespace ChipArena.UnityConversion
         private static Material HairBankMaterial(Material template,NativeHairBank.Piece p)
         {
             int tex=p.Texture;if(hairBankMaterials.TryGetValue((template,tex),out var made)&&made!=null)return made;
+            // (A worn piece's material keeps its template's culling and cut-off: the hair's are its own.)
             made=new Material(template){name=template.name+" (hair bank "+(tex<0?"plain":hairBank.Textures[tex].Name)+")",hideFlags=HideFlags.DontSave};
             var texture=tex>=0?HairBankTexture(tex):null;if(texture!=null&&made.HasProperty("_Texture2D"))made.SetTexture("_Texture2D",texture);
             if(made.HasProperty("_Cutoff"))made.SetFloat("_Cutoff",p.Cutoff);if(made.HasProperty("_Cull"))made.SetFloat("_Cull",p.Cull);
