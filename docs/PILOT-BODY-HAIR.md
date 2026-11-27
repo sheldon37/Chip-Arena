@@ -166,6 +166,9 @@ Claude, branch `claude/sleek-suit`. Presentation only: the robot armour keeps it
 
 ## 6. The sleek face gear (owner 2026-11-27: "think we need to update the "masks" section now, they look out of place now with the latest robot armor", then "They look to bulky / wide")
 
+**Status: built, not released.** The owner asked for a rework after the captures ("The new helmet designs aren't great, please rework these and
+make them look a lot better"); the code ships inert until a version 4 bank carries the gear.
+
 Claude, branch `claude/sleek-masks`. Presentation only: the MASKS row keeps its picks (`face:helm`, `half`, `both`, `visor`, `mask`, `none`), and no rule, hit volume or message reads the gear.
 
 - **The gear** (`tools/gear/facegear.py`, in the head bone's frame, built with suitplates' plates and paints):
