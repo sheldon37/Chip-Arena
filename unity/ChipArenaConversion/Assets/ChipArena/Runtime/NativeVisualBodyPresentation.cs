@@ -100,8 +100,15 @@ namespace ChipArena.UnityConversion
             if(!robotDressed.TryGetValue(look,out var dressed))
             {
                 if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);
-                // (A hairstyle or another piece this bake does not carry: its slot's default, never a bare head or body.)
-                for(int s=0;s<NativeLook.Slots.Length;s++)if(!VisualLookHas(NativeLook.Slots[s],NativeLook.Of(dressed,NativeLook.Slots[s])))robotDressed[look]=dressed=NativeLook.With(dressed,NativeLook.Slots[s],s==0?NativeLook.Ids[0][0]:NativeRobotSuit.Under[s]);
+                // (A hairstyle, or a piece drawn by the local data (a zombie piece the bake carries, Core/NativeWardrobeAliases.cs, or the
+                // hair bank's), that this install lacks: its slot's default, never a bare head or body. Pieces drawn otherwise, as the
+                // Hot Dog top, are left to their own drawing: they are in no look data.)
+                for(int s=0;s<NativeLook.Slots.Length;s++)
+                {
+                    string slot=NativeLook.Slots[s],piece=NativeLook.Of(dressed,slot);
+                    bool local=s==0||NativeWardrobeAliases.Of(slot,piece)!=null||HairBank()?.Has(slot,piece)==true;
+                    if(local&&!VisualLookHas(slot,piece))robotDressed[look]=dressed=NativeLook.With(dressed,slot,s==0?NativeLook.Ids[0][0]:NativeRobotSuit.Under[s]);
+                }
             }
             // The voxel costume in its variant (the skin map's body entry: NativeVoxelCostumePresentation.cs).
             if(!NativeVoxelCostume.Worn(dressed))return dressed;int skin=CostumeSkinOf(id);return CostumeLook(dressed,skin,CostumeTierOf(id,skin));
