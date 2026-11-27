@@ -4,6 +4,7 @@
 - **Fix:** the guard covers only pieces drawn by the local data: hairstyles, the zombie pieces the pilot's clothes alias (`Core/NativeWardrobeAliases.cs`) and the hair bank's styles. `ClothesChecks` pins it.
 - **Checks:** CoreTests `--clothes`, `--hot-dog`; Unity compile check; in a match with DEV access, the Hot Dog worn (`scratch/hotdog/cap`); PrototypeBuild.Validate.
 - **Owner's idea, not done here:** the Hot Dog as a costume as well (the look map's `costume` key: Core/NativeVoxelCostume.cs; the account service lists `none` and `voxel`).
+- **Released (release 37, 2026-11-27):** shared and builder `8b972db0`, test channel revision `639313737166549801` (no zip change). Checks: full CoreTests the relgen5 way (1,115 groups, exit 0), the Unity compile; in the Editor the Hot Dog worn at `9aa7e652` (the sweater before it, at `a751b58e`) and PrototypeBuild.Validate ok.
 
 ## 2026-11-27 — Astra — Account profile schema 5 for releases 34–36
 
