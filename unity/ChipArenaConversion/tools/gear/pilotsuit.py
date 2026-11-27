@@ -264,8 +264,9 @@ def build(dump):
     body = Body(dump)
     tV, tF = suit_top(body)
     lV, lF = suit_legs(body)
-    tV = G.drape(body, tV, tF, lambda p: EASE, rounds=20)
-    lV = G.drape(body, lV, lF, lambda p: EASE, rounds=20)
+    # (the nearest skin point alone: owner 2026-11-27, the male pilot read feminine; three points had inflated it to 1-1.4 cm)
+    tV = G.drape(body, tV, tF, lambda p: EASE, rounds=20, near=1)
+    lV = G.drape(body, lV, lF, lambda p: EASE, rounds=20, near=1)
     surfaces = Surface(tV, tF), Surface(lV, lF)
     st, sl = seams(body, *surfaces)
     out = []

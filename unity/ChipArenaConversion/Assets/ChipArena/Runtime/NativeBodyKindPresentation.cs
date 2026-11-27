@@ -21,6 +21,9 @@ namespace ChipArena.UnityConversion
         public static int FemaleLevel=NativeBodyKind.DefaultLevel;
         /// <summary>The owner's option, off: the light female stance on the match idles (VisualFemaleMatchStance).</summary>
         public static bool FemaleMatchStance;
+        /// <summary>The level male bodies are made at (Core NativeBodyKind.MaleLevels: MaleBase + Subtle..Strong; MaleDefault; under 0
+        /// today's pilot as the bake has it). A local preview as FemaleLevel is.</summary>
+        public static int MaleLevel=NativeBodyKind.MaleDefault;
 
         // ---- the level on a body (VisualDress) ----
         // Per mesh: its shapes the levels set (NativeBodyKind.Levels' Shapes order; -1 where it has none).
@@ -86,8 +89,8 @@ namespace ChipArena.UnityConversion
         {
             var L=NativeBodyKind.LevelOf(level);
             // Its face pieces (the pack's female lashes and brows, baked off as the look data's "face" pieces): each worn in place of
-            // the piece of its kind the head wears (the renderer with the same slot prefix). None in an older bake.
-            var d=VisualLookData();
+            // the piece of its kind the head wears (the renderer with the same slot prefix). None in an older bake, nor on the male.
+            var d=NativeBodyKind.IsMaleLevel(level)?null:VisualLookData();
             if(d?.pieces!=null)
             {
                 Dictionary<string,Renderer> named=null;
@@ -111,6 +114,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<index.Length;k++)if(index[k]>=0)skin.SetBlendShapeWeight(index[k],Mathf.Clamp(L.Weights[k],0,100));
             }
             femaleRoots[root.GetInstanceID()]=level;
+            if(L.Lips<1)VisualLips(root,L.Lips);
             var skeleton=root.transform.Find("VisualSkeleton");if(skeleton==null)return;
             Transform chest=null,head=null,rootBone=null,chin=null;
             foreach(var t in skeleton.GetComponentsInChildren<Transform>(true))
@@ -127,6 +131,19 @@ namespace ChipArena.UnityConversion
             if(chin!=null){var k=chin.localScale;chin.localScale=new Vector3(k.x*L.Chin,k.y,k.z*L.Chin);}
             if(chest==null)return;chest.localScale*=L.Chest;
             if(head!=null&&head.IsChildOf(chest))head.localScale/=L.Chest;
+        }
+
+        // The head's second colour (its colour weights' green: the lips and the hairline's shade) toned toward its skin (the first),
+        // `keep` of it left; on the instance (a property block the skin tone and the body's tints read and keep).
+        private static readonly int LipsSkinId=Shader.PropertyToID("_Color_1"),LipsId=Shader.PropertyToID("_Color_2");
+        private static MaterialPropertyBlock lipsBlock;
+        private static void VisualLips(GameObject root,float keep)
+        {
+            foreach(var r in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if(!r.name.StartsWith("Head.",StringComparison.Ordinal))continue;var m=r.sharedMaterial;if(m==null||!m.HasProperty(LipsId)||!m.HasProperty(LipsSkinId))continue;
+                lipsBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(lipsBlock);lipsBlock.SetColor(LipsId,Color.Lerp(m.GetColor(LipsSkinId),m.GetColor(LipsId),keep));r.SetPropertyBlock(lipsBlock);
+            }
         }
 
         // ---- the female surface's deltas ----
@@ -161,8 +178,8 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<string,Vector3> femaleCores=new Dictionary<string,Vector3>(StringComparer.Ordinal);
         private static void VisualFemaleCore(VisualBody body)
         {
-            if(body.GearCore==null||!NativeBodyKind.IsFemale(body.Look)||NativeHotDog.Worn(body.Look)||NativeVoxelCostume.Worn(body.Look))return;
-            var bone=body.GearCore.parent;if(bone==null)return;int level=body.Root!=null&&femaleRoots.TryGetValue(body.Root.GetInstanceID(),out int made)?made:FemaleLevel;
+            if(body.GearCore==null||NativeHotDog.Worn(body.Look)||NativeVoxelCostume.Worn(body.Look))return;
+            var bone=body.GearCore.parent;if(bone==null)return;int level=body.Root!=null&&femaleRoots.TryGetValue(body.Root.GetInstanceID(),out int made)?made:NativeBodyKind.IsFemale(body.Look)?FemaleLevel:MaleLevel;if(level<0)return;
             string key=NativeLook.Of(body.Look,NativeLook.Upper)+"|"+NativeLook.Of(body.Look,NativeLook.Hands)+"|"+level;
             if(!femaleCores.TryGetValue(key,out var offset))
             {

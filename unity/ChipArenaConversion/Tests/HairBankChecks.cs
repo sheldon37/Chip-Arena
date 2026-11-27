@@ -30,7 +30,7 @@ internal static class HairBankChecks
         Check(NativeHairBank.Read(null)==null&&NativeHairBank.Read(new byte[3])==null,"too short");
         var bad=(byte[])good.Clone();bad[0]=(byte)'X';Check(NativeHairBank.Read(bad)==null,"a wrong magic");
         bad=(byte[])good.Clone();bad[4]=2;Check(NativeHairBank.Read(bad)==null,"a plain body marked deflated");
-        bad=(byte[])good.Clone();bad[4]=4;Check(NativeHairBank.Read(bad)==null,"a version this reader does not know");
+        bad=(byte[])good.Clone();bad[4]=5;Check(NativeHairBank.Read(bad)==null,"a version this reader does not know");
         Check(NativeHairBank.Read(good.AsSpan(0,good.Length-1).ToArray())==null,"truncated");
         var longer=new byte[good.Length+1];good.CopyTo(longer,0);Check(NativeHairBank.Read(longer)==null,"trailing bytes");
         Check(NativeHairBank.Read(Bank(parent:1))==null,"a bone whose parent comes after it");
@@ -71,7 +71,7 @@ internal static class HairBankChecks
         Check(pres.Contains("skin.rootBone=head;"),"bounds on the head");
         // ---- the tool writes what the reader reads ----
         var tool=Src("tools/gear/hair.py");
-        Check(tool.Contains("data = b'HAIR' + struct.pack('<i', 3) + z.compress(out.getvalue()) + z.flush()")&&tool.Contains("zlib.compressobj(9, zlib.DEFLATED, -15)")&&NativeHairBank.Version==3,"the tool's magic and version (3: the body raw-deflated)");
+        Check(tool.Contains("data = b'HAIR' + struct.pack('<i', 4 if face else 3) + z.compress(out.getvalue()) + z.flush()")&&tool.Contains("zlib.compressobj(9, zlib.DEFLATED, -15)")&&NativeHairBank.Version==4&&NativeHairBank.Suit==3,"the tool's magic and version (3, 4 with the face gear: the body raw-deflated)");
         Check(tool.Contains("'Hair_B%s%02d_%s_%02d_%d'"),"the tool's chain names (kind, group)");
         foreach(var line in tool.Split('\n'))
         {

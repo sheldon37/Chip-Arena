@@ -463,8 +463,12 @@ def bone_names(piece_name, kind, chains):
     return names, parents, local
 
 
+# The face gear's plate names (Core/NativeSleekFace.cs)
+FACE_GEAR = ('Helmet: ', 'Half mask: ', 'Visor: ', 'Mask: ', 'Ears: ')
+
+
 def write_bank(path, pieces, styles, textures, plates=()):
-    """Version 3 (Core/NativeHairBank.cs): textures; pieces (each with the bake renderer whose material it takes, '' for the hair
+    """Version 4 with the face gear's plates, else 3 (Core/NativeHairBank.cs): textures; pieces (each with the bake renderer whose material it takes, '' for the hair
     bank's own choice; the body's bones it rides by name with their bind poses, none for a piece on the head alone; its chain
     bones; its mesh and shapes); the suit's plates (each on a robot suit bone, its paint per vertex); styles (slot, id, pieces,
     the body parts they cover, the top whose gear anchors they take). The body after the version raw-deflated."""
@@ -530,9 +534,11 @@ def write_bank(path, pieces, styles, textures, plates=()):
         for c in covers:
             s_str(out, c)
         s_str(out, anchors)
-    # version 3: the body deflated (raw deflate, as System.IO.Compression.DeflateStream reads it)
+    # version 3 or 4: the body deflated (raw deflate, as System.IO.Compression.DeflateStream reads it); 4 when it carries the face
+    # gear (so a build before it refuses the bank rather than wearing the gear as suit plates)
+    face = any(pl['name'].startswith(FACE_GEAR) for pl in plates)
     z = zlib.compressobj(9, zlib.DEFLATED, -15)
-    data = b'HAIR' + struct.pack('<i', 3) + z.compress(out.getvalue()) + z.flush()
+    data = b'HAIR' + struct.pack('<i', 4 if face else 3) + z.compress(out.getvalue()) + z.flush()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as fh:
         fh.write(data)
@@ -601,11 +607,18 @@ SUIT_STYLES = [('upper', 'pilot-suit', 'Top.Bank_PilotSuit', 'Top.Top_SimpleSwea
                ('lower', 'pilot-suit-legs', 'Bottom.Bank_PilotSuitLegs', 'Bottom.Bottom_SkinnyJeans', ['hips', 'upperlegs', 'lowerlegs'], '')]
 
 
-def suit(dump, textures):
+def suit(dump, textures, face_dump=None):
     import pilotsuit
     import suitplates
     body, made = pilotsuit.build(dump)
     plates = suitplates.build(body, *pilotsuit.build.surfaces)
+    if face_dump:
+        # the sleek face gear (facegear.py: Core/NativeSleekFace.cs), in the head's frame; its ear pods ride the suit, so they go
+        # into the body's bind space as its plates are (the head's bind pose turns nothing: its position alone)
+        import facegear
+        at = body.P['head']
+        for f in facegear.build(face_dump):
+            plates.append(dict(f, V=f['V'] + at) if f['name'].startswith('Ears: ') else f)
     textures.append(('pilot-suit', pilotsuit.fabric_png()))
     tex = len(textures) - 1
     out = []
@@ -641,6 +654,7 @@ def main():
     ap.add_argument('--only', help='style ids')
     ap.add_argument('--pack', help='the LocalAssets folder with the pack (default: --out)')
     ap.add_argument('--suit', help='the pilot body\'s bind dump: adds the sleek pilot suit (its bodysuit and plates)')
+    ap.add_argument('--face', action='store_true', help='with --suit: adds the sleek face gear (facegear.py, on --dump\'s head)')
     a = ap.parse_args()
     head = Head(a.dump)
     only = set(a.only.split(',')) if a.only else None
@@ -683,12 +697,15 @@ def main():
     style_rows = [('hair', sid, [index[(n, k)] for n, k in parts]) for sid, parts in styles]
     plates = []
     if a.suit:
-        suit_pieces, plates = suit(a.suit, textures)
+        suit_pieces, plates = suit(a.suit, textures, a.dump if a.face else None)
         for slot, sid, rec, covers, anchors in suit_pieces:
             style_rows.append((slot, sid, [len(pieces)], covers, anchors))
             pieces.append(rec)
             report.append('%-30s suit %s %d vertices, %d bones' % (rec['renderer'], sid, len(rec['v']), len(rec['skel'])))
         report.append('suit plates: %d parts, %d vertices' % (len(plates), sum(len(p['V']) for p in plates)))
+        gear = [p for p in plates if p['name'].startswith(FACE_GEAR)]
+        if gear:
+            report.append('face gear: %d parts, %d vertices' % (len(gear), sum(len(p['V']) for p in gear)))
     path = os.path.join(a.out, RESOURCES, BANK + '.bytes')
     size = write_bank(path, pieces, style_rows, textures, plates)
     print('\n'.join(report))

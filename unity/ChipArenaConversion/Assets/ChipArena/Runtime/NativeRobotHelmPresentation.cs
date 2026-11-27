@@ -13,7 +13,10 @@ namespace ChipArena.UnityConversion
         {
             var lit=Resources.Load<Shader>("NativeSourceLit");if(lit==null)return;
             var material=new Material(lit){enableInstancing=true,name="Robot helmet"};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);
-            models[Helm]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.Helm,NativeRobotHelm.Helm),material,"Robot helmet");models[HalfMask]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.HalfMask,NativeRobotHelm.Half),material,"Robot half mask");
+            // (The sleek helmet and half mask when the local hair bank carries them: Core/NativeSleekFace.cs.)
+            var plates=ArenaPresentation.HairBank()?.Plates;
+            if(NativeSleekFace.On){models[Helm]=HelmParts(NativeSleekFace.Sections(plates,NativeSleekFace.Helmet,"helmet"),material,"Robot helmet");models[HalfMask]=HelmParts(NativeSleekFace.Sections(plates,NativeSleekFace.HalfMask,"half mask"),material,"Robot half mask");}
+            else{models[Helm]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.Helm,NativeRobotHelm.Helm),material,"Robot helmet");models[HalfMask]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.HalfMask,NativeRobotHelm.Half),material,"Robot half mask");}
             // (A fallen pilot's smashed helmets: Core NativeZombieLooks, Runtime ZombieSuit.)
             for(int b=0;b<NativeRobotHelm.BrokenCount;b++)models[BrokenHelm+b]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.BrokenHelm(b),()=>NativeRobotHelm.Broken(b)),material,"Robot helmet smashed "+b);
         }

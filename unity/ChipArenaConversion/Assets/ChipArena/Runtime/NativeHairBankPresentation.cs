@@ -30,6 +30,8 @@ namespace ChipArena.UnityConversion
                 if(hairBank!=null){hairBankMeshes=new Mesh[hairBank.Pieces.Length];hairBankTextures=new Texture2D[hairBank.Textures.Length];}
                 // (The sleek pilot suit when the bank carries its garments and plates: Core/NativeRobotSuit.cs.)
                 NativeRobotSuit.SleekSuit=hairBank!=null&&hairBank.Has(NativeLook.Upper,NativeRobotSuit.SleekUnder[1])&&hairBank.Has(NativeLook.Lower,NativeRobotSuit.SleekUnder[2])&&hairBank.Plates.Length>0;
+                // (The sleek face gear when it carries every gear's plates: Core/NativeSleekFace.cs.)
+                NativeSleekFace.On=hairBank!=null&&NativeSleekFace.HasAll(hairBank.Plates);
             }
             return hairBankState>0?hairBank:null;
         }
