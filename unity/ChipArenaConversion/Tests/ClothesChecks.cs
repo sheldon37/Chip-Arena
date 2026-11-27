@@ -54,7 +54,10 @@ internal static class ClothesChecks
         var pres=Src("Assets/ChipArena/Runtime/NativeHairBankPresentation.cs");var body=Src("Assets/ChipArena/Runtime/NativeVisualBodyPresentation.cs");
         Check(pres.Contains("pieces.Add(new LookPiece{slot=pair[0],id=pair[1],renderers=from.renderers,covers=from.covers,tags=from.tags,lift=from.lift});"),"an alias draws its piece's renderers, covers, tags and lift");
         Check(pres.Contains("anchors.Add(new LookAnchor{upper=pair[1],hands=a.hands,core=a.core,device=a.device,emblem=a.emblem,radius=a.radius});"),"an alias top takes its piece's gear anchors");
-        Check(body.Contains("for(int s=0;s<NativeLook.Slots.Length;s++)if(!VisualLookHas(NativeLook.Slots[s],NativeLook.Of(dressed,NativeLook.Slots[s])))"),"a piece the bake lacks draws its slot's default");
+        Check(body.Contains("bool local=s==0||NativeWardrobeAliases.Of(slot,piece)!=null||HairBank()?.Has(slot,piece)==true;")&&body.Contains("if(local&&!VisualLookHas(slot,piece))"),"a piece drawn by the local data that this install lacks draws its slot's default");
+        // (The Hot Dog top is in no look data, and is drawn by its own code: never swapped for the default. Owner 2026-11-27: "Hot
+        // Dog Top isn't working now?", after release 35 swapped every piece the look data lacked.)
+        Check(NativeWardrobeAliases.Of(NativeLook.Upper,NativeHotDog.Id)==null&&Array.IndexOf(NativeLook.Ids[1],NativeHotDog.Id)>0,"the Hot Dog top is not a look-data piece");
         // the sleek pilot suit: the armour worn over its bodysuit while the bank carries it, today's garments otherwise (and the
         // zombies' fallen pilots always)
         bool was=NativeRobotSuit.SleekSuit;
