@@ -1,3 +1,9 @@
+## 2026-11-27 · Astra · Hot Dog costume account persistence
+
+`codex/hot-dog-costume-worker` from shared `03b47488`. The accounts Worker advertises profile schema 6. Both `upper:hot-dog` and `costume:hot-dog` use the existing developer check on save and load. Costume follows body and precedes skin. Claude can use `ServiceKeepsHotDogCostume=6` for the client fallback. PR #415 still contains outstanding face and Arsenal skin support.
+
+TypeScript, the Worker bundle, and 37 account, account XP, desktop account and relay tests passed locally. The costume regression covers stored data, fresh login, canonical order and revoked developer access. Production deployment requires owner approval.
+
 ## 2026-11-27 — Claude: the Sculpted face gear (new helmet, half mask, visor, mask and ear pods) (integrator)
 - **Owner:** "The new helmet designs aren't great, please rework these and make them look alot better.", then "I need it to be completely new models"; from in-game captures of two finalists (Sculpted and Mecha): "Sculpted". Branch `claude/sculpted-helmet`, base shared `0ce4900a` (release 38). Presentation only: the MASKS row keeps its picks (`face:helm`, `half`, `both`, `visor`, `mask`, `none`); no rule, hit volume, animation or message reads the gear.
 - **What:** new models made from scratch in Blender (`tools/gear/facemodel/sculpted.py`, with the kit `blhelp.py`/`run_model.py` and `headobj.py`; the pilot's head is the bought pack's mesh and stays local). The helmet has layered white shells, a spine groove lit from a faceted brow gem to the nape, a faceplate with lit lens slits over a keeled metal muzzle, and a neck seal. The half mask, visor, mask and the suit's ear pods use the same design language (`docs/PILOT-BODY-HAIR.md` section 6). They are written as the hair bank's version 4 plates (`hair.py --suit DUMP --face gear.json`; bank 4.87 MB, sha `c4df336d`), so the face gear is turned on for the first time (release 38 shipped its code inert).

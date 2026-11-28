@@ -76,7 +76,7 @@ test('two PCs cannot overwrite a newer visor and intro with a stale pilot',async
 
 test('native account cosmetics survive save, reload and a second login without granting DEV access',async()=>{
  const f=await fixture();try{
-  const first:any=await(await f.request('register',{username:'nativepilot',password})).json();assert.equal(first.account.profileSchema,5);
+  const first:any=await(await f.request('register',{username:'nativepilot',password})).json();assert.equal(first.account.profileSchema,6);
   let revision=0;
   for(const intro of ['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']){
    const response=await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro,weaponSkins:'face:visor',overrideWeaponIntro:true,lobbyBack:'hex-field',preferredSpec:'sword',hat:'auditor-halo'}}},first.session);
@@ -198,6 +198,35 @@ test('outfits and face gear persist; DEV clothes cannot be forged or retained af
   // Re-read sanitizes stored selections with current account authority, not the original save's status.
   f.db.sql.prepare('UPDATE player_accounts SET developer=0 WHERE id=?').run(dev.account.id);
   const revoked:any=await(await f.request('me',undefined,dev.session)).json();assert.equal(revoked.account.profile.cosmetics.look,'hair:wild,hands:gloves,skin:aa12ff');
+ }finally{f.db.close();}
+});
+
+test('Hot Dog top and costume use current developer access on save and fresh login',async()=>{
+ const f=await fixture();
+ try{
+  const look='skin:AABBCC,costume:hot-dog,feet:work-boots,hands:gloves,lower:khakis,body:female,upper:hot-dog,hair:bob';
+  const publicLook='hair:bob,lower:khakis,hands:gloves,feet:work-boots,body:female,skin:aabbcc';
+  const devLook='hair:bob,upper:hot-dog,lower:khakis,hands:gloves,feet:work-boots,body:female,costume:hot-dog,skin:aabbcc';
+  for(const [username,action,expected] of [['costumepilot','register',publicLook],['Sheldon','login',devLook]] as const){
+   const credentials={username,password};
+   const {account,session}=await(await f.request(action,credentials)).json();
+   const save=await f.request('profile',{revision:account.revision,profile:{cosmetics:{look}}},session);
+   assert.equal(save.status,200);
+   const stored=f.db.sql.prepare('SELECT profile FROM player_accounts WHERE id=?').get(account.id)!;
+   assert.equal(JSON.parse(String(stored.profile)).cosmetics.look,expected);
+   const login=await f.request('login',credentials);
+   assert.equal(login.status,200);
+   for(const response of [save,login]){
+    const {account}=await response.json();
+    assert.equal(account.profileSchema,6);
+    assert.equal(account.profile.cosmetics.look,expected);
+   }
+   if(account.developer){
+    f.db.sql.prepare('UPDATE player_accounts SET developer=0 WHERE id=?').run(account.id);
+    const reread=await(await f.request('me',undefined,session)).json();
+    assert.equal(reread.account.profile.cosmetics.look,publicLook);
+   }
+  }
  }finally{f.db.close();}
 });
 
