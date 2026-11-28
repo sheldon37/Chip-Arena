@@ -1,0 +1,75 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "air/sword",
+   "source": "Armed-Air-Attack-R1",
+   "range": [
+    0,
+    15
+   ],
+   "fps": 60,
+   "frames": 31,
+   "marks": [
+    0,
+    0.5
+   ],
+   "heading": -0.3594,
+   "sha256": "93e7ecffd7a18ab7eba12d1fee609572d8dec14f7e059fc62c69443e49446673",
+   "input": "0c1bc68dc1c527cee52d8d43aac292c3dbc2c1d7659bc064ea7214168af12547"
+  },
+  {
+   "clip": "air/daggers",
+   "source": "Armed-Air-Attack-R1",
+   "range": [
+    0,
+    15
+   ],
+   "fps": 60,
+   "frames": 31,
+   "marks": [
+    0,
+    0.5
+   ],
+   "heading": -0.3594,
+   "sha256": "a74a9bfd168ea8fe75c18784d4b4f8e041556269c298a01223f6042962149b90",
+   "input": "0c1bc68dc1c527cee52d8d43aac292c3dbc2c1d7659bc064ea7214168af12547"
+  },
+  {
+   "clip": "air/shield",
+   "source": "Armed-Air-Attack-R1",
+   "range": [
+    0,
+    15
+   ],
+   "fps": 60,
+   "frames": 31,
+   "marks": [
+    0,
+    0.5
+   ],
+   "heading": -0.3594,
+   "sha256": "33cf3242ca78af7ca092555fdc2c5ad1f3c6352ca1aed2194fbe436643662baa",
+   "input": "0c1bc68dc1c527cee52d8d43aac292c3dbc2c1d7659bc064ea7214168af12547"
+  },
+  {
+   "clip": "air/greatsword",
+   "source": "2Hand-Sword-Air-Attack1",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 60,
+   "frames": 33,
+   "marks": [
+    0,
+    0.5333
+   ],
+   "heading": -1.1004,
+   "sha256": "841518c91a5a1bbb9af3d5161954e6547e5afa3927e86bd70279e99b0f4dcd97",
+   "input": "8b7ea4b031f0b4579214967549d1500ede6d2d543bc55d7f182f10531279563f"
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "schema": 1,
+ "note": "The afterimages' colour ramp (docs/PACK-EFFECTS.md, Core NativeAfterimages.RampId), loaded by id. Names only: no pack content.",
+ "texture_max": 256,
+ "sources": {
+  "trails": "Trails FX - Stylized Motion Effects/Assets/Trails FX"
+ },
+ "textures": [
+  {"id": "trails-ramp", "source": "trails", "path": "SamplePresets/StylizedRamp1.png", "max": 256}
+ ]
+}

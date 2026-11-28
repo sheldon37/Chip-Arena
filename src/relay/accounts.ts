@@ -1,7 +1,9 @@
+import {accountSocial} from './account-social.js';
+import {confirmXp,readXp} from './account-xp.js';
 import {scryptAsync} from '@noble/hashes/scrypt.js';
 import {base64url} from '../shared/dev-auth.js';
 import {GAME_CLAIM_MS} from '../shared/account-auth.js';
-import {cleanGrants,cleanFlags,Access} from '../shared/access.js';
+import {GRANTABLE_CONTENT,cleanGrants,cleanFlags,canUse,Access} from '../shared/access.js';
 import {cosmetics} from '../shared/cosmetics.js';
 import type {AuthEnv} from './auth.js';
 const encoder=new TextEncoder(),SESSION_MS=12*3600000,REMEMBER_MS=30*24*3600000;
@@ -19,8 +21,65 @@ export async function passwordHash(password:string,salt=base64url(crypto.getRand
 async function passwordMatches(password:string,stored:string){const p=stored.split('$');if(p.length!==6||p.slice(0,4).join('$')!=='scrypt$32768$8$3')return false;const computed=await passwordHash(password,p[4]);return equal(bytes(computed.split('$')[5]),bytes(p[5]));}
 async function legacyMatches(username:string,password:string,env:AuthEnv){if(!env.DEV_ACCOUNT_VERIFIER)return false;const a=JSON.parse(env.DEV_ACCOUNT_VERIFIER),key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);const actual=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:bytes(a.salt),iterations:a.iterations},key,256));return username===a.username.toLowerCase()&&equal(actual,bytes(a.hash));}
 function access(row:any):Access{return {accountId:row.id,developer:row.developer===1,unlocks:cleanGrants(JSON.parse(row.unlocks)),flags:cleanFlags(JSON.parse(row.flags))};}
-function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:cosmetics(raw?.cosmetics,a)};}
-function view(row:any){return {id:row.id,username:row.username,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
+// Native profile ids are stored by the shared service without adding them to Electron's rendering catalog.
+const NATIVE_INTROS=new Set(['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']);
+const LOBBY_BACKS=new Set(['tick-ring','clean-glow','sunburst','hex-field','circuit','equalizer','warp','embers','orbitals','glitch','crown-halo','neon-diamond']);
+// Unity weapon skins (unity/.../Core/NativeWeaponSkins.cs Normalize): "spec:skin" picks, comma separated, strictly allowlisted;
+// only non-default picks are kept, once per entry (the last wins), in entry order: the weapons, then the pilot's body (Core/
+// NativeBodySkins.cs: standard, prototype, or the DEV-only "sheldon" Sheldon Clothes, kept only on DEV accounts like the
+// Sheldon Head). Anything else is the Standard skin ('').
+const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet','bow','cyberlord','body','face'];
+const WEAPON_SKINS=new Set(['standard','prototype']);
+const FACE_SKINS=new Set(['mask-visor','visor','mask']);
+const BODY_SKINS=new Set(['standard','prototype','sheldon']);
+function weaponSkinMap(raw:unknown,developer=false){
+ if(typeof raw!=='string'||!raw)return '';const picks=new Map<string,string>();
+ for(const entry of raw.slice(0,4096).split(',')){const i=entry.indexOf(':');if(i<=0)continue;const spec=entry.slice(0,i).trim(),skin=entry.slice(i+1).trim();if(SKIN_WEAPONS.includes(spec)&&(spec==='body'?BODY_SKINS:spec==='face'?FACE_SKINS:WEAPON_SKINS).has(skin))picks.set(spec,skin);}
+ if(picks.get('body')==='sheldon'&&!developer)picks.delete('body');
+ return SKIN_WEAPONS.filter(s=>picks.has(s)&&picks.get(s)!==(s==='face'?'mask-visor':'standard')).map(s=>s+':'+picks.get(s)).join(',');
+}
+// Mirrors NativeLook's canonical order and defaults. Outfit selections never affect gameplay.
+const LOOK_SLOTS:Record<string,string[]>={
+ hair:['spiky','wild','side-swept','tied-back','fringe-tail','bob','high-ponytail',
+  'raven-spikes','hero-spikes','wolf','mane','messy','emo','shag','dreads','short-pony','twin-tails','pigtails','twin-buns','bun','hime','long-straight','shoujo','lob'],
+ upper:['robot-armour','open-hoodie','hard-jacket','hoodie','tee','tank','sweater',
+  'school-jacket','cardigan','henley','dress-shirt','short-shirt','sleeveless-shirt','sweater-vest','suit-jacket','kimono-top','pilot-suit','hot-dog','sheldon-robe'],
+ lower:['robot-legs','belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis',
+  'capris','dress-pants','long-skirt','shorts','dolphin-shorts','pilot-suit-legs','sheldon-pants'],
+ hands:['robot-gauntlets','fingerless','gloves','arm-bands','sweat-bands','bare'],
+ feet:['robot-boots','mid-tops','work-boots','sneakers','lace-ups',
+  'flats','socked-flats','heels','loafers','flip-flops','sheldon-boots','barefoot'],
+ body:['male','female'],
+ costume:['none','voxel']};
+const DEV_LOOK=new Set(['hot-dog','sheldon-robe','sheldon-pants','sheldon-boots','barefoot']);
+function lookMap(raw:unknown,developer=false){
+ if(typeof raw!=='string'||raw.length>512)return '';const picks=new Map<string,string>();let skin='';
+ for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const slot=entry.slice(0,i).trim(),id=entry.slice(i+1).trim();if(slot==='skin'&&/^[0-9a-f]{6}$/i.test(id))skin=id.toLowerCase();else if(Object.hasOwn(LOOK_SLOTS,slot)&&LOOK_SLOTS[slot].includes(id))picks.set(slot,id);}
+ return Object.keys(LOOK_SLOTS).filter(s=>picks.has(s)&&picks.get(s)!==LOOK_SLOTS[s][0]&&(developer||!DEV_LOOK.has(picks.get(s)!))).map(s=>s+':'+picks.get(s)).concat(skin?['skin:'+skin]:[]).join(',');
+}
+function podLook(raw:unknown){
+ if(typeof raw!=='string'||raw.length>256)return '';const picks=new Map<string,string>();const keys=['paint','trim','light'];
+ for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const key=entry.slice(0,i).trim(),value=entry.slice(i+1).trim();if(keys.includes(key)&&/^[0-9a-f]{6}$/i.test(value))picks.set(key,value.toLowerCase());}
+ return keys.filter(k=>picks.has(k)).map(k=>k+':'+picks.get(k)).join(',');
+}
+const TECHNIQUE_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','bow'];
+const TECHNIQUES:Record<string,string[]>={pistol:['ricochet-coin','bounty-round','gun-spin','flash-round','slide-shot'],rifle:['grapple-line','sonar-dart','bolas-round','breacher-round','ghillie'],machinegun:['sentry-drop','recoil-burst','bipod','ammo-crate','flak-burst'],fire:['ignition-leap','wildfire-run','dragon-breath','combust','flame-cloak'],water:['healing-spring','slipstream','hydro-jet','bubble-trap','flash-freeze'],lightning:['static-recall','lightning-rod','thunderclap','overload','magnetize'],darkness:['shade-swap','grave-walk','soul-siphon','dread','shadow-puppet'],sword:['riposte','parting-line','disarm','iaido','challenge'],daggers:['smoke-veil','tripwire','envenom','chain-hook','mirror-double'],shield:['bastion','shield-surf','ground-slam','war-cry','lodestone'],greatsword:['anchor-throw','iron-vow','reaping-sweep','sunder','blade-drag'],bow:['gale-arrow','spirit-hawk','vault-shot','bramble-arrow','tether-arrow']};
+function weaponTechniqueMap(raw:unknown){
+ if(typeof raw!=='string'||raw.length>2048)return '';const picks=new Map<string,string>();
+ for(const entry of raw.split(',')){const pair=entry.split(':');if(pair.length!==2)continue;const spec=pair[0].trim(),choice=pair[1].split('=');if(choice.length>2)continue;const slot=choice[0].trim();
+  if(slot==='default'){picks.delete(spec+':q');picks.delete(spec+':e');continue;}if(!TECHNIQUE_WEAPONS.includes(spec)||!(slot==='e'||slot==='q'&&spec!=='rifle'))continue;
+  const id=choice.length===1?TECHNIQUES[spec][0]:choice[1].trim();if(!id){picks.delete(spec+':'+slot);continue;}if(!TECHNIQUES[spec].includes(id))continue;
+  const other=spec+':'+(slot==='q'?'e':'q');if(picks.get(other)===id)picks.delete(other);picks.set(spec+':'+slot,id);
+ }
+ return TECHNIQUE_WEAPONS.flatMap(s=>[s+':q',s+':e']).filter(s=>picks.has(s)).map(s=>s+'='+picks.get(s)).join(',');
+}
+function accountCosmetics(raw:any,a:Access){
+ const clean=cosmetics(raw,a);
+ const tint=(value:unknown)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
+ return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&canUse(a,'weapon:cyberlord')?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponTechniques:weaponTechniqueMap(raw?.weaponTechniques),weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),pod:podLook(raw?.pod),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
+}
+function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
+function view(row:any){return {id:row.id,username:row.username,profileSchema:5,bossClears:row.boss_clears??0,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
 async function sign(row:any,env:AuthEnv,now:number){const payload=base64url(encoder.encode(JSON.stringify({kind:'chip-arena-player',user:row.username,...access(row),iat:now,exp:now+GAME_CLAIM_MS}))),key=await crypto.subtle.importKey('jwk',JSON.parse(env.DEV_SIGNING_KEY!),{name:'ECDSA',namedCurve:'P-256'},false,['sign']);return payload+'.'+base64url(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,encoder.encode(payload)));}
 async function rate(request:Request,env:AuthEnv,now:number,username:string,action:string){const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');const sensitive=['login','register','recover'].includes(action);const identity=sensitive?username:await digest(request.headers.get('authorization')||ip);for(const [label,limit,window] of [[`account-ip:${sensitive?'auth':'api'}:${ip}`,sensitive?12:180,60000],[`account-user:${identity}:${action}`,sensitive?15:100,300000]] as const){const key=label+':'+Math.floor(now/window);const r=await env.DB.batch([env.DB.prepare('INSERT INTO dev_login_rates(id,hits,expires) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET hits=hits+1').bind(key,now+window*2),env.DB.prepare('SELECT hits FROM dev_login_rates WHERE id=?').bind(key)]);if(r[1].results[0].hits>limit)throw fail('Too many requests. Try again in a few minutes.',429);}}
 async function readBody(request:Request){if(request.method==='GET')return {};if(!request.headers.get('content-type')?.includes('application/json'))throw fail('Expected JSON.',415);const reader=request.body?.getReader();if(!reader)throw fail('Missing request.');let size=0,text='';const decoder=new TextDecoder();while(true){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>8192){await reader.cancel();throw fail('Request too large.',413);}text+=decoder.decode(r.value,{stream:true});}try{const value=JSON.parse(text+decoder.decode());if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw fail('Invalid request.');}}
@@ -49,12 +108,18 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
     row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(id).first();
    }else if(action==='recover'){
     if(typeof input.recoveryCode!=='string'||input.recoveryCode.length>80)throw fail('Enter your recovery code and a new password.');
-    const recovery=await digest(input.recoveryCode.trim());if(!row||!equal(encoder.encode(recovery),encoder.encode(row.recovery)))throw fail('Username or recovery code is incorrect.',401);
+    // Existing rows contain just the player's recovery digest. A DEV-issued code
+    // appends its expiry and digest until either credential is redeemed.
+    const [original,expires,temporary]=String(row?.recovery||'').split(':');
+    const supplied=encoder.encode(await digest(input.recoveryCode.trim()));
+    const ownCode=equal(supplied,encoder.encode(original));
+    const devCode=row?.developer===0&&Number(expires)>now&&equal(supplied,encoder.encode(temporary||''));
+    if(!row||!ownCode&&!devCode)throw fail('Username or recovery code is incorrect.',401);
     const hash=await passwordHash(input.password);recoveryCode=random();
     // Atomic compare-and-swap consumes each recovery code once, even across simultaneous requests.
-    const result=await env.DB.batch([env.DB.prepare('UPDATE player_accounts SET password=?,recovery=?,updated=? WHERE id=? AND recovery=?').bind(hash,await digest(recoveryCode),now,row.id,recovery),env.DB.prepare('DELETE FROM player_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND password=?)').bind(row.id,row.id,hash)]);
+    const result=await env.DB.batch([env.DB.prepare('UPDATE player_accounts SET password=?,recovery=?,updated=? WHERE id=? AND recovery=? AND (developer=0 OR ?=1)').bind(hash,await digest(recoveryCode),now,row.id,row.recovery,ownCode?1:0),env.DB.prepare('DELETE FROM player_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND password=?)').bind(row.id,row.id,hash)]);
     if(!result[0].meta.changes)throw fail('This recovery code was already used.',401);
-    row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(row.id).first();
+    row={...row,password:hash};
    }else{
     if(!row&&username===reserved&&await legacyMatches(username,input.password,env)){
      const hash=await passwordHash(input.password);recoveryCode=random();const id=crypto.randomUUID();
@@ -65,14 +130,26 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
     if(!row||!await passwordMatches(input.password,row.password))throw fail('Username or password is incorrect.',401);
    }
    const session=random(),hash=await digest(session),expires=now+(input.remember===true?REMEMBER_MS:SESSION_MS);
-   await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)').bind(hash,row.id,expires)]);
+   const issued=await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) SELECT ?,id,? FROM player_accounts WHERE id=? AND password=?').bind(hash,expires,row.id,row.password)]);
+   if(!issued[2].meta.changes)throw fail('Credentials changed. Please log in again.',401);
    return response({session,expires:expires,account:view(row),token:await sign(row,env,now),recoveryCode});
   }
   const session=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!session||!/^[-\w]{43}$/.test(session))throw fail('Please log in.',401);
   const hash=await digest(session);let row=await env.DB.prepare('SELECT a.* FROM player_accounts a JOIN player_sessions s ON s.account_id=a.id WHERE s.hash=? AND s.expires>?').bind(hash,now).first();if(!row)throw fail('Session expired. Please log in again.',401);
+  if(['social','invite','invite-answer'].includes(action)){if(request.method!=='POST')throw fail('Method not allowed.',405);return response(await accountSocial(env.DB,row.id,action,input,now));}
+  if(action==='xp'&&request.method==='GET')return response({summary:await readXp(env.DB,row.id)});
+  if(action==='xp'&&request.method==='POST')return response(await confirmXp(env.DB,row.id,input,now));
   if(action==='me'&&request.method==='GET')return response({account:view(row),token:await sign(row,env,now)});
   if(request.method!=='POST')throw fail('Method not allowed.',405);
   if(action==='logout'){await env.DB.prepare('DELETE FROM player_sessions WHERE hash=?').bind(hash).run();return response({ok:true});}
+  if(action==='boss-clear'){
+   const bosses=['siren','station','converter','hum','deepend','noctiel'];
+   const index=bosses.indexOf(input.boss);
+   if(index<0)throw fail('Unknown boss.');
+   // Player-hosted outcome reporting, as for XP. The signed-in pilot can only add their own clear.
+   const saved=await env.DB.prepare('UPDATE player_accounts SET boss_clears=boss_clears | ? WHERE id=? RETURNING boss_clears').bind(1<<index,row.id).first();
+   return response({accountId:row.id,bossClears:saved.boss_clears});
+  }
   if(action==='profile'){
    if(!Number.isSafeInteger(input.revision))throw fail('Reload your saved pilot before saving.',409);
    const profile=savedProfile(input.profile,access(row));const r=await env.DB.prepare('UPDATE player_accounts SET profile=?,revision=revision+1,updated=? WHERE id=? AND revision=?').bind(JSON.stringify(profile),now,row.id,input.revision).run();
@@ -80,9 +157,30 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
    row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(row.id).first();return response({account:view(row),token:await sign(row,env,now)});
   }
   if(!row.developer)throw fail('Only DEVs can manage registered players.',403);
+  if(action==='issue-reset'){
+   if(request.method!=='POST')throw fail('Use the player management form.',405);
+   if(typeof input.accountId!=='string')throw fail('Select a registered player.');
+   const target=await env.DB.prepare('SELECT id,developer,recovery FROM player_accounts WHERE id=?').bind(input.accountId).first();
+   if(!target)throw fail('Registered player not found.',404);
+   if(target.developer)throw fail('DEV accounts must use their own recovery code.',403);
+   const code=random(),expires=now+15*60000;
+   const record=[target.recovery.split(':')[0],expires,await digest(code)].join(':');
+   const result=await env.DB.batch([
+    env.DB.prepare('UPDATE player_accounts SET recovery=? WHERE id=? AND developer=0 AND recovery=?').bind(record,target.id,target.recovery),
+    env.DB.prepare('INSERT INTO account_audit(id,actor,target,action,detail,created) SELECT ?,?,?,?, ?,? WHERE EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND recovery=?)').bind(crypto.randomUUID(),row.id,target.id,'issue-reset','{}',now,target.id,record)
+   ]);
+   if(!result[0].meta.changes)throw fail('Account recovery changed. Try again.',409);
+   return response({recoveryCode:code});
+  }
   if(action==='players'){
-   const query=typeof input.query==='string'?input.query.trim().toLowerCase():'';if(!/^[a-z0-9_]{2,20}$/.test(query))throw fail('Enter at least 2 username characters.');
-   const r=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? ORDER BY username LIMIT 20').bind(query,query+'\uffff')]);return response({players:r[0].results.map(view)});
+   const query=(input.query??''),after=(input.after??'');
+   if(typeof query!=='string'||typeof after!=='string')throw fail('Invalid player filter.');
+   const prefix=query.trim().toLowerCase();
+   if(!/^[a-z0-9_]{0,20}$/.test(prefix)||after!==''&&(!/^[a-z0-9_]{3,20}$/.test(after)||!after.startsWith(prefix)))throw fail('Invalid player filter.');
+   const pageSize=20;
+   const result=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? AND username>? ORDER BY username LIMIT ?').bind(prefix,prefix+'\uffff',after,pageSize+1)]);
+   const rows=result[0].results,players=rows.slice(0,pageSize).map(view);
+   return response({players,nextAfter:rows.length>pageSize?players[pageSize-1].username:null,grantCatalogVersion:1,grantableUnlocks:Object.keys(GRANTABLE_CONTENT)});
   }
   if(action==='grant'){
    if(typeof input.accountId!=='string'||!Number.isSafeInteger(input.grantVersion)||!Array.isArray(input.unlocks)||!Array.isArray(input.flags))throw fail('Invalid player grant.');

@@ -1,0 +1,849 @@
+{
+  "schema": "chip-arena.sound-requests/1",
+  "purpose": "NOCTIEL's sounds for the Unity Chip Arena effects bank (owner, 2026-11-06). Contract: docs/audio/SOUND-REQUESTS.md; design: docs/EXPEDITION-BOSS-FINAL.md.",
+  "file": {
+    "pattern": "<key>_<NN>.<ext>",
+    "variant": "NN = 01..count, two digits",
+    "ext": [
+      "mp3",
+      "wav"
+    ]
+  },
+  "generation": {
+    "service": "ElevenLabs Sound Effects",
+    "promptInfluence": 0.65,
+    "outputFormat": "mp3_44100_192",
+    "oneGenerationPerFile": true,
+    "promptIsComplete": true
+  },
+  "edit": {
+    "sampleRate": 44100,
+    "channels": 1,
+    "codec": "vorbis",
+    "trimSilenceDbfs": -50,
+    "fadeOutMs": 20
+  },
+  "sounds": [
+    {
+      "key": "boss.noctiel.step",
+      "category": "boss",
+      "priority": 1,
+      "count": 4,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.6
+      },
+      "levelDb": -10,
+      "fadeOutMs": 80,
+      "prompt": "A single heavy armored footstep in ankle-deep still water, a porcelain-plated boot pressing down with a soft deep splash and a faint ceramic clink, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.glide",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "A huge winged figure gliding fast just above still water, a low rushing wind and a thin hiss of spray skimming the surface, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.wings.open",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "prompt": "Six enormous feathered wings unfolding at once, a deep heavy rustle of long feathers and a slow powerful whoosh of air, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.wings.beat",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -6,
+      "fadeOutMs": 200,
+      "prompt": "One huge wingbeat, a deep thump of air pushed down hard with a rush of feathers, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.plate",
+      "category": "boss",
+      "priority": 2,
+      "count": 3,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 60,
+      "prompt": "Polished porcelain armor plates shifting against each other, a delicate ceramic creak and click, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.hurt",
+      "category": "boss",
+      "priority": 1,
+      "count": 4,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 60,
+      "prompt": "A hard hit on polished porcelain armor, a sharp ceramic chip crack with a short bright glassy ring, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.feather",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.0
+      },
+      "levelDb": -14,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A single feather touching perfectly still water in total silence, one tiny delicate drip and a faint shimmering ring spreading out, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.ripple",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.5,
+        "max": 2.4
+      },
+      "levelDb": -12,
+      "fadeOutMs": 500,
+      "space": "2d",
+      "prompt": "A slow ripple ring spreading across a vast still black lake, a soft airy shimmer that fades out, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.gauntlet",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.1
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "A heavy plated gauntlet closing on a sword hilt wrapped in chain, leather creaking and chain links tightening, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.veins",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.4
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "Black ink creeping up a long steel blade, a slow rising crackle and hiss like frost spreading across metal, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.halo.crack",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "A thin ring of glass cracking under strain, one sharp bright ping and a fine splintering tick, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.rise",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.5,
+      "targetSeconds": {
+        "min": 2.0,
+        "max": 3.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A giant in porcelain armor slowly rising from one knee in shallow water, plates grinding, heavy cloth dragging, water pouring off, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.mask",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -8,
+      "fadeOutMs": 200,
+      "space": "2d",
+      "prompt": "A smooth porcelain mask lifting and turning, a soft ceramic slide and a faint high chime, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.sword.pull",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.4,
+        "max": 2.2
+      },
+      "levelDb": -4,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A huge sword drawn slowly up out of water, water streaming off the steel and a long bright metallic ring, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.slash",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": 0,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "A razor sharp giant blade cutting through the air at the listener, a fast bright tearing shimmer that ends in a clean hard cut, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.slash.part",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -4,
+      "fadeOutMs": 250,
+      "space": "2d",
+      "prompt": "Two huge panes of glass sliding apart along a crack, a smooth grinding shear and a fine spray of tiny shards, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.slowdown",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "Time slowing down, a deep downward pitch-bending whoosh that sags into silence, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.kneel",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.1
+      },
+      "levelDb": -2,
+      "fadeOutMs": 200,
+      "prompt": "An armored knee dropping hard into shallow water, a heavy plate impact and a splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.chip",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -8,
+      "fadeOutMs": 100,
+      "space": "2d",
+      "prompt": "A heavy black stone tile flipping over onto a stone table, one deep solid clack, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.cleave",
+      "category": "boss",
+      "priority": 1,
+      "count": 4,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.35,
+        "max": 0.8
+      },
+      "levelDb": -2,
+      "fadeOutMs": 120,
+      "prompt": "A huge claymore swung hard through the air, a heavy deep steel whoosh with a sharp edge at the end, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.vow.draw",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -6,
+      "fadeOutMs": 200,
+      "prompt": "Water splitting open in a long straight line, a building hiss of parting water racing away, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.vow",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": 1,
+      "fadeOutMs": 200,
+      "prompt": "A giant thrusting a sword across a great distance in a blink, a sharp sonic crack and a violent burst of spray, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.severance.wind",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "prompt": "A long blade held out wide, a deep resonant metallic hum swelling, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.severance",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": 2,
+      "fadeOutMs": 300,
+      "prompt": "A giant sword swung flat, throwing a huge crescent wave of force, a deep heavy whoosh that tears away into the distance, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.wave",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A wall of cutting force rushing past very close, a fast whooshing blade wave with a doppler swish, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.leap",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -4,
+      "fadeOutMs": 200,
+      "prompt": "A giant winged figure leaping up into the dark, one massive wingbeat and a rushing whoosh rising away, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.descent.mark",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.4
+      },
+      "levelDb": -6,
+      "fadeOutMs": 200,
+      "prompt": "A bright shimmering tone rising and closing in, like a ring of light tightening, a thin glassy whine climbing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.land",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": 4,
+      "fadeOutMs": 400,
+      "prompt": "A massive armored body slamming down into shallow water sword first, a deep heavy boom and a huge splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.rain.lines",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.2
+      },
+      "levelDb": -10,
+      "fadeOutMs": 200,
+      "space": "2d",
+      "prompt": "Thin lines of light appearing across dark water, a high faint glassy hum that brightens, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.rain",
+      "category": "boss",
+      "priority": 1,
+      "count": 4,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": -6,
+      "fadeOutMs": 100,
+      "prompt": "A sharp steel feather falling fast and slicing into water, a short whistling fall and a crisp splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.verdict.plant",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.1
+      },
+      "levelDb": 1,
+      "fadeOutMs": 200,
+      "prompt": "A giant sword plunged point down into water, a heavy metallic boom and a deep splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.verdict.crack",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 2.2,
+        "max": 2.7
+      },
+      "levelDb": -2,
+      "fadeOutMs": 100,
+      "space": "2d",
+      "prompt": "A crack of light drawing slowly across the whole world, a rising brittle crackle of glass under stress that brightens and tightens for two and a half seconds, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.verdict.split",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.0
+      },
+      "levelDb": 5,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "The world splitting open along a crack, an enormous glass shatter and a deep thunderous boom, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.choir",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.4,
+        "max": 2.0
+      },
+      "levelDb": -4,
+      "fadeOutMs": 400,
+      "prompt": "A ghostly wordless choir swelling into one held chord as a hand is raised, hollow and cold, isolated, no music, no instruments, no background noise"
+    },
+    {
+      "key": "boss.noctiel.cantor",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.4,
+        "max": 2.0
+      },
+      "levelDb": -10,
+      "fadeOutMs": 400,
+      "prompt": "A single thin eerie wordless soprano voice holding one high note, hollow and breathy, like a voice in an empty robe, isolated, no music, no instruments, no background noise"
+    },
+    {
+      "key": "boss.noctiel.cantor.death",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "A hollow cloth robe collapsing in the air, a held voice breaking off into a soft sigh, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.sweep.shake",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "prompt": "Two enormous blade wings spreading and shaking, a long metallic shiver and rattle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.sweep",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": 2,
+      "fadeOutMs": 300,
+      "prompt": "Giant steel blades sweeping in a full circle through the air, a deep rotating whoosh with a sharp metallic edge, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.eclipse",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 3.0,
+        "max": 3.5
+      },
+      "levelDb": 0,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "All the light going out, a deep dark rumble rolling in from far away and closing in, a low pressure swell building for three seconds, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.eclipse.pool",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -10,
+      "fadeOutMs": 300,
+      "prompt": "A pool of soft light opening on dark water, a gentle bright shimmer and a soft chime, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.penance",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "prompt": "Thick dark liquid pouring from a blade into water, a heavy slow pour with dripping, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.penitent",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 200,
+      "prompt": "A pale thin husk rising out of shallow water, a wet drag and a weak breathy moan, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.penitent.latch",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.6
+      },
+      "levelDb": -8,
+      "fadeOutMs": 80,
+      "prompt": "Cold wet hands grabbing onto armor, a quick slap and a scrabbling grip, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.fall.mark",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.8
+      },
+      "levelDb": -10,
+      "fadeOutMs": 150,
+      "prompt": "A bright square of light appearing on water, a soft rising glassy tone, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.fall",
+      "category": "boss",
+      "priority": 1,
+      "count": 4,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": 2,
+      "fadeOutMs": 250,
+      "prompt": "A column of white light slamming down into water, a bright searing beam impact with a deep hit and a sizzle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.throne",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.4,
+        "max": 2.0
+      },
+      "levelDb": -12,
+      "fadeOutMs": 400,
+      "prompt": "A ring of black blades slowly turning in the air, a low metallic drone with a faint grinding, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.throne.fire",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.8
+      },
+      "levelDb": -6,
+      "fadeOutMs": 100,
+      "prompt": "A beam of light fired straight down, a sharp bright zap and a sizzle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.throne.break",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -2,
+      "fadeOutMs": 300,
+      "prompt": "A ring of black steel blades shattering and falling into water, metal breaking apart and splashing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.hush",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "Water going perfectly still and bright under your feet, a soft rising shimmering warning tone, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.hush.open",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -2,
+      "fadeOutMs": 200,
+      "prompt": "Still water suddenly opening under someone, a deep hollow gulp and a heavy splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.life.lost",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.1
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "A single white feather plucked away, a soft breathy falling chime, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.return",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.1
+      },
+      "levelDb": -8,
+      "fadeOutMs": 300,
+      "prompt": "A person falling back in from the dark and landing on still water, a soft whoosh and a ripple splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.revive",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.5,
+        "max": 2.0
+      },
+      "levelDb": -10,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A warm soft wordless choir hum slowly rising, gentle and hopeful, isolated, no music, no instruments, no background noise"
+    },
+    {
+      "key": "boss.noctiel.revive.done",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.1
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "space": "2d",
+      "prompt": "A feather of light given back, a bright soft chime and a warm swell, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.death",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.6,
+        "max": 3.5
+      },
+      "levelDb": 3,
+      "fadeOutMs": 500,
+      "space": "2d",
+      "prompt": "Porcelain armor cracking apart as the light inside goes out, a long splintering crack and a fading glassy exhale, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.noctiel.shatter",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.4
+      },
+      "levelDb": 0,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A hollow porcelain shell shattering into pieces that rain down into water, ceramic breaking and many small splashes, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.noctiel.enrage",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.6,
+        "max": 3.5
+      },
+      "levelDb": 4,
+      "fadeOutMs": 200,
+      "space": "2d",
+      "prompt": "Blinding white light flooding everything, a piercing rising swell that suddenly cuts to a deep dead silence, isolated, no music, no voices, no background noise"
+    }
+  ]
+}

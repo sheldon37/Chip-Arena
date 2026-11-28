@@ -1,0 +1,100 @@
+#if ARENA_TESTS
+using System;
+using System.Linq;
+using System.Text.Json;
+namespace ChipArena.UnityConversion
+{
+    internal static class ZoneBossRulesChecks
+    {
+        public static void Run()
+        {
+            int count=0;void Check(bool ok,string why){if(!ok)throw new Exception("Zone boss rules: "+why);count++;}
+            var route=new NativeStationRoute();
+            var start=new System.Numerics.Vector3(-18,0,0);var routeTarget=new System.Numerics.Vector3(18,0,0);
+            bool Clear(System.Numerics.Vector3 a,System.Numerics.Vector3 b)
+            {
+                // A wall occupying the direct lane; segment samples include both ends.
+                int steps=Math.Max(1,(int)Math.Ceiling(System.Numerics.Vector3.Distance(a,b)*20));
+                for(int k=0;k<=steps;k++){var q=System.Numerics.Vector3.Lerp(a,b,(float)k/steps);if(Math.Abs(q.X)<3&&q.Z<3)return false;}
+                return true;
+            }
+            Check(route.Plan(start,routeTarget,1,Clear),"blocked direct lane has an alternate route");
+            var cursor=start;bool detoured=false;int segments=0;
+            while(route.Next(cursor,out var goal)&&segments++<200){Check(Clear(cursor,goal),"every chosen segment avoids the wall");Check(NativeStationRoute.Contains(goal,1),"phase one stays on concourse");detoured|=goal.Z>=3;cursor=goal;}
+            Check(detoured&&cursor.X>8&&segments<200,"route goes around wall and reaches attack range");
+            Check(!route.Plan(cursor,routeTarget,1,(a,b)=>false)&&!route.Next(cursor,out _),"fully blocked rebuild discards stale waypoint");
+            Check(!NativeStationRoute.Contains(new System.Numerics.Vector3(0,0,-4),1)&&NativeStationRoute.Contains(new System.Numerics.Vector3(0,0,-4),2),"platform route opens only after barrier phase");
+            Check(NativeIntroRules.Staged(false,true,"intro",null),"Ward Zero retains the staged Siren entrance");
+            Check(!NativeIntroRules.Staged(false,false,"intro",null)&&!NativeIntroRules.Staged(false,true,"reveal",null),"only an active intro opens a staged entrance");
+            foreach(var kind in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
+            {
+                Check(!NativeIntroRules.Staged(false,true,"intro",kind),"zone boss arrival renders inside its live arena");
+                Check(NativeIntroRules.Staged(true,false,null,kind),"match pilot entrances remain staged");
+            }
+            foreach(var kind in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
+            {
+                var root=kind==NativeZoneBossRules.Station?new System.Numerics.Vector3(0,0,1.5f):new System.Numerics.Vector3(-35,0,0);
+                for(int i=0;i<=540;i++)
+                {
+                    Check(NativeZoneBossIntroCamera.Sample(kind,true,"intro",i/60d,root,0,out var eye,out var look,out float fov),"intro owns camera throughout hold");
+                    Check(float.IsFinite(eye.X)&&float.IsFinite(look.X)&&System.Numerics.Vector3.Distance(eye,look)>5&&fov>=60,"finite separated camera and target");
+                    if(kind==NativeZoneBossRules.Ironworks)Check(eye.X>-50&&eye.X< -24&&Math.Abs(eye.Z)<12&&eye.Y<18,"converter camera inside hall");
+                }
+                Check(!NativeZoneBossIntroCamera.Sample(kind,false,"intro",9.0678,root,0,out _,out _,out _),"fight restores gameplay camera immediately");
+                Check(!NativeZoneBossIntroCamera.Sample(kind,true,"victory",0,root,0,out _,out _,out _),"other holds do not take arrival camera");
+            }
+            Check(!NativeZoneBossIntroCamera.Sample("siren",true,"intro",0,default,0,out _,out _,out _),"Siren retains existing staged camera");
+            foreach(float targetX in new[]{-35f,12f})
+            {
+                var at=new System.Numerics.Vector3(targetX<0?12:-35,0,5);var target=new System.Numerics.Vector3(targetX,0,5);
+                for(int i=0;i<4000;i++){var goal=NativeConverterRoute.Goal(at,target);var d=goal-at;if(d.Length()>.01f)at+=System.Numerics.Vector3.Normalize(d)*Math.Min(d.Length(),1.6f/60);Check(NativeConverterRoute.Contains(at.X,at.Z),"door route stays inside boss travel area");}
+                Check(System.Numerics.Vector3.Distance(at,target)<.1f,"Converter crosses doorway in either direction");
+            }
+            var options=new JsonSerializerOptions{IncludeFields=true};
+            foreach(string boss in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
+            {
+                float first=boss==NativeZoneBossRules.Station?.65f:.7f,last=boss==NativeZoneBossRules.Station?.3f:.35f;
+                Check(NativeZoneBossRules.Phase(boss,6000,6000)==1,"initial phase");Check(NativeZoneBossRules.Phase(boss,6000*first,6000)==2,"first threshold inclusive");Check(NativeZoneBossRules.Phase(boss,6000*last,6000)==3,"last threshold inclusive");
+                var f=new NativeZoneBossFrame{archetype=boss,actor=10001,phase=3,phaseAt=1};
+                f.action=f.staggerCause="";Check(f.Valid(),"Unity empty optional strings accept idle record");
+                f.action="unknown";Check(!f.Valid(),"unknown nonempty action refused");f.action=null;
+                f.staggerCause="unknown";Check(!f.Valid(),"unknown nonempty stagger refused");f.staggerCause=null;
+                string[] actions=boss==NativeZoneBossRules.Station?NativeStationBoss.Moves.Select(m=>m.Id).ToArray():NativeIronworksBoss.Actions.Select(a=>a.Id).ToArray();
+                foreach(var id in actions)
+                {
+                    NativeZoneBossRules.Start(f,id,20,2,4,5,90);Check(f.Valid(),id+" valid");Check(f.hitAt>=20&&f.hitAt<=20+f.duration+.001,"absolute hit clock");
+                    var decoded=JsonSerializer.Deserialize<NativeZoneBossFrame>(JsonSerializer.Serialize(f,options),options);Check(decoded.Valid()&&decoded.actionId==f.actionId&&decoded.hitAt==f.hitAt,"wire round trip");
+                    var copy=f.Copy();copy.partAt[0]=55;copy.spillIds=new[]{10003};Check(f.partAt[0]==-100&&f.spillIds.Length==0,"snapshot arrays detached");
+                }
+                f.hazards=new[]{new NativeZoneBossHazardFrame{id=301,kind="pour",x=1,y=0,z=2,radius=3,hitAt=22,until=26}};
+                Check(f.Valid(),"persistent hazard valid");var isolated=f.Copy();isolated.hazards[0].until=99;Check(f.hazards[0].until==26&&!isolated.Valid(),"hazard copy detached and lifetime bounded");
+                var broken=f.Copy();broken.hazards[0].x=float.NaN;Check(!broken.Valid(),"nonfinite hazard rejected");broken=f.Copy();broken.hazards=new[]{broken.hazards[0],broken.hazards[0]};Check(!broken.Valid(),"duplicate hazards rejected");
+                f.hazards=Array.Empty<NativeZoneBossHazardFrame>();
+                if(boss==NativeZoneBossRules.Station){NativeZoneBossRules.Start(f,"alteration",20,-1,0,0,0);Check(Math.Abs(f.hitAt-21.8f)<.00001,"glass hitAt is pane contact");}
+                NativeZoneBossRules.Start(f,"arrive",20,-1,0,0,0);Check(Math.Abs(f.duration-9.0678f)<.000001,"intro stays pinned");
+                foreach(var field in typeof(NativeZoneBossFrame).GetFields().Where(x=>x.FieldType==typeof(float)))
+                {var bad=f.Copy();field.SetValue(bad,float.NaN);Check(!bad.Valid(),field.Name+" rejects NaN");field.SetValue(bad,float.PositiveInfinity);Check(!bad.Valid(),field.Name+" rejects infinity");}
+                var invalid=f.Copy();invalid.partAt=new[]{0f};Check(!invalid.Valid(),"bounded part array");invalid=f.Copy();invalid.spillIds=new int[100];Check(!invalid.Valid(),"bounded spill array");invalid=f.Copy();invalid.action="invented";Check(!invalid.Valid(),"unknown action refused");
+            }
+            var h=new NativeZoneHazardFrame{running=true,boss=true,converterAt=10,converterMask=1,overflowAt=-100};
+            foreach(var pair in new[]{(9f,NativeHazardPhase.Idle),(10f,NativeHazardPhase.Warn),(12.49f,NativeHazardPhase.Warn),(12.5f,NativeHazardPhase.Active),(16.5f,NativeHazardPhase.Clear),(18.5f,NativeHazardPhase.Idle)})
+            {h.clock=pair.Item1;Check(NativeIronworksHazards.At(NativeIronworksHazards.Converter,h.Ironworks).Phase==pair.Item2,"converter boundary "+pair.Item1);Check(!NativeIronworksHazards.At(NativeIronworksHazards.ConverterSouth,h.Ironworks).Live,"unselected vessel off");}
+            h.converterMask=3;h.clock=13;Check(NativeIronworksHazards.At(NativeIronworksHazards.ConverterSouth,h.Ironworks).Live,"both vessels in phase three");Check(NativeIronworksHazards.At(NativeIronworksHazards.Ladle,h.Ironworks).Parked,"ladle remains parked");
+            h.overflowAt=20;foreach(float t in new[]{0f,7.99f,8f,13.99f,14f}){h.clock=20+t;Check(NativeIronworksHazards.At(NativeIronworksHazards.PitOverflow,h.Ironworks).Live==(t%14<8),"overflow eight live / six cool");}
+            for(int i=0;i<28;i++){NativeZoneBossRules.Droplet(7,i,3,out float x,out float z,out float delay);NativeZoneBossRules.Droplet(7,i,3,out float xx,out float zz,out float dd);Check(x==xx&&z==zz&&delay==dd&&x*x+z*z>=15.99f&&x*x+z*z<=110.26f&&delay>=2&&delay<3.8,"deterministic bounded rain");}
+            Check(NativeZoneBossRules.StompLeg(-1,1)==0&&NativeZoneBossRules.StompLeg(1,1)==1&&NativeZoneBossRules.StompLeg(-1,-1)==2&&NativeZoneBossRules.StompLeg(1,-1)==3,"four stomp quadrants");
+            var station=new NativeZoneBossFrame{archetype=NativeZoneBossRules.Station,actor=10001,phase=3,phaseAt=10,targetSeat=2,deathAt=80};
+            NativeZoneBossRules.Start(station,"departure",20,2,3,4,90);Check(Math.Abs(station.duration-6.1f)<.0001,"double charge duration");
+            Check(NativeZoneBossRules.DepartureLeg(3,-.01f,1.4f)==-1&&NativeZoneBossRules.DepartureLeg(3,0,1.4f)==0&&NativeZoneBossRules.DepartureLeg(3,1.5f,1.4f)==-1&&NativeZoneBossRules.DepartureLeg(3,2,1.4f)==1&&NativeZoneBossRules.DepartureLeg(2,2,1.4f)==-1,"two charge contacts with turn gap");
+            var sv=NativeZoneBossViews.Station(station,1,2,3,90,100,6000,8);
+            Check(sv.live&&sv.actionTarget==2&&sv.diedAt==80&&sv.hitAt==station.hitAt&&sv.duration==6.1f&&sv.spawned==8&&sv.x==1&&float.IsNaN(sv.cancelAt),"Station binding maps identity-independent state and sentinel");
+            var iron=new NativeZoneBossFrame{archetype=NativeZoneBossRules.Ironworks,actor=10002,phaseAt=10,action="grab",actionAt=20,hitAt=21,targetSeat=2,holdTarget=-1,parts=23,deathAt=80};iron.partAt[3]=70;
+            var iv=NativeZoneBossViews.Ironworks(iron,4,5,6,90,200,6000,9);
+            Check(iv.live&&iv.targetSeat==-1&&iv.deathAt==80&&iv.parts==23&&iv.partAt3==70&&float.IsNaN(iv.partAt0)&&iv.spawned==9,"Converter binding preserves early release, breaks and clock");
+            iron.cancelAt=22;iron.staggerAt=22;iron.staggerCause="choke";iv=NativeZoneBossViews.Ironworks(iron,4,5,6,90,200,6000,9);Check(iv.action=="choke"&&iv.actionAt==22,"cancelled blow binds choke moment");
+            Check(!NativeZoneBossViews.Station(iron,0,0,0,0,0,0,0).live&&!NativeZoneBossViews.Ironworks(station,0,0,0,0,0,0,0).live&&!NativeZoneBossViews.Station(null,0,0,0,0,0,0,0).live,"wrong or absent archetypes draw nothing");
+            Console.WriteLine("PASS zone boss rules ("+count+" checks)");
+        }
+    }
+}
+#endif

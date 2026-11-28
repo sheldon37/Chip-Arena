@@ -1,0 +1,225 @@
+{
+ "schema": 1,
+ "note": "Magic bolts and their hits: one 8 x 4 sprite atlas from the effect packs' missile and explosion sprites (tools/pack_bank/sheets.py; tile order is Core/NativeMagicPackFx's). Texture-only: no bank; the game loads fx-magic-sheet by id. Names only: no pack content.",
+ "sources": {
+  "magic": "Magic Arsenal/Assets/MagicArsenal/Effects/Textures",
+  "scifi": "Sci-Fi Arsenal/Assets/Archanor/Sci-Fi Arsenal/Sci-Fi Effects/Textures"
+ },
+ "sheets": [
+  {
+   "id": "fx-magic-sheet",
+   "kind": "atlas",
+   "grid": [
+    8,
+    4
+   ],
+   "tile": 256,
+   "tiles": [
+    {
+     "source": "magic",
+     "path": "fire_orb.png"
+    },
+    {
+     "source": "magic",
+     "path": "fire_ring.png"
+    },
+    {
+     "source": "magic",
+     "path": "fire_flame.png"
+    },
+    {
+     "source": "magic",
+     "path": "fire_smoke_molten.png"
+    },
+    {
+     "source": "magic",
+     "path": "water_drop.png"
+    },
+    {
+     "source": "magic",
+     "path": "water_splash.png"
+    },
+    {
+     "source": "magic",
+     "path": "water_droplets.png"
+    },
+    {
+     "source": "magic",
+     "path": "water_bubble.png"
+    },
+    {
+     "source": "magic",
+     "path": "lightning_ball.png"
+    },
+    {
+     "source": "magic",
+     "path": "lightning_new_arcs_2x2.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 0
+    },
+    {
+     "source": "magic",
+     "path": "lightning_new_arcs_2x2.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 1
+    },
+    {
+     "source": "magic",
+     "path": "lightning_new_arcs_2x2.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 2
+    },
+    {
+     "source": "magic",
+     "path": "lightning_new_arcs_2x2.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 3
+    },
+    {
+     "source": "magic",
+     "path": "lightning_new_arc.png"
+    },
+    {
+     "source": "scifi",
+     "path": "laserball_green.png"
+    },
+    {
+     "source": "scifi",
+     "path": "symbol_hexagon_simple.png"
+    },
+    {
+     "source": "scifi",
+     "path": "symbols.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 0
+    },
+    {
+     "source": "scifi",
+     "path": "symbols.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 1
+    },
+    {
+     "source": "scifi",
+     "path": "symbols.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 3
+    },
+    {
+     "source": "scifi",
+     "path": "symbols.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 4
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 0
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 2
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 4
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 6
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 8
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 10
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 12
+    },
+    {
+     "source": "scifi",
+     "path": "fire4x4_modular.png",
+     "grid": [
+      4,
+      4
+     ],
+     "frame": 14
+    },
+    {
+     "source": "magic",
+     "path": "light_particle.png"
+    },
+    {
+     "source": "magic",
+     "path": "arcane_glow.png"
+    },
+    {
+     "source": "magic",
+     "path": "lightning_new_glow2.png"
+    }
+   ]
+  }
+ ]
+}

@@ -20,7 +20,8 @@ Shader "ChipArena/NativeGlow"
             float4 frag(v2f i):SV_Target
             {
                 float r2=dot(i.uv.xy,i.uv.xy);
-                float alpha=i.uv.z>.5?pow(saturate(1-abs(i.uv.x)),2):exp(-r2*4.5)*saturate(1-r2);
+                // uv.z: 0 gaussian halo (projectile-glow.ts texture), 1 ribbon with a (1-|u|)^2 profile, 2 flat ribbon (projectile-trails.ts).
+                float alpha=i.uv.z>1.5?1:i.uv.z>.5?pow(saturate(1-abs(i.uv.x)),2):exp(-r2*4.5)*saturate(1-r2);
                 return float4(i.color.rgb,i.color.a*alpha);
             }
             ENDCG

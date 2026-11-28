@@ -1,0 +1,206 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using ChipArena.UnityConversion;
+
+namespace ChipArena.UnityConversion
+{
+    /// <summary>
+    /// The weapon techniques' presentation (docs/WEAPON-TECHNIQUES.md): the table against the content's weapons, the record the rules will own, and
+    /// the effects as pure functions of it over each cast's whole life: something drawn while it lives, nothing after, nothing broken, the same frame
+    /// for the same clock, thinner on Reduced. The clips the poses name, and that the presentation adds nothing to the wire or the rules.
+    /// </summary>
+    internal static class TechniqueChecks
+    {
+        private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Techniques: "+what);count++;}
+        private sealed class Recorder:ITechniqueFxSink
+        {
+            public int Draws;public float Hash,Far;public bool Broken;public Vector3 Origin;
+            private void P(Vector3 v,float x=1){if(!(float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z))||v.Length()>1000)Broken=true;if(x==1)Far=Math.Max(Far,Vector3.Distance(v,Origin));Hash=Hash*.99f+(v.X+v.Y*3+v.Z*7)*x*.001f;Draws++;}
+            private void F(float v){if(!float.IsFinite(v))Broken=true;}
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){P(at);P(color,.1f);F(size);F(u);F(coverage);}
+            public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){P(head);P(velocity,.1f);F(width);F(u);}
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){P(at);F(opacity);F(size);F(u);if(opacity<0)Broken=true;}
+            public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){P(at);F(size);}
+            public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){P(tail);P(head);F(width);}
+            public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){P(a);P(b);P(c);P(d);F(ua);F(ub);}
+            public void Fire(Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor){P(at);F(opacity);F(size);}
+            public void Water(Vector3 at,Vector3 lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor){P(at);P(segment,.1f);F(opacity);}
+            public void Drop(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed){P(head);P(segment,.1f);F(width);}
+            public void Tongue(bool view,Vector3 tail,Vector3 head,Vector3 color,float width){P(tail);P(head);F(width);}
+        }
+        private sealed class Scene:IKitFxScene
+        {
+            public readonly List<Actor> List=new List<Actor>();public IReadOnlyList<Actor> Actors=>List;
+            public Vector3 Feet(Actor a)=>new Vector3(a.Position.x,a.Position.y,a.Position.z);public bool Chest(Actor a,out Vector3 chest){chest=Feet(a)+new Vector3(0,1.25f,0);return true;}
+            public bool Blade(Actor a,bool left,out Vector3 root,out Vector3 tip){root=Feet(a)+new Vector3(.3f,1,.2f);tip=root+new Vector3(0,.8f,.4f);return !left;}
+            public int Viewer=>0;public bool ViewBlade(bool left,out Vector3 root,out Vector3 tip){root=tip=default;return false;}
+            public int WeaponColor(Actor a)=>0xffffff;public int Shots=>0;public bool Shot(int i,out Vector3 at,out Vector3 v,out string fx,out int owner){at=v=default;fx=null;owner=0;return false;}
+        }
+        private sealed class One:ITechniqueSource{public NativeTechnique K;public NativeTechnique Of(int actor)=>actor==1?K:null;}
+        public static void Run(string root)
+        {
+            count=0;var content=System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")));
+            var specs=new HashSet<string>();foreach(var w in content.RootElement.GetProperty("weapons").EnumerateArray())specs.Add(w.GetProperty("id").GetString());
+            string[] standard={"pistol","rifle","machinegun","bow","fire","water","lightning","darkness","sword","daggers","shield","greatsword"};
+            Check(NativeTechniques.All.Select(d=>d.Spec).Distinct().Count()==standard.Length&&NativeTechniques.All.Select(d=>d.Spec).Distinct().OrderBy(x=>x).SequenceEqual(standard.OrderBy(x=>x)),"a technique for each of the twelve standard weapons, and no DEV class");
+            Check(NativeTechniques.All.Select(d=>d.Id).Distinct().Count()==NativeTechniques.All.Length&&NativeTechniques.All.Select(d=>d.Name).Distinct().Count()==NativeTechniques.All.Length,"each its own id and name");
+            foreach(var d in NativeTechniques.All)
+            {
+                Check(specs.Contains(d.Spec),d.Id+": its weapon exists");Check(d.Cooldown>=9&&d.Cooldown<=20,d.Id+": a long cooldown ("+d.Cooldown+" s)");
+                Check(NativeTechniques.Of(d.Spec).Contains(d)&&NativeTechniques.Find(d.Id)==d,d.Id+": found by weapon and id");
+                // Dearer than the same weapon's Q: it is no new damage button.
+                foreach(var a in content.RootElement.GetProperty("abilities").EnumerateArray())if(a.GetProperty("spec").GetString()==d.Spec&&a.GetProperty("slot").GetString()=="q"&&a.TryGetProperty("cooldown",out var q)&&q.GetDouble()>0)Check(d.Cooldown>=q.GetDouble(),d.Id+": at least the cooldown of the weapon's Q ("+q.GetDouble()+" s)");
+            }
+            Check(NativeTechniques.For("siren")==null&&NativeTechniques.For("cyberlord")==null&&NativeTechniques.For("leet")==null,"not the DEV classes");
+            Effects();Poses();Choices(root);Wiring(root);
+            NativeTechniques.Source=null;
+            Console.WriteLine("PASS techniques ("+count+" checks: the twelve against the content, each cast's record chronological and its effects whole, deterministic, gone after, thinned on Reduced; the clips the poses name; no rule or wire touched)");
+        }
+        private static void Effects()
+        {
+            var fx=new NativeTechniqueFx();var scene=new Scene();var src=new One();NativeTechniques.Source=src;
+            var a=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(2,.5f,-3)};scene.List.Add(a);
+            // All holds the third set too now, so its rows run through the same fixture as the first two sets' (and none may be left without its presentation).
+            foreach(var d in NativeTechniques.Third)Check(NativeTechniqueFx.ThirdBuilt(d.Id),d.Id+": the third set's row has its presentation");
+            foreach(var d in NativeTechniques.All)for(int variant=0;variant<2;variant++)
+            {
+                var k=new NativeTechnique();NativeTechniquePreview.Write(k,d.Id,new Vector3(2,.5f,-3),.7f,10,variant==0);src.K=k;a.SourceSpec=d.Spec;string n=d.Id+(variant==0?"":" (second)");
+                Check(k.Valid(),n+": a valid record");Check(k.Kind==d.Id&&k.Release>=k.At&&k.Until>=k.Release&&k.End>=k.Until,n+": its times run forward");Check(NativeTechniquePreview.Period(d.Id)>k.End-k.At,n+": the preview's loop outlasts the cast ("+(k.End-k.At).ToString("0.0")+" s)");
+                int drawn=0,frames=0;
+                for(float t=k.At;t<k.End;t+=1/30f)
+                {
+                    var r=new Recorder();fx.Draw(r,scene,t,1,false);frames++;Check(!r.Broken,n+": nothing broken at "+(t-k.At).ToString("0.00"));if(r.Draws>0)drawn++;
+                    var again=new Recorder();fx.Draw(again,scene,t,1,false);Check(again.Draws==r.Draws&&Math.Abs(again.Hash-r.Hash)<1e-4f,n+": the same clock draws the same frame (host, guests, spectators, the killcam)");
+                    var thin=new Recorder();fx.Draw(thin,scene,t,.3f,true);Check(thin.Draws<=r.Draws&&!thin.Broken,n+": Reduced and the low tier draw no more");
+                }
+                if(d.Id!=NativeTechniques.Riposte||variant==0)Check(drawn>frames*.5f,n+": draws through its life ("+drawn+" of "+frames+" frames)");
+                var after=new Recorder();fx.Draw(after,scene,k.End+NativeTechniqueFx.Tail+.01f,1,false);Check(after.Draws==0,n+": nothing left once it is over");
+                var before=new Recorder();fx.Draw(before,scene,k.At-.01f,1,false);Check(before.Draws==0,n+": nothing before the press");
+                // A record from an older clock (a rewind): no throw, the moments still ordered.
+                for(int m=0;m<NativeTechniqueSounds.Moments;m++){float at=NativeTechniqueSounds.At(k,m);if(!float.IsNaN(at))Check(at>=k.At,n+": sound moment "+m+" within the cast");var o=new NativeKitSound[4];int c=NativeTechniqueSounds.Moment(d.Id,m,o,out _);Check(c>=0&&c<=4,n+": its cues");for(int i=0;i<c;i++)Check(!string.IsNullOrEmpty(o[i].Key),n+": a cue key");}
+                bool any=false;for(int m=0;m<NativeTechniqueSounds.Moments;m++){var o=new NativeKitSound[4];if(NativeTechniqueSounds.Moment(d.Id,m,o,out _)>0)any=true;}Check(any,n+": it sounds");
+            }
+            // The rules write `Arm` only at the release, where the preview writes it ahead: the wind-up looks the same with it unset, and the sound on the going off waits for it.
+            foreach(string id in new[]{NativeTechniques.GunSpin,NativeTechniques.Overload,NativeTechniques.Thunderclap,NativeTechniques.DragonBreath,NativeTechniques.Combust})
+            {
+                var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,id,new Vector3(2,.5f,-3),.7f,10,true);var unset=whole.ViewCopy();unset.Arm=0;a.SourceSpec=NativeTechniques.Find(id).Spec;
+                Check(whole.Arm==whole.Release,id+": the preview's wind-up ends where the rules' does");
+                for(float t=whole.At;t<whole.Release;t+=1/30f)
+                {
+                    src.K=whole;var r0=new Recorder();fx.Draw(r0,scene,t,1,false);src.K=unset;var r1=new Recorder();fx.Draw(r1,scene,t,1,false);
+                    Check(r1.Draws>0&&!r1.Broken&&r0.Draws==r1.Draws&&Math.Abs(r0.Hash-r1.Hash)<1e-4f,id+": the wind-up before the rules write Arm, at "+(t-whole.At).ToString("0.00"));
+                }
+            }
+            foreach(string id in new[]{NativeTechniques.GunSpin,NativeTechniques.Combust,NativeTechniques.Thunderclap,NativeTechniques.Overload})
+            {
+                var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,id,new Vector3(2,.5f,-3),.7f,10,true);var unset=whole.ViewCopy();unset.Arm=0;
+                Check(NativeTechniqueSounds.At(unset,NativeTechniqueSounds.Release)==whole.At,id+": its first sound on the press");Check(float.IsNaN(NativeTechniqueSounds.At(unset,NativeTechniqueSounds.Arm))&&NativeTechniqueSounds.At(whole,NativeTechniqueSounds.Arm)==whole.Release,id+": the going off's sound only once the rules write it");
+            }
+            // Soul Siphon's reach: the rules have neither a target nor an end for it yet.
+            {
+                var reach=new NativeTechnique();NativeTechniquePreview.Write(reach,NativeTechniques.SoulSiphon,new Vector3(2,.5f,-3),.7f,10,true);reach.To=default;reach.Target=0;a.SourceSpec="darkness";src.K=reach;
+                var r=new Recorder();fx.Draw(r,scene,reach.At+.05f,1,false);Check(r.Draws>0&&!r.Broken,"soul-siphon: its reach draws with no target");
+            }
+            // At the press the rules have written little: no To, no Path, no target, Arm unset. A wind-up stays round the pilot, not off at the world's origin. In flight, Point is the shot itself and Arm is still unset.
+            {
+                var spot=new Vector3(500,.5f,500);var far=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(500,.5f,500)};var there=new Scene();there.List.Add(far);
+                foreach(var d in NativeTechniques.Third)
+                {
+                    var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,d.Id,spot,.7f,10,true);far.SourceSpec=d.Spec;
+                    var press=whole.ViewCopy();press.To=default;press.Path=null;press.Target=0;press.HitAt=-100;press.RecastAt=-100;press.Arm=0;press.From=new V3(500,1.665f,500);press.Point=new V3(500,.5f,500);src.K=press;
+                    for(float t=whole.At;t<whole.Release;t+=1/30f){var r=new Recorder{Origin=spot};fx.Draw(r,there,t,1,false);Check(!r.Broken&&r.Far<=90,d.Id+": the wind-up stays round the pilot on the press's record ("+r.Far.ToString("0")+" m)");}
+                }
+                foreach(string id in new[]{NativeTechniques.FlashRound,NativeTechniques.BrambleArrow,NativeTechniques.BolasRound,NativeTechniques.TetherArrow,NativeTechniques.ChainHook,NativeTechniques.BubbleTrap})
+                {
+                    var flying=new NativeTechnique();NativeTechniquePreview.Write(flying,id,spot,.7f,10,true);far.SourceSpec=NativeTechniques.Find(id).Spec;flying.Arm=0;flying.HitAt=-100;flying.RecastAt=-100;flying.Target=0;flying.From=new V3(500,1.665f,500);flying.Point=new V3(500,1.665f,503);flying.Until=flying.Release+.9f;flying.RecoverUntil=flying.Until;src.K=flying;
+                    var r=new Recorder{Origin=spot};fx.Draw(r,there,flying.Release+.07f,1,false);Check(r.Draws>0&&!r.Broken&&r.Far<12,id+": in flight, Point is the shot ("+r.Far.ToString("0")+" m)");
+                }
+            }
+            var mirror=new NativeTechnique();NativeTechniquePreview.Write(mirror,NativeTechniques.MirrorDouble,Vector3.Zero,0,10,true);
+            Check(NativeTechniqueFx.Unseen(mirror,mirror.Release+.1f,1)&&!NativeTechniqueFx.Unseen(mirror,mirror.Arm+.01f,1)&&!NativeTechniqueFx.Unseen(mirror,mirror.At,1),"mirror-double: the body goes for its second");
+            var ghillie=new NativeTechnique();NativeTechniquePreview.Write(ghillie,NativeTechniques.Ghillie,Vector3.Zero,0,10,true);
+            Check(NativeTechniqueFx.Unseen(ghillie,ghillie.Release+.5f,8)&&!NativeTechniqueFx.Unseen(ghillie,ghillie.Release+.5f,5)&&!NativeTechniqueFx.Unseen(ghillie,ghillie.At,8)&&!NativeTechniqueFx.Unseen(ghillie,ghillie.Until+.01f,8),"ghillie: the body goes beyond 6 m once settled");
+            var dazzled=new[]{new NativeTechniqueMark{Kind=NativeTechniques.FlashRound,By=2,At=10,Until=10.9f},new NativeTechniqueMark{Kind=NativeTechniques.Sunder,By=2,At=9,Until=13}};
+            Check(NativeTechniqueFx.Whiteout(dazzled,10.1f)==1&&NativeTechniqueFx.Whiteout(dazzled,10.88f)<.1f&&NativeTechniqueFx.Whiteout(dazzled,10.9f)==0&&NativeTechniqueFx.Whiteout(dazzled,9.9f)==0&&NativeTechniqueFx.Whiteout(null,10)==0,"flash-round: the mark whites out and clears");
+            // What a mark leaves on its pilot, for everyone else.
+            {
+                var marked=new Actor{Id=3,Hp=100,SourceSpec="sword",Position=new V3(9,.5f,9),TechniqueMarks=new[]{new NativeTechniqueMark{Kind=NativeTechniques.Sunder,By=1,At=10,Until=14},new NativeTechniqueMark{Kind=NativeTechniques.WarCry,By=1,At=10,Until=14},new NativeTechniqueMark{Kind=NativeTechniques.Dread,By=1,At=10,Until=11}}};var one=new Scene();one.List.Add(marked);src.K=null;
+                var on=new Recorder();fx.Draw(on,one,10.5f,1,false);var gone=new Recorder();fx.Draw(gone,one,14.01f,1,false);var thin=new Recorder();fx.Draw(thin,one,10.5f,.3f,true);Check(on.Draws>0&&!on.Broken&&gone.Draws==0&&thin.Draws<=on.Draws,"a mark draws on its pilot while it lasts");
+            }
+            // The solid things' own numbers.
+            var b=new NativeTechnique();NativeTechniquePreview.Write(b,NativeTechniques.AnchorThrow,Vector3.Zero,0,10,true);var catcher=new Vector3(0,1.2f,0);
+            var mid=NativeTechniques.BladeAt(b,(b.Release+b.Arm)*.5f,catcher,out float f0);Check(f0>.4f&&f0<.6f&&mid.Z>.5f,"the blade flies its line");var stuck=NativeTechniques.BladeAt(b,b.Arm+.2f,catcher,out float f1);Check(f1==1&&Math.Abs(stuck.Z-4.2f)<.01f,"the blade stands where it stuck");
+            var c2=new NativeTechnique();NativeTechniquePreview.Write(c2,NativeTechniques.AnchorThrow,Vector3.Zero,0,10,false);var home=NativeTechniques.BladeAt(c2,c2.Until-.001f,catcher,out _);Check(Vector3.Distance(home,catcher)<.2f,"unused, it flies back to the pilot");
+            Check(NativeTechniques.WeaponAway(b,b.Release+.1f)&&!NativeTechniques.WeaponAway(b,b.At)&&!NativeTechniques.WeaponAway(b,b.Until+.01f),"the blade leaves the hand only while it is thrown");
+            var s=new NativeTechnique();NativeTechniquePreview.Write(s,NativeTechniques.SmokeVeil,Vector3.Zero,0,10,true);Check(!NativeTechniques.WeaponAway(s,s.Release+.1f),"other techniques keep the weapon");
+            var coin=new NativeTechnique();NativeTechniquePreview.Write(coin,NativeTechniques.RicochetCoin,Vector3.Zero,0,10,true);Check(NativeTechniques.CoinAt(coin,coin.Release+.5f).Y>coin.From.y+1,"the coin climbs");Check(coin.HitAt<coin.Until&&Math.Abs(NativeTechniques.CoinAt(coin,coin.HitAt).Y-coin.Point.y)<1e-3f,"the bullet meets it where it is");
+        }
+        private static void Poses()
+        {
+            var sets=new[]{"sword","daggers","shield","greatsword","pistol","rifle","machinegun","bow","fire","water","lightning","darkness"};
+            foreach(var spec in sets){var set=NativeVisualMotion.For(spec);Check(set!=null&&set.All.Length>0,spec+": a model set");Check(set.TechClips==null||set.TechClips.All(c=>set.All.Contains(c)),spec+": the bake carries its technique's clips");}
+            Check(NativeVisualMotion.For("sword").TechClips.Contains("Sword-Attack-R4")&&NativeVisualMotion.For("shield").TechClips.Contains("Armed-Shield-Activate"),"the clips the moves play");
+        }
+        private static void Choices(string root)
+        {
+            // The Locker's cards: offered where the rules allow, with the rules' numbers. The map itself is Astra's (TechniqueRulesChecks).
+            var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true});var options=new List<NativeLocker.AbilityOption>();
+            foreach(var d in NativeTechniques.All)
+            {
+                string text=NativeTechniques.Text(d.Id);Check(text.Length>20&&text.Length<=95,d.Id+": a card sentence that fits three lines");
+                var row=data.abilities.Single(a=>a.id==d.Id);Check(row!=null&&row.id==d.Id&&row.cooldown==d.Cooldown&&row.cost==d.Cost,d.Id+": the card's numbers are the rules'");
+                foreach(var slot in new[]{"q","e"})
+                {
+                    options.Clear();bool added=NativeLocker.AddTechniques(data,data.Weapon(d.Spec),slot,options)>0;Check(added==(d.Spec!="rifle"||slot=="e")&&added==NativeTechniqueLoadout.Allowed(d.Spec,slot),d.Id+" "+slot+": offered where it may go");
+                    if(added){var o=options.Single(x=>x.Id==d.Id);Check(o.Technique==d&&o.Id==d.Id&&o.Name==d.Name&&o.Icon==d.Icon&&o.Text==text&&!o.FromWeapon&&o.Meta==NativeLocker.Meta(d.Cooldown,d.Cost,NativeLocker.CostUnit(data.Weapon(d.Spec)),false),d.Id+": the card");}
+                }
+            }
+            foreach(var dev in new[]{"emperor","ansatsuken"})foreach(var slot in new[]{"q","e"})Check(NativeLocker.AddTechniques(data,data.Weapon(dev),slot,options,true)==0,dev+": nothing to swap on a DEV kit");
+            // The HUD's card.
+            var live=new NativeTechnique{Kind=NativeTechniques.Bastion,Phase="wall",At=10,Release=10.2f,Until=14,RecoverUntil=10.8f};
+            var c=NativeTechniques.Card(live,12,12,14,false,"LOW");Check(c.Recast&&c.State=="RECAST"&&!c.Ready,"a recast asks for the press");
+            c=NativeTechniques.Card(new NativeTechnique{Kind=NativeTechniques.SmokeVeil,Phase="cloud",At=10,Release=10.2f,Until=14,RecoverUntil=10.5f},12,14,16,false,"LOW");Check(c.Active&&c.State=="ACTIVE","the effect running");
+            c=NativeTechniques.Card(live,20,4,14,true,"LOW");Check(c.State=="4.0s"&&!c.Ready&&!c.Low&&Math.Abs(c.Dial-(1-4f/14))<.001f,"the cooldown left, on the cooldown this pilot's chips scale");
+            c=NativeTechniques.Card(live,40,-1,14,true,"LOW");Check(c.Low&&c.State=="LOW"&&!c.Ready&&c.Dial==1,"out of stamina or mana");
+            c=NativeTechniques.Card(null,40,-1,14,false,"LOW");Check(c.Ready&&c.State=="READY"&&c.Dial==1,"ready, with no record yet");
+            // A press the rules would refuse for where it is aimed: the card says why, and only when that is what is stopping it.
+            c=NativeTechniques.Card(null,40,-1,14,false,"LOW",NativeTechniques.NoSurface);Check(c.State=="NO SURFACE"&&c.Low&&c.Held&&!c.Ready,"off cooldown, nothing to hook");
+            c=NativeTechniques.Card(live,12,12,14,false,"LOW",NativeTechniques.Blocked);Check(c.State=="BLOCKED"&&c.Low&&c.Held&&!c.Recast,"the recast's way is blocked");
+            c=NativeTechniques.Card(live,20,4,14,false,"LOW",NativeTechniques.NoSurface);Check(c.State=="4.0s"&&!c.Low&&!c.Held,"on cooldown the count stays");
+            c=NativeTechniques.Card(live,40,-1,14,true,"LOW",NativeTechniques.NoSurface);Check(c.State=="LOW"&&!c.Held,"out of stamina or mana says that first");
+            foreach(var why in new[]{NativeTechniques.NoSurface,NativeTechniques.Blocked,NativeTechniques.NoFloor})Check(NativeTechniques.RefusalState(why)!=null&&NativeTechniques.RefusalLine(why)!=null,why+": a card state and a line");
+            Check(NativeTechniques.RefusalState(null)==null&&NativeTechniques.RefusalState("unknown")==null&&NativeTechniques.RefusalLine(null)==null,"no reason, nothing said");
+        }
+        private static void Wiring(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
+            var arena=R("Core/ArenaModel.cs");Check(arena.Contains("NativeTechnique Technique"),"authority technique record on the actor");
+            var hud=R("Runtime/NativeFightHud.cs");Check(!hud.Contains("\"1 · \"")&&hud.Contains("NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,slot)")&&hud.Contains("(slot==\"q\"?p.QReady:p.EReady)-t"),"no third card: a swapped slot takes the technique's card, on that slot's replicated deadline");
+            Check(R("Core/NativeTechniqueFx.cs").Contains("var f=hit?-Flat(at,Vector3.UnitZ):Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);"),"the guard faces where the pilot faces: the rules' Dir is the aim until a parry");
+            Check(R("Runtime/NativeWeaponTechniques.cs").Contains("public string TechniqueRefusal(NativePilot p,in InputFrame aim)")&&R("Runtime/ConversionGame.cs").Contains("ConvergeAim(p);TechniqueAimCheck(p);")&&hud.Contains("arena.TechniqueRefusal(p,slot,in pending)")&&hud.Contains("if(live?.Kind!=td.Id)live=null;")&&hud.Contains("t,c.Ready||c.Held)"),"the HUD asks the rules once a frame on the look a press would send, and an aim coming back does not flare the card");
+            {
+                var bounty=new NativeTechnique();NativeTechniquePreview.Write(bounty,NativeTechniques.BountyRound,Vector3.Zero,0,10,true);Check(NativeTechniques.Marked(bounty,bounty.At)==0&&NativeTechniques.Marked(bounty,bounty.HitAt+.1f)==bounty.Target&&NativeTechniques.Marked(bounty,bounty.Until+.01f)==0,"the mark runs from the hit to its end");
+                var sonar=new NativeTechnique();NativeTechniquePreview.Write(sonar,NativeTechniques.SonarDart,Vector3.Zero,0,10,false);Check(NativeTechniques.PingAge(sonar,sonar.Arm-.01f)<0&&Math.Abs(NativeTechniques.PingAge(sonar,sonar.Arm+.1f)-.1f)<.001f&&Math.Abs(NativeTechniques.PingAge(sonar,sonar.Arm+NativeTechniqueFx.SonarEvery+.1f)-.1f)<.001f&&NativeTechniques.PingAge(sonar,sonar.Until+.01f)<0,"each ping shows what is near it for a while");
+                var gone=new NativeTechnique();NativeTechniquePreview.Write(gone,NativeTechniques.SonarDart,Vector3.Zero,0,10,true);Check(NativeTechniques.PingAge(gone,gone.HitAt+.01f)<0,"a destroyed dart shows nothing");
+                var grave=new NativeTechnique();NativeTechniquePreview.Write(grave,NativeTechniques.GraveWalk,Vector3.Zero,0,10,true);Check(!NativeTechniques.Under(grave,grave.Release-.01f)&&NativeTechniques.Under(grave,grave.Release+.1f)&&!NativeTechniques.Under(grave,grave.Until+.01f),"Grave Walk hides the name while under");
+                Check(NativeTechniqueFx.GraveDepth(grave,grave.At)==0&&NativeTechniqueFx.GraveDepth(grave,grave.Release+.1f)==NativeTechniqueFx.GraveDeep&&NativeTechniqueFx.GraveDepth(grave,grave.RecoverUntil)==0,"the body goes down and comes back up");
+            }
+            Check(R("Runtime/NativeCombatHud.cs").Contains("TechniqueMarkers(scale,height);")&&R("Runtime/NativeCombatHud.cs").Contains("owner!=arena.Local&&!match.SameSide(owner.Seat,arena.Local.Seat))continue;"),"the markers show only to the owner's side");
+            Check(hud.Contains("GUI.matrix=old;TechniqueUnderVeil();TechniqueDeniedLine();"),"the view closes in under Grave Walk");
+            {
+                // The live hawk: no hit known in advance, Point the dive's start, To its target.
+                var hawk=new NativeTechnique{Kind=NativeTechniques.SpiritHawk,Phase="dive",At=10,Release=10.3f,Arm=11,Until=11.9f,RecoverUntil=10.5f,From=new V3(0,1.4f,0),Point=new V3(0,1.9f,10),To=new V3(4,1.1f,10)};
+                var start=NativeTechniqueFx.HawkAt(hawk,11);var half=NativeTechniqueFx.HawkAt(hawk,11.1f);var there=NativeTechniqueFx.HawkAt(hawk,11.5f);Check(Vector3.Distance(start,new Vector3(0,1.9f,10))<.01f&&half.X>.5f&&half.X<3.5f&&Vector3.Distance(there,new Vector3(4,1.1f,10))<.01f,"the live dive runs from Point to To at the rules' speed");
+                hawk.Phase="flight";var on=NativeTechniqueFx.HawkAt(hawk,11.2f);Check(on.Z>10,"no one found: it flies on");
+            }
+            var nameplates=R("Runtime/NativeCombatHud.cs");Check(nameplates.Contains("arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)"),"smoke hides a name from outside the cloud");
+            var locker=R("Runtime/NativeLockerUI.cs");Check(locker.Contains("Techniques=prefs.weaponTechniques")&&locker.Contains("b.Techniques!=prefs.weaponTechniques")&&locker.Contains("prefs.weaponTechniques=b.Techniques"),"a swap is part of Save Pilot and Revert");
+            var game=R("Runtime/ConversionGame.cs");Check(game.Contains("NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,\"e\")==null?content.Ability(p.Seat.spec,\"e\")"),"a swapped E draws no field preview");
+            var box=R("Runtime/NativeSandbox.cs");Check(box.Contains("case \"gallery-techniques\":presentation.TechniquePreviewOn=!presentation.TechniquePreviewOn;return DevRan;"),"the preview is the Dev Sandbox's");
+            var pres=R("Runtime/NativeTechniquePresentation.cs");foreach(var bad in new[]{"arena.Sandbox","SendInput","Damage(","QReady","EReady"})Check(!pres.Contains(bad),"the presentation does not reach "+bad);
+        }
+    }
+}

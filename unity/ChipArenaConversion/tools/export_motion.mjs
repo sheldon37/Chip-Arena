@@ -22,11 +22,21 @@ for(let variant=0;variant<6;variant++){
  for(const [kind,duration,loop,extra] of [['idle',2,true,{}],['walk',1.5,true,{vel:{x:0,y:0,z:1.6}}],['run',1.2,true,{vel:{x:0,y:0,z:3.5}}],['crawl',1.6,true,{crawl:true,vel:{x:0,y:0,z:.8}}],['emerge',1.95,false,{spawnAt:10}],['dive',.9,false,{diveAt:10}],['vent',1.95,false,{entry:{kind:'vent',at:10,first:true}}],['door',1.8,false,{entry:{kind:'door',at:10,first:true}}],['cell',1.5,false,{entry:{kind:'cell',at:10,first:true}}],['death',2.3,false,{deathAt:10,hp:0}],['hit',.42,false,{hitAt:10}]])sample('horde-'+variant+'-'+kind,duration,loop,make,(m,t)=>animateSirenMinion(m,{...view,...extra},t,0));
  for(const attack of ['swipe','lunge','smash','club'])sample('horde-'+variant+'-'+attack,.9,false,make,(m,t)=>animateSirenMinion(m,{...view,attackAt:10,attack,side:1},t,0));
 }
-// Entrances include the source camera and root transform as well as every articulated joint.
-const T=await import(pathToFileURL(path.join(stage,'node_modules/three/build/three.module.js'))),{poseIntro,introCamera}=await load('intro-choreography'),{SirenIntroScene}=await load('siren/intro');
+// Entrances include the source camera and root transform as well as every articulated joint. The rig holds what
+// player-intros.ts builds into it (a weapon intro's own weapon, both daggers, the Emperor's gauntlets), because poses solve
+// against it: braceWeapon puts the free hand on the weapon's support-grip (greatsword, rifle, machinegun), which a bare rig
+// lacks, leaving that arm hanging in the bake.
+const T=await import(pathToFileURL(path.join(stage,'node_modules/three/build/three.module.js'))),{poseIntro,introCamera}=await load('intro-choreography'),{SirenIntroScene}=await load('siren/intro'),{buildWeapon}=await load('weapon-visuals'),{WEAPON_INTROS}=await load('../shared/weapon-intros');
+function armIntro(rig,style){const spec=WEAPON_INTROS[style]?.spec;if(spec){buildWeapon(rig.weapon,spec);if(spec==='daggers')buildWeapon(rig.offWeapon,spec,true);}if(style==='dev-emperor'){buildWeapon(rig.weapon,'emperor');buildWeapon(rig.offWeapon,'emperor',true);}}
+// The native intro queues the weapon model (exported on its wrist joint with the hand sockets zeroed) on that wrist times
+// NativeIntroRules.IntroGrip: a gripped weapon (rig-ik GRIP) sits exactly on the wrist, the Emperor's ungripped gauntlets on
+// the hand socket (character-rig.ts (0,-.065,.055)). The export fails if a pose ever holds a weapon anywhere else.
+const SOCKET=new T.Matrix4().makeTranslation(0,-.065,.055),IDENTITY=new T.Matrix4(),relative=new T.Matrix4();
+function checkGrip(rig,style,age){rig.group.updateMatrixWorld(true);for(const weapon of [rig.weapon,rig.offWeapon]){if(!weapon.children.length)continue;let wrist=weapon.parent;while(wrist&&wrist!==rig.leftHand&&wrist!==rig.rightHand)wrist=wrist.parent;if(!wrist)throw Error(style+': weapon off the hands');
+ relative.copy(wrist.matrixWorld).invert().multiply(weapon.matrixWorld);const want=style==='dev-emperor'?SOCKET:IDENTITY;if(relative.elements.some((v,i)=>Math.abs(v-want.elements[i])>1e-5))throw Error(style+' at '+age.toFixed(3)+' s holds a weapon off its native grip');}}
 const styles=['neon-drop','vector-slide','signal-spin','arc-salute','pulse-wave',...['sword','daggers','shield','greatsword','pistol','rifle','machinegun','fire','water','lightning','darkness'].map(s=>'weapon-'+s),'dev-emperor','dev-ansatsuken','dev-matrix','dev-siren'];
 for(const style of styles){const duration=style==='dev-siren'?9.0678:style==='dev-emperor'?7.8:style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:4.8,rig=fresh(),scene=new T.Scene(),camera=new T.PerspectiveCamera(48,16/9,.01,100),siren=style==='dev-siren'?new SirenIntroScene(scene):null,frames=Math.ceil(duration*fps)+1,values=[],roots=[],cameras=[];
- scene.add(rig.group);for(let i=0;i<frames;i++){const age=i*duration/(frames-1);if(siren)siren.update(age,rig,camera,1);else{poseIntro(rig,style,age);introCamera(camera,style,age,rig.group.position,16/9);}
+ armIntro(rig,style);scene.add(rig.group);for(let i=0;i<frames;i++){const age=i*duration/(frames-1);if(siren)siren.update(age,rig,camera,1);else{poseIntro(rig,style,age);introCamera(camera,style,age,rig.group.position,16/9);checkGrip(rig,style,age);}
  for(const b of bones){const n=rig[b];values.push(...[n.position.x,n.position.y,n.position.z,n.quaternion.x,n.quaternion.y,n.quaternion.z,n.quaternion.w].map(round));}
  const g=rig.group,q=g.quaternion;roots.push(...[g.position.x,g.position.y,g.position.z,q.x,q.y,q.z,q.w,g.scale.x,g.scale.y,g.scale.z].map(round));const look=camera.getWorldDirection(new T.Vector3());cameras.push(...[camera.position.x,camera.position.y,camera.position.z,look.x,look.y,look.z,camera.up.x,camera.up.y,camera.up.z,camera.fov].map(round));}
  clips.push({key:'intro-'+style,duration,loop:false,frames,values,roots,cameras});console.log('intro-'+style,frames);}

@@ -2,6 +2,87 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Logic parity PR #66 (2026-10-08)
+
+Branch `codex/unity-parity-logic-current` into `claude/sleepy-ritchie-g8ruhv`; code `718cd4f` and `d80d974` with Claude UI through `4207641`. Current status takes precedence over historical entries below.
+
+Actual checks in this session:
+
+- Runtime C# 9 compilation against genuine Unity **6000.3.24f1** API DLLs: pass. Roslyn suppresses existing deprecated-API/unused-field warnings (`0618`, `0649`); other warnings are errors. No UnityEditor assembly or activated Editor was available for this checkpoint.
+- CoreTests: **100 PASS lines**, including managed P-256 known/independently signed vectors, 30/60/144 Hz snapshot clocks, prediction acknowledgement/replay, event/frame order budgets, real UDP discovery/TCP, paused Unity synchronization-context transport, options/AI, save recovery, pending profile choices, rematch/retry votes, round ledger, process lifetime lock and connection metrics.
+- `tools/check_relay.py`: pass with the compiled Relay/CoreTests assemblies, including real WebSocket rooms, isolation, private discovery and ordered 130 KB snapshots.
+- `python -m unittest discover -s Tests -p 'test_*.py'`: **24 pass**.
+- UpdaterTests: **51 pass** (transaction recovery, rollback, archive/path defenses). This does not test a live feed or Unity-to-Unity update.
+- Direct SDK `dotnet run` is unavailable in this container because MSBuild process discovery fails; the exact source sets were compiled with the SDK's Roslyn driver and run with its .NET 8 host. The normal GitHub CI remains the project-file build check.
+- `tools/package_source.py`: pass, **670 source files**, ZIP generated.
+- GitHub CI **37811222667** on `c9888fc`: native-source and native-updater-windows both pass. This includes standard project-file builds, shipping launcher compilation and real Windows process fixtures. The final source also includes intro-order and 12-second disconnect-grace regressions.
+- `cmd.exe /c Build-Windows.cmd`: **could not start, exit 127: cmd.exe not found**. No Windows/Unity executable was built and `UNITY_TEST_BUILD_READY` was not emitted.
+
+Added real-Unity regressions: `NativeNetworkBuildChecks` and `NativeArena.ValidateParityCombat/ValidateFollowupParity`. They exercise JsonUtility optional nested fields and saved pose, replica transforms/isolated scenes, replay snapshots, loadout payloads, frame budgets, authority aim, block/roll/reload semantics, direct-hit classification, summon attachment, projectile ceilings, corpse revives/cleanup, private notices, entry scheduling and disconnect colliders. These tests are **not claimed executed**; the Windows build gate invokes them.
+
+Remaining: activated Unity import/Editor gates, genuine Mono token verification, headless Unity, 30/60/144 FPS two-client play and four-player Ward Zero load, LAN discovery across machines, account login/grant refresh, fullscreen/duplicate-launch, launcher startup/rollback and four-resolution presentation acceptance. Owner decisions remain for endpoints/hosting, cutover, specialization, intro length, dedicated topology and publication. See `docs/UNITY-LOGIC-HANDOFF.md`.
+
+## Volumetric chip blasts, C6 (2026-10-08, `claude/wip-c6`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new BlastChecks replay 88 runs of the pinned client/chip-blasts.ts (`tools/export_blast_fixtures.mjs <source checkout>` writes `Tests/blast-parity.json`), with counts, weighted voxel sums, first voxels and lights per frame. They also check determinism, the front on the gameplay radius at 0.3 s, pool capacities, the 16-voxel minimum, quality scaling, the effect cues and cube winding. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
+- Review fixes (`claude/wip-c6-fixes`): the BlastChecks frame rules cover the frame step (capped at 0.05 s, zero only while paused), the pools staying small with the match running, the collapse of Blink Strike, ball-lightning and armed-rocket duplicates, and the Siren sites and halo cue. The checks above pass again. **Not run:** a Siren match, a 144 Hz guest or an online menu pause in the player.
+
+## First-person view layer (2026-10-08, `claude/wip-c7-fp-sway`)
+
+- `tools/export_first_person.mjs` runs the pinned source `poseFirstPersonView` (blob-checked against the inventory) and writes `Tests/first-person-sway-parity.json`: 8 timelines, 2,567 frames at 30/60/90/144/240 Hz with respawn-sized gaps, a rewind, a pause and a pilot change.
+- `Tests/FirstPersonSwayChecks.cs` reproduces every frame with `Core/NativeViewSway.cs` (worst 0.006 mm / 0.00003 rad): look sway, stride bob, landing kick, recoil, reload dip, run-low, rocket/mark kicks and the ADS blend. It also checks the Unity root mapping against the source Euler root, the camera look, the pilot-view inputs, and the four staff schools (idle/primary/guard/Q/E) under the layer: 0 crosshair intersections.
+- Guest path (review fix, rebased onto `a0ca6b9`): held presentation frames are no-ops that pass their turn and landing on to the next step (60 frames). A modelled guest on the replica `NativeSnapshotClock` (20 Hz host frames, 30 ms jitter) matches the host at 60/144/240 Hz: 12.0 mm look sway, the host's bob step and no held frames. With a 250 ms frame stall and a 5 % slow host clock (200 held frames), look sway stays at 12.0-12.1 mm.
+- **Not run:** Unity rendering and the feel in play (host and guest).
+
+## Ward Zero gore and revive beacons, C17 (2026-10-08, `claude/wip-c17`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes. The new GoreBeaconChecks compare against the pinned client/pve/gore.ts, beacons.ts, downed.ts and siren/minions/look.ts (`tools/export_gore_beacon_fixtures.mjs <source checkout> [chromium]` writes `Tests/gore-beacon-parity.json`). Covered: hash01/FNV, gib seeds, velocities, sizes and spin, ink counts, chunkAt, every HordeGore.update slot matrix over a chunk's life, the 12-chunk cap and rewind, beaconState, the ring draw range and vertices, HELP width and bob, and the motes map and HELP bubble pixels from Chromium. They also check determinism, the floor, lifetime and the ink pool. GoreHitChecks pins which Hit events splash ink and which one aims a sever (horde.ts:354: directed hits only), and the interim .25 s per-add spacing while Hit events carry no direction: an add standing in a field keeps at most 30 live drops. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import and compile of `NativeBeacon.shader`, rendering on a GPU, beacons, chunks and HELP in a hosted or joined Ward Zero match, frame-time cost on the owner's PC.
+
+## Weapon presentation, C11 (2026-10-08, `claude/wip-c11`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new WeaponPresentationChecks compare against `tools/export_weapon_fixtures.mjs <source checkout> <temp>` (writes `Tests/weapon-presentation-parity.json` from the pinned weapon-visuals.ts, melee-trails.ts, attackPose and three r180). They cover 195 primitive vertices, 292 module pieces over 34 loadouts (and the native stats on every key the modules read), 306 enchant pieces, 81 muzzle-flash frames, 4,432 sweep-window samples, and 94 ribbons over 79 frames, including the 16-sweep and 48-sample caps, reduced quality, a frame gap, time running backwards and trails switched off. Seven deliberate mutations of the Core rules were each caught. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import, rendering on a GPU, the effects in a hosted or joined match, first person in the player, frame-time cost on the owner's PC.
+
+## Field telegraphs, C9 (2026-10-09, `claude/wip-c9`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new FieldChecks compare with `tools/export_field_fixtures.mjs <source checkout>`, which writes `Tests/field-parity.json` from the pinned chaos-visuals.ts, siren/fx.ts and ability-preview.ts. They cover:
+  - 30 field runs (324 frames) over every kind and fx: glow disc vertices and alpha, cores, domes;
+  - 120 tint rows (self, ally, teams, PvE, no viewer, owner gone, chip fields);
+  - 54 Siren scorch and warning frames and 269 aim preview motes;
+  - glow alpha 0 at the rim, no geometry on the radius, the core and orbit formulas, and the Siren glow colour.
+  24 Python tests pass; `tools/package_source.py` passes.
+- A scratch three.js harness rendered source and port side by side for 30 cases: every field kind and fx, ally/enemy/no-viewer tints, Siren hellfire/trail/eruption and the aim preview (clamped too). Mean pixel difference is 0 to 0.06 of 255, and 0.6 to 1.6 for the time/repulsion domes, which the source tone-maps (C19). That first eruption run drew the warning ring and fill as two meshes, which three.js depth-sorts, so it did not cover Unity's one-mesh draw order (fixed below).
+- **Not run:** Unity import and compile of `NativeFieldGlow.shader`, rendering on a GPU (Gamma vs Linear colour space blending), the telegraphs in a hosted or joined match, frame-time cost on the owner's PC.
+- Review fixes (`claude/wip-c9`):
+  - The Siren warning mesh now holds every fill first and then every ring, so the ring stays on top in the last ~0.1 s before the burst. The harness runner now writes the warning as Unity's one mesh in append order (`WARN_ORDER=ring-first` reproduces the old order). With the old order the port differs from the source from t = 0.90 s: mean 0.07 to 0.53 top-down and 0.12 to 0.95 close up, and at t = 0.99 s the inner ring pixel is (152,7,13) where the source shows (201,8,16). With the new order every view matches at 0.00 and the ring pixel is (201,8,16). All 30 cases match again (0 to 0.06; domes 0.6 and 1.6, as above).
+  - Guests draw the telegraphs, the C6 field emitters and the eruption stand-in on the snapshot render clock (`ArenaPresentation.FieldClock`), not on `arena.Time`, which steps at 20 Hz. A scratch model ran 20 Hz frames with 60-90 ms delivery, at 60, 144 and 240 Hz. Held frames went from 760/1139, 2355/2735 and 4179/4559 to 0. No frame stepped backwards, and the largest step is one frame time (implosion orbit 0.11 rad per frame at 144 Hz, down from 0.80 rad). With a 0.25 s delivery stall every 5 s and the host clock at 0.95×, frames hold only while the clock waits for the newest host frame (96/2735 at 144 Hz).
+  - The Singularity, Meteor Strike's burning ground and the Orbital Mark take their birth from their expiry (`NativeFieldRules.ZoneBorn`). After a killcam reset or a late join they no longer replay the arrival burst or restart the core. A Meteor Strike or Geyser Wall bomb first seen late is aged from no later than its expiry minus its fuse: exact for a far-cast meteor and the first geyser, and never later than before.
+  - The aim preview needs E casting, or ready and affordable (`NativeFieldRules.PreviewOn`, as previewOn). Casting is read from the replicated pose, so guests get it too.
+  - The eruption stand-in column starts at the burst and draws nothing during the warning.
+  - FieldChecks gained preview-gate and zone-birth checks. Real-Unity Runtime and Editor compile, `check_relay.py` (123 PASS lines), 24 Python tests and `package_source.py` (736 files) pass. **Not run:** the same Unity, GPU and online-match items as above.
+
+## Projectile and ability-shot models, C10 (2026-10-09, `claude/wip-c10`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new ShotChecks replay 31 runs of the pinned projectile path (`tools/export_shot_fixtures.mjs <source checkout>` cuts the renderer.ts shot loop, abilityShot, burst/beam and frame calls verbatim into a stage with chip-effects.ts, event-vfx.ts, projectile-trails.ts and projectile-glow.ts, and writes `Tests/shot-parity.json`). Per captured frame they compare every model (shape, matrix, colour, world vertices), every chip-module part, every spark and beam, every trail (colour lock, width, points, drawn ribbon), every halo and the lit lights. Covered: 3 guns, 5 magic schools, Bowling Club/Velocity Coil/element chips, both hadoukens, the sword beam, 7 ability shots and the fallback, all chip modules, thrown dagger and shield, Siren exclusion, a volley, reduced and off effects. The 17 three.js geometries match exactly. A deliberately moved module cone was caught. 24 Python tests pass; `tools/package_source.py` passes.
+- `Editor/NativeShotBuildChecks.cs` adds an Edit-mode lifecycle check (bullets, a null-definition ability shot, a frag, a thrown dagger, a skipped Siren shot, pruning, reset).
+- **Not run:** Unity import, rendering on a GPU, the models in a hosted or joined match, the Editor build checks, frame-time cost on the owner's PC.
+- Review fixes (2026-10-09). `Core/NativeShotTracker.cs` keeps each projectile's first-seen look for the models and the glow, so a reflected hadouken stays red and a reflected rocket keeps the gun's halo and light (2.8/3.8). On guests and in the killcam it draws shots at the snapshot render clock. ShotChecks now also replays 487 guest renders of the pinned client/snapshots.ts SnapshotBuffer: a 20 Hz stream with 60 to 90 ms delivery, one 250 ms stall and 144 Hz sampling (`tools/export_shot_motion.mjs <source checkout>` writes `Tests/shot-motion-parity.json`). The 1,120 positions inside the buffer, 1,069 of them mixed between frames, match to 1e-9. The 343 positions past the newest frame are checked against the port's velocity rule instead. Identity checks cover a reflected owner, eviction, rewind and arena changes. `Editor/NativeShotBuildChecks.cs` adds the runtime mapping on real NativeBullet and NativeAbilityShot objects: a host hadouken whose Owner is the reflector, a rocket whose Owner changes, and a replica bullet whose spec follows the new owner. A scratch clock model of a guest (20 Hz frames, 60 to 90 ms delivery) showed these changes. At 60, 144 and 240 Hz the clock no longer holds still: it held on 760/1139, 2355/2735 and 4179/4559 frames before and on none after. The largest frag spin step fell from 0.73/0.55/0.55 rad to 0.18/0.08/0.05 rad. Element puffs went from about 20 a second at every rate to the source's frame-quantised 20.0/24.0/26.7. Lightning streak starts went from 380 distinct positions with gaps up to 3.67 m to one per emit, with gaps no longer than a frame of travel (at most 1.15 m, shorter than the 1.375 m streak). The fxref shot-compare of tidal-wave, modules, hadouken-red, lightning and pistol is unchanged (mean |dRGB| at most 0.16). That harness renders the port's numbers through three.js, so it covers the numbers only, not Unity's compositing. The colour-space choice (QualitySettings.activeColorSpace) and the per-wave transparent sort are compile-checked only.
+- **Not run (review fixes):** a Unity render in the colour space the build uses, comparing the tidal-wave opacity and the trail brightness with the source side by side; a joined match with a reflected shot; the new Editor identity check.
+
+## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
+
+Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs with warnings as errors (`netstandard2.1`, `UNITY_STANDALONE_WIN`); a strict pass with unused-field warnings enabled is also clean.
+- `dotnet run --project Tests/CoreTests.csproj`: 93 PASS lines, 0 failures. New: captured-melee motion parity against the transpiled pinned source (872 scripted frames, worst joint error 1.73 mm, 5 mm limit; shield frames after the first stun excluded, see ANIMATIONS.md), CSS cubic-bezier/keyframe curves, the UI canvas at 720p–4K and 3440×1440 (2150×900), intro name-card times and style names, and chip card text coverage (242 chips plus the four-chip Siren track).
+- `python -m unittest discover -s Tests -p "test_*.py"`: 20 tests OK. New: Ward Zero bake (crowd off the origin, no full-intensity glows, six transparent beam parts) and the ten stage-hazard parts; the model count is now 139.
+- `dotnet run --project Updater/Tests/UpdaterTests.csproj -c Release`: 51 updater transaction/archive checks pass. `tools/check_relay.py` passes. `tools/package_source.py --check` passes (605 source files; asset receipts include HazardModels.json, ChipText.json and the regenerated SourceModels/WardMotion/SceneryMotion).
+- Exports reproduced from the pinned source: `tools/export_cinematics.mjs` (Ward Zero bake), `tools/export_hazards.mjs`, `tools/export_chip_text.mjs`; only Ward Zero models changed in SourceModels.json.
+
+**Not run (needs the owner's Windows Unity):** Unity import, shader compilation and rendering of every new overlay, card, hazard, Ward mood, HUD and menu-skin change; the in-match melee runtime in motion; `Build-Windows.cmd` with the updater packaging (`UNITY_TEST_BUILD_READY`), the starter ZIP, and an actual Unity-to-Unity update through the menu card; `tools/check_updater_windows.py` (Windows only). Rendered appearance at 1280×720, 1920×1080, 2560×1440 and 3440×1440 is unverified.
+
 ## Presentation startup repair (2026-10-07, 20:27 owner report)
 
 The owner reaches the match-setup UI but reports a failed match start. The
@@ -155,7 +236,7 @@ The existing native clip-binding, shader, audio import, icon and Windows package
 - Combat glow Full/Low/Off and saved setting, nearby-wall light spill, surface marks following moving cover, sustained gunfire/spell bursts, destroyed-cover cleanup and round resets. Judge actual brightness, transparency and frame time on the target GPU.
 - All eleven ability handlers: cancellation/cost/cooldown, target previews, close-cover collision, bounce/reflection, pierce, blink clearance, tracking, timed fields and status/proc interactions.
 - Primary weapon/roll/block contacts and frame timing, status effects, hazards, complete rounds/sets/draft/rematch.
-- Windows EXE launch/icon and isolated preferences. New multiplayer is not implemented yet; old TCP tests are not a substitute.
+- Windows EXE launch/icon and isolated preferences. Native multiplayer is now implemented and has managed transport regressions; its Unity/Windows host-and-guest acceptance is still required.
 - Full mechanic, presentation, online, account and save compatibility; all pending rows in CONVERSION-STATUS.md.
 
 No production update, live endpoint, save migration or automatic release was performed.

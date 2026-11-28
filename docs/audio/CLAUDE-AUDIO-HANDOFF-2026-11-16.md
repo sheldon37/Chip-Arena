@@ -1,0 +1,13 @@
+# Claude listening handoff · 16 November 2026
+
+Start in the privately installed Windows build. In the [inventory](audio-inventory-2026-11-16.csv), filter the last column for `Audition:` or the usage column for `Dedicated recording absent`. Candidate filenames and durations come from the source survey. The raw takes still need listening.
+
+| Priority | Private assets and target | Acceptance |
+| --- | --- | --- |
+| THE 6:47's warnings | Audition the unused `TRAIN_Steam_Train_Whistle_stereo.wav` (1.027 s) for a horn layer. The target is a low directional two-tone horn, with four separate attacks for the chime. Search owner voice recordings for the arrival and departure announcements in the [Station cue sheet](../EXPEDITION-BOSS-CENTRAL-STATION.md). | Distinguish the boss horn from the regular express with music and alarms on. The chimes and PA should reach the whole station. If the required spoken lines are missing, record those specific lines. |
+| THE CONVERTER's furnace and shutdown | Compare the new installed fire bed to unused `HEATING_Furnace_Fire_03_loop_mono.wav` (2.841 s). Try `FRICTION_Stone_Slide_Rumble_02_mono.wav` (1.123 s) for crust failure. Seek a cooling tick and final shift whistle. | Listen through three loop cycles. The inhale and rear creak should remain audible over the furnace. |
+| Katana and Fangs | A/B the installed scrape with `SWORD_Blade_Slide_04_mono.wav` (0.896 s) and `Fantasy_Game_Attack_Blade_Draw_1.wav` (0.985 s). Try `GORE_Deep_Short_Stab_03_mono.wav` (0.231 s) on Fangs point contact. | Full chain against body and guard. The DEV Katana kick should sound blunt and the local hitmarker should remain clear. |
+| Heavy Turn, Crescent Return, Edge Flourish | Compare the new score and ground bite with standard Greatsword. Audition `SIEGE_WEAPON_MEDIEVAL_Catapult_Boulder_Impact_02_mono.wav` (1.682 s) for weight. Check the Glaive catch and final Katana sweep. | Check preview, match, late join and skip. Contact lands with the animation and the previous intro's tail stops. |
+| Bombadier and Cyber Lord | Listen on two Windows clients from different positions around Finale. Chain several mines, interrupt a throw, then try Hardlight Boot and Force Wall. | One nearest simultaneous column per listener, positional fuse, quieter links, no interrupted release, and one wall pulse when it materializes. |
+
+Retain the 213 accepted Hum, Deep End and NOCTIEL clips. The Glaive chime and Fangs toll have deliberate tonal roles. The Station dialogue is the first candidate for original recording if the private source search confirms the lines are absent. Fit any new takes to their registered space and duration and the remaining 1.35 MB.

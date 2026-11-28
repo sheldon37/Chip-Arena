@@ -215,14 +215,16 @@ namespace ChipArena.UnityConversion
                     a.Velocity.z = MathUtil.Approach(a.Velocity.z, move.z * speed, Rules.Acceleration * dt);
                 }
                 delta = new V3(a.Velocity.x, 0, a.Velocity.z) * dt;
-                if (input.Jump && a.Position.y <= .001f && !locked && !a.Rolling(Time)) a.Velocity.y = Rules.JumpSpeed;
+                string spec=a.SourceSpec??(a.Weapon==WeaponId.Sword&&a.VisualSet==1?"daggers":"sword");
+                var jump=NativeJumpSimulation.Try(spec,input.Jump,a.Grounded,false,locked||a.Rolling(Time),a.Velocity.y,Rules.JumpSpeed,ref a.AirJumps,out float launch);
+                if(jump!=NativeJumpKind.None){a.Velocity.y=launch;a.Grounded=false;if(jump==NativeJumpKind.Air)a.AirJumpAt=Time;}
             }
             a.Velocity.y -= Rules.Gravity * dt;
             delta.y = a.Velocity.y * dt;
             a.Knockback *= (float)Math.Exp(-3.1f * dt);
             Move(a, delta + a.Knockback * dt);
             if (a.Position.y <= 0) { a.Position.y = 0; a.Velocity.y = Math.Max(0, a.Velocity.y); }
-            a.Grounded=a.Position.y<.02f;
+            a.Grounded=a.Position.y<.02f&&a.Velocity.y<=0;if(a.Grounded)a.AirJumps=0;
         }
         private void Move(Actor a, V3 delta)
         {
@@ -345,7 +347,7 @@ namespace ChipArena.UnityConversion
             a.Hp = a.Stamina = 100; a.Position = new V3(a.Id == 1 ? -3 : a.Id == 2 ? 3 : (a.Id % 15 - 7) * 2, 0, a.Bot ? 17 : -13);
             a.Velocity = a.Knockback = new V3(); a.AttackAt = a.AttackUntil = a.RollAt = -100;
             a.BlockUntil = a.BlockReady = a.RollReady = a.StunUntil = a.RegenAt = a.StaggerImmuneUntil = 0;
-            a.QueuedAttack = a.SprintExhausted = false;
+            a.QueuedAttack = a.SprintExhausted = false;a.Grounded=true;a.AirJumps=0;a.AirJumpAt=-100;
             for(int i=1;i<4;i++) a.Magazines[i]=GunRules.All[i].Magazine;
             a.Ammo=a.Magazines[(int)a.Weapon]; a.ReloadUntil=0; a.ReloadAt=a.LastShot=-100; a.Aiming=false; a.AimShots=0; a.ShootReady=Time; a.Hit.Clear(); Move(a, new V3());
         }

@@ -1,0 +1,8 @@
+**
+!Relay/
+!Relay/ChipArena.Relay.csproj
+!Relay/Program.cs
+!Assets/
+!Assets/ChipArena/
+!Assets/ChipArena/Core/
+!Assets/ChipArena/Core/NativeRoomCodes.cs

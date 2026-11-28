@@ -1,0 +1,1 @@
+ALTER TABLE `player_accounts` ADD `boss_clears` integer DEFAULT 0 NOT NULL;

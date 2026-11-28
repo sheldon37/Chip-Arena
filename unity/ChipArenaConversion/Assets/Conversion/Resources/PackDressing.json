@@ -1,0 +1,865 @@
+{
+ "schema": 1,
+ "bank": "ChipArenaPackKit",
+ "note": "Pack dressing (docs/arenas/STAGE-KITS.md): which kit props a map's blocks draw as, and the harbour yards round the map. Presentation only; names only (the props are the licensed pack bank's).",
+ "kits": [
+  {
+   "id": "crates-on-pallet-2x2",
+   "layout": "grid",
+   "note": "Four wooden crates on a pallet (a 2 x 2 m cover crate).",
+   "props": [
+    "harbor-shipping-wooden-crate-01a",
+    "harbor-shipping-wooden-crate-01b",
+    "harbor-shipping-wooden-crate-01c",
+    "harbor-shipping-wooden-crate-02a",
+    "harbor-shipping-wooden-crate-02b",
+    "harbor-shipping-wooden-crate-02c"
+   ],
+   "stretch": 0.35,
+   "along": 2,
+   "across": 2,
+   "pallet": [
+    "harbor-wooden-pallet-01a",
+    "harbor-wooden-pallet-01b",
+    "harbor-wooden-pallet-02a",
+    "harbor-wooden-pallet-02b"
+   ],
+   "palletHeight": 0.18
+  },
+  {
+   "id": "crates-on-pallet-2x1",
+   "layout": "grid",
+   "note": "Two wooden crates on a pallet (a loading-bay pallet).",
+   "props": [
+    "harbor-shipping-wooden-crate-01a",
+    "harbor-shipping-wooden-crate-01b",
+    "harbor-shipping-wooden-crate-01c",
+    "harbor-shipping-wooden-crate-02a",
+    "harbor-shipping-wooden-crate-02b",
+    "harbor-shipping-wooden-crate-02c"
+   ],
+   "stretch": 0.35,
+   "along": 2,
+   "across": 1,
+   "pallet": [
+    "harbor-wooden-pallet-01a",
+    "harbor-wooden-pallet-01b",
+    "harbor-wooden-pallet-02a",
+    "harbor-wooden-pallet-02b"
+   ],
+   "palletHeight": 0.18
+  },
+  {
+   "id": "metal-crates-on-pallet-2x2",
+   "layout": "grid",
+   "note": "Four steel crates on a pallet (parts bins).",
+   "props": [
+    "harbor-shipping-metal-crate-01a",
+    "harbor-shipping-metal-crate-01b",
+    "harbor-shipping-metal-crate-01c",
+    "harbor-shipping-metal-crate-02a",
+    "harbor-shipping-metal-crate-02b",
+    "harbor-shipping-metal-crate-02c"
+   ],
+   "stretch": 0.35,
+   "along": 2,
+   "across": 2,
+   "pallet": [
+    "harbor-wooden-pallet-01a",
+    "harbor-wooden-pallet-01b",
+    "harbor-wooden-pallet-02a",
+    "harbor-wooden-pallet-02b"
+   ],
+   "palletHeight": 0.18
+  },
+  {
+   "id": "crate",
+   "layout": "fill",
+   "note": "One wooden crate.",
+   "props": [
+    "harbor-shipping-wooden-crate-01a",
+    "harbor-shipping-wooden-crate-01b",
+    "harbor-shipping-wooden-crate-01c",
+    "harbor-shipping-wooden-crate-02a",
+    "harbor-shipping-wooden-crate-02b",
+    "harbor-shipping-wooden-crate-02c"
+   ],
+   "stretch": 0.3,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "drum-cage",
+   "layout": "fill",
+   "note": "A cage of drums (a 1.2 m drum cover).",
+   "props": [
+    "harbor-cage-barrels-01a",
+    "harbor-cage-barrels-01b"
+   ],
+   "stretch": 0.0,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "container-20",
+   "layout": "fill",
+   "note": "A 20 ft shipping container stretched to its box, in the bright liveries (yellow, red, blue, teal, orange, green).",
+   "props": [
+    "harbor-shipping-container-02b",
+    "harbor-shipping-container-02c",
+    "harbor-shipping-container-02e",
+    "harbor-shipping-container-05b",
+    "harbor-shipping-container-05c",
+    "harbor-shipping-container-02a"
+   ],
+   "stretch": 1.0,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "iron-metal-crate",
+   "layout": "fill",
+   "note": "One steel crate stretched to its box, in the Ironworks' greys and drabs.",
+   "props": [
+    "harbor-shipping-metal-crate-01a",
+    "harbor-shipping-metal-crate-02b",
+    "harbor-shipping-metal-crate-02c"
+   ],
+   "stretch": 1.0,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "iron-crates-2x2",
+   "layout": "grid",
+   "note": "Four dark wooden crates standing on the floor (the Ironworks' mould boxes).",
+   "props": [
+    "harbor-shipping-wooden-crate-01a",
+    "harbor-shipping-wooden-crate-02a",
+    "harbor-shipping-wooden-crate-03a",
+    "harbor-shipping-wooden-crate-03b"
+   ],
+   "stretch": 0.3,
+   "along": 2,
+   "across": 2
+  }
+ ],
+ "maps": [
+  {
+   "map": "factory",
+   "glow": 0.6,
+   "note": "Corvane Works: the cover crates, drums, dock pallets, the dock containers and the parts bins; the docks south of the stockyard.",
+   "rules": [
+    {
+     "block": "factory-crate-*-1",
+     "kit": "crate",
+     "note": "the small crate stacked on each cover crate"
+    },
+    {
+     "block": "factory-crate-*",
+     "kit": "crates-on-pallet-2x2"
+    },
+    {
+     "block": "factory-bay-drums-*",
+     "kit": "drum-cage"
+    },
+    {
+     "block": "factory-dock-*-pallets",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "factory-dock-*-container",
+     "kit": "container-20"
+    },
+    {
+     "block": "factory-bins-*",
+     "kit": "metal-crates-on-pallet-2x2"
+    }
+   ],
+   "yards": [
+    {
+     "kind": "apron",
+     "x": 0,
+     "z": -125,
+     "yaw": 0,
+     "length": 330,
+     "depth": 30,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "the quay deck"
+    },
+    {
+     "kind": "quay",
+     "x": 0,
+     "z": -140,
+     "yaw": 180,
+     "length": 330,
+     "depth": 200,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "the quay wall and the water to the south"
+    },
+    {
+     "kind": "stacks",
+     "x": -28,
+     "z": -121,
+     "yaw": 0,
+     "length": 63,
+     "depth": 13.2,
+     "height": 4,
+     "count": 0,
+     "seed": 1,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": 36,
+     "z": -121,
+     "yaw": 0,
+     "length": 50,
+     "depth": 13.2,
+     "height": 3,
+     "count": 0,
+     "seed": 2,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": -66,
+     "z": -128,
+     "yaw": 0,
+     "length": 25,
+     "depth": 6.6,
+     "height": 2,
+     "count": 0,
+     "seed": 3,
+     "detail": false
+    },
+    {
+     "kind": "sts",
+     "x": -95,
+     "z": -120,
+     "yaw": 180,
+     "length": 26,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 4,
+     "detail": false,
+     "note": "two ship-to-shore cranes, booms over the freighter"
+    },
+    {
+     "kind": "sts",
+     "x": 72,
+     "z": -120,
+     "yaw": 180,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 1,
+     "seed": 5,
+     "detail": false
+    },
+    {
+     "kind": "ship",
+     "x": -15,
+     "z": -160,
+     "yaw": 180,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 6,
+     "detail": false
+    },
+    {
+     "kind": "tug",
+     "x": 95,
+     "z": -163,
+     "yaw": 180,
+     "length": 30,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 7,
+     "detail": false
+    },
+    {
+     "kind": "crane",
+     "x": 125,
+     "z": -133,
+     "yaw": 180,
+     "length": 24,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 8,
+     "detail": false
+    },
+    {
+     "kind": "trucks",
+     "x": 100,
+     "z": -117,
+     "yaw": 180,
+     "length": 24,
+     "depth": 0,
+     "height": 0,
+     "count": 3,
+     "seed": 9,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": 0,
+     "z": -111,
+     "yaw": 180,
+     "length": 300,
+     "depth": 0,
+     "height": 0.05,
+     "count": 16,
+     "seed": 10,
+     "detail": false
+    },
+    {
+     "kind": "scatter",
+     "x": -130,
+     "z": -120,
+     "yaw": 0,
+     "length": 24,
+     "depth": 14,
+     "height": 0,
+     "count": 0,
+     "seed": 11,
+     "detail": true
+    },
+    {
+     "kind": "fence",
+     "x": 0,
+     "z": -109.5,
+     "yaw": 0,
+     "length": 330,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": true
+    }
+   ],
+   "flood": 0.0
+  },
+  {
+   "map": "expedition-foundry",
+   "glow": 1.2,
+   "note": "City Ironworks: the mould boxes and the charge and scrap boxes; the dock yard east of the hall (the shell and roof hide it from the floor: it reads from outside cameras and the overview).",
+   "rules": [
+    {
+     "block": "expedition-foundry-mold-boxes",
+     "kit": "iron-crates-2x2"
+    },
+    {
+     "block": "expedition-foundry-scrap-box-*",
+     "kit": "iron-metal-crate"
+    },
+    {
+     "block": "expedition-foundry-charge-box-*",
+     "kit": "iron-metal-crate"
+    }
+   ],
+   "yards": [
+    {
+     "kind": "apron",
+     "x": 110,
+     "z": 0,
+     "yaw": 0,
+     "length": 114,
+     "depth": 180,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "the yard deck east of the hall"
+    },
+    {
+     "kind": "apron",
+     "x": 0,
+     "z": 64,
+     "yaw": 0,
+     "length": 106,
+     "depth": 54,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "apron",
+     "x": 0,
+     "z": -64,
+     "yaw": 0,
+     "length": 106,
+     "depth": 54,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "apron",
+     "x": -80,
+     "z": 0,
+     "yaw": 0,
+     "length": 54,
+     "depth": 74,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "quay",
+     "x": 167,
+     "z": 0,
+     "yaw": 90,
+     "length": 180,
+     "depth": 180,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "the quay wall, water to the east"
+    },
+    {
+     "kind": "stacks",
+     "x": 92,
+     "z": -40,
+     "yaw": 0,
+     "length": 50,
+     "depth": 16.5,
+     "height": 4,
+     "count": 0,
+     "seed": 21,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": 92,
+     "z": 42,
+     "yaw": 0,
+     "length": 50,
+     "depth": 16.5,
+     "height": 3,
+     "count": 0,
+     "seed": 22,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": 118,
+     "z": 0,
+     "yaw": 0,
+     "length": 25,
+     "depth": 13.2,
+     "height": 5,
+     "count": 0,
+     "seed": 23,
+     "detail": false
+    },
+    {
+     "kind": "sts",
+     "x": 147,
+     "z": 0,
+     "yaw": 90,
+     "length": 120,
+     "depth": 0,
+     "height": 0,
+     "count": 3,
+     "seed": 24,
+     "detail": false
+    },
+    {
+     "kind": "ship",
+     "x": 190,
+     "z": 6,
+     "yaw": 90,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 25,
+     "detail": false
+    },
+    {
+     "kind": "tug",
+     "x": 188,
+     "z": -90,
+     "yaw": 90,
+     "length": 20,
+     "depth": 0,
+     "height": 0,
+     "count": 1,
+     "seed": 26,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": 64.5,
+     "z": 0,
+     "yaw": 90,
+     "length": 64,
+     "depth": 0,
+     "height": 0.12,
+     "count": 5,
+     "seed": 27,
+     "detail": false,
+     "note": "lamps along the hall's east wall"
+    },
+    {
+     "kind": "trucks",
+     "x": 70,
+     "z": 16,
+     "yaw": 90,
+     "length": 14,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 28,
+     "detail": false
+    },
+    {
+     "kind": "scatter",
+     "x": 66,
+     "z": -16,
+     "yaw": 0,
+     "length": 15,
+     "depth": 10,
+     "height": 0,
+     "count": 0,
+     "seed": 29,
+     "detail": true
+    },
+    {
+     "kind": "crane",
+     "x": 150,
+     "z": -78,
+     "yaw": 90,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 1,
+     "seed": 30,
+     "detail": false
+    },
+    {
+     "kind": "fence",
+     "x": 56,
+     "z": -55,
+     "yaw": 90,
+     "length": 36,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": true
+    }
+   ],
+   "flood": 0.14
+  },
+  {
+   "map": "expedition-transit",
+   "glow": 1.2,
+   "note": "Central Station: the freight depot north of the hall (the shell and roof hide it from the floor: it reads from outside cameras and the overview).",
+   "rules": [],
+   "yards": [
+    {
+     "kind": "apron",
+     "x": 0,
+     "z": 80,
+     "yaw": 0,
+     "length": 240,
+     "depth": 78,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "apron",
+     "x": 86,
+     "z": -12,
+     "yaw": 0,
+     "length": 70,
+     "depth": 104,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "apron",
+     "x": -86,
+     "z": -12,
+     "yaw": 0,
+     "length": 70,
+     "depth": 104,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "apron",
+     "x": 0,
+     "z": -100,
+     "yaw": 0,
+     "length": 240,
+     "depth": 74,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": -42,
+     "z": 72,
+     "yaw": 0,
+     "length": 50,
+     "depth": 13.2,
+     "height": 3,
+     "count": 0,
+     "seed": 41,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": 44,
+     "z": 74,
+     "yaw": 0,
+     "length": 50,
+     "depth": 16.5,
+     "height": 4,
+     "count": 0,
+     "seed": 42,
+     "detail": false
+    },
+    {
+     "kind": "crane",
+     "x": 0,
+     "z": 92,
+     "yaw": 0,
+     "length": 60,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 43,
+     "detail": false
+    },
+    {
+     "kind": "trucks",
+     "x": -6,
+     "z": 58,
+     "yaw": 0,
+     "length": 20,
+     "depth": 0,
+     "height": 0,
+     "count": 3,
+     "seed": 44,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": 0,
+     "z": 50,
+     "yaw": 0,
+     "length": 90,
+     "depth": 0,
+     "height": 0.12,
+     "count": 6,
+     "seed": 45,
+     "detail": false
+    },
+    {
+     "kind": "building",
+     "x": -72,
+     "z": 100,
+     "yaw": 0,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 46,
+     "detail": false
+    },
+    {
+     "kind": "scatter",
+     "x": 16,
+     "z": 52,
+     "yaw": 0,
+     "length": 18,
+     "depth": 9,
+     "height": 0,
+     "count": 0,
+     "seed": 47,
+     "detail": true
+    },
+    {
+     "kind": "fence",
+     "x": 0,
+     "z": 41.5,
+     "yaw": 0,
+     "length": 110,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": true
+    }
+   ],
+   "flood": 0.14
+  },
+  {
+   "map": "expedition-city",
+   "glow": 0.8,
+   "note": "The town's west edge: the container docks by the Ironworks gate, a harbour basin beyond (the skyline leaves these lots).",
+   "rules": [
+    {
+     "block": "expedition-city-crate-*",
+     "kit": "crate"
+    },
+    {
+     "block": "expedition-city-wild-container-*",
+     "kit": "container-20"
+    }
+   ],
+   "yards": [
+    {
+     "kind": "quay",
+     "x": -182,
+     "z": -30,
+     "yaw": 270,
+     "length": 184,
+     "depth": 150,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "the quay wall and the basin to the west"
+    },
+    {
+     "kind": "stacks",
+     "x": -133,
+     "z": -55,
+     "yaw": 90,
+     "length": 50,
+     "depth": 13.2,
+     "height": 4,
+     "count": 0,
+     "seed": 61,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": -133,
+     "z": 15,
+     "yaw": 90,
+     "length": 50,
+     "depth": 13.2,
+     "height": 3,
+     "count": 0,
+     "seed": 62,
+     "detail": false
+    },
+    {
+     "kind": "sts",
+     "x": -162,
+     "z": -30,
+     "yaw": 270,
+     "length": 110,
+     "depth": 0,
+     "height": 0,
+     "count": 3,
+     "seed": 64,
+     "detail": false,
+     "note": "three ship-to-shore cranes, booms over the basin"
+    },
+    {
+     "kind": "ship",
+     "x": -205,
+     "z": -24,
+     "yaw": 270,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 65,
+     "detail": false
+    },
+    {
+     "kind": "tug",
+     "x": -198,
+     "z": 55,
+     "yaw": 270,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 1,
+     "seed": 66,
+     "detail": false
+    },
+    {
+     "kind": "crane",
+     "x": -165,
+     "z": 52,
+     "yaw": 270,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 1,
+     "seed": 67,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": -135.5,
+     "z": -30,
+     "yaw": 270,
+     "length": 170,
+     "depth": 0,
+     "height": 0.08,
+     "count": 9,
+     "seed": 68,
+     "detail": false
+    },
+    {
+     "kind": "trucks",
+     "x": -147,
+     "z": -5,
+     "yaw": 270,
+     "length": 10,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 69,
+     "detail": false
+    },
+    {
+     "kind": "scatter",
+     "x": -150,
+     "z": -30,
+     "yaw": 270,
+     "length": 40,
+     "depth": 10,
+     "height": 0,
+     "count": 0,
+     "seed": 70,
+     "detail": true
+    }
+   ],
+   "flood": 0.04
+  }
+ ]
+}

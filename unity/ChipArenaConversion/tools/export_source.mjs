@@ -27,6 +27,10 @@ const leet=await get('src/shared/leet-content.ts'),arcade=await get('src/shared/
 const souls=await get('src/shared/souls-combat.ts'),hazards=await get('src/shared/stage-hazards.ts');
 const pairs=o=>Object.entries(o).filter(([,v])=>typeof v==='number').map(([name,value])=>({name,value}));
 const kits=[];for(const [spec,kit] of Object.entries({...gun.GUN_KITS,...magic.MAGIC_KITS}))for(const [slot,ability]of Object.entries(kit))if(slot==='q'||slot==='e')kits.push({spec,slot,...ability});
+kits.push(...JSON.parse(fs.readFileSync(path.join(project,'tools/melee-abilities.json'),'utf8')));
+for(const ability of JSON.parse(fs.readFileSync(path.join(project,'tools/ranged-abilities.json'),'utf8'))){
+ const i=kits.findIndex(a=>a.spec===ability.spec&&a.slot===ability.slot);if(i<0)throw new Error('Missing ranged Q base');kits[i]=ability;
+}
 const catalogue={schema:1,sourceCommit:lock.commit,weapons:Object.values(content.WEAPONS),chips:content.CHIPS,
  baseStats:pairs(content.BASE_STATS),config:pairs(config.CONFIG),
  rarities:Object.entries(content.RARITIES).map(([id,data])=>({id,...data,leetWeight:leet.LEET_WEIGHTS[id]||0})),
@@ -35,6 +39,9 @@ const catalogue={schema:1,sourceCommit:lock.commit,weapons:Object.values(content
  maps:maps.ALL_MAPS.map(m=>({...m,rotation:maps.ROTATION_MAPS.some(r=>r.id===m.id),blocks:arena.arenaBlocks(m.id).map(b=>({...b,rotation:b.rotation||{x:0,y:0,z:0,w:1},support:b.support||[]}))})),
  materials:Object.entries(config.MATERIALS).map(([id,m])=>({id,...m,durability:Number.isFinite(m.durability)?m.durability:0,indestructible:!Number.isFinite(m.durability)})),
  spawns:Array.from({length:8},(_,i)=>arena.playerSpawn(i)),abilities:kits,ads:Object.entries(gun.ADS_PROFILES).map(([spec,data])=>({spec,...data})),weights:pairs(souls.WEAPON_WEIGHT)};
+// Unity-only kits stay explicit and reproducible without modifying the pinned Electron source.
+const native=JSON.parse(fs.readFileSync(path.join(project,'tools/native-content.json'),'utf8'));
+for(const [key,values] of Object.entries(native))catalogue[key].push(...values);
 // Fixtures are outputs from original source functions, not outputs copied from the C# implementation.
 const random=seed=>{let s=seed>>>0;return ()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);};
 const setups=[{}, {vital:3,overclock:4,frame:2},Object.fromEntries(content.CHIPS.map(c=>[c.id,c.max])),{'l44t-copy':1,'arcade-rush':1,'mishima-godfist':1,'siren-crown':1}];
@@ -42,6 +49,24 @@ const fixtures={sourceCommit:lock.commit,cases:[]};
 for(const spec of Object.keys(content.WEAPONS))for(let index=0;index<setups.length;index++){
  const chips=setups[index],stats=content.statsFor(chips,spec),seed=12345+index;
  fixtures.cases.push({spec,seed,chips:Object.entries(chips).map(([id,count])=>({id,count})),stats:pairs(stats),eligible:content.eligibleChips(spec,chips).map(c=>c.id),offers:content.offerChips(spec,chips,random(seed),6),roll:souls.rollProfile(spec,stats)});
+}
+// Retain the Electron receipt and independently roll Unity's rebalanced signature drafts.
+for(const row of fixtures.cases){
+ const signature={emperor:'mishima',siren:'siren',ansatsuken:'ansatsuken',leet:'l44t'}[row.spec];
+ if(!signature)continue;
+ const next=random(row.seed),pool=row.eligible.map(id=>catalogue.chips.find(c=>c.id===id));
+ const commonWeight=catalogue.rarities.find(r=>r.id==='uncommon').weight;
+ row.unityOffers=[];
+ while(row.unityOffers.length<6){
+  const tiers=catalogue.rarities.map(r=>({cards:pool.filter(c=>c.rarity===r.id),
+   weight:r.id===signature||r.id==='uncommon'?commonWeight:row.spec==='leet'?r.leetWeight:r.weight}))
+   .filter(t=>t.cards.length&&t.weight>0);
+  if(!tiers.length)break;
+  let roll=next()*tiers.reduce((sum,t)=>sum+t.weight,0);
+  const cards=tiers.find(t=>(roll-=t.weight)<0).cards;
+  const pick=cards[Math.floor(next()*cards.length)];
+  row.unityOffers.push(pick.id);pool.splice(pool.indexOf(pick),1);
+ }
 }
 fixtures.hazards=['foundry','sawmill','spikevault','lavaworks'].flatMap(map=>[0,2.9,3.65,4.8,8.3].map(time=>({map,time,hazards:hazards.stageHazards(map,time)})));
 const out=path.join(project,'Assets/Conversion/Resources');fs.mkdirSync(out,{recursive:true});
