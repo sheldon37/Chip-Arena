@@ -42,27 +42,45 @@ internal static class SleekFaceChecks
             foreach(var hat in NativeModelHatMeshes.Hats)
             {
                 int under=0,count=0;
-                foreach(var s in NativeModelHatMeshes.Build(hat,false))foreach(var p in s.Positions){if(p.Y<(hat=="cone"?.187f:.06f))continue;count++;if(NativeSleekFace.Inside(NativeRobotHelm.HatOn(hat,p),NativeSleekFace.Panels+.002f)<1)under++;}
+                foreach(var s in NativeModelHatMeshes.Build(hat,false))foreach(var p in s.Positions){if(p.Y<(hat=="cone"?.187f:.06f))continue;count++;if(NativeSleekFace.Inside(NativeRobotHelm.HatOn(hat,p),.002f)<1)under++;}
                 Check(count>100&&under==0,hat+" on the sleek helmet clears it ("+under+" points within 2 mm)");
             }
             NativeRobotHelm.HatFit("cap",out float cap,out var capMove);NativeRobotHelm.HatFit("halo",out float halo,out _);
             Check(cap<oldCap&&cap>1&&capMove.Y<.03f&&halo==1,"a closed hat smaller and lower on the slimmer helmet, the halo as it is");
         }
         finally{NativeSleekFace.On=was;}
-        // the shell: close round the head (the robot helmet's measured head: ears 10.8 cm out, the nose 15.1 cm ahead, the skull's
-        // back 8.4 cm behind, the crown 21.2 cm up) and well inside the robot helmet's
-        Check(NativeSleekFace.Inside(new Vector3(0,.212f,.02f),-.005f)<1&&NativeSleekFace.Inside(new Vector3(0,.02f,.151f),-.005f)<1&&NativeSleekFace.Inside(new Vector3(0,.1f,-.084f),-.005f)<1,"the shell 5 mm or more over the crown, the nose and the skull's back");
-        Check(NativeSleekFace.Inside(new Vector3(.108f,.12f,.02f),0)>1&&NativeRobotHelm.Inside(new Vector3(NativeSleekFace.Side+NativeSleekFace.Panels,.07f,NativeSleekFace.AxisZ),0)<1,"slimmer than the robot helmet at the sides (the ears under their cups)");
+        // the envelope (the helmet model's outer surface: tools/gear/hatfit.py) over the head by 5 mm or more at the crown, the nose and
+        // the skull's back (the robot helmet's measured head: the nose 15.1 cm ahead, the skull's back 8.4 cm behind, the crown 21.2 cm
+        // up), and inside the robot helmet round the sides
+        Check(NativeSleekFace.Inside(new Vector3(0,.212f,.02f),-.005f)<1&&NativeSleekFace.Inside(new Vector3(0,.02f,.151f),-.005f)<1&&NativeSleekFace.Inside(new Vector3(0,.1f,-.084f),-.005f)<1,"the envelope 5 mm or more over the crown, the nose and the skull's back");
+        foreach(float el in new[]{0f,30f})
+        {
+            var dir=new Vector3(MathF.Cos(el*MathF.PI/180),MathF.Sin(el*MathF.PI/180),0);var probe=NativeSleekFace.EnvCentre+dir*.1f;
+            var side=NativeSleekFace.EnvCentre+dir*(.1f/NativeSleekFace.Inside(probe));
+            Check(NativeRobotHelm.Inside(side,0)<1,"slimmer than the robot helmet at the side, "+el+" degrees up");
+        }
         // the presentation (source)
         var hb=Src("Assets/ChipArena/Runtime/NativeHairBankPresentation.cs");var helmSrc=Src("Assets/ChipArena/Runtime/NativeRobotHelmPresentation.cs");var gearSrc=Src("Assets/ChipArena/Runtime/NativePilotGearModels.cs");var body=Src("Assets/ChipArena/Runtime/NativeVisualBodyPresentation.cs");
         Check(hb.Contains("NativeSleekFace.On=hairBank!=null&&NativeSleekFace.HasAll(hairBank.Plates);"),"the sleek gear only when the bank carries all of it");
         Check(helmSrc.Contains("if(NativeSleekFace.On){models[Helm]=HelmParts(NativeSleekFace.Sections(plates,NativeSleekFace.Helmet,\"helmet\"),material,\"Robot helmet\");")&&helmSrc.Contains("else{models[Helm]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.Helm,NativeRobotHelm.Helm),material,\"Robot helmet\");"),"the helmet and half mask the bank's, else the robot's");
         Check(gearSrc.Contains("if(NativeSleekFace.On){models[GearMask]=HelmParts(NativeSleekFace.Sections(plates,NativeSleekFace.Mask,\"mask\"),gearMaterial,\"Pilot mask\");"),"the mask and visor the bank's, else the concept's");
         Check(body.Contains("var shell=NativeSleekFace.On?BodyTint(bodyColor):Color.white;"),"the sleek mask's and visor's shells in the body colour");
-        // the tools: the same names, the bank's version 4 with them
-        var face=Src("tools/gear/facegear.py");var tool=Src("tools/gear/hair.py");
-        foreach(var g in new[]{NativeSleekFace.Helmet,NativeSleekFace.HalfMask,NativeSleekFace.Visor,NativeSleekFace.Mask,NativeSleekFace.Ears})Check(face.Contains("Part('"+g)&&tool.Contains("'"+g+"'"),"the tools name the gear as the game does: "+g);
+        // the tools: the same names (the Blender kit exports, the Sculpted model makes, the bank writer takes), the bank's version 4
+        // with them, the hat fit's generated block where the game reads it
+        var kit=Src("tools/gear/facemodel/blhelp.py");var model=Src("tools/gear/facemodel/sculpted.py");var tool=Src("tools/gear/hair.py");
+        foreach(var g in new[]{NativeSleekFace.Helmet,NativeSleekFace.HalfMask,NativeSleekFace.Visor,NativeSleekFace.Mask,NativeSleekFace.Ears})Check(kit.Contains("'"+g+"'")&&model.Contains("'"+g)&&tool.Contains("'"+g+"'"),"the tools name the gear as the game does: "+g);
+        const string Block="        // <generated by tools/gear/hatfit.py>\n";
+        Check(Src("tools/gear/hatfit.py").Contains("'"+Block.Replace("\n","\\n")+"'")&&Src("Assets/ChipArena/Core/NativeSleekFace.cs").Replace("\r\n","\n").Contains(Block),"the hat fit rewrites the block the game reads");
         Check(tool.Contains("data = b'HAIR' + struct.pack('<i', 4 if face else 3) + z.compress(out.getvalue()) + z.flush()")&&NativeHairBank.Version==4&&NativeHairBank.Suit==3,"the face gear in a version 4 bank");
         Console.WriteLine("PASS sleek face");
+    }
+
+    /// <summary>CoreTests --dump-model-hats PATH: every model hat's points (head bone frame, as worn on the bare head), one "hat x y z"
+    /// a line: tools/gear/hatfit.py's HATS_TXT.</summary>
+    public static int DumpHats(string path)
+    {
+        using var w=new StreamWriter(path);
+        foreach(var hat in NativeModelHatMeshes.Hats)foreach(var s in NativeModelHatMeshes.Build(hat,false))foreach(var p in s.Positions)w.WriteLine(hat+" "+p.X.ToString("R")+" "+p.Y.ToString("R")+" "+p.Z.ToString("R"));
+        return 0;
     }
 }

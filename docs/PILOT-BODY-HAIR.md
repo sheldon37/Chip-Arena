@@ -164,25 +164,29 @@ Claude, branch `claude/sleek-suit`. Presentation only: the robot armour keeps it
   and name the bake renderer whose material they take; the suit's plates (bone, positions, normals, a paint a vertex); styles of
   any slot with the body parts they cover and the top whose gear anchors they take. Versions 1 and 2 are still read.
 
-## 6. The sleek face gear (owner 2026-11-27: "think we need to update the "masks" section now, they look out of place now with the latest robot armor", then "They look to bulky / wide")
+## 6. The sleek face gear (owner 2026-11-27: "think we need to update the "masks" section now, they look out of place now with the latest robot armor", then "They look to bulky / wide", then "I need it to be completely new models")
 
-**Status: built, not released.** The owner asked for a rework after the captures ("The new helmet designs aren't great, please rework these and
-make them look a lot better"); the code ships inert until a version 4 bank carries the gear.
+**Status: the owner picked the Sculpted set (2026-11-27); its release is in DEV_LOG.** The first gear (`tools/gear/facegear.py`, slim plates generated on a superellipsoid) shipped inert in release 38, and the owner asked for a rework ("The new helmet designs aren't great"), then for completely new models. Five new sets were modelled in Blender and judged on renders, two (Sculpted and Mecha) were refined and captured in game on the male and female pilots and under four hats, and the owner picked Sculpted.
 
-Claude, branch `claude/sleek-masks`. Presentation only: the MASKS row keeps its picks (`face:helm`, `half`, `both`, `visor`, `mask`, `none`), and no rule, hit volume or message reads the gear.
+Claude, branch `claude/sculpted-helmet` (the code from `claude/sleek-masks`). Presentation only: the MASKS row keeps its picks (`face:helm`, `half`, `both`, `visor`, `mask`, `none`), and no rule, hit volume or message reads the gear.
 
-- **The gear** (`tools/gear/facegear.py`, in the head bone's frame, built with suitplates' plates and paints):
-  - **The helmet:** a dark inner shell on the old helmet's superellipsoid refitted to the head (`Core/NativeSleekFace.cs` shell constants: the slimmest of its family 6 mm or more off the head, its front leaning back up the forehead), 1.6 cm in at the sides. White panels sit 2 mm over it, 4.5 mm thick: crown with a glowing crest, brow, sides, back, cheeks, and a chin guard with vents. A wraparound visor of glowing glass, and a cup over each ear (the ears stand 4 mm out of the shell).
-  - **The half mask:** an angular muzzle with glowing vents and slim cheek guards, close to the face's own line (its height-by-height fit, the ears left out), a small pod on each ear.
-  - **The visor:** a thin wraparound band of glowing glass with a slim arm back over each ear.
-  - **The mask:** a thin dark plate fitted 4 mm off the face over the nose, mouth, chin and cheeks, its seams glowing.
-  - **The suit's ear pods:** a small pod with a light ring on each ear, in place of the robot suit's ear modules. The helmet and half mask hide them as before (they bring their own).
-- **The bank's version 4:** `hair.py --suit DUMP --face` writes the gear as plates named by gear (`Helmet: `, `Half mask: `, `Visor: `, `Mask: `, `Ears: `). The gear stays in the head's frame. The ear pods move into the body's bind space, as the suit's plates are. A bank carrying them is version 4, so a build from before it refuses the bank rather than wearing the gear as suit plates.
+- **The gear** (`tools/gear/facemodel/sculpted.py`, modelled from scratch in Blender: parametric plates laid over a smooth envelope of the skull, the suit's paints):
+  - **The helmet** (29k vertices): layered white shells. Two cranial halves are split by a spine groove whose light line runs from a faceted brow gem to the nape, and cheek shells wrap round to a back seam that ends in a nape node. The faceplate has Corinthian lens slits outlined in light, a white bar over a metal muzzle split by a keel, a thin dark trim under the shells, a neck seal that climbs to the chin, and teardrop ear pivots.
+  - **The half mask:** white wings and a bar over a dark muzzle with a metal keel, its V edges curving into a glowing top edge from ear to ear.
+  - **The visor:** a wraparound band with the faceted gem and the eye slits, its arms stopping short of the ears.
+  - **The mask:** a dark plate whose V seams curve up into its top edge.
+  - **The suit's ear pods:** a pod on each ear (1.4 cm across, a light ring and slit), in place of the robot suit's ear modules. The helmet and half mask hide them as before.
+- **Building it** (Blender 5.x; the head is the bought pack's mesh, so it stays local):
+  1. `python -I tools/gear/facemodel/headobj.py <hair dump> head.obj` writes the pilot's head (the hair lab's dump, `hair.py --dump`).
+  2. `blender --background --factory-startup --python tools/gear/facemodel/run_model.py -- tools/gear/facemodel/sculpted.py OUT head.obj` runs the model (`blhelp.py` is the kit: the frame, the paints, the export) and writes `OUT/gear.json`.
+  3. `hair.py --suit DUMP --face OUT/gear.json` writes the bank (below).
+  4. The hats: `CoreTests --dump-model-hats hats.txt`, then `python -I tools/gear/hatfit.py OUT/gear.json hats.txt fit.json Assets/ChipArena/Core/NativeSleekFace.cs` rewrites the generated block (below).
+- **The bank's version 4:** `hair.py --suit DUMP --face` writes the gear as plates named by gear (`Helmet: `, `Half mask: `, `Visor: `, `Mask: `, `Ears: `). The gear stays in the head's frame. The ear pods move into the body's bind space, as the suit's plates are. A bank carrying them is version 4, so a build from before it refuses the bank rather than wearing the gear as suit plates. The Sculpted bank is 4.87 MB (sha `c4df336d`).
 - **Wearing it:** `NativeSleekFace.On` is set when the bank carries every gear.
   - The helmet and half mask models and the mask and visor models are the bank's: one part each on the head.
   - The mask and visor shells take the body colour, as the helmet's do.
   - The suit's `Build(plates)` skips the gear and wears the bank's ear pods.
-  - A hat on the sleek helmet takes `NativeSleekFace.HatFit`: each model hat sized to the helmet's girth where it sits and lowered until it is 2 mm off the panels (checked in `Tests/SleekFaceChecks.cs`).
+  - A hat on the sleek helmet takes `NativeSleekFace.HatFit`. `hatfit.py` turns the helmet into a radius table round the head's middle (`Envelope`: 13 azimuths by 13 elevations, `Inside` reads it). Each model hat covers the helmet to the depth it covers the bare head, at the smallest scale (none under its own size) whose lowest seat clears the helmet by 2.2 mm; the halo keeps its gap over the top. `Tests/SleekFaceChecks.cs` checks every hat 2 mm clear.
   - Without the bank, everything is as before.
 
 ## 7. The male body's levels (owner 2026-11-27: "male pilot seems to look a bit feminine (Lips look kind of like lipstick?) And it looks like they have "small" breasts, can we fix this?")

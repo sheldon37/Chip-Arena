@@ -607,6 +607,17 @@ SUIT_STYLES = [('upper', 'pilot-suit', 'Top.Bank_PilotSuit', 'Top.Top_SimpleSwea
                ('lower', 'pilot-suit-legs', 'Bottom.Bank_PilotSuitLegs', 'Bottom.Bottom_SkinnyJeans', ['hips', 'upperlegs', 'lowerlegs'], '')]
 
 
+def face_gear(source):
+    """The face gear's plate records: a model's export (a .json of records, the gear modelled in Blender: tools/gear/facemodel),
+    else facegear.py's generated gear on the head of hair dump `source`."""
+    if str(source).endswith('.json'):
+        d = json.load(open(source))
+        return [dict(name=r['name'], bone=int(r['bone']), V=np.array(r['V'], float), N=np.array(r['N'], float), P=np.array(r['P'], np.int64),
+                     T=np.array(r['T'], np.int64)) for r in d['records']]
+    import facegear
+    return facegear.build(source)
+
+
 def suit(dump, textures, face_dump=None):
     import pilotsuit
     import suitplates
@@ -615,9 +626,8 @@ def suit(dump, textures, face_dump=None):
     if face_dump:
         # the sleek face gear (facegear.py: Core/NativeSleekFace.cs), in the head's frame; its ear pods ride the suit, so they go
         # into the body's bind space as its plates are (the head's bind pose turns nothing: its position alone)
-        import facegear
         at = body.P['head']
-        for f in facegear.build(face_dump):
+        for f in face_gear(face_dump):
             plates.append(dict(f, V=f['V'] + at) if f['name'].startswith('Ears: ') else f)
     textures.append(('pilot-suit', pilotsuit.fabric_png()))
     tex = len(textures) - 1
@@ -654,7 +664,7 @@ def main():
     ap.add_argument('--only', help='style ids')
     ap.add_argument('--pack', help='the LocalAssets folder with the pack (default: --out)')
     ap.add_argument('--suit', help='the pilot body\'s bind dump: adds the sleek pilot suit (its bodysuit and plates)')
-    ap.add_argument('--face', action='store_true', help='with --suit: adds the sleek face gear (facegear.py, on --dump\'s head)')
+    ap.add_argument('--face', nargs='?', const='generated', help='with --suit: adds the sleek face gear: a model\'s export (.json), or (no value) facegear.py\'s on --dump\'s head')
     a = ap.parse_args()
     head = Head(a.dump)
     only = set(a.only.split(',')) if a.only else None
@@ -697,7 +707,7 @@ def main():
     style_rows = [('hair', sid, [index[(n, k)] for n, k in parts]) for sid, parts in styles]
     plates = []
     if a.suit:
-        suit_pieces, plates = suit(a.suit, textures, a.dump if a.face else None)
+        suit_pieces, plates = suit(a.suit, textures, (a.face if a.face.endswith('.json') else a.dump) if a.face else None)
         for slot, sid, rec, covers, anchors in suit_pieces:
             style_rows.append((slot, sid, [len(pieces)], covers, anchors))
             pieces.append(rec)

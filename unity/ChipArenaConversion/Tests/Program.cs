@@ -159,6 +159,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hair-bank"){HairBankChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--clothes"){ClothesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--sleek-face"){SleekFaceChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==2&&args[0]=="--dump-model-hats")return SleekFaceChecks.DumpHats(args[1]);
             if(args.Length==2&&args[0]=="--hair-bank-file"){return HairBankChecks.ReadFile(args[1]);}
             if(args.Length==1&&args[0]=="--costume"){CostumeChecks.Run(ProjectRoot());BodyStyleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hot-dog"){LookContractChecks.Run(ProjectRoot());HotDogChecks.Run(ProjectRoot());Console.WriteLine("PASS hot dog");return 0;}
